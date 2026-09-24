@@ -25,7 +25,23 @@ declare global {
 window.React = React;
 window.ReactDOM = ReactDOMModule;
 
-applyBahmniTheme(BAHMNI_DEFAULT_THEME);
+applyBahmniTheme({
+  ...BAHMNI_DEFAULT_THEME,
+  'background-brand': '#1F5238',
+  'button-primary': '#1F5238',
+  'button-primary-hover': '#173E2B',
+  'button-primary-active': '#123221',
+  'button-tertiary': '#1F5238',
+  'button-tertiary-hover': '#173E2B',
+  'button-tertiary-active': '#123221',
+  interactive: '#1F5238',
+  focus: '#1F5238',
+  'border-interactive': '#1F5238',
+  'link-primary': '#1F5238',
+  'link-primary-hover': '#173E2B',
+  'link-secondary': '#173E2B',
+  'layer-01': '#F5F7F5',
+});
 initFontAwesome();
 
 const root = createRoot(document.getElementById('root') as HTMLElement);

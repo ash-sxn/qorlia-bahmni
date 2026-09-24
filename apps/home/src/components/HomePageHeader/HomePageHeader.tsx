@@ -8,7 +8,8 @@ export const HomePageHeader: React.FC = () => {
   const { t } = useTranslation();
   return (
     <Header
-      ariaLabel="Bahmni"
+      ariaLabel="Qorlia"
+      brandName="Qorlia"
       brandPrefix={t('HOME_LABEL')}
       brandHref="/"
       globalFeatures={[
