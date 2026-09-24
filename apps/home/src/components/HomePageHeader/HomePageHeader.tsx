@@ -1,4 +1,4 @@
-import { Header } from '@bahmni/design-system';
+import { getHospitalBranding, Header } from '@bahmni/design-system';
 import { BAHMNI_HOME_PATH, useTranslation } from '@bahmni/services';
 import { LocationSelector, UserGlobalAction } from '@bahmni/widgets';
 import React from 'react';
@@ -8,8 +8,7 @@ export const HomePageHeader: React.FC = () => {
   const { t } = useTranslation();
   return (
     <Header
-      ariaLabel="Qorlia"
-      brandName="Qorlia"
+      ariaLabel={getHospitalBranding().name}
       brandPrefix={t('HOME_LABEL')}
       brandHref={BAHMNI_HOME_PATH}
       globalFeatures={[

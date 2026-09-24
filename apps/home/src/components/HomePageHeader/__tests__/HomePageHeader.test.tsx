@@ -6,6 +6,7 @@ import { HomePageHeader } from '../HomePageHeader';
 expect.extend(toHaveNoViolations);
 
 jest.mock('@bahmni/design-system', () => ({
+  getHospitalBranding: () => ({ name: 'Qorlia' }),
   Header: ({
     ariaLabel,
     brandName,
@@ -15,7 +16,7 @@ jest.mock('@bahmni/design-system', () => ({
   }: any) => (
     <header aria-label={ariaLabel} data-testid="header">
       <div data-testid="brand">
-        {brandName} {brandPrefix}
+        {brandName ?? 'Qorlia'} {brandPrefix}
       </div>
       <div data-testid="global-features">{globalFeatures}</div>
       <div data-testid="user-menu-slot">{userMenu}</div>

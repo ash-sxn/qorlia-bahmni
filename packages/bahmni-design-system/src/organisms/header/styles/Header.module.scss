@@ -36,6 +36,13 @@
   flex: none;
 }
 
+.brandLogo {
+  width: 1.5rem;
+  height: 1.5rem;
+  object-fit: contain;
+  flex: none;
+}
+
 // ── Global bar ───────────────────────────────────────────────────────────────
 :global(.cds--header .cds--header__global) {
   color: $text-inverse;

@@ -44,6 +44,8 @@ The website already uses most of this palette. The Bahmni React fork uses the sa
 
 The React fork now uses a Qorlia wordmark and pentagon in its shared header, with the brand link returning to its home route. This does not change the deployed legacy Bahmni, OpenELIS or Odoo interfaces.
 
+The [hospital branding format](HOSPITAL_BRANDING.md) is the first modular interface for deployment-specific names, logos and palette tokens. It intentionally does not accept arbitrary CSS or change clinical terminology. Those need separate workflow and safety review.
+
 ## Typography
 
 - **Space Grotesk** for large Qorlia headings and wordmark.
