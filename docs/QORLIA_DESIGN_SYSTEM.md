@@ -1,6 +1,6 @@
 # Qorlia design system
 
-Status: working direction, 23 September 2026. This is based on the selected calm clinical concept. It guides Qorlia's website and Bahmni-based products, but does not claim that every screen has been migrated.
+Status: working direction, updated 24 September 2026. This is based on the selected calm clinical concept and approved Qori mascot. It guides Qorlia's website and Bahmni-based products, but does not claim that every screen has been migrated.
 
 [View the selected visual concept](assets/qorlia-calm-clinical-concept.png). It uses fictional data and is a design target, not a screenshot of implemented functionality.
 
@@ -19,7 +19,11 @@ Four principles govern every screen:
 
 - The pentagon is the Qorlia mark. Pair it with the wordmark in primary navigation. Never show the mark alone as the only identity on a large blank screen.
 - Where a Qorlia product is built on Bahmni, retain a readable **Built on Bahmni** credit and upstream copyright/license notices. Qorlia is the service and product experience; it does not claim to have created Bahmni.
-- The proposed pentagon mascot is for onboarding, training and community material only. It is not a substitute for status icons, clinical alerts, consent prompts or the official logo. Its design remains subject to approval.
+- **Qori** is the approved pentagon mascot. Qori can welcome visitors, listen during an enquiry, and celebrate a completed non-clinical task. The name is short in English and Hindi and comes from Qorlia.
+- The mark and Qori share one pentagon silhouette. The logo starts as a white pentagon in a green tile. In a friendly context, crossfade and scale to the green mascot. Reverse the same motion to return to the official mark. Keep the header mark static.
+- Qori has three approved faces: [welcome](assets/qori-welcome.png) (open smile), [listening](assets/qori-listening.png) (small smile and listening lines), and [celebrate](assets/qori-celebrate.png) (closed eyes and a larger smile). New expressions need a named use case and review.
+- Use Qori on marketing, onboarding, training and friendly empty states. Do not use Qori as a clinical alert, consent indicator, patient status, success signal for a saved clinical record, or a replacement for the official logo or text. Keep upstream Bahmni and Odoo attribution visible where required.
+- Motion is quiet: a 280 ms logo/face transition, a 2.8 s gentle idle breath, one 650 ms celebration, and a subtle listening pulse. Never autoplay a mascot sequence over a clinical form. Honor `prefers-reduced-motion` and provide a static state. The interactive logo toggle has a text accessible name; decorative Qori art is hidden from assistive technology.
 
 ## Tokens
 
