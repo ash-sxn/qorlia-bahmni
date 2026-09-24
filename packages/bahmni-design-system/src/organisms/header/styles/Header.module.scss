@@ -21,6 +21,21 @@
   color: $text-inverse;
 }
 
+.qorliaBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.qorliaMark {
+  display: inline-block;
+  width: 1.25rem;
+  height: 1.25rem;
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 36%, 81% 100%, 19% 100%, 0 36%);
+  flex: none;
+}
+
 // ── Global bar ───────────────────────────────────────────────────────────────
 :global(.cds--header .cds--header__global) {
   color: $text-inverse;
@@ -77,7 +92,9 @@
 
 :global(.cds--header .cds--breadcrumb-item::after),
 :global(.cds--header .cds--breadcrumb-item [aria-current="page"]),
-:global(.cds--header .cds--breadcrumb-item.cds--breadcrumb-item--current .cds--link) {
+:global(
+  .cds--header .cds--breadcrumb-item.cds--breadcrumb-item--current .cds--link
+) {
   color: $text-inverse;
   font-weight: 600;
 }

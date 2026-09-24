@@ -1,3 +1,4 @@
+import { BAHMNI_HOME_PATH } from '@bahmni/services';
 import {
   HeaderContainer,
   Header as CarbonHeader,
@@ -27,9 +28,9 @@ import { isMobile } from './utils';
  */
 export const Header: React.FC<HeaderProps> = React.memo(
   ({
-    brandName,
+    brandName = 'Qorlia',
     brandPrefix,
-    brandHref = '/',
+    brandHref = BAHMNI_HOME_PATH,
     breadcrumbItems = [],
     globalActions = [],
     globalFeatures = [],
@@ -51,8 +52,12 @@ export const Header: React.FC<HeaderProps> = React.memo(
         <HeaderName
           href={brandHref}
           prefix={brandPrefix}
+          className={brandName === 'Qorlia' ? styles.qorliaBrand : undefined}
           data-testid="header-name"
         >
+          {brandName === 'Qorlia' && (
+            <span className={styles.qorliaMark} aria-hidden="true" />
+          )}
           {brandName}
         </HeaderName>
       );
