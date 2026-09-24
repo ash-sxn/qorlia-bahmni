@@ -42,6 +42,8 @@ Four principles govern every screen:
 
 The website already uses most of this palette. The Bahmni React fork uses the same brand green through its existing Carbon theme hook. The upstream Carbon component system remains the functional base; Qorlia tokens should map into it instead of replacing every control.
 
+The React fork now uses a Qorlia wordmark and pentagon in its shared header, with the brand link returning to its home route. This does not change the deployed legacy Bahmni, OpenELIS or Odoo interfaces.
+
 ## Typography
 
 - **Space Grotesk** for large Qorlia headings and wordmark.
