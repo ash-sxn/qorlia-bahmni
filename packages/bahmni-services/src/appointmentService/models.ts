@@ -47,11 +47,28 @@ interface Location {
   uuid: string;
 }
 
-interface AppointmentAttribute {
-  uuid: string;
-  attributeType: string;
+export interface AppointmentAttribute {
+  uuid?: string;
+  attributeType?: string;
   attributeTypeUuid: string;
   value: string;
+  voided?: boolean;
+}
+
+export interface AppointmentServiceAvailability {
+  uuid?: string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  maxAppointmentsLimit?: number | null;
+  voided?: boolean;
+}
+
+export interface AppointmentServiceType {
+  uuid?: string;
+  name: string;
+  duration: number;
+  voided?: boolean;
 }
 
 export interface AppointmentService {
@@ -65,8 +82,28 @@ export interface AppointmentService {
   endTime: string;
   location: Location | null;
   durationMins?: number | null;
+  maxAppointmentsLimit?: number | null;
   color: string;
   initialAppointmentStatus: string | null;
+  weeklyAvailability?: AppointmentServiceAvailability[];
+  serviceTypes?: AppointmentServiceType[];
+}
+
+export interface AppointmentServiceSaveRequest {
+  uuid?: string;
+  name: string;
+  description: string | null;
+  durationMins: number | null;
+  maxAppointmentsLimit: number | null;
+  color: string;
+  initialAppointmentStatus: string | null;
+  startTime?: string;
+  endTime?: string;
+  specialityUuid?: string;
+  locationUuid?: string;
+  weeklyAvailability: AppointmentServiceAvailability[];
+  serviceTypes: AppointmentServiceType[];
+  attributes: AppointmentAttribute[];
 }
 
 export interface AppointmentUnavailability {

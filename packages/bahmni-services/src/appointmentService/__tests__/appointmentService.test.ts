@@ -26,6 +26,8 @@ import {
   checkInAppointment,
   getAppointmentById,
   getAllAppointmentServices,
+  getAppointmentService,
+  saveAppointmentService,
   deleteAppointmentService,
   getAppointmentUnavailabilities,
   createAppointmentUnavailability,
@@ -42,6 +44,7 @@ import {
   getAppointmentByIdUrl,
   updateAppointmentStatusUrl,
   ALL_APPOINTMENT_SERVICES_URL,
+  APPOINTMENT_SERVICE_URL,
   getDeleteAppointmentServiceUrl,
   getUpcomingAppointmentsPageUrl,
   getPastAppointmentsPageUrl,
@@ -68,6 +71,29 @@ const setupEmptyBundle = () => {
 };
 
 describe('Appointment Service', () => {
+  it('loads and saves the full service definition through the legacy endpoint', async () => {
+    const service = {
+      name: 'General Medicine',
+      description: null,
+      durationMins: 15,
+      maxAppointmentsLimit: null,
+      color: '#006400',
+      initialAppointmentStatus: 'Scheduled',
+      weeklyAvailability: [],
+      serviceTypes: [],
+      attributes: [],
+    };
+    mockedGet.mockResolvedValue(service);
+    mockedPost.mockResolvedValue(service);
+
+    await getAppointmentService('service-1');
+    await saveAppointmentService(service);
+
+    expect(mockedGet).toHaveBeenCalledWith(
+      `${APPOINTMENT_SERVICE_URL}?uuid=service-1`,
+    );
+    expect(mockedPost).toHaveBeenCalledWith(APPOINTMENT_SERVICE_URL, service);
+  });
   afterAll(() => {
     jest.useRealTimers();
   });

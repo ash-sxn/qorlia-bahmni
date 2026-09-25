@@ -3,6 +3,7 @@ import { del, get, post } from '../api';
 import type { Appointment as LegacyAppointment } from '../patientService/models';
 import {
   ALL_APPOINTMENT_SERVICES_URL,
+  APPOINTMENT_SERVICE_URL,
   APPOINTMENT_CONFLICTS_URL,
   APPOINTMENT_DAY_URL,
   APPOINTMENT_LEGACY_SEARCH_URL,
@@ -24,6 +25,7 @@ import {
   AppointmentBookingConflicts,
   AppointmentBookingRequest,
   AppointmentService,
+  AppointmentServiceSaveRequest,
   AppointmentSummary,
   AppointmentUnavailability,
   CheckInAppointmentResponse,
@@ -264,6 +266,18 @@ export const getAllAppointmentServices = async (): Promise<
 > => {
   return await get<AppointmentService[]>(ALL_APPOINTMENT_SERVICES_URL);
 };
+
+export const getAppointmentService = (
+  uuid: string,
+): Promise<AppointmentService> =>
+  get<AppointmentService>(
+    `${APPOINTMENT_SERVICE_URL}?${new URLSearchParams({ uuid })}`,
+  );
+
+export const saveAppointmentService = (
+  service: AppointmentServiceSaveRequest,
+): Promise<AppointmentService> =>
+  post<AppointmentService>(APPOINTMENT_SERVICE_URL, service);
 
 /**
  * Deletes an appointment service definition by UUID.

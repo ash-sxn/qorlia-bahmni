@@ -52,6 +52,10 @@ const AllServicesPage: React.FC = () => {
     userPrivileges,
     MANAGE_APPOINTMENT_SERVICES_PRIVILEGE,
   );
+  const canManageAvailability = hasPrivilege(
+    userPrivileges,
+    'app:appointments:manageServiceAvailability',
+  );
 
   const attributeNames = useMemo(
     () => extractServiceAttributeNames(serviceTableFields),
@@ -103,17 +107,26 @@ const AllServicesPage: React.FC = () => {
   ): React.ReactNode => {
     if (cellId === 'actions') {
       return (
-        <IconButton
-          id={`delete-service-${row.id}-btn`}
-          testId={`delete-service-${row.id}-btn-test-id`}
-          aria-label={`delete-service-${row.id}-btn-aria-label`}
-          kind="ghost"
-          label={t('ADMIN_ALL_SERVICES_DELETE_ICON_LABEL')}
-          disabled={!canManageServices}
-          onClick={() => setServiceToDelete(row)}
-        >
-          <TrashCan />
-        </IconButton>
+        <div className={styles.serviceActions}>
+          <a href={`/bahmni-v2/appointments/admin/services/${row.id}`}>
+            {t(
+              canManageServices || canManageAvailability
+                ? 'ADMIN_ALL_SERVICES_EDIT'
+                : 'ADMIN_ALL_SERVICES_VIEW',
+            )}
+          </a>
+          <IconButton
+            id={`delete-service-${row.id}-btn`}
+            testId={`delete-service-${row.id}-btn-test-id`}
+            aria-label={`delete-service-${row.id}-btn-aria-label`}
+            kind="ghost"
+            label={t('ADMIN_ALL_SERVICES_DELETE_ICON_LABEL')}
+            disabled={!canManageServices}
+            onClick={() => setServiceToDelete(row)}
+          >
+            <TrashCan />
+          </IconButton>
+        </div>
       );
     }
     if (KNOWN_FIELDS.includes(cellId))
@@ -153,6 +166,16 @@ const AllServicesPage: React.FC = () => {
               <h1>{t('ADMIN_ALL_SERVICES_PAGE_TITLE')}</h1>
               <p>{t('ADMIN_ALL_SERVICES_PAGE_DESCRIPTION')}</p>
             </div>
+            {canManageServices && (
+              <div className={workspaceStyles.actions}>
+                <a
+                  className={workspaceStyles.primaryButton}
+                  href="/bahmni-v2/appointments/admin/services/new"
+                >
+                  {t('ADMIN_ALL_SERVICES_ADD')}
+                </a>
+              </div>
+            )}
             <ActionDataTable
               id="all-services"
               title={t('ADMIN_ALL_SERVICES_TITLE')}
