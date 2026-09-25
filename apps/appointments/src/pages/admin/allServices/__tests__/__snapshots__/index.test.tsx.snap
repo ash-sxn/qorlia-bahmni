@@ -13,9 +13,27 @@ exports[`AllServicesPage Snapshot should match snapshot with services data 1`] =
       class="cds--header"
       data-testid="header"
     >
+      <a
+        class="cds--header__name _qorliaBrand_17mnn_14"
+        data-testid="header-name"
+        href="/bahmni-v2/home"
+      >
+        <span
+          aria-hidden="true"
+          class="_qorliaMark_17mnn_20"
+        />
+        <span>
+          Qorlia
+        </span>
+        <span
+          class="_brandCredit_17mnn_36"
+        >
+          Built on Bahmni
+        </span>
+      </a>
       <nav
         aria-label="Breadcrumb"
-        class="_breadcrumb_hjxxm_74"
+        class="_breadcrumb_17mnn_71"
         data-testid="breadcrumb"
       >
         <ol

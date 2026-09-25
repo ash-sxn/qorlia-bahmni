@@ -1,6 +1,8 @@
 export {
   searchAppointmentsByAttribute,
   getAppointmentSummary,
+  getAppointmentBookingConflicts,
+  bookAppointment,
   updateAppointmentStatus,
   checkInAppointment,
   getAppointmentById,
@@ -16,6 +18,8 @@ export {
 export {
   type AppointmentPage,
   type AppointmentSummary,
+  type AppointmentBookingConflicts,
+  type AppointmentBookingRequest,
   type AppointmentService,
   type AppointmentUnavailability,
   type CheckInAppointmentResponse,

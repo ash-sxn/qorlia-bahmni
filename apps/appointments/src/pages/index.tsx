@@ -9,6 +9,7 @@ import {
 import { useUserPrivilege, UserGlobalAction } from '@bahmni/widgets';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { BookingForm } from './BookingForm';
 import styles from './styles/index.module.scss';
 
 const dateKey = (date: Date) =>
@@ -39,6 +40,11 @@ export const IndexPage = () => {
   const { userPrivileges, isLoading: privilegesLoading } = useUserPrivilege();
   const canView = hasPrivilege(userPrivileges, 'app:appointments');
   const canAdmin = hasPrivilege(userPrivileges, 'app:appointments:adminTab');
+  const canBook =
+    hasPrivilege(userPrivileges, 'app:appointments:manageAppointmentsTab') &&
+    hasPrivilege(userPrivileges, 'Manage Appointments');
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingMessage, setBookingMessage] = useState('');
   const [weekStart, setWeekStart] = useState(() => weekOf(new Date()));
   const [selectedDay, setSelectedDay] = useState(() => dateKey(new Date()));
   const [serviceUuid, setServiceUuid] = useState('');
@@ -119,6 +125,37 @@ export const IndexPage = () => {
             <p role="alert">{t('APPOINTMENTS_NO_ACCESS')}</p>
           ) : (
             <>
+              {canBook && (
+                <div className={styles.actions}>
+                  <button
+                    type="button"
+                    className={styles.primaryButton}
+                    onClick={() => {
+                      setBookingOpen(true);
+                      setBookingMessage('');
+                    }}
+                  >
+                    {t('APPOINTMENTS_BOOK')}
+                  </button>
+                </div>
+              )}
+              {bookingMessage && (
+                <p role="status" className={styles.successMessage}>
+                  {bookingMessage}
+                </p>
+              )}
+              {bookingOpen && (
+                <BookingForm
+                  services={summary.data ?? []}
+                  selectedDay={selectedDay}
+                  selectedServiceUuid={serviceUuid}
+                  onClose={() => setBookingOpen(false)}
+                  onBooked={() => {
+                    setBookingOpen(false);
+                    setBookingMessage(t('APPOINTMENTS_BOOKED'));
+                  }}
+                />
+              )}
               <section
                 className={styles.panel}
                 aria-labelledby="appointment-summary-heading"

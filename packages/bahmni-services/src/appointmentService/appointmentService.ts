@@ -3,6 +3,8 @@ import { del, get, post } from '../api';
 import type { Appointment as LegacyAppointment } from '../patientService/models';
 import {
   ALL_APPOINTMENT_SERVICES_URL,
+  APPOINTMENT_CONFLICTS_URL,
+  APPOINTMENT_SAVE_URL,
   APPOINTMENT_SUMMARY_URL,
   APPOINTMENTS_SEARCH_URL,
   APPOINTMENT_UNAVAILABILITY_URL,
@@ -17,6 +19,8 @@ import {
 } from './constants';
 import {
   AppointmentPage,
+  AppointmentBookingConflicts,
+  AppointmentBookingRequest,
   AppointmentService,
   AppointmentSummary,
   AppointmentUnavailability,
@@ -44,6 +48,16 @@ export const getAppointmentSummary = (
   get<AppointmentSummary[]>(
     `${APPOINTMENT_SUMMARY_URL}?${new URLSearchParams({ startDate, endDate })}`,
   );
+
+export const getAppointmentBookingConflicts = (
+  request: AppointmentBookingRequest,
+): Promise<AppointmentBookingConflicts> =>
+  post<AppointmentBookingConflicts>(APPOINTMENT_CONFLICTS_URL, request);
+
+export const bookAppointment = (
+  request: AppointmentBookingRequest,
+): Promise<LegacyAppointment> =>
+  post<LegacyAppointment>(APPOINTMENT_SAVE_URL, request);
 
 const legacyStatus: Record<string, FhirAppointment['status']> = {
   Requested: 'proposed',

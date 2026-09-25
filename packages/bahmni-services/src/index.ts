@@ -89,6 +89,8 @@ export {
 export {
   searchAppointmentsByAttribute,
   getAppointmentSummary,
+  getAppointmentBookingConflicts,
+  bookAppointment,
   updateAppointmentStatus,
   checkInAppointment,
   getAppointmentById,
@@ -98,6 +100,8 @@ export {
   getPastAppointmentsPage,
   type AppointmentPage,
   type AppointmentSummary,
+  type AppointmentBookingConflicts,
+  type AppointmentBookingRequest,
   getAllAppointmentServices,
   deleteAppointmentService,
   getAppointmentUnavailabilities,

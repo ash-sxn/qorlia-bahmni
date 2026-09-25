@@ -18,6 +18,8 @@ import {
   getPastAppointmentsPage,
   searchAppointmentsByAttribute,
   getAppointmentSummary,
+  getAppointmentBookingConflicts,
+  bookAppointment,
   updateAppointmentStatus,
   checkInAppointment,
   getAppointmentById,
@@ -31,6 +33,8 @@ import {
   PAST_APPOINTMENTS_URL,
   APPOINTMENTS_SEARCH_URL,
   APPOINTMENT_SUMMARY_URL,
+  APPOINTMENT_CONFLICTS_URL,
+  APPOINTMENT_SAVE_URL,
   getAppointmentByIdUrl,
   updateAppointmentStatusUrl,
   ALL_APPOINTMENT_SERVICES_URL,
@@ -143,6 +147,35 @@ describe('Appointment Service', () => {
     expect(await getAppointmentSummary(startDate, endDate)).toEqual(rows);
     expect(mockedGet).toHaveBeenCalledWith(
       `${APPOINTMENT_SUMMARY_URL}?${new URLSearchParams({ startDate, endDate })}`,
+    );
+  });
+
+  it('checks conflicts and books through Bahmni appointment endpoints', async () => {
+    const request = {
+      patientUuid: 'patient-1',
+      serviceUuid: 'service-1',
+      locationUuid: 'location-1',
+      startDateTime: '2099-01-01T09:00:00.000Z',
+      endDateTime: '2099-01-01T09:15:00.000Z',
+      appointmentKind: 'Scheduled' as const,
+      providers: [],
+    };
+    mockedPost.mockResolvedValueOnce({ PATIENT_DOUBLE_BOOKING: [] });
+    mockedPost.mockResolvedValueOnce({ uuid: 'appointment-1' });
+
+    expect(await getAppointmentBookingConflicts(request)).toEqual({
+      PATIENT_DOUBLE_BOOKING: [],
+    });
+    expect(await bookAppointment(request)).toEqual({ uuid: 'appointment-1' });
+    expect(mockedPost).toHaveBeenNthCalledWith(
+      1,
+      APPOINTMENT_CONFLICTS_URL,
+      request,
+    );
+    expect(mockedPost).toHaveBeenNthCalledWith(
+      2,
+      APPOINTMENT_SAVE_URL,
+      request,
     );
   });
 
