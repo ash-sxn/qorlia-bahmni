@@ -89,7 +89,7 @@ const ClinicalWorkspace = ({
             {t('CLINICAL_WORKSPACE_APPOINTMENTS')}
           </a>
         )}
-        {canManageBeds && <Link to="/clinical/beds">Bed management</Link>}
+        {canManageBeds && <Link to="/clinical/inpatient">Inpatient care</Link>}
       </nav>
 
       <div className={styles.content}>

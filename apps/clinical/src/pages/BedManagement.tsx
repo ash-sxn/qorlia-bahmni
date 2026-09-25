@@ -81,6 +81,12 @@ const BedManagement = () => {
             <h1>Bed management</h1>
             <p>Find a ward, check availability and open a patient record.</p>
           </div>
+          <nav className={styles.pageNav} aria-label="Inpatient views">
+            <Link to="/clinical/inpatient">Patient list</Link>
+            <Link to="/clinical/beds" aria-current="page">
+              Ward view
+            </Link>
+          </nav>
           {privilegesLoading ? (
             <p role="status">Checking access…</p>
           ) : !hasPrivilege(userPrivileges, 'app:adt') ? (

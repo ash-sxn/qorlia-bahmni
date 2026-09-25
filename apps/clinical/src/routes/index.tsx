@@ -6,8 +6,15 @@ const ConsultationPage = lazy(() => import('../pages/ConsultationPage'));
 
 const ClinicalList = lazy(() => import('../pages/list'));
 const BedManagement = lazy(() => import('../pages/BedManagement'));
+const InpatientPatientList = lazy(
+  () => import('../pages/InpatientPatientList'),
+);
 
 export const routes: Routes = [
+  {
+    path: 'inpatient',
+    component: InpatientPatientList,
+  },
   {
     path: 'beds',
     component: BedManagement,
