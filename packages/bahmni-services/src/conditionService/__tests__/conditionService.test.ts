@@ -187,6 +187,45 @@ describe('conditionService', () => {
   describe('getConditionPage', () => {
     const patientUUID = '02f47490-d657-48ee-98e7-4c9133ea168b';
 
+    it('filters and paginates locally when the server rejects category search', async () => {
+      const active = {
+        ...mockCondition,
+        id: 'active-condition',
+        category: [{ coding: [{ code: 'problem-list-item' }] }],
+      };
+      const inactive = {
+        ...active,
+        id: 'inactive-condition',
+        clinicalStatus: { coding: [{ code: 'inactive' }] },
+      };
+      const diagnosis = {
+        ...active,
+        id: 'diagnosis',
+        category: [{ coding: [{ code: 'encounter-diagnosis' }] }],
+      };
+      (get as jest.Mock)
+        .mockRejectedValueOnce(
+          new Error(
+            'Invalid input parameters. Please check your request and try again.',
+          ),
+        )
+        .mockResolvedValueOnce({
+          ...mockConditionBundle,
+          total: 3,
+          entry: [
+            { resource: active },
+            { resource: inactive },
+            { resource: diagnosis },
+          ],
+        });
+
+      const result = await getConditionPage(patientUUID, 1, 1, 'active');
+      expect(result.total).toBe(1);
+      expect(result.conditions.map((condition) => condition.id)).toEqual([
+        'active-condition',
+      ]);
+    });
+
     it('should fetch page 1 with default count', async () => {
       (get as jest.Mock).mockResolvedValueOnce(mockConditionBundle);
 

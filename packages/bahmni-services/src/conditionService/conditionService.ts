@@ -1,5 +1,5 @@
 import { Condition, Bundle, Encounter } from 'fhir/r4';
-import { get, post } from '../api';
+import { post } from '../api';
 import {
   FHIR_ENCOUNTER_TYPE_CODE_SYSTEM,
   HL7_CONDITION_CATEGORY_CODE_SYSTEM,
@@ -17,8 +17,10 @@ import {
   getActiveVisit,
   getEncounterTypeByName,
 } from '../encounterService';
+import { getCompatiblePatientBundle } from '../fhirSearchCompatibility';
 import { getUserLoginLocation } from '../userService';
 import {
+  CONDITION_RESOURCE_URL,
   PATIENT_CONDITION_RESOURCE_URL,
   PATIENT_CONDITION_PAGE_URL,
 } from './constants';
@@ -26,8 +28,20 @@ import {
 export async function getConditionsBundle(
   patientUUID: string,
 ): Promise<Bundle> {
-  return await get<Bundle>(`${PATIENT_CONDITION_RESOURCE_URL(patientUUID)}`);
+  const { bundle } = await getCompatiblePatientBundle<Condition>(
+    PATIENT_CONDITION_RESOURCE_URL(patientUUID),
+    `${CONDITION_RESOURCE_URL}?patient=${patientUUID}&_count=100`,
+    isProblemListCondition,
+  );
+  return bundle;
 }
+
+const isProblemListCondition = (condition: Condition) =>
+  condition.category?.some((category) =>
+    category.coding?.some(
+      (coding) => coding.code === HL7_CONDITION_CATEGORY_CONDITION_CODE,
+    ),
+  ) ?? false;
 
 export async function getConditions(patientUUID: string): Promise<Condition[]> {
   const bundle = await getConditionsBundle(patientUUID);
@@ -51,13 +65,29 @@ export async function getConditionPage(
   clinicalStatus?: 'active' | 'inactive',
 ): Promise<ConditionPage> {
   const offset = (page - 1) * count;
-  const bundle = await get<Bundle>(
+  const { bundle, usedFallback } = await getCompatiblePatientBundle<Condition>(
     PATIENT_CONDITION_PAGE_URL(patientUUID, count, offset, clinicalStatus),
+    `${CONDITION_RESOURCE_URL}?patient=${patientUUID}&_count=100`,
+    (condition) =>
+      isProblemListCondition(condition) &&
+      (!clinicalStatus ||
+        condition.clinicalStatus?.coding?.some(
+          (coding) => coding.code === clinicalStatus,
+        ) === true),
   );
-  const conditions =
+  const allConditions =
     bundle.entry
       ?.filter((entry) => entry.resource?.resourceType === 'Condition')
       .map((entry) => entry.resource as Condition) ?? [];
+  const conditions = usedFallback
+    ? allConditions
+        .sort(
+          (a, b) =>
+            new Date(b.meta?.lastUpdated ?? b.recordedDate ?? 0).getTime() -
+            new Date(a.meta?.lastUpdated ?? a.recordedDate ?? 0).getTime(),
+        )
+        .slice(offset, offset + count)
+    : allConditions;
   return {
     conditions,
     total: bundle.total,
