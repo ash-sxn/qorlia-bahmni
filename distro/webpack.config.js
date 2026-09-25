@@ -54,6 +54,7 @@ module.exports = (env, argv) => {
           target: backendOrigin,
           changeOrigin: true,
           secure: backendOrigin !== 'https://localhost/',
+          cookieDomainRewrite: { '*': '' },
           logLevel: 'debug',
         },
       ],
