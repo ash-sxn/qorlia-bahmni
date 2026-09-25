@@ -1,21 +1,191 @@
-@use '@carbon/react/scss/spacing' as *;
-@use '@carbon/react/scss/theme' as *;
-@use '@carbon/react/scss/type' as *;
-@use '@carbon/react/scss/breakpoint' as *;
-
 .page {
-  padding-top: $spacing-10;
-  padding-inline: calc($spacing-12 + $spacing-05);
-}
-
-@include breakpoint-down(lg) {
-  .page {
-    padding-top: $spacing-08;
-    padding-inline: $spacing-09;
-  }
+  --brand: var(--qorlia-primary, #1f5238);
+  --ink: var(--qorlia-ink, #202b29);
+  --muted: var(--qorlia-muted, #5a6865);
+  --line: var(--qorlia-border, #dbe5e1);
+  min-height: calc(100vh - 48px);
+  padding: 36px clamp(18px, 4vw, 56px) 56px;
+  color: var(--ink);
+  background: var(--qorlia-canvas, #f8faf9);
 }
 
 .panel {
-  @include type-style('body-compact-01');
-  padding-block: $spacing-07;
+  padding-top: 24px;
+}
+.intro {
+  margin-bottom: 24px;
+}
+.eyebrow {
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+.intro h1 {
+  margin: 8px 0 6px;
+  color: #17382d;
+  font-size: clamp(28px, 2.4vw, 38px);
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+.intro p,
+.help {
+  color: var(--muted);
+}
+.catalogLayout {
+  display: grid;
+  grid-template-columns: minmax(240px, 330px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.card {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--qorlia-surface, #fff);
+}
+.card h2 {
+  margin: 8px 0 12px;
+  color: var(--ink);
+  font-size: 21px;
+}
+.field {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.field input,
+.field select {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid #cddbd4;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 400;
+}
+.reportList {
+  display: grid;
+  gap: 3px;
+  max-height: 620px;
+  margin-top: 14px;
+  overflow: auto;
+}
+.report,
+.selectedReport {
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.report:hover,
+.selectedReport {
+  background: #e8f4ed;
+  color: var(--brand);
+}
+.selectedReport {
+  font-weight: 700;
+}
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 22px 0;
+}
+.fields .field:last-child {
+  grid-column: 1 / -1;
+}
+.actions,
+.rowActions,
+.queueHeading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 1px solid var(--brand);
+  border-radius: 7px;
+  background: var(--brand);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.secondaryButton {
+  background: #fff;
+  color: var(--brand);
+}
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.queueHeading {
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.queueHeading h2 {
+  margin: 0;
+}
+.tableScroll {
+  overflow-x: auto;
+}
+.tableScroll table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.tableScroll th,
+.tableScroll td {
+  padding: 13px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.tableScroll th {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.rowActions button {
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  cursor: pointer;
+}
+.rowActions a {
+  color: var(--brand);
+}
+
+@media (max-width: 760px) {
+  .catalogLayout {
+    grid-template-columns: 1fr;
+  }
+  .reportList {
+    max-height: 230px;
+  }
+  .fields {
+    grid-template-columns: 1fr;
+  }
+  .fields .field:last-child {
+    grid-column: auto;
+  }
 }
