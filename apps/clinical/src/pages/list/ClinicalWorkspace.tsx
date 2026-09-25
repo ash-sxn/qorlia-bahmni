@@ -43,6 +43,7 @@ const ClinicalWorkspace = ({
   const todayRange = getTodayRange();
   const canRegister = hasPrivilege(userPrivileges, 'app:registration');
   const canSchedule = hasPrivilege(userPrivileges, 'app:appointments');
+  const canManageBeds = hasPrivilege(userPrivileges, 'app:adt');
 
   const appointments = useQuery({
     queryKey: ['clinical-todays-appointments', todayRange.startDate],
@@ -88,6 +89,7 @@ const ClinicalWorkspace = ({
             {t('CLINICAL_WORKSPACE_APPOINTMENTS')}
           </a>
         )}
+        {canManageBeds && <Link to="/clinical/beds">Bed management</Link>}
       </nav>
 
       <div className={styles.content}>
