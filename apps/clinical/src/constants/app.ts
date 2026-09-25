@@ -1,6 +1,10 @@
-import { OPENMRS_REST_V1, OPENMRS_FHIR_R4 } from '@bahmni/services';
+import {
+  BAHMNI_APP_BASE_PATH,
+  OPENMRS_REST_V1,
+  OPENMRS_FHIR_R4,
+} from '@bahmni/services';
 
-export const BAHMNI_CLINICAL_PATH = '/bahmni/clinical/';
+export const BAHMNI_CLINICAL_PATH = `${BAHMNI_APP_BASE_PATH}/clinical`;
 export const ENCOUNTER_CONCEPTS_URL =
   OPENMRS_REST_V1 +
   '/bahmnicore/config/bahmniencounter?callerContext=REGISTRATION_CONCEPTS';
