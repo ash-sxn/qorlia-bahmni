@@ -198,6 +198,9 @@ export const AppointmentListPage = () => {
           </div>
           <nav className={styles.viewTabs} aria-label={t('APPOINTMENTS_VIEWS')}>
             <a href="/bahmni-v2/appointments/">{t('APPOINTMENTS_SUMMARY')}</a>
+            <a href="/bahmni-v2/appointments/calendar">
+              {t('APPOINTMENTS_CALENDAR')}
+            </a>
             <a
               href="/bahmni-v2/appointments/list"
               aria-current={!awaiting ? 'page' : undefined}

@@ -137,6 +137,9 @@ export const IndexPage = () => {
             <a href="/bahmni-v2/appointments/" aria-current="page">
               {t('APPOINTMENTS_SUMMARY')}
             </a>
+            <a href="/bahmni-v2/appointments/calendar">
+              {t('APPOINTMENTS_CALENDAR')}
+            </a>
             <a href="/bahmni-v2/appointments/list">{t('APPOINTMENTS_LIST')}</a>
             <a href="/bahmni-v2/appointments/awaiting">
               {t('APPOINTMENTS_AWAITING')}

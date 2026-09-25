@@ -12,6 +12,12 @@ const AppointmentListPage = lazy(() =>
   })),
 );
 
+const CalendarPage = lazy(() =>
+  import('../pages/CalendarPage').then((module) => ({
+    default: module.CalendarPage,
+  })),
+);
+
 const AllServicesPage = lazy(() =>
   import('../pages/admin/allServices').then((module) => ({
     default: module.default,
@@ -34,6 +40,11 @@ export const routes: Routes = [
     path: '/list',
     component: AppointmentListPage,
     name: 'AppointmentList',
+  },
+  {
+    path: '/calendar',
+    component: CalendarPage,
+    name: 'Calendar',
   },
   {
     path: '/awaiting',
