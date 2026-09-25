@@ -5,18 +5,21 @@ import {
   getFormattedPatientById,
   hasPrivilege,
 } from '@bahmni/services';
-import { useUserPrivilege } from '@bahmni/widgets';
-import { useQuery } from '@tanstack/react-query';
+import { useActivePractitioner, useUserPrivilege } from '@bahmni/widgets';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { BAHMNI_CLINICAL_PATH } from '../constants/app';
+import { Bed, groupBedsByRoom, Ward } from './BedManagement';
 import styles from './BedManagement.module.scss';
+import {
+  fetchActiveIpdVisit,
+  InpatientAction,
+  IpdAppConfig,
+  performInpatientAction,
+} from './inpatientActions';
 
-interface Visit {
-  uuid: string;
-  startDatetime: string;
-  stopDatetime: string | null;
-  visitType: { name: string };
-}
+export { fetchActiveIpdVisit } from './inpatientActions';
 
 interface VisitSummary {
   startDateTime: number;
@@ -35,20 +38,6 @@ interface AssignedBed {
   };
 }
 
-export const fetchActiveIpdVisit = async (patientUuid: string) => {
-  const response = await get<{ results: Visit[] }>(
-    '/openmrs/ws/rest/v1/visit',
-    {
-      params: {
-        includeInactive: false,
-        patient: patientUuid,
-        v: 'custom:(uuid,startDatetime,stopDatetime,visitType,patient)',
-      },
-    },
-  );
-  return response.results.at(-1) ?? null;
-};
-
 export const inpatientStatus = (summary: VisitSummary | undefined) => {
   if (!summary) return 'No active visit';
   if (summary.dischargeDetails) return 'Discharged';
@@ -62,7 +51,24 @@ const date = (timestamp: number | undefined) =>
 const InpatientPatientDetails = () => {
   const { patientUuid } = useParams<{ patientUuid: string }>();
   const { userPrivileges, isLoading: privilegesLoading } = useUserPrivilege();
+  const { practitioner } = useActivePractitioner();
+  const queryClient = useQueryClient();
+  const [action, setAction] = useState<InpatientAction | null>(null);
+  const [wardUuid, setWardUuid] = useState('');
+  const [bedId, setBedId] = useState<number | null>(null);
+  const [startIpdVisit, setStartIpdVisit] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [actionError, setActionError] = useState('');
+  const [actionSuccess, setActionSuccess] = useState('');
   const canView = hasPrivilege(userPrivileges, 'app:adt');
+  const canAssign = hasPrivilege(userPrivileges, 'Assign Beds');
+  const appConfig = useQuery({
+    queryKey: ['ipd-app-config'],
+    queryFn: () =>
+      get<IpdAppConfig>('/bahmni_config/openmrs/apps/ipd/app.json'),
+    enabled: canView && canAssign,
+  });
+  const defaultVisitType = appConfig.data?.config.defaultVisitType;
   const patient = useQuery({
     queryKey: ['ipd-patient', patientUuid],
     queryFn: () => getFormattedPatientById(patientUuid!),
@@ -90,6 +96,99 @@ const InpatientPatientDetails = () => {
     enabled: canView && !!patientUuid,
   });
   const assignedBed = bed.data?.results[0];
+  const wards = useQuery({
+    queryKey: ['ipd-wards'],
+    queryFn: () =>
+      get<{ results: Ward[] }>('/openmrs/ws/rest/v1/admissionLocation/'),
+    enabled: canView && canAssign && !!action && action !== 'discharge',
+  });
+  const wardBeds = useQuery({
+    queryKey: ['ipd-ward-beds', wardUuid],
+    queryFn: () =>
+      get<{ bedLayouts: Bed[] }>(
+        `/openmrs/ws/rest/v1/admissionLocation/${encodeURIComponent(wardUuid)}?v=full`,
+      ),
+    enabled: !!wardUuid && !!action && action !== 'discharge',
+  });
+  const selectedWard = wards.data?.results.find(
+    ({ ward }) => ward.uuid === wardUuid,
+  );
+  const availableRooms = groupBedsByRoom(
+    (wardBeds.data?.bedLayouts ?? []).filter(
+      (candidate) =>
+        candidate.status === 'AVAILABLE' &&
+        candidate.bedId !== assignedBed?.bedId,
+    ),
+  );
+  const selectedBed = availableRooms
+    .flatMap(([, roomBeds]) => roomBeds)
+    .find((candidate) => candidate.bedId === bedId);
+
+  const chooseAction = (next: InpatientAction) => {
+    setAction(next);
+    setWardUuid('');
+    setBedId(null);
+    setStartIpdVisit(true);
+    setActionError('');
+    setActionSuccess('');
+  };
+
+  const saveAction = async () => {
+    if (!action || !patientUuid || !practitioner?.uuid) return;
+    setSaving(true);
+    setActionError('');
+    try {
+      await performInpatientAction({
+        action,
+        patientUuid,
+        practitionerUuid: practitioner.uuid,
+        targetBedId: bedId ?? undefined,
+        expectedVisitUuid: visit.data?.uuid,
+        expectedBedId: assignedBed?.bedId,
+        startIpdVisit:
+          action === 'admit' &&
+          !!visit.data &&
+          visit.data.visitType.name !== defaultVisitType &&
+          startIpdVisit,
+      });
+      setActionSuccess(
+        `${action[0].toUpperCase()}${action.slice(1)} saved. Patient stay refreshed.`,
+      );
+      setAction(null);
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ['ipd-active-visit', patientUuid],
+        }),
+        queryClient.invalidateQueries({ queryKey: ['ipd-visit-summary'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['ipd-assigned-bed', patientUuid],
+        }),
+        queryClient.invalidateQueries({ queryKey: ['ipd-wards'] }),
+        queryClient.invalidateQueries({ queryKey: ['ipd-ward-beds'] }),
+        queryClient.invalidateQueries({ queryKey: ['ipd-patient-list'] }),
+      ]);
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : 'The action could not be saved.',
+      );
+      setAction(null);
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ['ipd-active-visit', patientUuid],
+        }),
+        queryClient.invalidateQueries({ queryKey: ['ipd-visit-summary'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['ipd-assigned-bed', patientUuid],
+        }),
+        queryClient.invalidateQueries({ queryKey: ['ipd-wards'] }),
+        queryClient.invalidateQueries({ queryKey: ['ipd-ward-beds'] }),
+      ]);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <BaseLayout
@@ -204,6 +303,166 @@ const InpatientPatientDetails = () => {
                   <p>No bed is currently assigned.</p>
                 )}
               </section>
+              {canAssign && (
+                <section className={styles.card} aria-label="Inpatient actions">
+                  <span className={styles.eyebrow}>Care actions</span>
+                  <h2>Manage this stay</h2>
+                  <div className={styles.actionChoices}>
+                    {!assignedBed ? (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => chooseAction('admit')}
+                      >
+                        Admit to a bed
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => chooseAction('transfer')}
+                        >
+                          Transfer bed
+                        </button>
+                        <button
+                          type="button"
+                          disabled={saving || !visit.data}
+                          onClick={() => chooseAction('discharge')}
+                        >
+                          Discharge patient
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {actionSuccess && <p role="status">{actionSuccess}</p>}
+                  {actionError && <p role="alert">{actionError}</p>}
+                  {appConfig.isError && (
+                    <p role="alert">Could not load inpatient configuration.</p>
+                  )}
+                  {action && (
+                    <div className={styles.actionForm}>
+                      <h3>
+                        Confirm{' '}
+                        {action === 'transfer' ? 'bed transfer' : action}
+                      </h3>
+                      {action !== 'discharge' && (
+                        <>
+                          {wards.isLoading ? (
+                            <p role="status">Loading wards…</p>
+                          ) : wards.isError ? (
+                            <p role="alert">Could not load wards.</p>
+                          ) : (
+                            <label>
+                              Ward
+                              <select
+                                value={wardUuid}
+                                onChange={(event) => {
+                                  setWardUuid(event.target.value);
+                                  setBedId(null);
+                                }}
+                              >
+                                <option value="">Select a ward</option>
+                                {wards.data?.results.map(({ ward }) => (
+                                  <option key={ward.uuid} value={ward.uuid}>
+                                    {ward.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          )}
+                          {selectedWard &&
+                            (wardBeds.isLoading ? (
+                              <p role="status">Loading available beds…</p>
+                            ) : wardBeds.isError ? (
+                              <p role="alert">Could not load beds.</p>
+                            ) : availableRooms.length ? (
+                              <label>
+                                Available bed
+                                <select
+                                  value={bedId ?? ''}
+                                  onChange={(event) =>
+                                    setBedId(Number(event.target.value) || null)
+                                  }
+                                >
+                                  <option value="">Select a bed</option>
+                                  {availableRooms.map(([room, roomBeds]) => (
+                                    <optgroup key={room} label={room}>
+                                      {roomBeds.map((candidate) => (
+                                        <option
+                                          key={candidate.bedId}
+                                          value={candidate.bedId}
+                                        >
+                                          {candidate.bedNumber}
+                                        </option>
+                                      ))}
+                                    </optgroup>
+                                  ))}
+                                </select>
+                              </label>
+                            ) : (
+                              <p>No beds are available in this ward.</p>
+                            ))}
+                          {action === 'admit' &&
+                            visit.data &&
+                            defaultVisitType &&
+                            visit.data.visitType.name !== defaultVisitType && (
+                              <fieldset>
+                                <legend>Visit handling</legend>
+                                <label>
+                                  <input
+                                    type="radio"
+                                    name="visit-handling"
+                                    checked={startIpdVisit}
+                                    onChange={() => setStartIpdVisit(true)}
+                                  />
+                                  Close the current {visit.data.visitType.name}{' '}
+                                  visit and start a {defaultVisitType} visit
+                                </label>
+                                <label>
+                                  <input
+                                    type="radio"
+                                    name="visit-handling"
+                                    checked={!startIpdVisit}
+                                    onChange={() => setStartIpdVisit(false)}
+                                  />
+                                  Continue the current{' '}
+                                  {visit.data.visitType.name} visit
+                                </label>
+                              </fieldset>
+                            )}
+                        </>
+                      )}
+                      <p>
+                        {action === 'discharge'
+                          ? `This will discharge ${patient.data?.fullName} from bed ${assignedBed?.bedNumber}.`
+                          : `This will ${action} ${patient.data?.fullName} ${action === 'transfer' ? 'to' : 'into'} ${selectedBed?.bedNumber ?? 'the selected bed'}.`}
+                      </p>
+                      <div className={styles.actionChoices}>
+                        <button
+                          type="button"
+                          disabled={
+                            saving ||
+                            !defaultVisitType ||
+                            (action !== 'discharge' && !selectedBed) ||
+                            !practitioner?.uuid
+                          }
+                          onClick={saveAction}
+                        >
+                          {saving ? 'Saving…' : `Confirm ${action}`}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => setAction(null)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
             </div>
           )}
         </div>

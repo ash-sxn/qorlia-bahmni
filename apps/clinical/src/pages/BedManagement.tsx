@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './BedManagement.module.scss';
 
-interface Bed {
+export interface Bed {
   bedId: number;
   bedNumber: string;
   location: string;
@@ -17,7 +17,7 @@ interface Bed {
   patients?: Bed['patient'][];
 }
 
-interface Ward {
+export interface Ward {
   ward: { uuid: string; name: string };
   totalBeds: number;
   occupiedBeds: number;
