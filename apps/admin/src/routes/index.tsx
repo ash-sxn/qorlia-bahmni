@@ -21,6 +21,12 @@ const CsvExport = lazy(() =>
   })),
 );
 
+const AuditLog = lazy(() =>
+  import('../pages/AuditLog').then((module) => ({
+    default: module.AuditLog,
+  })),
+);
+
 export const routes: Routes = [
   {
     path: '/',
@@ -36,6 +42,11 @@ export const routes: Routes = [
     path: '/csv-export',
     component: CsvExport,
     name: 'CsvExport',
+  },
+  {
+    path: '/audit-log',
+    component: AuditLog,
+    name: 'AuditLog',
   },
 ];
 
