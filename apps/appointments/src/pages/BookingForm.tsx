@@ -76,8 +76,9 @@ export const BookingForm = ({
       setError(t('APPOINTMENTS_BOOKING_REFERENCE_ERROR'));
       return;
     }
-    const duration = service.durationMins ?? 15;
+    const duration = service.durationMins;
     if (
+      duration == null ||
       !Number.isFinite(duration) ||
       duration <= 0 ||
       (service.location?.uuid && service.location.uuid !== locationUuid)
@@ -85,6 +86,8 @@ export const BookingForm = ({
       setError(t('APPOINTMENTS_BOOKING_REFERENCE_ERROR'));
       return;
     }
+    const needsProviderAcceptance =
+      service.initialAppointmentStatus === 'Requested' && !!providerUuid;
     const request: AppointmentBookingRequest = {
       patientUuid,
       serviceUuid,
@@ -92,8 +95,15 @@ export const BookingForm = ({
       startDateTime: start.toISOString(),
       endDateTime: new Date(start.getTime() + duration * 60_000).toISOString(),
       appointmentKind: 'Scheduled',
+      status: needsProviderAcceptance ? 'Requested' : 'Scheduled',
       providers: providerUuid
-        ? [{ uuid: providerUuid, response: 'ACCEPTED', comments: null }]
+        ? [
+            {
+              uuid: providerUuid,
+              response: needsProviderAcceptance ? 'AWAITING' : 'ACCEPTED',
+              comments: null,
+            },
+          ]
         : [],
       ...(comments.trim() ? { comments: comments.trim() } : {}),
     };

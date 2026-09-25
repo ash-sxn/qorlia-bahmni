@@ -26,7 +26,12 @@ export interface AppointmentBookingRequest {
   startDateTime: string;
   endDateTime: string;
   appointmentKind: 'Scheduled';
-  providers: { uuid: string; response: 'ACCEPTED'; comments: null }[];
+  status: 'Scheduled' | 'Requested';
+  providers: {
+    uuid: string;
+    response: 'ACCEPTED' | 'AWAITING';
+    comments: null;
+  }[];
   comments?: string;
 }
 

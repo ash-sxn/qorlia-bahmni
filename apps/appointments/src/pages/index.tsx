@@ -45,6 +45,7 @@ export const IndexPage = () => {
     hasPrivilege(userPrivileges, 'Manage Appointments');
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingMessage, setBookingMessage] = useState('');
+  const [selectedAppointmentUuid, setSelectedAppointmentUuid] = useState('');
   const [weekStart, setWeekStart] = useState(() => weekOf(new Date()));
   const [selectedDay, setSelectedDay] = useState(() => dateKey(new Date()));
   const [serviceUuid, setServiceUuid] = useState('');
@@ -78,6 +79,9 @@ export const IndexPage = () => {
         !serviceUuid || appointment.service?.uuid === serviceUuid,
     )
     .sort((a, b) => a.startDateTime - b.startDateTime);
+  const selectedAppointment = rows.find(
+    (appointment) => appointment.uuid === selectedAppointmentUuid,
+  );
 
   const changeWeek = (offset: number) => {
     const next = shiftDay(weekStart, offset * 7);
@@ -319,6 +323,7 @@ export const IndexPage = () => {
                           <th scope="col">{t('APPOINTMENTS_SERVICE')}</th>
                           <th scope="col">{t('APPOINTMENTS_PROVIDER')}</th>
                           <th scope="col">{t('APPOINTMENTS_STATUS')}</th>
+                          <th scope="col">{t('APPOINTMENTS_DETAILS')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -358,10 +363,108 @@ export const IndexPage = () => {
                                 {appointment.status}
                               </span>
                             </td>
+                            <td>
+                              <button
+                                type="button"
+                                className={styles.textButton}
+                                onClick={() =>
+                                  setSelectedAppointmentUuid(appointment.uuid)
+                                }
+                                aria-label={`${t('APPOINTMENTS_VIEW_DETAILS')}: ${appointment.patient.name}`}
+                              >
+                                {t('APPOINTMENTS_VIEW_DETAILS')}
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+                {selectedAppointment && (
+                  <div className={styles.appointmentDetails}>
+                    <div className={styles.detailsHeading}>
+                      <h3>{t('APPOINTMENTS_DETAILS')}</h3>
+                      <button
+                        type="button"
+                        className={styles.textButton}
+                        onClick={() => setSelectedAppointmentUuid('')}
+                      >
+                        {t('APPOINTMENTS_CLOSE_DETAILS')}
+                      </button>
+                    </div>
+                    <dl>
+                      <div>
+                        <dt>{t('APPOINTMENTS_NUMBER')}</dt>
+                        <dd>{selectedAppointment.appointmentNumber}</dd>
+                      </div>
+                      <div>
+                        <dt>{t('APPOINTMENTS_PATIENT')}</dt>
+                        <dd>{selectedAppointment.patient.name}</dd>
+                      </div>
+                      <div>
+                        <dt>{t('APPOINTMENTS_SERVICE')}</dt>
+                        <dd>
+                          {selectedAppointment.service?.name ??
+                            t('APPOINTMENTS_NOT_SPECIFIED')}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>{t('APPOINTMENTS_PROVIDER')}</dt>
+                        <dd>
+                          {selectedAppointment.provider?.name ??
+                            (selectedAppointment.providers
+                              ?.map((provider) => provider.name)
+                              .filter(Boolean)
+                              .join(', ') ||
+                              t('APPOINTMENTS_NOT_SPECIFIED'))}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>{t('APPOINTMENTS_LOCATION')}</dt>
+                        <dd>
+                          {selectedAppointment.location?.name ??
+                            t('APPOINTMENTS_NOT_SPECIFIED')}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>{t('APPOINTMENTS_KIND')}</dt>
+                        <dd>{selectedAppointment.appointmentKind}</dd>
+                      </div>
+                      <div>
+                        <dt>{t('APPOINTMENTS_TIME')}</dt>
+                        <dd>
+                          {label(new Date(selectedAppointment.startDateTime), {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          })}
+                          {' to '}
+                          {label(new Date(selectedAppointment.endDateTime), {
+                            timeStyle: 'short',
+                          })}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>{t('APPOINTMENTS_STATUS')}</dt>
+                        <dd>{selectedAppointment.status}</dd>
+                      </div>
+                      {!!selectedAppointment.reasons?.length && (
+                        <div>
+                          <dt>{t('APPOINTMENTS_REASON')}</dt>
+                          <dd>
+                            {selectedAppointment.reasons
+                              .map((reason) => reason.name)
+                              .join(', ')}
+                          </dd>
+                        </div>
+                      )}
+                      {selectedAppointment.comments && (
+                        <div className={styles.fullWidth}>
+                          <dt>{t('APPOINTMENTS_NOTES')}</dt>
+                          <dd>{selectedAppointment.comments}</dd>
+                        </div>
+                      )}
+                    </dl>
                   </div>
                 )}
               </section>

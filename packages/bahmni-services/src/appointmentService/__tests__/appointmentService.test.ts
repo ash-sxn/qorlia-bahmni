@@ -158,6 +158,7 @@ describe('Appointment Service', () => {
       startDateTime: '2099-01-01T09:00:00.000Z',
       endDateTime: '2099-01-01T09:15:00.000Z',
       appointmentKind: 'Scheduled' as const,
+      status: 'Scheduled' as const,
       providers: [],
     };
     mockedPost.mockResolvedValueOnce({ PATIENT_DOUBLE_BOOKING: [] });

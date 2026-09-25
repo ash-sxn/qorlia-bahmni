@@ -63,4 +63,44 @@ describe('IndexPage', () => {
     const { container } = render(<IndexPage />);
     expect(await axe(container)).toHaveNoViolations();
   });
+
+  it('shows appointment details from the daily list', async () => {
+    mockUseQuery.mockImplementation(({ queryKey }) => ({
+      data:
+        queryKey[0] === 'appointment-summary'
+          ? []
+          : [
+              {
+                uuid: 'appointment-1',
+                appointmentNumber: 'APT-001',
+                patient: {
+                  uuid: 'patient-1',
+                  name: 'Demo Patient',
+                  identifier: 'DEMO-001',
+                },
+                service: { uuid: 'service-1', name: 'General Medicine' },
+                provider: { name: 'Demo Doctor' },
+                location: { name: 'OPD' },
+                startDateTime: Date.parse('2099-01-01T09:00:00Z'),
+                endDateTime: Date.parse('2099-01-01T09:15:00Z'),
+                appointmentKind: 'Scheduled',
+                status: 'Scheduled',
+                comments: 'Follow-up',
+                reasons: [],
+              },
+            ],
+      isLoading: false,
+      isError: false,
+    }));
+    const { container } = render(<IndexPage />);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'View details: Demo Patient' }),
+    );
+    expect(
+      screen.getByRole('heading', { name: 'Appointment details' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('APT-001')).toBeInTheDocument();
+    expect(screen.getByText('Follow-up')).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+  });
 });

@@ -68,10 +68,10 @@ beforeEach(() => {
   }));
 });
 
-const fillBooking = () => {
+const fillBooking = (bookingService = service) => {
   render(
     <BookingForm
-      services={[service]}
+      services={[bookingService]}
       selectedDay="2099-01-01"
       selectedServiceUuid="service-1"
       onClose={jest.fn()}
@@ -123,8 +123,38 @@ it('saves a conflict-free booking with the selected patient and location', async
         locationUuid: 'location-1',
         serviceUuid: 'service-1',
         appointmentKind: 'Scheduled',
+        status: 'Scheduled',
       }),
     ),
   );
   expect(mockInvalidateQueries).toHaveBeenCalledTimes(2);
+});
+
+it('requests provider acceptance when the service starts as Requested', async () => {
+  (getAppointmentBookingConflicts as jest.Mock).mockResolvedValue({
+    PATIENT_DOUBLE_BOOKING: [],
+  });
+  (bookAppointment as jest.Mock).mockResolvedValue({ uuid: 'appointment-1' });
+  fillBooking({
+    ...service,
+    appointmentService: {
+      ...service.appointmentService,
+      initialAppointmentStatus: 'Requested',
+    },
+  });
+  fireEvent.change(screen.getByLabelText('Provider'), {
+    target: { value: 'provider-2' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm booking' }));
+
+  await waitFor(() =>
+    expect(bookAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'Requested',
+        providers: [
+          { uuid: 'provider-2', response: 'AWAITING', comments: null },
+        ],
+      }),
+    ),
+  );
 });
