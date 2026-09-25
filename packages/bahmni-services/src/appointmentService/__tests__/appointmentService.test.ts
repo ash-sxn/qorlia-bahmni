@@ -127,6 +127,79 @@ describe('Appointment Service', () => {
     expect(result).toEqual(appointments);
   });
 
+  it('falls back to Bahmni appointments when the FHIR resource is unavailable', async () => {
+    mockedGet.mockRejectedValue(
+      Object.assign(new Error('Not found'), { status: 404 }),
+    );
+    mockedPost.mockResolvedValue([
+      {
+        uuid: 'appointment-1',
+        appointmentNumber: 'APT-001',
+        patient: { uuid: patientUUID, name: 'Demo Patient' },
+        service: { name: 'Consultation' },
+        providers: [{ uuid: 'doctor-1', name: 'Demo Doctor' }],
+        reasons: [{ name: 'Follow-up' }],
+        startDateTime: Date.parse('2026-02-20T10:00:00Z'),
+        endDateTime: Date.parse('2026-02-20T10:30:00Z'),
+        status: 'Scheduled',
+      },
+    ]);
+
+    const { bundle, total } = await getUpcomingAppointmentsPage(patientUUID);
+
+    expect(mockedPost).toHaveBeenCalledWith(
+      APPOINTMENTS_SEARCH_URL,
+      expect.objectContaining({
+        patientUuid: patientUUID,
+        startDate: expect.any(String),
+      }),
+    );
+    expect(total).toBe(1);
+    expect(bundle.entry?.[0]?.resource).toMatchObject({
+      id: 'appointment-1',
+      status: 'booked',
+      serviceType: [{ text: 'Consultation' }],
+      reasonCode: [{ text: 'Follow-up' }],
+      start: '2026-02-20T10:00:00.000Z',
+    });
+  });
+
+  it('slices legacy appointment results for later pages', async () => {
+    mockedGet.mockRejectedValue(
+      Object.assign(new Error('Not found'), { status: 404 }),
+    );
+    mockedPost.mockResolvedValue(
+      Array.from({ length: 3 }, (_, index) => ({
+        uuid: `appointment-${index}`,
+        appointmentNumber: `APT-${index}`,
+        patient: { uuid: patientUUID, name: 'Demo Patient' },
+        service: { name: 'Consultation' },
+        providers: [],
+        reasons: [],
+        startDateTime: Date.parse(`2026-02-${20 + index}T10:00:00Z`),
+        endDateTime: Date.parse(`2026-02-${20 + index}T10:30:00Z`),
+        status: 'Completed',
+      })),
+    );
+
+    const { bundle, total } = await getPastAppointmentsPage(patientUUID, 2, 2);
+
+    expect(total).toBe(3);
+    expect(bundle.entry).toHaveLength(1);
+    expect(bundle.entry?.[0]?.resource?.id).toBe('appointment-0');
+  });
+
+  it('does not hide a server error behind the legacy fallback', async () => {
+    mockedGet.mockRejectedValue(
+      Object.assign(new Error('Server error'), { status: 500 }),
+    );
+
+    await expect(getUpcomingAppointmentsPage(patientUUID)).rejects.toThrow(
+      'Server error',
+    );
+    expect(mockedPost).not.toHaveBeenCalled();
+  });
+
   it('deleteAppointmentService should call DELETE with correct endpoint', async () => {
     const serviceUuid = 'service-uuid-1';
     mockedDel.mockResolvedValue(undefined);

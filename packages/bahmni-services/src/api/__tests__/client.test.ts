@@ -264,7 +264,10 @@ describe('Axios Client', () => {
 
         await expect(() =>
           responseInterceptor.rejected(mockError),
-        ).rejects.toThrow('Test error message');
+        ).rejects.toMatchObject({
+          message: 'Test error message',
+          status: 500,
+        });
         expect(getFormattedError).toHaveBeenCalledWith(mockError);
       });
 

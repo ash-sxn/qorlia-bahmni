@@ -1,6 +1,9 @@
 import type { Appointment as FhirAppointment, Bundle } from 'fhir/r4';
 import { del, get, post } from '../api';
-import type { Appointment as SearchAppointment } from '../patientService/models';
+import type {
+  Appointment as LegacyAppointment,
+  AppointmentSearchResult as SearchAppointment,
+} from '../patientService/models';
 import {
   ALL_APPOINTMENT_SERVICES_URL,
   APPOINTMENTS_SEARCH_URL,
@@ -12,6 +15,7 @@ import {
   PAST_APPOINTMENTS_URL,
   getUpcomingAppointmentsPageUrl,
   getPastAppointmentsPageUrl,
+  APPOINTMENT_IDENTIFIER_SYSTEM,
 } from './constants';
 import {
   AppointmentPage,
@@ -34,6 +38,108 @@ export const searchAppointmentsByAttribute = async (
   return await post<SearchAppointment[]>(APPOINTMENTS_SEARCH_URL, searchParam);
 };
 
+const legacyStatus: Record<string, FhirAppointment['status']> = {
+  Requested: 'proposed',
+  WaitList: 'waitlist',
+  Scheduled: 'booked',
+  Arrived: 'arrived',
+  CheckedIn: 'arrived',
+  Completed: 'fulfilled',
+  Cancelled: 'cancelled',
+  Missed: 'noshow',
+};
+
+const toFhirAppointment = (
+  appointment: LegacyAppointment,
+): FhirAppointment => ({
+  resourceType: 'Appointment',
+  id: appointment.uuid,
+  status: legacyStatus[appointment.status] ?? 'proposed',
+  identifier: [
+    {
+      system: APPOINTMENT_IDENTIFIER_SYSTEM,
+      value: appointment.appointmentNumber,
+    },
+  ],
+  serviceType: [{ text: appointment.service?.name ?? '' }],
+  reasonCode: appointment.reasons?.map((reason) => ({ text: reason.name })),
+  start: new Date(appointment.startDateTime).toISOString(),
+  end: new Date(appointment.endDateTime).toISOString(),
+  participant: [
+    {
+      actor: {
+        reference: `Patient/${appointment.patient.uuid}`,
+        display: appointment.patient.name,
+      },
+      status: 'accepted',
+    },
+    ...(appointment.providers?.length
+      ? appointment.providers
+      : appointment.provider
+        ? [appointment.provider]
+        : []
+    ).map((provider) => ({
+      actor: {
+        reference: `Practitioner/${provider.uuid}`,
+        display: provider.name,
+      },
+      status: 'accepted' as const,
+    })),
+  ],
+});
+
+async function getLegacyPatientAppointments(
+  patientUuid: string,
+  type: 'upcoming' | 'past',
+): Promise<Bundle<FhirAppointment>> {
+  const now = new Date().toISOString();
+  const appointments = await post<LegacyAppointment[]>(
+    APPOINTMENTS_SEARCH_URL,
+    {
+      patientUuid,
+      startDate: type === 'past' ? '1970-01-01T00:00:00.000Z' : now,
+      // ponytail: The legacy search caps unbounded results. The 2100 ceiling avoids that cap; use server pagination if this horizon becomes relevant.
+      endDate: type === 'past' ? now : '2100-01-01T00:00:00.000Z',
+    },
+  );
+  const ordered = [...appointments].sort((a, b) =>
+    type === 'past'
+      ? b.startDateTime - a.startDateTime
+      : a.startDateTime - b.startDateTime,
+  );
+  return {
+    resourceType: 'Bundle',
+    type: 'searchset',
+    total: ordered.length,
+    entry: ordered.map((appointment) => ({
+      resource: toFhirAppointment(appointment),
+    })),
+  };
+}
+
+async function getPatientAppointmentBundle(
+  url: string,
+  patientUuid: string,
+  type: 'upcoming' | 'past',
+  count?: number,
+  offset: number = 0,
+): Promise<Bundle<FhirAppointment>> {
+  try {
+    return await get<Bundle<FhirAppointment>>(url);
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !('status' in error) ||
+      error.status !== 404
+    )
+      throw error;
+    const bundle = await getLegacyPatientAppointments(patientUuid, type);
+    return count && count > 0
+      ? { ...bundle, entry: bundle.entry?.slice(offset, offset + count) }
+      : bundle;
+  }
+}
+
 /**
  * Fetch upcoming appointments for a patient.
  *
@@ -44,8 +150,10 @@ export const searchAppointmentsByAttribute = async (
 export async function getUpcomingAppointments(
   patientUuid: string,
 ): Promise<Bundle<FhirAppointment>> {
-  return await get<Bundle<FhirAppointment>>(
+  return getPatientAppointmentBundle(
     UPCOMING_APPOINTMENTS_URL(patientUuid),
+    patientUuid,
+    'upcoming',
   );
 }
 
@@ -61,8 +169,11 @@ export async function getPastAppointments(
   patientUuid: string,
   count?: number,
 ): Promise<Bundle<FhirAppointment>> {
-  return await get<Bundle<FhirAppointment>>(
+  return getPatientAppointmentBundle(
     PAST_APPOINTMENTS_URL(patientUuid, count),
+    patientUuid,
+    'past',
+    count,
   );
 }
 
@@ -135,10 +246,15 @@ export async function getUpcomingAppointmentsPage(
   page: number = 1,
 ): Promise<AppointmentPage> {
   const offset = (page - 1) * count;
-  const bundle = await get<Bundle<FhirAppointment>>(
+  const bundle = await getPatientAppointmentBundle(
     getUpcomingAppointmentsPageUrl(patientUuid, count, offset),
+    patientUuid,
+    'upcoming',
+    count,
+    offset,
   );
-  return { bundle, total: bundle.total ?? bundle.entry?.length ?? 0 };
+  const total = bundle.total ?? bundle.entry?.length ?? 0;
+  return { bundle, total };
 }
 
 /**
@@ -154,10 +270,15 @@ export async function getPastAppointmentsPage(
   page: number = 1,
 ): Promise<AppointmentPage> {
   const offset = (page - 1) * count;
-  const bundle = await get<Bundle<FhirAppointment>>(
+  const bundle = await getPatientAppointmentBundle(
     getPastAppointmentsPageUrl(patientUuid, count, offset),
+    patientUuid,
+    'past',
+    count,
+    offset,
   );
-  return { bundle, total: bundle.total ?? bundle.entry?.length ?? 0 };
+  const total = bundle.total ?? bundle.entry?.length ?? 0;
+  return { bundle, total };
 }
 
 /**
