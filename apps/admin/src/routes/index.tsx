@@ -27,6 +27,12 @@ const AuditLog = lazy(() =>
   })),
 );
 
+const OrderSets = lazy(() =>
+  import('../pages/OrderSets').then((module) => ({
+    default: module.OrderSets,
+  })),
+);
+
 export const routes: Routes = [
   {
     path: '/',
@@ -47,6 +53,16 @@ export const routes: Routes = [
     path: '/audit-log',
     component: AuditLog,
     name: 'AuditLog',
+  },
+  {
+    path: '/order-sets',
+    component: OrderSets,
+    name: 'OrderSets',
+  },
+  {
+    path: '/order-sets/:uuid',
+    component: OrderSets,
+    name: 'OrderSetDetails',
   },
 ];
 
