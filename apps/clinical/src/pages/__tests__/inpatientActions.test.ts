@@ -1,4 +1,9 @@
-import { get, getUserLoginLocation, post } from '@bahmni/services';
+import {
+  get,
+  getUserLoginLocation,
+  post,
+  searchConceptByName,
+} from '@bahmni/services';
 import { performInpatientAction } from '../inpatientActions';
 
 jest.mock('@bahmni/services', () => ({
@@ -6,6 +11,7 @@ jest.mock('@bahmni/services', () => ({
   get: jest.fn(),
   post: jest.fn(),
   getUserLoginLocation: jest.fn(),
+  searchConceptByName: jest.fn(),
 }));
 
 const config = {
@@ -16,7 +22,9 @@ const config = {
   },
   visitTypes: { OPD: 'opd-type', IPD: 'ipd-type' },
 };
-const app = { config: { defaultVisitType: 'IPD' } };
+const app = {
+  config: { defaultVisitType: 'IPD', dashboard: { conceptName: 'Adt Notes' } },
+};
 const visit = { uuid: 'visit-1', visitType: { name: 'OPD' } };
 const input = {
   patientUuid: 'patient-1',
@@ -30,6 +38,11 @@ beforeEach(() => {
   jest.mocked(getUserLoginLocation).mockReturnValue({
     uuid: 'location-1',
   } as ReturnType<typeof getUserLoginLocation>);
+  jest.mocked(searchConceptByName).mockResolvedValue({
+    uuid: 'notes-concept',
+    set: false,
+    datatype: { display: 'Text' },
+  } as Awaited<ReturnType<typeof searchConceptByName>>);
 });
 
 it('checks state, creates an admission, then assigns the bed', async () => {
@@ -67,6 +80,63 @@ it('checks state, creates an admission, then assigns the bed', async () => {
     patientUuid: 'patient-1',
     encounterUuid: 'encounter-1',
   });
+});
+
+it('sends optional movement notes as an observation on the encounter', async () => {
+  jest
+    .mocked(get)
+    .mockResolvedValueOnce(config)
+    .mockResolvedValueOnce(app)
+    .mockResolvedValueOnce({ results: [visit] })
+    .mockResolvedValueOnce({ results: [] })
+    .mockResolvedValueOnce({ patients: [] });
+  jest.mocked(post).mockResolvedValue({
+    patientUuid: 'patient-1',
+    encounterUuid: 'encounter-1',
+  });
+
+  await performInpatientAction({
+    ...input,
+    action: 'admit',
+    notes: '  Needs wheelchair assistance  ',
+  });
+
+  expect(post).toHaveBeenNthCalledWith(
+    1,
+    '/openmrs/ws/rest/v1/bahmnicore/bahmniencounter',
+    expect.objectContaining({
+      observations: [
+        {
+          concept: { uuid: 'notes-concept' },
+          value: 'Needs wheelchair assistance',
+        },
+      ],
+    }),
+  );
+  expect(searchConceptByName).toHaveBeenCalledWith(
+    'Adt Notes',
+    'custom:(uuid,name,datatype,set)',
+  );
+});
+
+it('does not write when configured notes are not a text concept', async () => {
+  jest
+    .mocked(get)
+    .mockResolvedValueOnce(config)
+    .mockResolvedValueOnce(app)
+    .mockResolvedValueOnce({ results: [visit] })
+    .mockResolvedValueOnce({ results: [] })
+    .mockResolvedValueOnce({ patients: [] });
+  jest.mocked(searchConceptByName).mockResolvedValueOnce({
+    uuid: 'notes-concept',
+    set: true,
+    datatype: { display: 'N/A' },
+  } as Awaited<ReturnType<typeof searchConceptByName>>);
+
+  await expect(
+    performInpatientAction({ ...input, action: 'admit' }),
+  ).rejects.toThrow('cannot be saved here');
+  expect(post).not.toHaveBeenCalled();
 });
 
 it('closes an existing visit only after the explicit IPD choice', async () => {

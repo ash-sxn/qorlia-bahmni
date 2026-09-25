@@ -1,4 +1,9 @@
-import { get, getUserLoginLocation, post } from '@bahmni/services';
+import {
+  get,
+  getUserLoginLocation,
+  post,
+  searchConceptByName,
+} from '@bahmni/services';
 
 interface Visit {
   uuid: string;
@@ -29,7 +34,10 @@ interface EncounterConfig {
 }
 
 export interface IpdAppConfig {
-  config: { defaultVisitType: string };
+  config: {
+    defaultVisitType: string;
+    dashboard?: { conceptName?: string };
+  };
 }
 
 interface BedDetails {
@@ -54,9 +62,14 @@ interface ActionInput {
   startIpdVisit?: boolean;
   expectedVisitUuid?: string;
   expectedBedId?: number;
+  notes?: string;
 }
 
 const root = '/openmrs/ws/rest/v1';
+const noteConceptView = 'custom:(uuid,name,datatype,set)';
+
+export const fetchAdtNoteConcept = (name: string) =>
+  searchConceptByName(name, noteConceptView);
 
 export const performInpatientAction = async ({
   action,
@@ -66,6 +79,7 @@ export const performInpatientAction = async ({
   startIpdVisit = false,
   expectedVisitUuid,
   expectedBedId,
+  notes,
 }: ActionInput) => {
   const [config, app, visit, beds] = await Promise.all([
     get<EncounterConfig>(
@@ -131,11 +145,31 @@ export const performInpatientAction = async ({
   ) {
     throw new Error('The visit changed. Refresh the page before continuing.');
   }
+  const noteConceptName = app.config.dashboard?.conceptName;
+  const noteConcept = noteConceptName
+    ? await fetchAdtNoteConcept(noteConceptName)
+    : null;
+  if (
+    noteConceptName &&
+    (!noteConcept ||
+      noteConcept.set ||
+      noteConcept.datatype?.display !== 'Text')
+  ) {
+    throw new Error(
+      'The configured movement notes cannot be saved here. Use the legacy inpatient screen.',
+    );
+  }
+  const noteText = notes?.trim();
+  if (noteText && !noteConcept) {
+    throw new Error('Movement notes are not configured for this hospital.');
+  }
   const encounter = {
     patientUuid,
     encounterTypeUuid: config.encounterTypes[encounterType[action]],
     visitTypeUuid,
-    observations: [],
+    observations: noteText
+      ? [{ concept: { uuid: noteConcept!.uuid }, value: noteText }]
+      : [],
     locationUuid: getUserLoginLocation().uuid,
     providers: [{ uuid: practitionerUuid }],
   };

@@ -13,6 +13,7 @@ import { BAHMNI_CLINICAL_PATH } from '../constants/app';
 import { Bed, groupBedsByRoom, Ward } from './BedManagement';
 import styles from './BedManagement.module.scss';
 import {
+  fetchAdtNoteConcept,
   fetchActiveIpdVisit,
   InpatientAction,
   IpdAppConfig,
@@ -60,6 +61,7 @@ const InpatientPatientDetails = () => {
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
+  const [notes, setNotes] = useState('');
   const canView = hasPrivilege(userPrivileges, 'app:adt');
   const canAssign = hasPrivilege(userPrivileges, 'Assign Beds');
   const appConfig = useQuery({
@@ -69,6 +71,17 @@ const InpatientPatientDetails = () => {
     enabled: canView && canAssign,
   });
   const defaultVisitType = appConfig.data?.config.defaultVisitType;
+  const noteConceptName = appConfig.data?.config.dashboard?.conceptName;
+  const noteConcept = useQuery({
+    queryKey: ['ipd-note-concept', noteConceptName],
+    queryFn: () => fetchAdtNoteConcept(noteConceptName!),
+    enabled: !!action && !!noteConceptName,
+  });
+  const canCaptureNotes =
+    !noteConceptName ||
+    (noteConcept.data &&
+      !noteConcept.data.set &&
+      noteConcept.data.datatype?.display === 'Text');
   const patient = useQuery({
     queryKey: ['ipd-patient', patientUuid],
     queryFn: () => getFormattedPatientById(patientUuid!),
@@ -129,6 +142,7 @@ const InpatientPatientDetails = () => {
     setWardUuid('');
     setBedId(null);
     setStartIpdVisit(true);
+    setNotes('');
     setActionError('');
     setActionSuccess('');
   };
@@ -145,6 +159,7 @@ const InpatientPatientDetails = () => {
         targetBedId: bedId ?? undefined,
         expectedVisitUuid: visit.data?.uuid,
         expectedBedId: assignedBed?.bedId,
+        notes,
         startIpdVisit:
           action === 'admit' &&
           !!visit.data &&
@@ -438,12 +453,31 @@ const InpatientPatientDetails = () => {
                           ? `This will discharge ${patient.data?.fullName} from bed ${assignedBed?.bedNumber}.`
                           : `This will ${action} ${patient.data?.fullName} ${action === 'transfer' ? 'to' : 'into'} ${selectedBed?.bedNumber ?? 'the selected bed'}.`}
                       </p>
+                      {noteConceptName &&
+                        (noteConcept.isLoading ? (
+                          <p role="status">Loading movement notes…</p>
+                        ) : noteConcept.isError || !canCaptureNotes ? (
+                          <p role="alert">
+                            The configured movement notes are unavailable here.
+                            Use the legacy inpatient screen for this action.
+                          </p>
+                        ) : (
+                          <label>
+                            Movement notes (optional)
+                            <textarea
+                              rows={4}
+                              value={notes}
+                              onChange={(event) => setNotes(event.target.value)}
+                            />
+                          </label>
+                        ))}
                       <div className={styles.actionChoices}>
                         <button
                           type="button"
                           disabled={
                             saving ||
                             !defaultVisitType ||
+                            (Boolean(noteConceptName) && !canCaptureNotes) ||
                             (action !== 'discharge' && !selectedBed) ||
                             !practitioner?.uuid
                           }
