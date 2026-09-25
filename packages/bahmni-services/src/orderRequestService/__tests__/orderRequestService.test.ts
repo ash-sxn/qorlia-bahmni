@@ -1,4 +1,4 @@
-import type { Bundle, ServiceRequest } from 'fhir/r4';
+import type { Bundle, Encounter, ServiceRequest } from 'fhir/r4';
 import { get } from '../../api';
 import { SERVICE_REQUESTS_URL, SERVICE_REQUEST_COUNT } from '../constants';
 import { getServiceRequests } from '../orderRequestService';
@@ -119,6 +119,119 @@ describe('serviceRequestService', () => {
   });
 
   describe('getServiceRequests', () => {
+    const unsupported = new Error(
+      'Invalid input parameters. Please check your request and try again.',
+    );
+
+    it('filters category and encounter when the server only supports patient search', async () => {
+      const category = 'lab-category';
+      const patientUuid = 'patient-1';
+      const request = (
+        id: string,
+        code: string,
+        encounter: string,
+      ): ServiceRequest => ({
+        resourceType: 'ServiceRequest',
+        id,
+        status: 'active',
+        intent: 'order',
+        subject: { reference: `Patient/${patientUuid}` },
+        code: { text: id },
+        category: [{ coding: [{ code }] }],
+        encounter: { reference: `Encounter/${encounter}` },
+      });
+      const bundle: Bundle<ServiceRequest> = {
+        resourceType: 'Bundle',
+        type: 'searchset',
+        total: 3,
+        entry: [
+          { resource: request('keep', category, 'encounter-1') },
+          { resource: request('wrong-category', 'radiology', 'encounter-1') },
+          { resource: request('wrong-visit', category, 'encounter-2') },
+        ],
+      };
+      mockedGet
+        .mockRejectedValueOnce(unsupported)
+        .mockResolvedValueOnce(bundle);
+
+      const result = await getServiceRequests(category, patientUuid, [
+        'encounter-1',
+      ]);
+
+      expect(result.entry?.map((entry) => entry.resource?.id)).toEqual([
+        'keep',
+      ]);
+      expect(result.total).toBe(1);
+      expect(mockedGet).toHaveBeenNthCalledWith(
+        2,
+        `/openmrs/ws/fhir2/R4/ServiceRequest?_count=${SERVICE_REQUEST_COUNT}&_sort=-_lastUpdated&patient=${patientUuid}`,
+      );
+    });
+
+    it('keeps only orders from the latest configured visits on an older server', async () => {
+      const category = 'lab-category';
+      const patientUuid = 'patient-1';
+      const request = (id: string, encounter: string): ServiceRequest => ({
+        resourceType: 'ServiceRequest',
+        id,
+        status: 'active',
+        intent: 'order',
+        subject: { reference: `Patient/${patientUuid}` },
+        code: { text: id },
+        category: [{ coding: [{ code: category }] }],
+        encounter: { reference: `Encounter/${encounter}` },
+      });
+      const orders: Bundle<ServiceRequest> = {
+        resourceType: 'Bundle',
+        type: 'searchset',
+        total: 2,
+        entry: [
+          { resource: request('recent', 'encounter-new') },
+          { resource: request('old', 'encounter-old') },
+        ],
+      };
+      const encounter = (
+        id: string,
+        start: string,
+        visit?: string,
+      ): Encounter => ({
+        resourceType: 'Encounter',
+        id,
+        status: 'finished',
+        class: { system: 'http://example.org', code: 'AMB' },
+        period: { start },
+        meta: { tag: [{ code: visit ? 'encounter' : 'visit' }] },
+        ...(visit && { partOf: { reference: `Encounter/${visit}` } }),
+      });
+      const visits: Bundle<Encounter> = {
+        resourceType: 'Bundle',
+        type: 'searchset',
+        total: 4,
+        entry: [
+          { resource: encounter('visit-old', '2026-01-01') },
+          { resource: encounter('encounter-old', '2026-01-01', 'visit-old') },
+          { resource: encounter('visit-new', '2026-09-01') },
+          { resource: encounter('encounter-new', '2026-09-01', 'visit-new') },
+        ],
+      };
+      mockedGet
+        .mockRejectedValueOnce(unsupported)
+        .mockResolvedValueOnce(orders)
+        .mockResolvedValueOnce(visits);
+
+      const result = await getServiceRequests(
+        category,
+        patientUuid,
+        undefined,
+        1,
+      );
+
+      expect(result.entry?.map((entry) => entry.resource?.id)).toEqual([
+        'recent',
+      ]);
+      expect(result.total).toBe(1);
+    });
+
     it('should fetch service requests with required parameters', async () => {
       const category = '3f224d3e-afd7-4e90-8f14-34cf481b6d0f';
       const patientUuid = '6db60a96-a688-4891-b9f6-59c78db52215';
