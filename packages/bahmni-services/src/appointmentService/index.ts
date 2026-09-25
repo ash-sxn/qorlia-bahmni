@@ -1,5 +1,7 @@
 export {
   searchAppointmentsByAttribute,
+  getAppointmentsForDate,
+  getWaitlistedAppointments,
   getAppointmentSummary,
   getAppointmentBookingConflicts,
   bookAppointment,

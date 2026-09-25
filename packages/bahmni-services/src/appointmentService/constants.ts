@@ -17,6 +17,8 @@ export const APPOINTMENT_STATUSES = {
 export const APPOINTMENTS_SEARCH_URL = OPENMRS_REST_V1 + '/appointments/search';
 export const APPOINTMENTS_URL = OPENMRS_REST_V1 + '/appointments';
 export const APPOINTMENT_SAVE_URL = OPENMRS_REST_V1 + '/appointment';
+export const APPOINTMENT_DAY_URL = APPOINTMENT_SAVE_URL + '/all';
+export const APPOINTMENT_LEGACY_SEARCH_URL = APPOINTMENT_SAVE_URL + '/search';
 export const APPOINTMENT_CONFLICTS_URL = APPOINTMENTS_URL + '/conflicts';
 export const APPOINTMENT_SUMMARY_URL =
   OPENMRS_REST_V1 + '/appointment/appointmentSummary';

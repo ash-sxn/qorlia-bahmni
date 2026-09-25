@@ -6,6 +6,12 @@ const IndexPage = lazy(() =>
   import('../pages/').then((module) => ({ default: module.IndexPage })),
 );
 
+const AppointmentListPage = lazy(() =>
+  import('../pages/AppointmentListPage').then((module) => ({
+    default: module.AppointmentListPage,
+  })),
+);
+
 const AllServicesPage = lazy(() =>
   import('../pages/admin/allServices').then((module) => ({
     default: module.default,
@@ -23,6 +29,16 @@ export const routes: Routes = [
     path: '/',
     component: IndexPage,
     name: 'Index',
+  },
+  {
+    path: '/list',
+    component: AppointmentListPage,
+    name: 'AppointmentList',
+  },
+  {
+    path: '/awaiting',
+    component: AppointmentListPage,
+    name: 'AwaitingAppointments',
   },
   {
     path: '/admin/services',

@@ -17,6 +17,8 @@ import {
   getUpcomingAppointmentsPage,
   getPastAppointmentsPage,
   searchAppointmentsByAttribute,
+  getAppointmentsForDate,
+  getWaitlistedAppointments,
   getAppointmentSummary,
   getAppointmentBookingConflicts,
   bookAppointment,
@@ -35,6 +37,8 @@ import {
   APPOINTMENT_SUMMARY_URL,
   APPOINTMENT_CONFLICTS_URL,
   APPOINTMENT_SAVE_URL,
+  APPOINTMENT_DAY_URL,
+  APPOINTMENT_LEGACY_SEARCH_URL,
   getAppointmentByIdUrl,
   updateAppointmentStatusUrl,
   ALL_APPOINTMENT_SERVICES_URL,
@@ -131,6 +135,33 @@ describe('Appointment Service', () => {
       searchParam,
     );
     expect(result).toEqual(appointments);
+  });
+
+  it('loads the legacy day list using local midnight', async () => {
+    const date = new Date('2026-09-25T00:00:00+05:30');
+    mockedGet.mockResolvedValue([]);
+
+    expect(await getAppointmentsForDate(date)).toEqual([]);
+    expect(mockedGet).toHaveBeenCalledWith(
+      `${APPOINTMENT_DAY_URL}?${new URLSearchParams({ forDate: date.toISOString() })}`,
+    );
+  });
+
+  it('searches the legacy waitlist with the configured filters', async () => {
+    const filters = {
+      serviceUuids: ['service-1'],
+      providerUuids: [],
+      locationUuids: [],
+    };
+    mockedPost.mockResolvedValue([]);
+
+    expect(await getWaitlistedAppointments(filters)).toEqual([]);
+    expect(mockedPost).toHaveBeenCalledWith(APPOINTMENT_LEGACY_SEARCH_URL, {
+      ...filters,
+      serviceTypeUuids: [],
+      statusList: ['WaitList'],
+      status: 'WaitList',
+    });
   });
 
   it('loads weekly appointment counts from the summary endpoint', async () => {

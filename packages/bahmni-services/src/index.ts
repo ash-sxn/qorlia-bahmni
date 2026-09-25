@@ -88,6 +88,8 @@ export {
 } from './visitService';
 export {
   searchAppointmentsByAttribute,
+  getAppointmentsForDate,
+  getWaitlistedAppointments,
   getAppointmentSummary,
   getAppointmentBookingConflicts,
   bookAppointment,

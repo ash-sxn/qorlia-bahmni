@@ -123,6 +123,15 @@ export const IndexPage = () => {
             <h1>{t('APPOINTMENTS_HEADING')}</h1>
             <p>{t('APPOINTMENTS_DESCRIPTION')}</p>
           </div>
+          <nav className={styles.viewTabs} aria-label={t('APPOINTMENTS_VIEWS')}>
+            <a href="/bahmni-v2/appointments/" aria-current="page">
+              {t('APPOINTMENTS_SUMMARY')}
+            </a>
+            <a href="/bahmni-v2/appointments/list">{t('APPOINTMENTS_LIST')}</a>
+            <a href="/bahmni-v2/appointments/awaiting">
+              {t('APPOINTMENTS_AWAITING')}
+            </a>
+          </nav>
           {privilegesLoading || userPrivileges === null ? (
             <p role="status">{t('APPOINTMENTS_LOADING')}</p>
           ) : !canView ? (

@@ -4,6 +4,8 @@ import type { Appointment as LegacyAppointment } from '../patientService/models'
 import {
   ALL_APPOINTMENT_SERVICES_URL,
   APPOINTMENT_CONFLICTS_URL,
+  APPOINTMENT_DAY_URL,
+  APPOINTMENT_LEGACY_SEARCH_URL,
   APPOINTMENT_SAVE_URL,
   APPOINTMENT_SUMMARY_URL,
   APPOINTMENTS_SEARCH_URL,
@@ -40,6 +42,25 @@ export const searchAppointmentsByAttribute = async (
 ): Promise<LegacyAppointment[]> => {
   return await post<LegacyAppointment[]>(APPOINTMENTS_SEARCH_URL, searchParam);
 };
+
+export const getAppointmentsForDate = (
+  date: Date,
+): Promise<LegacyAppointment[]> =>
+  get<LegacyAppointment[]>(
+    `${APPOINTMENT_DAY_URL}?${new URLSearchParams({ forDate: date.toISOString() })}`,
+  );
+
+export const getWaitlistedAppointments = (filters: {
+  serviceUuids: string[];
+  providerUuids: string[];
+  locationUuids: string[];
+}): Promise<LegacyAppointment[]> =>
+  post<LegacyAppointment[]>(APPOINTMENT_LEGACY_SEARCH_URL, {
+    ...filters,
+    serviceTypeUuids: [],
+    statusList: ['WaitList'],
+    status: 'WaitList',
+  });
 
 export const getAppointmentSummary = (
   startDate: string,
