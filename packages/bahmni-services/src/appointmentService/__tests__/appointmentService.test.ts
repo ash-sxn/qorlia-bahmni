@@ -246,6 +246,22 @@ describe('Appointment Service', () => {
     );
   });
 
+  it('treats the conflict endpoint no-content response as no conflicts', async () => {
+    mockedPost.mockResolvedValueOnce('').mockResolvedValueOnce(undefined);
+    const request = {
+      patientUuid: 'patient-1',
+      serviceUuid: 'service-1',
+      locationUuid: 'location-1',
+      startDateTime: '2099-01-01T09:00:00.000Z',
+      endDateTime: '2099-01-01T09:15:00.000Z',
+      appointmentKind: 'Scheduled' as const,
+      status: 'Scheduled' as const,
+      providers: [],
+    };
+    expect(await getAppointmentBookingConflicts(request)).toEqual({});
+    expect(await getAppointmentBookingConflicts(request)).toEqual({});
+  });
+
   it('falls back to Bahmni appointments when the FHIR resource is unavailable', async () => {
     mockedGet.mockRejectedValue(
       Object.assign(new Error('Not found'), { status: 404 }),

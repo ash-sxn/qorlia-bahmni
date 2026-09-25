@@ -76,7 +76,10 @@ export const getAppointmentSummary = (
 export const getAppointmentBookingConflicts = (
   request: AppointmentBookingRequest,
 ): Promise<AppointmentBookingConflicts> =>
-  post<AppointmentBookingConflicts>(APPOINTMENT_CONFLICTS_URL, request);
+  post<AppointmentBookingConflicts | '' | undefined>(
+    APPOINTMENT_CONFLICTS_URL,
+    request,
+  ).then((conflicts) => (conflicts === '' ? {} : (conflicts ?? {})));
 
 export const bookAppointment = (
   request: AppointmentBookingRequest,
