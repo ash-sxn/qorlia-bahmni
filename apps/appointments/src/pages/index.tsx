@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { BookingForm } from './BookingForm';
 import styles from './styles/index.module.scss';
+import { WeeklyBreakdown } from './WeeklyBreakdown';
 
 const dateKey = (date: Date) =>
   [
@@ -62,6 +63,15 @@ export const IndexPage = () => {
     queryKey: ['appointment-summary', dateKey(weekStart)],
     queryFn: () =>
       getAppointmentSummary(weekStart.toISOString(), weekEnd.toISOString()),
+    enabled: canView,
+  });
+  const weeklyAppointments = useQuery({
+    queryKey: ['appointment-week', dateKey(weekStart)],
+    queryFn: () =>
+      searchAppointmentsByAttribute({
+        startDate: weekStart.toISOString(),
+        endDate: weekEnd.toISOString(),
+      }),
     enabled: canView,
   });
   const appointments = useQuery({
@@ -279,6 +289,27 @@ export const IndexPage = () => {
                   </div>
                 )}
               </section>
+              <WeeklyBreakdown
+                group="speciality"
+                days={days}
+                appointments={weeklyAppointments.data ?? []}
+                loading={weeklyAppointments.isLoading}
+                error={weeklyAppointments.isError}
+              />
+              <WeeklyBreakdown
+                group="provider"
+                days={days}
+                appointments={weeklyAppointments.data ?? []}
+                loading={weeklyAppointments.isLoading}
+                error={weeklyAppointments.isError}
+              />
+              <WeeklyBreakdown
+                group="location"
+                days={days}
+                appointments={weeklyAppointments.data ?? []}
+                loading={weeklyAppointments.isLoading}
+                error={weeklyAppointments.isError}
+              />
               <section
                 className={styles.panel}
                 aria-labelledby="appointment-list-heading"

@@ -209,7 +209,7 @@ export interface AppointmentService {
   appointmentServiceId: number;
   name: string;
   description: string | null;
-  speciality: null;
+  speciality: { uuid: string; name: string } | null;
   startTime: string;
   endTime: string;
   maxAppointmentsLimit: number;

@@ -57,6 +57,12 @@ describe('IndexPage', () => {
         enabled: true,
       }),
     );
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: expect.arrayContaining(['appointment-week']),
+        enabled: true,
+      }),
+    );
   });
 
   it('has no accessibility violations', async () => {
