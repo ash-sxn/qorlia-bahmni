@@ -4,6 +4,7 @@ import type { Appointment as LegacyAppointment } from '../patientService/models'
 import {
   ALL_APPOINTMENT_SERVICES_URL,
   APPOINTMENT_SERVICE_URL,
+  APPOINTMENT_SERVICE_TYPE_FUTURE_URL,
   APPOINTMENT_CONFLICTS_URL,
   APPOINTMENT_DAY_URL,
   APPOINTMENT_LEGACY_SEARCH_URL,
@@ -278,6 +279,13 @@ export const saveAppointmentService = (
   service: AppointmentServiceSaveRequest,
 ): Promise<AppointmentService> =>
   post<AppointmentService>(APPOINTMENT_SERVICE_URL, service);
+
+export const getFutureAppointmentsForServiceType = (
+  serviceTypeUuid: string,
+): Promise<unknown[]> =>
+  get<unknown[]>(
+    `${APPOINTMENT_SERVICE_TYPE_FUTURE_URL}?${new URLSearchParams({ appointmentServiceTypeUuid: serviceTypeUuid })}`,
+  );
 
 /**
  * Deletes an appointment service definition by UUID.

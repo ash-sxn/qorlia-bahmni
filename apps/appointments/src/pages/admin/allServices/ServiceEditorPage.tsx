@@ -4,11 +4,14 @@ import {
   get,
   getAllAppointmentServices,
   getAppointmentService,
+  getFutureAppointmentsForServiceType,
   getLocationByTag,
   hasPrivilege,
   saveAppointmentService,
   type AppointmentService,
+  type AppointmentAttribute,
   type AppointmentServiceAvailability,
+  type AppointmentServiceType,
   useTranslation,
 } from '@bahmni/services';
 import { useUserPrivilege, UserGlobalAction } from '@bahmni/widgets';
@@ -20,7 +23,10 @@ import { MANAGE_APPOINTMENT_SERVICES_PRIVILEGE } from './constants';
 import {
   fieldsFromService,
   serviceSaveRequest,
+  validAttributes,
   validAvailability,
+  validNewServiceType,
+  type ServiceAttributeType,
   type ServiceFields,
 } from './serviceEditorModel';
 import styles from './styles/index.module.scss';
@@ -44,15 +50,13 @@ type LegacyConfig = {
   };
 };
 
-type AttributeType = { name: string; minOccurs?: number };
-
 const ServiceForm = ({
   service,
   services,
   config,
   locations,
   specialities,
-  requiredAttributes,
+  attributeTypes,
   canManageService,
   canManageAvailability,
 }: {
@@ -61,7 +65,7 @@ const ServiceForm = ({
   config: LegacyConfig['config'];
   locations: { uuid: string; display: string }[];
   specialities: { uuid: string; name: string }[];
-  requiredAttributes: AttributeType[];
+  attributeTypes: ServiceAttributeType[];
   canManageService: boolean;
   canManageAvailability: boolean;
 }) => {
@@ -74,9 +78,18 @@ const ServiceForm = ({
   const [availability, setAvailability] = useState<
     AppointmentServiceAvailability[]
   >(() => service?.weeklyAvailability ?? []);
+  const [attributes, setAttributes] = useState<AppointmentAttribute[]>(
+    () => service?.attributes ?? [],
+  );
+  const [serviceTypes, setServiceTypes] = useState<AppointmentServiceType[]>(
+    () => service?.serviceTypes ?? [],
+  );
+  const [newTypeName, setNewTypeName] = useState('');
+  const [newTypeDuration, setNewTypeDuration] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const activeAvailability = availability.filter((item) => !item.voided);
+  const activeServiceTypes = serviceTypes.filter((item) => !item.voided);
 
   const updateField = (field: keyof ServiceFields, value: string) =>
     setFields((current) => ({ ...current, [field]: value }));
@@ -100,6 +113,67 @@ const ServiceForm = ({
           : item,
       ),
     );
+
+  const updateAttribute = (typeUuid: string, index: number, value: string) =>
+    setAttributes((current) =>
+      index < 0
+        ? [...current, { attributeTypeUuid: typeUuid, value }]
+        : current.map((item, position) =>
+            position === index ? { ...item, value } : item,
+          ),
+    );
+
+  const removeAttribute = (index: number) =>
+    setAttributes((current) =>
+      current.flatMap((item, position) =>
+        position !== index
+          ? [item]
+          : item.uuid
+            ? [{ ...item, voided: true }]
+            : [],
+      ),
+    );
+
+  const addServiceType = () => {
+    const name = newTypeName.trim();
+    if (!validNewServiceType(name, newTypeDuration, serviceTypes)) {
+      setError(t('ADMIN_SERVICE_TYPE_ERROR'));
+      return;
+    }
+    setServiceTypes((current) => [
+      ...current,
+      { name, duration: Number(newTypeDuration) },
+    ]);
+    setNewTypeName('');
+    setNewTypeDuration('');
+    setError('');
+  };
+
+  const removeServiceType = async (index: number) => {
+    const type = serviceTypes[index];
+    try {
+      if (
+        type.uuid &&
+        (await getFutureAppointmentsForServiceType(type.uuid)).length
+      ) {
+        setError(t('ADMIN_SERVICE_TYPE_IN_USE'));
+        return;
+      }
+      if (!window.confirm(t('ADMIN_SERVICE_TYPE_REMOVE_CONFIRM'))) return;
+      setServiceTypes((current) =>
+        current.flatMap((item, position) =>
+          position !== index
+            ? [item]
+            : item.uuid
+              ? [{ ...item, voided: true }]
+              : [],
+        ),
+      );
+      setError('');
+    } catch {
+      setError(t('ADMIN_SERVICE_TYPE_CHECK_ERROR'));
+    }
+  };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -126,8 +200,8 @@ const ServiceForm = ({
       setError(t('ADMIN_SERVICE_TIME_ERROR'));
       return;
     }
-    if (!service && requiredAttributes.length) {
-      setError(t('ADMIN_SERVICE_REQUIRED_ATTRIBUTES'));
+    if (!validAttributes(attributes, attributeTypes)) {
+      setError(t('ADMIN_SERVICE_ATTRIBUTES_ERROR'));
       return;
     }
     if (
@@ -141,7 +215,13 @@ const ServiceForm = ({
     setSaving(true);
     try {
       await saveAppointmentService(
-        serviceSaveRequest(service, fields, availability),
+        serviceSaveRequest(
+          service,
+          fields,
+          availability,
+          attributes,
+          serviceTypes,
+        ),
       );
       await queryClient.invalidateQueries({
         queryKey: ['allAppointmentServices'],
@@ -273,7 +353,7 @@ const ServiceForm = ({
             disabled={
               !canManageService ||
               activeAvailability.length > 0 ||
-              !!service?.serviceTypes?.length
+              activeServiceTypes.length > 0
             }
             onChange={(event) =>
               updateField('maxAppointmentsLimit', event.target.value)
@@ -345,7 +425,7 @@ const ServiceForm = ({
                   min="0"
                   value={item.maxAppointmentsLimit ?? ''}
                   disabled={
-                    !canManageAvailability || !!service?.serviceTypes?.length
+                    !canManageAvailability || activeServiceTypes.length > 0
                   }
                   onChange={(event) =>
                     updateAvailability(
@@ -398,25 +478,163 @@ const ServiceForm = ({
           </button>
         )}
       </section>
-      {!!service?.serviceTypes?.length && (
-        <p className={styles.preservedFields}>
-          {t('ADMIN_SERVICE_TYPES_PRESERVED')}:{' '}
-          {service.serviceTypes
-            .filter((item) => !item.voided)
-            .map((item) => item.name)
-            .join(', ')}
-        </p>
+      {(config.enableServiceTypes === true ||
+        activeServiceTypes.length > 0) && (
+        <section className={styles.availabilitySection}>
+          <h2>{t('ADMIN_SERVICE_TYPES')}</h2>
+          {serviceTypes.map((item, index) =>
+            item.voided ? null : (
+              <div
+                key={item.uuid ?? `type-${index}`}
+                className={styles.typeRow}
+              >
+                <span>{item.name}</span>
+                <span>
+                  {item.duration} {t('ADMIN_SERVICE_MINUTES')}
+                </span>
+                {config.enableServiceTypes && canManageService && (
+                  <button
+                    type="button"
+                    className={workspaceStyles.secondaryButton}
+                    onClick={() => void removeServiceType(index)}
+                  >
+                    {t('ADMIN_SERVICE_REMOVE_TYPE')}
+                  </button>
+                )}
+              </div>
+            ),
+          )}
+          {config.enableServiceTypes && canManageService && (
+            <div className={styles.typeRow}>
+              <label>
+                {t('ADMIN_SERVICE_TYPE_NAME')}
+                <input
+                  value={newTypeName}
+                  onChange={(event) => setNewTypeName(event.target.value)}
+                />
+              </label>
+              <label>
+                {t('ADMIN_SERVICE_DURATION')}
+                <input
+                  type="number"
+                  min="0"
+                  value={newTypeDuration}
+                  onChange={(event) => setNewTypeDuration(event.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                className={workspaceStyles.secondaryButton}
+                onClick={addServiceType}
+              >
+                {t('ADMIN_SERVICE_ADD_TYPE')}
+              </button>
+            </div>
+          )}
+        </section>
       )}
-      {!!service?.attributes?.length && (
-        <p className={styles.preservedFields}>
-          {t('ADMIN_SERVICE_ATTRIBUTES_PRESERVED')}:{' '}
-          {service.attributes
-            .filter((item) => !item.voided)
-            .map((item) => item.attributeType)
-            .filter(Boolean)
-            .join(', ')}
-        </p>
+      {attributeTypes.length > 0 && (
+        <section className={styles.availabilitySection}>
+          <h2>{t('ADMIN_SERVICE_ATTRIBUTES')}</h2>
+          {attributeTypes.map((type) => {
+            const entries = attributes
+              .map((item, index) => ({ item, index }))
+              .filter(
+                ({ item }) =>
+                  !item.voided && item.attributeTypeUuid === type.uuid,
+              );
+            const rows = entries.length
+              ? entries
+              : [{ item: undefined, index: -1 }];
+            const datatype = type.datatype?.toLowerCase() ?? '';
+            const inputType = datatype.includes('date')
+              ? 'date'
+              : datatype.includes('number') || datatype.includes('integer')
+                ? 'number'
+                : 'text';
+            return (
+              <div key={type.uuid} className={styles.attributeGroup}>
+                {rows.map(({ item, index }, position) => (
+                  <div
+                    key={position === 0 ? type.uuid : (item?.uuid ?? index)}
+                    className={styles.attributeRow}
+                  >
+                    <label>
+                      {type.name}
+                      {(type.minOccurs ?? 0) > position ? ' *' : ''}
+                      {datatype.includes('boolean') ? (
+                        <select
+                          value={item?.value ?? ''}
+                          disabled={!canManageService}
+                          onChange={(event) =>
+                            updateAttribute(
+                              type.uuid,
+                              index,
+                              event.target.value,
+                            )
+                          }
+                        >
+                          <option value="">
+                            {t('APPOINTMENTS_NOT_SPECIFIED')}
+                          </option>
+                          <option value="true">{t('ADMIN_SERVICE_YES')}</option>
+                          <option value="false">{t('ADMIN_SERVICE_NO')}</option>
+                        </select>
+                      ) : (
+                        <input
+                          type={inputType}
+                          value={item?.value ?? ''}
+                          disabled={!canManageService}
+                          onChange={(event) =>
+                            updateAttribute(
+                              type.uuid,
+                              index,
+                              event.target.value,
+                            )
+                          }
+                        />
+                      )}
+                    </label>
+                    {item && canManageService && (
+                      <button
+                        type="button"
+                        className={workspaceStyles.secondaryButton}
+                        onClick={() => removeAttribute(index)}
+                      >
+                        {t('ADMIN_SERVICE_REMOVE_ATTRIBUTE')}
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {canManageService &&
+                  entries.length > 0 &&
+                  (type.maxOccurs == null ||
+                    type.maxOccurs < 0 ||
+                    entries.length < type.maxOccurs) && (
+                    <button
+                      type="button"
+                      className={workspaceStyles.secondaryButton}
+                      onClick={() =>
+                        setAttributes((current) => [
+                          ...current,
+                          { attributeTypeUuid: type.uuid, value: '' },
+                        ])
+                      }
+                    >
+                      {t('ADMIN_SERVICE_ADD_ATTRIBUTE')}
+                    </button>
+                  )}
+              </div>
+            );
+          })}
+        </section>
       )}
+      {attributeTypes.length === 0 &&
+        !!service?.attributes?.some((item) => !item.voided) && (
+          <p className={styles.formNote}>
+            {t('ADMIN_SERVICE_ATTRIBUTES_UNAVAILABLE')}
+          </p>
+        )}
       <div className={styles.formActions}>
         <a
           className={workspaceStyles.secondaryButton}
@@ -485,11 +703,17 @@ export const ServiceEditorPage = () => {
   });
   const attributeTypes = useQuery({
     queryKey: ['appointment-service-attribute-types'],
-    queryFn: () =>
-      get<AttributeType[]>(
-        '/openmrs/ws/rest/v1/appointment-service-attribute-types',
-      ),
-    enabled: canView && isNew,
+    queryFn: async () => {
+      try {
+        return await get<ServiceAttributeType[]>(
+          '/openmrs/ws/rest/v1/appointment-service-attribute-types',
+        );
+      } catch (error) {
+        if ((error as { status?: number }).status === 404) return [];
+        throw error;
+      }
+    },
+    enabled: canView,
   });
   const loading =
     privilegesLoading ||
@@ -499,14 +723,14 @@ export const ServiceEditorPage = () => {
     (!isNew && service.isLoading) ||
     (Boolean(config.data?.config.enableSpecialities) &&
       specialities.isLoading) ||
-    (isNew && attributeTypes.isLoading);
+    attributeTypes.isLoading;
   const error =
     services.isError ||
     config.isError ||
     locations.isError ||
     (!isNew && service.isError) ||
     (Boolean(config.data?.config.enableSpecialities) && specialities.isError) ||
-    (isNew && attributeTypes.isError);
+    attributeTypes.isError;
 
   return (
     <BaseLayout
@@ -561,9 +785,7 @@ export const ServiceEditorPage = () => {
               config={config.data.config}
               locations={locations.data}
               specialities={specialities.data ?? []}
-              requiredAttributes={(attributeTypes.data ?? []).filter(
-                (item) => (item.minOccurs ?? 0) > 0,
-              )}
+              attributeTypes={attributeTypes.data ?? []}
               canManageService={canManageService}
               canManageAvailability={canManageAvailability}
             />

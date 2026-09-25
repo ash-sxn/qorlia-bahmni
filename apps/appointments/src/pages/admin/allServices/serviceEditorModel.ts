@@ -1,7 +1,17 @@
 import type {
+  AppointmentAttribute,
   AppointmentService,
   AppointmentServiceSaveRequest,
+  AppointmentServiceType,
 } from '@bahmni/services';
+
+export type ServiceAttributeType = {
+  uuid: string;
+  name: string;
+  datatype?: string;
+  minOccurs?: number;
+  maxOccurs?: number;
+};
 
 export type ServiceFields = {
   name: string;
@@ -39,6 +49,8 @@ export const serviceSaveRequest = (
   service: AppointmentService | undefined,
   fields: ServiceFields,
   weeklyAvailability: AppointmentServiceSaveRequest['weeklyAvailability'],
+  attributes: AppointmentAttribute[] = service?.attributes ?? [],
+  serviceTypes: AppointmentServiceType[] = service?.serviceTypes ?? [],
 ): AppointmentServiceSaveRequest => ({
   ...(service?.uuid ? { uuid: service.uuid } : {}),
   name: fields.name.trim(),
@@ -62,9 +74,41 @@ export const serviceSaveRequest = (
     startTime: timeForApi(item.startTime) ?? '',
     endTime: timeForApi(item.endTime) ?? '',
   })),
-  serviceTypes: service?.serviceTypes ?? [],
-  attributes: service?.attributes ?? [],
+  serviceTypes,
+  attributes,
 });
+
+export const validAttributes = (
+  attributes: AppointmentAttribute[],
+  types: ServiceAttributeType[],
+) =>
+  types.every((type) => {
+    const values = attributes.filter(
+      (attribute) =>
+        !attribute.voided && attribute.attributeTypeUuid === type.uuid,
+    );
+    return (
+      values.every((attribute) => attribute.value.trim()) &&
+      values.length >= (type.minOccurs ?? 0) &&
+      (type.maxOccurs == null ||
+        type.maxOccurs < 0 ||
+        values.length <= type.maxOccurs)
+    );
+  });
+
+export const validNewServiceType = (
+  name: string,
+  duration: string,
+  types: AppointmentServiceType[],
+) =>
+  !!name.trim() &&
+  duration !== '' &&
+  Number.isFinite(Number(duration)) &&
+  Number(duration) >= 0 &&
+  !types.some(
+    (type) =>
+      !type.voided && type.name.toLowerCase() === name.trim().toLowerCase(),
+  );
 
 export const validAvailability = (
   availability: AppointmentServiceSaveRequest['weeklyAvailability'],

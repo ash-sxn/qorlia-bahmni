@@ -42,7 +42,9 @@
 }
 
 .serviceFields label,
-.availabilityRow label {
+.availabilityRow label,
+.typeRow label,
+.attributeRow label {
   display: grid;
   gap: 6px;
   font-size: 14px;
@@ -53,7 +55,10 @@
 .serviceFields select,
 .serviceFields textarea,
 .availabilityRow input,
-.availabilityRow select {
+.availabilityRow select,
+.typeRow input,
+.attributeRow input,
+.attributeRow select {
   width: 100%;
   min-height: 40px;
   padding: 8px;
@@ -88,6 +93,24 @@
   margin-bottom: 14px;
 }
 
+.typeRow,
+.attributeRow {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.typeRow label,
+.attributeRow label {
+  min-width: 200px;
+  flex: 1;
+}
+
+.attributeGroup {
+  margin-bottom: 18px;
+}
+
 .formActions {
   display: flex;
   justify-content: flex-end;
@@ -104,12 +127,17 @@
   font-weight: 700;
 }
 
-.preservedFields {
+.formNote {
   color: var(--qorlia-muted, #5a6865);
 }
 
 @media (max-width: 780px) {
   .availabilityRow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .typeRow,
+  .attributeRow {
+    flex-wrap: wrap;
   }
 }

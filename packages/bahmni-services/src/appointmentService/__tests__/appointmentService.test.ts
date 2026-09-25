@@ -28,6 +28,7 @@ import {
   getAllAppointmentServices,
   getAppointmentService,
   saveAppointmentService,
+  getFutureAppointmentsForServiceType,
   deleteAppointmentService,
   getAppointmentUnavailabilities,
   createAppointmentUnavailability,
@@ -45,6 +46,7 @@ import {
   updateAppointmentStatusUrl,
   ALL_APPOINTMENT_SERVICES_URL,
   APPOINTMENT_SERVICE_URL,
+  APPOINTMENT_SERVICE_TYPE_FUTURE_URL,
   getDeleteAppointmentServiceUrl,
   getUpcomingAppointmentsPageUrl,
   getPastAppointmentsPageUrl,
@@ -93,6 +95,13 @@ describe('Appointment Service', () => {
       `${APPOINTMENT_SERVICE_URL}?uuid=service-1`,
     );
     expect(mockedPost).toHaveBeenCalledWith(APPOINTMENT_SERVICE_URL, service);
+  });
+  it('checks future bookings before a service type is removed', async () => {
+    mockedGet.mockResolvedValue([]);
+    await getFutureAppointmentsForServiceType('type-1');
+    expect(mockedGet).toHaveBeenCalledWith(
+      `${APPOINTMENT_SERVICE_TYPE_FUTURE_URL}?appointmentServiceTypeUuid=type-1`,
+    );
   });
   afterAll(() => {
     jest.useRealTimers();

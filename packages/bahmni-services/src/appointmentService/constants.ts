@@ -72,6 +72,8 @@ export const ALL_APPOINTMENT_SERVICES_URL =
   OPENMRS_REST_V1 + '/appointmentService/all/full';
 
 export const APPOINTMENT_SERVICE_URL = OPENMRS_REST_V1 + '/appointmentService';
+export const APPOINTMENT_SERVICE_TYPE_FUTURE_URL =
+  OPENMRS_REST_V1 + '/appointment/futureAppointmentsForServiceType/';
 
 export const getDeleteAppointmentServiceUrl = (uuid: string): string =>
   `${OPENMRS_REST_V1}/appointmentService?uuid=${uuid}`;
