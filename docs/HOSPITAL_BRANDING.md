@@ -20,4 +20,4 @@ The public Qorlia frontend reads `assets/branding.json` before rendering. A hosp
 
 Qorlia can offer a private branding editor, asset approval and deployment workflow, but this public renderer and any modifications to covered upstream files remain under this repository's license. The per-hospital values and uploaded brand assets do not need to be committed to this public fork. Review the license of each separate Bahmni, lab and billing component before applying the same approach there. Keep required upstream copyright and license notices, and show a clear “Built on Bahmni” credit.
 
-For local visual review, run `corepack yarn dev` from the repository root and open `/bahmni-v2/design-preview`. That route exists only in development builds. It uses sample data and does not connect to a hospital database.
+For local visual review, run `corepack yarn dev` from the repository root and open `http://127.0.0.1:3000/bahmni-v2/design-preview`. That route exists only in development builds. It uses sample data and does not connect to a hospital database.
