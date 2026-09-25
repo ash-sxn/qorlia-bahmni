@@ -28,4 +28,5 @@ export interface FormattedMedicationRequest {
   readonly stopReason?: string;
   readonly dateStopped?: string;
   readonly fhirResource: MedicationRequest;
+  readonly readOnly?: boolean;
 }
