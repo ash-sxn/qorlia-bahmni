@@ -55,6 +55,11 @@
   color: var(--ink);
   font: inherit;
 }
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .actions {
   display: flex;
   justify-content: flex-end;

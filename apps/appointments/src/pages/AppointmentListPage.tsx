@@ -2,16 +2,18 @@ import { BaseLayout, Header } from '@bahmni/design-system';
 import {
   BAHMNI_HOME_PATH,
   fetchAllProviders,
+  get,
   getAllAppointmentServices,
   getAppointmentsForDate,
   getLocationByTag,
   getWaitlistedAppointments,
   hasPrivilege,
   type Appointment,
+  updateAppointmentStatus,
   useTranslation,
 } from '@bahmni/services';
 import { useUserPrivilege, UserGlobalAction } from '@bahmni/widgets';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import styles from './styles/index.module.scss';
@@ -33,6 +35,21 @@ const statuses = [
   'Missed',
   'Cancelled',
 ];
+
+type TransitionConfig = {
+  config: {
+    allowedActions: string[];
+    allowedActionsByStatus: Record<string, string[]>;
+  };
+};
+
+export const getAllowedTransitions = (
+  config: TransitionConfig | undefined,
+  status: string,
+) =>
+  config?.config.allowedActionsByStatus[status]?.filter((action) =>
+    config.config.allowedActions.includes(action),
+  ) ?? [];
 
 export const filterAppointments = (
   appointments: Appointment[],
@@ -69,12 +86,34 @@ export const AppointmentListPage = () => {
   const awaiting = pathname.endsWith('/awaiting');
   const { userPrivileges, isLoading: privilegesLoading } = useUserPrivilege();
   const canView = hasPrivilege(userPrivileges, 'app:appointments');
+  const canManage =
+    hasPrivilege(userPrivileges, 'app:appointments:manageAppointmentsTab') &&
+    hasPrivilege(userPrivileges, 'Manage Appointments');
+  const queryClient = useQueryClient();
+  const [actionMessage, setActionMessage] = useState('');
   const [date, setDate] = useState(() => dateKey(new Date()));
   const [serviceUuid, setServiceUuid] = useState('');
   const [providerUuid, setProviderUuid] = useState('');
   const [locationUuid, setLocationUuid] = useState('');
   const [status, setStatus] = useState('');
   const [patient, setPatient] = useState('');
+  const transitionConfig = useQuery({
+    queryKey: ['legacy-appointment-actions'],
+    queryFn: () =>
+      get<TransitionConfig>(
+        '/bahmni_config/openmrs/apps/appointments/app.json',
+      ),
+    enabled: canView && canManage,
+  });
+  const statusChange = useMutation({
+    mutationFn: ({ uuid, status }: { uuid: string; status: string }) =>
+      updateAppointmentStatus(uuid, status),
+    onSuccess: async () => {
+      setActionMessage(t('APPOINTMENTS_STATUS_UPDATED'));
+      await queryClient.invalidateQueries({ queryKey: ['appointment'] });
+    },
+    onError: () => setActionMessage(t('APPOINTMENTS_STATUS_UPDATE_ERROR')),
+  });
   const services = useQuery({
     queryKey: ['allAppointmentServices'],
     queryFn: getAllAppointmentServices,
@@ -289,6 +328,19 @@ export const AppointmentListPage = () => {
                   {t('APPOINTMENTS_FILTERS_ERROR')}
                 </p>
               )}
+              {canManage && transitionConfig.isError && (
+                <p className={styles.message} role="alert">
+                  {t('APPOINTMENTS_ACTIONS_UNAVAILABLE')}
+                </p>
+              )}
+              {actionMessage && (
+                <p
+                  className={styles.message}
+                  role={statusChange.isError ? 'alert' : 'status'}
+                >
+                  {actionMessage}
+                </p>
+              )}
               {result.isLoading ? (
                 <p className={styles.message} role="status">
                   {t('APPOINTMENTS_LOADING')}
@@ -314,6 +366,9 @@ export const AppointmentListPage = () => {
                         <th scope="col">{t('APPOINTMENTS_PROVIDER')}</th>
                         <th scope="col">{t('APPOINTMENTS_LOCATION')}</th>
                         <th scope="col">{t('APPOINTMENTS_STATUS')}</th>
+                        {canManage && (
+                          <th scope="col">{t('APPOINTMENTS_ACTIONS')}</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -354,6 +409,41 @@ export const AppointmentListPage = () => {
                               {appointment.status}
                             </span>
                           </td>
+                          {canManage && (
+                            <td>
+                              <div className={styles.rowActions}>
+                                {getAllowedTransitions(
+                                  transitionConfig.data,
+                                  appointment.status,
+                                ).map((action) => (
+                                  <button
+                                    key={action}
+                                    type="button"
+                                    className={styles.textButton}
+                                    disabled={statusChange.isPending}
+                                    onClick={() => {
+                                      if (
+                                        !window.confirm(
+                                          t('APPOINTMENTS_CONFIRM_STATUS', {
+                                            status: action,
+                                          }),
+                                        )
+                                      )
+                                        return;
+                                      setActionMessage('');
+                                      statusChange.mutate({
+                                        uuid: appointment.uuid,
+                                        status: action,
+                                      });
+                                    }}
+                                    aria-label={`${action}: ${appointment.patient.name}`}
+                                  >
+                                    {action}
+                                  </button>
+                                ))}
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
