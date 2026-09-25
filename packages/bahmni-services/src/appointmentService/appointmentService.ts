@@ -1,11 +1,9 @@
 import type { Appointment as FhirAppointment, Bundle } from 'fhir/r4';
 import { del, get, post } from '../api';
-import type {
-  Appointment as LegacyAppointment,
-  AppointmentSearchResult as SearchAppointment,
-} from '../patientService/models';
+import type { Appointment as LegacyAppointment } from '../patientService/models';
 import {
   ALL_APPOINTMENT_SERVICES_URL,
+  APPOINTMENT_SUMMARY_URL,
   APPOINTMENTS_SEARCH_URL,
   APPOINTMENT_UNAVAILABILITY_URL,
   getAppointmentByIdUrl,
@@ -20,6 +18,7 @@ import {
 import {
   AppointmentPage,
   AppointmentService,
+  AppointmentSummary,
   AppointmentUnavailability,
   CheckInAppointmentResponse,
   CreateUnavailabilityRequest,
@@ -34,9 +33,17 @@ import {
  */
 export const searchAppointmentsByAttribute = async (
   searchParam: Record<string, string>,
-): Promise<SearchAppointment[]> => {
-  return await post<SearchAppointment[]>(APPOINTMENTS_SEARCH_URL, searchParam);
+): Promise<LegacyAppointment[]> => {
+  return await post<LegacyAppointment[]>(APPOINTMENTS_SEARCH_URL, searchParam);
 };
+
+export const getAppointmentSummary = (
+  startDate: string,
+  endDate: string,
+): Promise<AppointmentSummary[]> =>
+  get<AppointmentSummary[]>(
+    `${APPOINTMENT_SUMMARY_URL}?${new URLSearchParams({ startDate, endDate })}`,
+  );
 
 const legacyStatus: Record<string, FhirAppointment['status']> = {
   Requested: 'proposed',

@@ -1,5 +1,6 @@
 export {
   searchAppointmentsByAttribute,
+  getAppointmentSummary,
   updateAppointmentStatus,
   checkInAppointment,
   getAppointmentById,
@@ -14,6 +15,7 @@ export {
 } from './appointmentService';
 export {
   type AppointmentPage,
+  type AppointmentSummary,
   type AppointmentService,
   type AppointmentUnavailability,
   type CheckInAppointmentResponse,

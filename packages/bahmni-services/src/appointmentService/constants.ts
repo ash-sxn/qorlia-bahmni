@@ -16,6 +16,8 @@ export const APPOINTMENT_STATUSES = {
 
 export const APPOINTMENTS_SEARCH_URL = OPENMRS_REST_V1 + '/appointments/search';
 export const APPOINTMENTS_URL = OPENMRS_REST_V1 + '/appointments';
+export const APPOINTMENT_SUMMARY_URL =
+  OPENMRS_REST_V1 + '/appointment/appointmentSummary';
 
 // FHIR Appointment identifier system
 export const APPOINTMENT_IDENTIFIER_SYSTEM =

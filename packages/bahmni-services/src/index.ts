@@ -88,6 +88,7 @@ export {
 } from './visitService';
 export {
   searchAppointmentsByAttribute,
+  getAppointmentSummary,
   updateAppointmentStatus,
   checkInAppointment,
   getAppointmentById,
@@ -96,6 +97,7 @@ export {
   getUpcomingAppointmentsPage,
   getPastAppointmentsPage,
   type AppointmentPage,
+  type AppointmentSummary,
   getAllAppointmentServices,
   deleteAppointmentService,
   getAppointmentUnavailabilities,

@@ -7,6 +7,18 @@ export interface AppointmentPage {
   total: number;
 }
 
+export interface AppointmentSummary {
+  appointmentService: AppointmentService;
+  appointmentCountMap: Record<
+    string,
+    {
+      allAppointmentsCount: number;
+      missedAppointmentsCount: number;
+      appointmentServiceUuid: string;
+    }
+  >;
+}
+
 interface Speciality {
   uuid: string;
   name: string;

@@ -1,0 +1,180 @@
+.page {
+  --brand: var(--qorlia-primary, #1f5238);
+  --ink: var(--qorlia-ink, #202b29);
+  --muted: var(--qorlia-muted, #5a6865);
+  --line: var(--qorlia-border, #dbe5e1);
+  min-height: calc(100vh - 48px);
+  padding: 36px clamp(18px, 4vw, 56px) 56px;
+  color: var(--ink);
+  background: var(--qorlia-canvas, #f8faf9);
+}
+
+.intro {
+  margin-bottom: 28px;
+}
+.eyebrow {
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+.intro h1 {
+  margin: 9px 0 5px;
+  color: #17382d;
+  font-size: clamp(28px, 2.4vw, 38px);
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+}
+.intro p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.panel {
+  margin-bottom: 22px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--qorlia-surface, #fff);
+}
+.panelHeading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.panelHeading h2 {
+  margin: 5px 0 0;
+  font-size: 21px;
+  line-height: 1.2;
+}
+.weekControls {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.weekControls label,
+.serviceFilter {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.weekControls button,
+.weekControls input,
+.serviceFilter select {
+  min-height: 39px;
+  padding: 7px 11px;
+  border: 1px solid #cddbd4;
+  border-radius: 7px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
+}
+.weekControls button {
+  cursor: pointer;
+}
+.tableScroll {
+  overflow-x: auto;
+}
+.tableScroll table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.tableScroll caption {
+  padding: 13px 24px;
+  color: var(--muted);
+  text-align: left;
+  font-size: 13px;
+}
+.tableScroll th,
+.tableScroll td {
+  padding: 14px 17px;
+  border-bottom: 1px solid #edf1ef;
+  text-align: left;
+  white-space: nowrap;
+}
+.tableScroll thead th {
+  color: #546560;
+  background: #f8faf9;
+  font-size: 12px;
+}
+.tableScroll tbody tr:last-child th,
+.tableScroll tbody tr:last-child td {
+  border-bottom: 0;
+}
+.tableScroll tbody th {
+  min-width: 220px;
+  font-weight: 650;
+}
+.tableScroll td small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+}
+.tableScroll td a {
+  color: var(--brand);
+  font-weight: 700;
+}
+.count,
+.selectedCount {
+  min-width: 35px;
+  min-height: 35px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--brand);
+  background: #e8f4ed;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.selectedCount {
+  color: #fff;
+  background: var(--brand);
+}
+.status {
+  display: inline-block;
+  padding: 4px 9px;
+  border-radius: 20px;
+  color: var(--brand);
+  background: #e8f4ed;
+  font-size: 12px;
+  font-weight: 700;
+}
+.message {
+  margin: 0;
+  padding: 26px 24px;
+  color: var(--muted);
+}
+.adminLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.adminLinks a {
+  color: var(--brand);
+  font-weight: 700;
+}
+.page button:focus-visible,
+.page input:focus-visible,
+.page select:focus-visible,
+.page a:focus-visible {
+  outline: 3px solid #82bca0;
+  outline-offset: 2px;
+}
+@media (max-width: 760px) {
+  .panelHeading {
+    align-items: start;
+    flex-direction: column;
+  }
+  .tableScroll th,
+  .tableScroll td {
+    padding: 12px;
+  }
+}

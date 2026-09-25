@@ -17,6 +17,7 @@ import {
   getUpcomingAppointmentsPage,
   getPastAppointmentsPage,
   searchAppointmentsByAttribute,
+  getAppointmentSummary,
   updateAppointmentStatus,
   checkInAppointment,
   getAppointmentById,
@@ -29,6 +30,7 @@ import {
   UPCOMING_APPOINTMENTS_URL,
   PAST_APPOINTMENTS_URL,
   APPOINTMENTS_SEARCH_URL,
+  APPOINTMENT_SUMMARY_URL,
   getAppointmentByIdUrl,
   updateAppointmentStatusUrl,
   ALL_APPOINTMENT_SERVICES_URL,
@@ -125,6 +127,23 @@ describe('Appointment Service', () => {
       searchParam,
     );
     expect(result).toEqual(appointments);
+  });
+
+  it('loads weekly appointment counts from the summary endpoint', async () => {
+    const startDate = '2026-09-21T00:00:00.000+05:30';
+    const endDate = '2026-09-27T23:59:59.999+05:30';
+    const rows = [
+      {
+        appointmentService: { name: 'General Medicine' },
+        appointmentCountMap: {},
+      },
+    ];
+    mockedGet.mockResolvedValue(rows);
+
+    expect(await getAppointmentSummary(startDate, endDate)).toEqual(rows);
+    expect(mockedGet).toHaveBeenCalledWith(
+      `${APPOINTMENT_SUMMARY_URL}?${new URLSearchParams({ startDate, endDate })}`,
+    );
   });
 
   it('falls back to Bahmni appointments when the FHIR resource is unavailable', async () => {
