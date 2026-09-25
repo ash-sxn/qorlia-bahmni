@@ -227,8 +227,8 @@ const BedManagement = () => {
                   <p>Select a bed to see its details.</p>
                 )}
                 {patient?.uuid && (
-                  <Link to={`/clinical/${patient.uuid}`}>
-                    Open patient record
+                  <Link to={`/clinical/inpatient/${patient.uuid}`}>
+                    View patient stay
                   </Link>
                 )}
               </aside>

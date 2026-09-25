@@ -236,8 +236,10 @@ const InpatientPatientList = () => {
                                   : activeTab.label}
                               </td>
                               <td>
-                                <Link to={`/clinical/${patient.uuid}`}>
-                                  Open record
+                                <Link
+                                  to={`/clinical/inpatient/${patient.uuid}`}
+                                >
+                                  View stay
                                 </Link>
                               </td>
                             </tr>
