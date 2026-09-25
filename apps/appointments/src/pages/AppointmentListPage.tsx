@@ -5,6 +5,7 @@ import {
   get,
   getAllAppointmentServices,
   getAppointmentsForDate,
+  getLegacyAppointment,
   getLocationByTag,
   getWaitlistedAppointments,
   hasPrivilege,
@@ -20,6 +21,7 @@ import {
   getAllowedTransitions,
   type TransitionConfig,
 } from './appointmentActions';
+import { EditAppointmentForm } from './EditAppointmentForm';
 import styles from './styles/index.module.scss';
 
 const dateKey = (date: Date) =>
@@ -80,6 +82,8 @@ export const AppointmentListPage = () => {
     hasPrivilege(userPrivileges, 'Manage Appointments');
   const queryClient = useQueryClient();
   const [actionMessage, setActionMessage] = useState('');
+  const [editMessage, setEditMessage] = useState('');
+  const [editingUuid, setEditingUuid] = useState('');
   const [checkInUuid, setCheckInUuid] = useState('');
   const [checkInTime, setCheckInTime] = useState('');
   const checkInInput = useRef<HTMLInputElement>(null);
@@ -146,6 +150,11 @@ export const AppointmentListPage = () => {
     queryKey: ['appointment-list-day', date],
     queryFn: () => getAppointmentsForDate(new Date(`${date}T00:00:00`)),
     enabled: canView && !awaiting,
+  });
+  const editing = useQuery({
+    queryKey: ['appointment-edit', editingUuid],
+    queryFn: () => getLegacyAppointment(editingUuid),
+    enabled: canManage && Boolean(editingUuid),
   });
   const waitlistedAppointments = useQuery({
     queryKey: ['appointment-waitlist', serviceUuid, providerUuid, locationUuid],
@@ -370,6 +379,35 @@ export const AppointmentListPage = () => {
                   {actionMessage}
                 </p>
               )}
+              {editMessage && (
+                <p className={styles.message} role="status">
+                  {editMessage}
+                </p>
+              )}
+              {editingUuid && editing.isLoading && (
+                <p className={styles.message} role="status">
+                  {t('APPOINTMENTS_LOADING')}
+                </p>
+              )}
+              {editingUuid && editing.isError && (
+                <div className={styles.message}>
+                  <p role="alert">{t('APPOINTMENTS_EDIT_LOAD_ERROR')}</p>
+                  <button type="button" onClick={() => setEditingUuid('')}>
+                    {t('APPOINTMENTS_CANCEL')}
+                  </button>
+                </div>
+              )}
+              {editingUuid && editing.data && (
+                <EditAppointmentForm
+                  key={editing.data.uuid}
+                  appointment={editing.data}
+                  onClose={() => setEditingUuid('')}
+                  onSaved={() => {
+                    setEditingUuid('');
+                    setEditMessage(t('APPOINTMENTS_EDITED'));
+                  }}
+                />
+              )}
               {result.isLoading ? (
                 <p className={styles.message} role="status">
                   {t('APPOINTMENTS_LOADING')}
@@ -441,6 +479,24 @@ export const AppointmentListPage = () => {
                           {canManage && (
                             <td>
                               <div className={styles.rowActions}>
+                                {['Scheduled', 'CheckedIn'].includes(
+                                  appointment.status,
+                                ) &&
+                                  dateKey(
+                                    new Date(appointment.startDateTime),
+                                  ) >= dateKey(new Date()) && (
+                                    <button
+                                      type="button"
+                                      className={styles.textButton}
+                                      onClick={() => {
+                                        setEditingUuid(appointment.uuid);
+                                        setEditMessage('');
+                                      }}
+                                    >
+                                      {t('APPOINTMENTS_EDIT')}:{' '}
+                                      {appointment.patient.name}
+                                    </button>
+                                  )}
                                 {getAllowedTransitions(
                                   transitionConfig.data,
                                   appointment.status,

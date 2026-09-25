@@ -22,6 +22,8 @@ import {
   getAppointmentSummary,
   getAppointmentBookingConflicts,
   bookAppointment,
+  getLegacyAppointment,
+  updateAppointment,
   updateAppointmentStatus,
   checkInAppointment,
   getAppointmentById,
@@ -260,6 +262,31 @@ describe('Appointment Service', () => {
     };
     expect(await getAppointmentBookingConflicts(request)).toEqual({});
     expect(await getAppointmentBookingConflicts(request)).toEqual({});
+  });
+
+  it('loads and updates the legacy appointment through its edit endpoint', async () => {
+    const appointment = { uuid: 'appointment-1' };
+    const request = {
+      uuid: 'appointment-1',
+      patientUuid: 'patient-1',
+      serviceUuid: 'service-1',
+      locationUuid: 'location-1',
+      startDateTime: '2099-01-01T09:00:00.000Z',
+      endDateTime: '2099-01-01T09:15:00.000Z',
+      appointmentKind: 'Scheduled',
+      status: 'Scheduled',
+      providers: [],
+      comments: null,
+    };
+    mockedGet.mockResolvedValue(appointment);
+    mockedPost.mockResolvedValue(appointment);
+
+    expect(await getLegacyAppointment('appointment-1')).toEqual(appointment);
+    expect(await updateAppointment(request)).toEqual(appointment);
+    expect(mockedGet).toHaveBeenCalledWith(
+      `${APPOINTMENT_SAVE_URL}?${new URLSearchParams({ uuid: 'appointment-1' })}`,
+    );
+    expect(mockedPost).toHaveBeenCalledWith(APPOINTMENT_SAVE_URL, request);
   });
 
   it('falls back to Bahmni appointments when the FHIR resource is unavailable', async () => {

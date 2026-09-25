@@ -62,6 +62,9 @@ it('offers configured calendar actions only to appointment managers', () => {
   expect(
     screen.queryByRole('button', { name: 'CheckedIn: Demo Patient' }),
   ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'Edit appointment: Demo Patient' }),
+  ).not.toBeInTheDocument();
 
   privileges.mockReturnValue({
     userPrivileges: [
@@ -72,6 +75,9 @@ it('offers configured calendar actions only to appointment managers', () => {
     isLoading: false,
   });
   rerender(<CalendarPage />);
+  expect(
+    screen.getByRole('button', { name: 'Edit appointment: Demo Patient' }),
+  ).toBeVisible();
   expect(
     screen.queryByRole('button', { name: 'Missed: Demo Patient' }),
   ).not.toBeInTheDocument();

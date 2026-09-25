@@ -25,6 +25,7 @@ import {
   AppointmentPage,
   AppointmentBookingConflicts,
   AppointmentBookingRequest,
+  AppointmentUpdateRequest,
   AppointmentService,
   AppointmentServiceSaveRequest,
   AppointmentSummary,
@@ -74,7 +75,7 @@ export const getAppointmentSummary = (
   );
 
 export const getAppointmentBookingConflicts = (
-  request: AppointmentBookingRequest,
+  request: AppointmentBookingRequest | AppointmentUpdateRequest,
 ): Promise<AppointmentBookingConflicts> =>
   post<AppointmentBookingConflicts | '' | undefined>(
     APPOINTMENT_CONFLICTS_URL,
@@ -83,6 +84,18 @@ export const getAppointmentBookingConflicts = (
 
 export const bookAppointment = (
   request: AppointmentBookingRequest,
+): Promise<LegacyAppointment> =>
+  post<LegacyAppointment>(APPOINTMENT_SAVE_URL, request);
+
+export const getLegacyAppointment = (
+  uuid: string,
+): Promise<LegacyAppointment> =>
+  get<LegacyAppointment>(
+    `${APPOINTMENT_SAVE_URL}?${new URLSearchParams({ uuid })}`,
+  );
+
+export const updateAppointment = (
+  request: AppointmentUpdateRequest,
 ): Promise<LegacyAppointment> =>
   post<LegacyAppointment>(APPOINTMENT_SAVE_URL, request);
 

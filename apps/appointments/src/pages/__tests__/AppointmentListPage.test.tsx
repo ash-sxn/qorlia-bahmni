@@ -115,6 +115,9 @@ it('requires management access, check-in time, and confirmation for other status
   expect(
     screen.queryByRole('button', { name: 'CheckedIn: Demo Patient' }),
   ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'Edit appointment: Demo Patient' }),
+  ).not.toBeInTheDocument();
 
   privileges.mockReturnValue({
     userPrivileges: [
@@ -129,6 +132,9 @@ it('requires management access, check-in time, and confirmation for other status
       <AppointmentListPage />
     </MemoryRouter>,
   );
+  expect(
+    screen.getByRole('button', { name: 'Edit appointment: Demo Patient' }),
+  ).toBeVisible();
   expect(
     screen.queryByRole('button', { name: 'Missed: Demo Patient' }),
   ).not.toBeInTheDocument();

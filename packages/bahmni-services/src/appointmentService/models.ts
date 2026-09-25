@@ -35,6 +35,21 @@ export interface AppointmentBookingRequest {
   comments?: string;
 }
 
+export interface AppointmentUpdateRequest {
+  uuid: string;
+  patientUuid: string;
+  serviceUuid: string;
+  serviceTypeUuid?: string;
+  locationUuid: string;
+  dateAppointmentScheduled?: string;
+  startDateTime: string;
+  endDateTime: string;
+  appointmentKind: string;
+  status: string;
+  providers: { uuid: string; response: string; comments: string | null }[];
+  comments: string | null;
+}
+
 export type AppointmentBookingConflicts = Record<string, unknown[]>;
 
 interface Speciality {

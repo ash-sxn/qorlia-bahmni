@@ -230,6 +230,8 @@ export interface Provider {
   id?: number;
   name?: string;
   uuid?: string;
+  response?: string;
+  comments?: string | null;
 }
 
 export interface Extensions {

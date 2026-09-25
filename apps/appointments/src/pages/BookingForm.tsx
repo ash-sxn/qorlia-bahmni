@@ -12,6 +12,7 @@ import { useDebounce } from '@bahmni/widgets';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { PROVIDER_ATTRIBUTE_AVAILABLE_FOR_APPOINTMENT } from './admin/appointmentUnavailability/constants';
+import { hasAppointmentConflicts } from './appointmentActions';
 import styles from './styles/index.module.scss';
 
 interface BookingFormProps {
@@ -111,14 +112,7 @@ export const BookingForm = ({
     try {
       const conflicts = await getAppointmentBookingConflicts(request);
       // ponytail: Conflicts block booking; add a role-gated override only after hospital policy is agreed.
-      if (
-        !conflicts ||
-        typeof conflicts !== 'object' ||
-        Array.isArray(conflicts) ||
-        Object.values(conflicts).some(
-          (items) => !Array.isArray(items) || items.length > 0,
-        )
-      ) {
+      if (hasAppointmentConflicts(conflicts)) {
         setError(t('APPOINTMENTS_BOOKING_CONFLICT'));
         return;
       }

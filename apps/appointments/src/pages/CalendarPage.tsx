@@ -3,6 +3,7 @@ import {
   BAHMNI_HOME_PATH,
   get,
   getAppointmentSummary,
+  getLegacyAppointment,
   hasPrivilege,
   searchAppointmentsByAttribute,
   type Appointment,
@@ -17,6 +18,7 @@ import {
   type TransitionConfig,
 } from './appointmentActions';
 import { BookingForm } from './BookingForm';
+import { EditAppointmentForm } from './EditAppointmentForm';
 import styles from './styles/index.module.scss';
 
 const dateKey = (date: Date) =>
@@ -62,6 +64,7 @@ export const CalendarPage = () => {
   const [view, setView] = useState<'day' | 'week'>('day');
   const [selectedDay, setSelectedDay] = useState(() => dateKey(new Date()));
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [editingUuid, setEditingUuid] = useState('');
   const [bookingMessage, setBookingMessage] = useState('');
   const [actionMessage, setActionMessage] = useState('');
   const [checkInUuid, setCheckInUuid] = useState('');
@@ -90,6 +93,11 @@ export const CalendarPage = () => {
     queryFn: () =>
       getAppointmentSummary(weekStart.toISOString(), summaryEnd.toISOString()),
     enabled: canBook && bookingOpen,
+  });
+  const editing = useQuery({
+    queryKey: ['appointment-edit', editingUuid],
+    queryFn: () => getLegacyAppointment(editingUuid),
+    enabled: canBook && Boolean(editingUuid),
   });
   const transitionConfig = useQuery({
     queryKey: ['legacy-appointment-actions'],
@@ -185,6 +193,21 @@ export const CalendarPage = () => {
           </a>
           {canBook && (
             <div className={styles.rowActions}>
+              {['Scheduled', 'CheckedIn'].includes(appointment.status) &&
+                dateKey(new Date(appointment.startDateTime)) >=
+                  dateKey(new Date()) && (
+                  <button
+                    type="button"
+                    className={styles.textButton}
+                    onClick={() => {
+                      setBookingOpen(false);
+                      setEditingUuid(appointment.uuid);
+                      setBookingMessage('');
+                    }}
+                  >
+                    {t('APPOINTMENTS_EDIT')}: {appointment.patient.name}
+                  </button>
+                )}
               {getAllowedTransitions(
                 transitionConfig.data,
                 appointment.status,
@@ -345,6 +368,7 @@ export const CalendarPage = () => {
                     type="button"
                     className={styles.primaryButton}
                     onClick={() => {
+                      setEditingUuid('');
                       setBookingOpen(true);
                       setBookingMessage('');
                     }}
@@ -390,6 +414,30 @@ export const CalendarPage = () => {
                   onBooked={() => {
                     setBookingOpen(false);
                     setBookingMessage(t('APPOINTMENTS_BOOKED'));
+                  }}
+                />
+              )}
+              {editingUuid && editing.isLoading && (
+                <p className={styles.message} role="status">
+                  {t('APPOINTMENTS_LOADING')}
+                </p>
+              )}
+              {editingUuid && editing.isError && (
+                <div className={styles.message}>
+                  <p role="alert">{t('APPOINTMENTS_EDIT_LOAD_ERROR')}</p>
+                  <button type="button" onClick={() => setEditingUuid('')}>
+                    {t('APPOINTMENTS_CANCEL')}
+                  </button>
+                </div>
+              )}
+              {editingUuid && editing.data && (
+                <EditAppointmentForm
+                  key={editing.data.uuid}
+                  appointment={editing.data}
+                  onClose={() => setEditingUuid('')}
+                  onSaved={() => {
+                    setEditingUuid('');
+                    setBookingMessage(t('APPOINTMENTS_EDITED'));
                   }}
                 />
               )}
