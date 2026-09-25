@@ -54,7 +54,7 @@ export const Header: React.FC<HeaderProps> = React.memo(
       return (
         <HeaderName
           href={brandHref}
-          prefix={brandPrefix}
+          prefix={brandPrefix ?? ''}
           className={
             brandName === hospitalBranding.name ? styles.qorliaBrand : undefined
           }

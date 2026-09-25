@@ -328,6 +328,7 @@ describe('Header', () => {
 
       const name = screen.getByTestId('header-name');
       expect(name).toHaveTextContent('Qorlia');
+      expect(name).not.toHaveTextContent('IBM');
       expect(name).toHaveAttribute('href', '/bahmni-v2/home');
       expect(name.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
     });

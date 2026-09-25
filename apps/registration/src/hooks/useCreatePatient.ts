@@ -14,6 +14,7 @@ import { useNotification } from '@bahmni/widgets';
 import { useMutation } from '@tanstack/react-query';
 import type { Patient } from 'fhir/r4';
 import { useNavigate } from 'react-router-dom';
+import { getPatientUrlExternal } from '../constants/app';
 import type { RelationshipData } from '../components/forms/patientRelationships/PatientRelationships';
 import {
   BasicInfoData,
@@ -127,7 +128,7 @@ export const useCreatePatient = () => {
         window.history.replaceState(
           { patientDisplay, patientUuid },
           '',
-          `/registration/patient/${patientUuid}`,
+          getPatientUrlExternal(patientUuid),
         );
       } else {
         navigate('/registration/search');

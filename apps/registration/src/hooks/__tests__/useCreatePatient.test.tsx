@@ -203,7 +203,7 @@ describe('useCreatePatient', () => {
     expect(window.history.replaceState).toHaveBeenCalledWith(
       { patientDisplay: 'John Michael Doe', patientUuid: 'patient-uuid-123' },
       '',
-      '/registration/patient/patient-uuid-123',
+      '/bahmni-v2/registration/patient/patient-uuid-123',
     );
   });
 
