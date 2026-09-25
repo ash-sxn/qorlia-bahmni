@@ -1,15 +1,21 @@
 import { BaseLayout, Header } from '@bahmni/design-system';
 import {
   BAHMNI_HOME_PATH,
+  get,
   getAppointmentSummary,
   hasPrivilege,
   searchAppointmentsByAttribute,
   type Appointment,
+  updateAppointmentStatus,
   useTranslation,
 } from '@bahmni/services';
 import { useUserPrivilege, UserGlobalAction } from '@bahmni/widgets';
-import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, type FormEvent } from 'react';
+import {
+  getAllowedTransitions,
+  type TransitionConfig,
+} from './appointmentActions';
 import { BookingForm } from './BookingForm';
 import styles from './styles/index.module.scss';
 
@@ -52,10 +58,14 @@ export const CalendarPage = () => {
   const canBook =
     hasPrivilege(userPrivileges, 'app:appointments:manageAppointmentsTab') &&
     hasPrivilege(userPrivileges, 'Manage Appointments');
+  const queryClient = useQueryClient();
   const [view, setView] = useState<'day' | 'week'>('day');
   const [selectedDay, setSelectedDay] = useState(() => dateKey(new Date()));
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingMessage, setBookingMessage] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
+  const [checkInUuid, setCheckInUuid] = useState('');
+  const [checkInTime, setCheckInTime] = useState('');
   const day = new Date(selectedDay + 'T00:00:00');
   const weekStart = weekOf(day);
   const days = Array.from({ length: 7 }, (_, index) =>
@@ -81,7 +91,50 @@ export const CalendarPage = () => {
       getAppointmentSummary(weekStart.toISOString(), summaryEnd.toISOString()),
     enabled: canBook && bookingOpen,
   });
+  const transitionConfig = useQuery({
+    queryKey: ['legacy-appointment-actions'],
+    queryFn: () =>
+      get<TransitionConfig>(
+        '/bahmni_config/openmrs/apps/appointments/app.json',
+      ),
+    enabled: canBook,
+  });
+  const statusChange = useMutation({
+    mutationFn: ({
+      uuid,
+      status,
+      onDate,
+    }: {
+      uuid: string;
+      status: string;
+      onDate?: Date;
+    }) => updateAppointmentStatus(uuid, status, onDate),
+    onSuccess: async () => {
+      setActionMessage(t('APPOINTMENTS_STATUS_UPDATED'));
+      setCheckInUuid('');
+      await Promise.all(
+        [
+          'appointment',
+          'appointment-list-day',
+          'appointment-waitlist',
+          'appointment-calendar',
+          'appointment-summary',
+          'appointment-day',
+          'appointment-week',
+        ].map((key) => queryClient.invalidateQueries({ queryKey: [key] })),
+      );
+    },
+    onError: () => setActionMessage(t('APPOINTMENTS_STATUS_UPDATE_ERROR')),
+  });
   const rows = visibleCalendarAppointments(appointments.data ?? []);
+  const checkInAppointment = rows.find((item) => item.uuid === checkInUuid);
+  const submitCheckIn = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const onDate = new Date(`${dateKey(new Date())}T${checkInTime}:00`);
+    if (!checkInTime || Number.isNaN(onDate.getTime())) return;
+    setActionMessage('');
+    statusChange.mutate({ uuid: checkInUuid, status: 'CheckedIn', onDate });
+  };
   const providerNames = Array.from(
     new Set(
       rows
@@ -123,10 +176,53 @@ export const CalendarPage = () => {
             {t('APPOINTMENTS_LOCATION')}:{' '}
             {appointment.location?.name || t('APPOINTMENTS_NOT_SPECIFIED')}
           </p>
+          {appointment.serviceType?.name && (
+            <p>{appointment.serviceType.name}</p>
+          )}
           <a href={'/bahmni-v2/clinical/' + appointment.patient.uuid}>
             {t('APPOINTMENTS_PATIENT')}: {appointment.patient.name} (
             {appointment.patient.identifier})
           </a>
+          {canBook && (
+            <div className={styles.rowActions}>
+              {getAllowedTransitions(
+                transitionConfig.data,
+                appointment.status,
+              ).map((action) => (
+                <button
+                  key={action}
+                  type="button"
+                  className={styles.textButton}
+                  disabled={statusChange.isPending}
+                  aria-label={`${action}: ${appointment.patient.name}`}
+                  onClick={() => {
+                    if (action === 'CheckedIn') {
+                      const now = new Date();
+                      setCheckInUuid(appointment.uuid);
+                      setCheckInTime(
+                        `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+                      );
+                      setActionMessage('');
+                      return;
+                    }
+                    if (
+                      !window.confirm(
+                        t('APPOINTMENTS_CONFIRM_STATUS', { status: action }),
+                      )
+                    )
+                      return;
+                    setActionMessage('');
+                    statusChange.mutate({
+                      uuid: appointment.uuid,
+                      status: action,
+                    });
+                  }}
+                >
+                  {action}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </details>
     </li>
@@ -262,6 +358,19 @@ export const CalendarPage = () => {
                   {bookingMessage}
                 </p>
               )}
+              {canBook && transitionConfig.isError && (
+                <p className={styles.message} role="alert">
+                  {t('APPOINTMENTS_ACTIONS_UNAVAILABLE')}
+                </p>
+              )}
+              {actionMessage && (
+                <p
+                  className={styles.message}
+                  role={statusChange.isError ? 'alert' : 'status'}
+                >
+                  {actionMessage}
+                </p>
+              )}
               {bookingOpen && summary.isLoading && (
                 <p className={styles.message} role="status">
                   {t('APPOINTMENTS_LOADING')}
@@ -340,6 +449,37 @@ export const CalendarPage = () => {
                     </section>
                   ))}
                 </div>
+              )}
+              {checkInAppointment && (
+                <form className={styles.checkInForm} onSubmit={submitCheckIn}>
+                  <h3>{t('APPOINTMENTS_CHECK_IN')}</h3>
+                  <p>{checkInAppointment.patient.name}</p>
+                  <label>
+                    {t('APPOINTMENTS_CHECK_IN_TIME')}
+                    <input
+                      type="time"
+                      value={checkInTime}
+                      onChange={(event) => setCheckInTime(event.target.value)}
+                      required
+                    />
+                  </label>
+                  <div className={styles.rowActions}>
+                    <button
+                      type="submit"
+                      className={styles.primaryButton}
+                      disabled={statusChange.isPending}
+                    >
+                      {t('APPOINTMENTS_CONFIRM_CHECK_IN')}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() => setCheckInUuid('')}
+                    >
+                      {t('APPOINTMENTS_CANCEL')}
+                    </button>
+                  </div>
+                </form>
               )}
             </section>
           )}

@@ -3,10 +3,10 @@ import { useUserPrivilege } from '@bahmni/widgets';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { getAllowedTransitions } from '../appointmentActions';
 import {
   AppointmentListPage,
   filterAppointments,
-  getAllowedTransitions,
 } from '../AppointmentListPage';
 
 const mockInvalidateQueries = jest.fn().mockResolvedValue(undefined);

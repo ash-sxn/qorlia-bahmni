@@ -16,6 +16,10 @@ import { useUserPrivilege, UserGlobalAction } from '@bahmni/widgets';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useLocation } from 'react-router-dom';
+import {
+  getAllowedTransitions,
+  type TransitionConfig,
+} from './appointmentActions';
 import styles from './styles/index.module.scss';
 
 const dateKey = (date: Date) =>
@@ -35,21 +39,6 @@ const statuses = [
   'Missed',
   'Cancelled',
 ];
-
-type TransitionConfig = {
-  config: {
-    allowedActions: string[];
-    allowedActionsByStatus: Record<string, string[]>;
-  };
-};
-
-export const getAllowedTransitions = (
-  config: TransitionConfig | undefined,
-  status: string,
-) =>
-  config?.config.allowedActionsByStatus[status]?.filter((action) =>
-    config.config.allowedActions.includes(action),
-  ) ?? [];
 
 export const filterAppointments = (
   appointments: Appointment[],
