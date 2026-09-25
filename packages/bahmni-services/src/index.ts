@@ -58,6 +58,8 @@ export {
   type PatientSearchField,
   type AppointmentSearchField,
   type AppointmentSearchResult,
+  type Appointment,
+  type Reason,
   type ExpectedFieldConfig,
   type SearchActionConfig,
   AttributeFormat,

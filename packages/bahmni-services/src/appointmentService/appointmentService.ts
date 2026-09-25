@@ -1,5 +1,6 @@
-import type { Appointment, Bundle } from 'fhir/r4';
+import type { Appointment as FhirAppointment, Bundle } from 'fhir/r4';
 import { del, get, post } from '../api';
+import type { Appointment as SearchAppointment } from '../patientService/models';
 import {
   ALL_APPOINTMENT_SERVICES_URL,
   APPOINTMENTS_SEARCH_URL,
@@ -24,13 +25,13 @@ import {
  * Search for appointments by specified attributes.
  *
  * @param searchParam - Search parameters for appointments
- * @returns Raw FHIR Bundle containing appointments matching search criteria. Consumer is responsible for transformation to view model
+ * @returns Bahmni appointment records matching search criteria. Consumer is responsible for transformation to view model
  * @throws Error if the API request fails
  */
 export const searchAppointmentsByAttribute = async (
   searchParam: Record<string, string>,
-): Promise<Bundle<Appointment>> => {
-  return await post<Bundle<Appointment>>(APPOINTMENTS_SEARCH_URL, searchParam);
+): Promise<SearchAppointment[]> => {
+  return await post<SearchAppointment[]>(APPOINTMENTS_SEARCH_URL, searchParam);
 };
 
 /**
@@ -42,8 +43,10 @@ export const searchAppointmentsByAttribute = async (
  */
 export async function getUpcomingAppointments(
   patientUuid: string,
-): Promise<Bundle<Appointment>> {
-  return await get<Bundle<Appointment>>(UPCOMING_APPOINTMENTS_URL(patientUuid));
+): Promise<Bundle<FhirAppointment>> {
+  return await get<Bundle<FhirAppointment>>(
+    UPCOMING_APPOINTMENTS_URL(patientUuid),
+  );
 }
 
 /**
@@ -57,8 +60,8 @@ export async function getUpcomingAppointments(
 export async function getPastAppointments(
   patientUuid: string,
   count?: number,
-): Promise<Bundle<Appointment>> {
-  return await get<Bundle<Appointment>>(
+): Promise<Bundle<FhirAppointment>> {
+  return await get<Bundle<FhirAppointment>>(
     PAST_APPOINTMENTS_URL(patientUuid, count),
   );
 }
@@ -132,7 +135,7 @@ export async function getUpcomingAppointmentsPage(
   page: number = 1,
 ): Promise<AppointmentPage> {
   const offset = (page - 1) * count;
-  const bundle = await get<Bundle<Appointment>>(
+  const bundle = await get<Bundle<FhirAppointment>>(
     getUpcomingAppointmentsPageUrl(patientUuid, count, offset),
   );
   return { bundle, total: bundle.total ?? bundle.entry?.length ?? 0 };
@@ -151,7 +154,7 @@ export async function getPastAppointmentsPage(
   page: number = 1,
 ): Promise<AppointmentPage> {
   const offset = (page - 1) * count;
-  const bundle = await get<Bundle<Appointment>>(
+  const bundle = await get<Bundle<FhirAppointment>>(
     getPastAppointmentsPageUrl(patientUuid, count, offset),
   );
   return { bundle, total: bundle.total ?? bundle.entry?.length ?? 0 };

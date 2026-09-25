@@ -1,5 +1,7 @@
 import type { Appointment, Bundle } from 'fhir/r4';
 
+export type { CheckInAppointmentResponse } from '../patientService/models';
+
 export interface AppointmentPage {
   bundle: Bundle<Appointment>;
   total: number;
@@ -46,7 +48,7 @@ export interface AppointmentUnavailability {
   service: {
     uuid: string;
     name: string;
-  };
+  } | null;
   provider: {
     uuid: string;
     name: string;

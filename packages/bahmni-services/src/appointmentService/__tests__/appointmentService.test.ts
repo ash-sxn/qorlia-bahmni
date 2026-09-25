@@ -113,8 +113,10 @@ describe('Appointment Service', () => {
 
   it('searchAppointmentsByAttribute should call POST with correct endpoint and params and return result', async () => {
     const searchParam = { patient: patientUUID };
-    const mockBundle = createBundleWithAppointments([upcomingAppointment]);
-    mockedPost.mockResolvedValue(mockBundle);
+    const appointments = [
+      { uuid: 'appt-uuid-1', appointmentNumber: 'APT-001' },
+    ];
+    mockedPost.mockResolvedValue(appointments);
 
     const result = await searchAppointmentsByAttribute(searchParam);
 
@@ -122,7 +124,7 @@ describe('Appointment Service', () => {
       APPOINTMENTS_SEARCH_URL,
       searchParam,
     );
-    expect(result).toEqual(mockBundle);
+    expect(result).toEqual(appointments);
   });
 
   it('deleteAppointmentService should call DELETE with correct endpoint', async () => {
