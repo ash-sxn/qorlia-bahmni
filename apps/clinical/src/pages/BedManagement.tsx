@@ -1,10 +1,11 @@
 import { BaseLayout, Header } from '@bahmni/design-system';
 import { BAHMNI_HOME_PATH, get, hasPrivilege } from '@bahmni/services';
 import { useUserPrivilege } from '@bahmni/widgets';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './BedManagement.module.scss';
+import { fetchBedTags, saveBedTags } from './bedTags';
 
 export interface Bed {
   bedId: number;
@@ -12,7 +13,10 @@ export interface Bed {
   location: string;
   status: 'AVAILABLE' | 'OCCUPIED' | string;
   bedType?: { displayName?: string };
-  bedTagMaps?: { bedTag: { name: string } }[];
+  bedTagMaps?: {
+    uuid: string;
+    bedTag: { id: number; uuid: string; name: string };
+  }[];
   patient?: { uuid: string; display?: string; person?: { display?: string } };
   patients?: Bed['patient'][];
 }
@@ -33,9 +37,16 @@ export const groupBedsByRoom = (beds: Bed[]) =>
 
 const BedManagement = () => {
   const { userPrivileges, isLoading: privilegesLoading } = useUserPrivilege();
+  const queryClient = useQueryClient();
   const [wardUuid, setWardUuid] = useState('');
   const [roomName, setRoomName] = useState('');
   const [bedId, setBedId] = useState<number | null>(null);
+  const [editingBedId, setEditingBedId] = useState<number | null>(null);
+  const [selectedTagUuids, setSelectedTagUuids] = useState<string[]>([]);
+  const [savingTags, setSavingTags] = useState(false);
+  const [tagMessage, setTagMessage] = useState('');
+  const [tagError, setTagError] = useState('');
+  const canEditTags = hasPrivilege(userPrivileges, 'Edit Bed Tags');
   const wards = useQuery({
     queryKey: ['ipd-wards'],
     queryFn: () =>
@@ -57,11 +68,68 @@ const BedManagement = () => {
   const selectedRoom = rooms.find(([name]) => name === roomName);
   const selectedBed = selectedRoom?.[1].find((bed) => bed.bedId === bedId);
   const patient = selectedBed?.patient ?? selectedBed?.patients?.[0];
+  const currentTagUuids = (selectedBed?.bedTagMaps ?? []).map(
+    ({ bedTag }) => bedTag.uuid,
+  );
+  const tagsChanged =
+    selectedTagUuids.length !== currentTagUuids.length ||
+    selectedTagUuids.some((uuid) => !currentTagUuids.includes(uuid));
+  const tags = useQuery({
+    queryKey: ['ipd-bed-tags'],
+    queryFn: fetchBedTags,
+    enabled: canEditTags && editingBedId !== null,
+  });
+  const visibleTags = [
+    ...(tags.data ?? []),
+    ...(selectedBed?.bedTagMaps ?? [])
+      .map(({ bedTag }) => bedTag)
+      .filter(
+        ({ uuid }) => !(tags.data ?? []).some((tag) => tag.uuid === uuid),
+      ),
+  ];
 
   const selectWard = (uuid: string) => {
     setWardUuid(uuid);
     setRoomName('');
     setBedId(null);
+    setEditingBedId(null);
+    setTagMessage('');
+    setTagError('');
+  };
+
+  const editTags = () => {
+    if (!selectedBed || !canEditTags) return;
+    setSelectedTagUuids(
+      (selectedBed.bedTagMaps ?? []).map(({ bedTag }) => bedTag.uuid),
+    );
+    setEditingBedId(selectedBed.bedId);
+    setTagMessage('');
+    setTagError('');
+  };
+
+  const updateTags = async () => {
+    if (editingBedId !== selectedBed?.bedId || !canEditTags) return;
+    setSavingTags(true);
+    setTagError('');
+    try {
+      await saveBedTags(
+        wardUuid,
+        selectedBed.bedId,
+        (selectedBed.bedTagMaps ?? []).map(({ uuid }) => uuid),
+        selectedTagUuids,
+      );
+      setTagMessage('Bed tags updated.');
+    } catch (error) {
+      setTagError(
+        error instanceof Error ? error.message : 'Could not update bed tags.',
+      );
+    } finally {
+      setEditingBedId(null);
+      setSavingTags(false);
+      await queryClient.invalidateQueries({
+        queryKey: ['ipd-ward-beds', wardUuid],
+      });
+    }
   };
 
   return (
@@ -151,6 +219,7 @@ const BedManagement = () => {
                           onClick={() => {
                             setRoomName(name);
                             setBedId(null);
+                            setEditingBedId(null);
                           }}
                         >
                           <strong>{name}</strong>
@@ -179,7 +248,12 @@ const BedManagement = () => {
                                 : styles.available
                             }
                             aria-pressed={bedId === bed.bedId}
-                            onClick={() => setBedId(bed.bedId)}
+                            onClick={() => {
+                              setBedId(bed.bedId);
+                              setEditingBedId(null);
+                              setTagMessage('');
+                              setTagError('');
+                            }}
                           >
                             <strong>{bed.bedNumber}</strong>
                             <span>{bed.status.toLowerCase()}</span>
@@ -230,6 +304,66 @@ const BedManagement = () => {
                   <Link to={`/clinical/inpatient/${patient.uuid}`}>
                     View patient stay
                   </Link>
+                )}
+                {selectedBed && canEditTags && editingBedId === null && (
+                  <div className={styles.actionChoices}>
+                    <button type="button" onClick={editTags}>
+                      Edit bed tags
+                    </button>
+                  </div>
+                )}
+                {tagMessage && <p role="status">{tagMessage}</p>}
+                {tagError && <p role="alert">{tagError}</p>}
+                {selectedBed && editingBedId === selectedBed?.bedId && (
+                  <div className={styles.actionForm}>
+                    <h3>Edit tags for {selectedBed.bedNumber}</h3>
+                    {tags.isLoading ? (
+                      <p role="status">Loading bed tags…</p>
+                    ) : tags.isError ? (
+                      <p role="alert">Could not load bed tags.</p>
+                    ) : (
+                      <fieldset>
+                        <legend>Available tags</legend>
+                        {visibleTags.length === 0 && (
+                          <p>No bed tags are configured.</p>
+                        )}
+                        {visibleTags.map((tag) => (
+                          <label key={tag.uuid}>
+                            <input
+                              type="checkbox"
+                              checked={selectedTagUuids.includes(tag.uuid)}
+                              onChange={(event) =>
+                                setSelectedTagUuids((current) =>
+                                  event.target.checked
+                                    ? [...current, tag.uuid]
+                                    : current.filter(
+                                        (uuid) => uuid !== tag.uuid,
+                                      ),
+                                )
+                              }
+                            />
+                            {tag.name}
+                          </label>
+                        ))}
+                      </fieldset>
+                    )}
+                    <div className={styles.actionChoices}>
+                      <button
+                        type="button"
+                        disabled={savingTags || !tags.isSuccess || !tagsChanged}
+                        onClick={updateTags}
+                      >
+                        {savingTags ? 'Updating…' : 'Update tags'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={savingTags}
+                        onClick={() => setEditingBedId(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                 )}
               </aside>
             </div>
