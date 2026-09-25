@@ -17,6 +17,8 @@
   "ADMIN_ALL_SERVICES_EMPTY_MESSAGE": "No se encontraron servicios.",
   "ADMIN_ALL_SERVICES_ERROR_MESSAGE": "Error al cargar los servicios. Por favor, inténtelo de nuevo.",
   "ADMIN_ALL_SERVICES_ERROR_MESSAGE_NO_VIEW_PRIVILEGE": "No está autorizado para ver esta página.",
+  "ADMIN_ALL_SERVICES_PAGE_DESCRIPTION": "Revise los servicios disponibles para citas y cómo está configurado cada uno.",
+  "ADMIN_ALL_SERVICES_PAGE_TITLE": "Servicios de citas",
   "ADMIN_ALL_SERVICES_TITLE": "Servicios",
   "ADMIN_UNAVAILABILITY_ADD_BUTTON": "Agregar nuevo",
   "ADMIN_UNAVAILABILITY_ALL": "Todos",

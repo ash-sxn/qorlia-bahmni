@@ -20,6 +20,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useMemo, useState } from 'react';
 import { useAppointmentsConfig } from '../../../providers/appointmentsConfig';
+import workspaceStyles from '../../styles/index.module.scss';
 import DeleteServiceModal from './components/DeleteServiceModal';
 import {
   ADMIN_TAB_PRIVILEGE,
@@ -44,9 +45,8 @@ const AllServicesPage: React.FC = () => {
     useState<AppointmentServiceViewModel | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const serviceTableFields = appointmentsConfig?.serviceTableFields ?? [
-    ...KNOWN_FIELDS,
-  ];
+  const serviceTableFields =
+    appointmentsConfig?.serviceTableFields ?? KNOWN_FIELDS;
   const canViewServices = hasPrivilege(userPrivileges, ADMIN_TAB_PRIVILEGE);
   const canManageServices = hasPrivilege(
     userPrivileges,
@@ -66,7 +66,7 @@ const AllServicesPage: React.FC = () => {
 
   const headers = useMemo(
     () => createServiceHeaders(serviceTableFields, t),
-    [serviceTableFields],
+    [serviceTableFields, t],
   );
 
   const rows: AppointmentServiceViewModel[] = useMemo(
@@ -125,6 +125,11 @@ const AllServicesPage: React.FC = () => {
 
   const breadcrumbs = [
     { id: 'home', label: t('BREADCRUMB_HOME'), href: BAHMNI_HOME_PATH },
+    {
+      id: 'appointments',
+      label: t('BREADCRUMB_APPOINTMENTS'),
+      href: '/bahmni-v2/appointments/',
+    },
     { id: 'admin', label: t('BREADCRUMB_ADMIN'), isCurrentPage: true },
   ];
 
@@ -139,8 +144,15 @@ const AllServicesPage: React.FC = () => {
             id="all-appointment-service-page"
             data-testid="all-appointment-service-page-test-id"
             aria-label="all-appointment-service-page-aria-label"
-            className={styles.page}
+            className={workspaceStyles.page}
           >
+            <div className={workspaceStyles.intro}>
+              <span className={workspaceStyles.eyebrow}>
+                {t('BREADCRUMB_APPOINTMENTS')}
+              </span>
+              <h1>{t('ADMIN_ALL_SERVICES_PAGE_TITLE')}</h1>
+              <p>{t('ADMIN_ALL_SERVICES_PAGE_DESCRIPTION')}</p>
+            </div>
             <ActionDataTable
               id="all-services"
               title={t('ADMIN_ALL_SERVICES_TITLE')}
@@ -153,7 +165,7 @@ const AllServicesPage: React.FC = () => {
               }
               emptyStateMessage={t('ADMIN_ALL_SERVICES_EMPTY_MESSAGE')}
               renderCell={renderCell}
-              className={styles.table}
+              className={`${workspaceStyles.adminTable} ${styles.table}`}
             />
             {serviceToDelete && (
               <DeleteServiceModal
@@ -169,7 +181,7 @@ const AllServicesPage: React.FC = () => {
             id="all-appointment-service-no-view-privilege"
             data-testid="all-appointment-service-no-view-privilege-test-id"
             aria-label="all-appointment-service-no-view-privilege-aria-label"
-            className={styles.noPrivilegeContainer}
+            className={`${workspaceStyles.page} ${styles.noPrivilegeContainer}`}
           >
             {t('ADMIN_ALL_SERVICES_ERROR_MESSAGE_NO_VIEW_PRIVILEGE')}
           </div>
