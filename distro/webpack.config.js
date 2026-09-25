@@ -10,6 +10,10 @@ module.exports = (env, argv) => {
   const publicPath = env.PUBLIC_PATH || process.env.PUBLIC_PATH || '/bahmni-v2/';
   const isDevelopment = argv.mode !== 'production';
   const backendOrigin = process.env.BAHMNI_API_ORIGIN || 'https://localhost/';
+  const standardConfigRef = process.env.BAHMNI_STANDARD_CONFIG_REF;
+  if (standardConfigRef && !/^[a-f0-9]{40}$/i.test(standardConfigRef)) {
+    throw new Error('BAHMNI_STANDARD_CONFIG_REF must be a pinned 40-character commit SHA');
+  }
 
   return {
     output: {
@@ -30,6 +34,7 @@ module.exports = (env, argv) => {
       } : {},
     },
     devServer: {
+      host: '127.0.0.1',
       port: 3000,
       historyApiFallback: {
         index: '/bahmni-v2/index.html',
@@ -37,6 +42,13 @@ module.exports = (env, argv) => {
         htmlAcceptHeaders: ['text/html', 'application/xhtml+xml'],
       },
       proxy: [
+        ...(standardConfigRef ? [{
+          context: (pathname) => /^\/bahmni_config\/openmrs\/apps\/[^/]+\/v2\//.test(pathname),
+          target: 'https://raw.githubusercontent.com',
+          pathRewrite: { '^/bahmni_config': `/Bahmni/standard-config/${standardConfigRef}` },
+          changeOrigin: true,
+          secure: true,
+        }] : []),
         {
           context: (pathname) => !pathname.startsWith(publicPath),
           target: backendOrigin,

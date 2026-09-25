@@ -161,7 +161,14 @@ This method provides a faster development experience with hot reloading:
 
    This will start the development server and automatically open your browser at [http://localhost:3000](http://localhost:3000).
 
-   The development proxy uses `https://localhost/` by default. For a separate synthetic-data staging server, start it with `BAHMNI_API_ORIGIN=https://your-staging-host.example yarn nx serve distro`. The proxy keeps TLS certificate checks enabled for non-local hosts. That server must provide the matching `/bahmni_config/openmrs/apps/*/v2/` files; an older Bahmni Standard configuration is not enough.
+   The development proxy uses `https://localhost/` by default and listens only on `127.0.0.1`. For the synthetic Qorlia demo, use `BAHMNI_API_ORIGIN=https://demo-bahmni.qorlia.com`. Its current Standard installation lacks the V2 app configuration. For local testing only, add `BAHMNI_STANDARD_CONFIG_REF=<pinned-standard-config-commit>` to fetch the official Standard V2 files from GitHub while all other requests still go to the demo. Pin a reviewed commit, do not use a moving branch. This does not install or change configuration on the demo server. Check that the config's concepts, privileges and routes match the backend before trusting a workflow.
+
+   With the server running, this quick check must print `true` for both requests:
+
+   ```bash
+   curl -fsS http://127.0.0.1:3000/bahmni_config/openmrs/apps/home/v2/extension.json | jq -e 'has("clinical") and has("registrationNew")'
+   curl -fsS http://127.0.0.1:3000/bahmni_config/openmrs/apps/clinical/v2/app.json | jq -e 'has("dashboards") and has("actions")'
+   ```
 
 2. **Set Up Authentication**:
 

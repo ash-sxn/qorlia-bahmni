@@ -42,7 +42,7 @@ Four principles govern every screen:
 
 The website already uses most of this palette. The Bahmni React fork uses the same brand green through its existing Carbon theme hook. The upstream Carbon component system remains the functional base; Qorlia tokens should map into it instead of replacing every control.
 
-The React fork uses a Qorlia wordmark and pentagon in its shared header, with the brand link returning to its home route. Shared Carbon controls, navigation and module tiles now follow the approved palette. This does not change the deployed legacy Bahmni, OpenELIS or Odoo interfaces. See [backend readiness](BACKEND_READINESS.md) before treating the new UI as a working demo.
+The React fork uses a Qorlia wordmark and pentagon in its shared header, with the brand link returning to its home route. Shared Carbon controls, navigation and module tiles now follow the approved palette. This does not change the deployed legacy Bahmni, OpenELIS or Odoo interfaces. See [backend readiness](BACKEND_READINESS.md) and the [workflow parity ledger](FEATURE_PARITY.md) before treating the new UI as a working demo.
 
 The [hospital branding format](HOSPITAL_BRANDING.md) is the first modular interface for deployment-specific names, logos and palette tokens. It intentionally does not accept arbitrary CSS or change clinical terminology. Those need separate workflow and safety review.
 
