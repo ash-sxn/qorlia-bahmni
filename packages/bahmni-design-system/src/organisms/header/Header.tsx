@@ -70,7 +70,10 @@ export const Header: React.FC<HeaderProps> = React.memo(
             ) : (
               <span className={styles.qorliaMark} aria-hidden="true" />
             ))}
-          {brandName}
+          <span>{brandName}</span>
+          {brandName === hospitalBranding.name && (
+            <span className={styles.brandCredit}>Built on Bahmni</span>
+          )}
         </HeaderName>
       );
     };

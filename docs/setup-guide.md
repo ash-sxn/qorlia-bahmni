@@ -161,6 +161,8 @@ This method provides a faster development experience with hot reloading:
 
    This will start the development server and automatically open your browser at [http://localhost:3000](http://localhost:3000).
 
+   The development proxy uses `https://localhost/` by default. For a separate synthetic-data staging server, start it with `BAHMNI_API_ORIGIN=https://your-staging-host.example yarn nx serve distro`. The proxy keeps TLS certificate checks enabled for non-local hosts. That server must provide the matching `/bahmni_config/openmrs/apps/*/v2/` files; an older Bahmni Standard configuration is not enough.
+
 2. **Set Up Authentication**:
 
    To authorize API requests to the backend:

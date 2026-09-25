@@ -9,6 +9,7 @@ module.exports = (env, argv) => {
   //TODO should we hardcode?
   const publicPath = env.PUBLIC_PATH || process.env.PUBLIC_PATH || '/bahmni-v2/';
   const isDevelopment = argv.mode !== 'production';
+  const backendOrigin = process.env.BAHMNI_API_ORIGIN || 'https://localhost/';
 
   return {
     output: {
@@ -38,9 +39,9 @@ module.exports = (env, argv) => {
       proxy: [
         {
           context: (pathname) => !pathname.startsWith(publicPath),
-          target: 'https://localhost/',
+          target: backendOrigin,
           changeOrigin: true,
-          secure: false,
+          secure: backendOrigin !== 'https://localhost/',
           logLevel: 'debug',
         },
       ],

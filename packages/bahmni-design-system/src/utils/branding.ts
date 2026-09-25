@@ -106,4 +106,8 @@ export function applyHospitalBranding(config: HospitalBranding): void {
     config.primaryHover,
   );
   document.documentElement.style.setProperty('--qorlia-canvas', config.canvas);
+  document.documentElement.style.setProperty('--qorlia-surface', '#FFFFFF');
+  document.documentElement.style.setProperty('--qorlia-border', '#DCE3DE');
+  document.documentElement.style.setProperty('--qorlia-ink', '#202321');
+  document.documentElement.style.setProperty('--qorlia-muted', '#58615B');
 }

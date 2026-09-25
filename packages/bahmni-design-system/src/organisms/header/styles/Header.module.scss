@@ -1,24 +1,17 @@
-// HeaderWSideNav.module.scss
 @use "@carbon/react/scss/spacing" as *;
-@use "@carbon/react/scss/type" as *;
-@use "@carbon/react/scss/motion" as *;
-@use "@carbon/react/scss/theme" as *;
 @use "@carbon/react/scss/breakpoint" as *;
 
-// ── Header bar background ────────────────────────────────────────────────────
 :global(.cds--header) {
-  background-color: $background-brand;
-  border-block-end-color: $background-brand;
+  background: var(--qorlia-surface, #fff);
+  border-bottom: 1px solid var(--qorlia-border, #dce3de);
+  box-shadow: 0 1px 8px rgba(28, 65, 45, 0.04);
 }
 
-// ── Header name ("Home" link) ────────────────────────────────────────────────
-// Carbon sets text-primary on `a.cds--header__name` (specificity 0,1,1) for both
-// rest and hover. Match that specificity (`.cds--header a.cds--header__name` =
-// 0,2,1) on both states so the brand name is inverse (white) at rest AND on
-// hover — otherwise it renders dark at rest and only turns white on hover.
 :global(.cds--header a.cds--header__name),
 :global(.cds--header a.cds--header__name:hover) {
-  color: $text-inverse;
+  color: var(--qorlia-primary, #1f5238);
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .qorliaBrand {
@@ -29,8 +22,8 @@
 
 .qorliaMark {
   display: inline-block;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.5rem;
+  height: 1.5rem;
   background: currentColor;
   clip-path: polygon(50% 0, 100% 36%, 81% 100%, 19% 100%, 0 36%);
   flex: none;
@@ -43,107 +36,76 @@
   flex: none;
 }
 
-// ── Global bar ───────────────────────────────────────────────────────────────
-:global(.cds--header .cds--header__global) {
-  color: $text-inverse;
+.brandCredit {
+  margin-left: 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--qorlia-border, #dce3de);
+  color: var(--qorlia-muted, #58615b);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0;
+
+  @include breakpoint-down(md) {
+    display: none;
+  }
 }
 
-// ── Overflow menu ────────────────────────────────────────────────────────────
-:global(.cds--header .cds--overflow-menu) svg,
-:global(.cds--header .cds--overflow-menu:focus) svg,
-:global(.cds--header .cds--overflow-menu--open) svg {
-  fill: $icon-inverse;
-  color: $icon-inverse;
+:global(.cds--header .cds--header__global),
+:global(.cds--header .cds--breadcrumb),
+:global(.cds--header .cds--breadcrumb-item .cds--link),
+:global(.cds--header .cds--breadcrumb-item [aria-current="page"]) {
+  color: var(--qorlia-ink, #202321);
 }
 
-:global(.cds--header .cds--overflow-menu:hover),
-:global(.cds--header .cds--overflow-menu:focus),
-:global(.cds--header .cds--overflow-menu--open) {
-  background-color: rgba(0, 0, 0, 0.15);
-}
-
-// ── Global action icons ──────────────────────────────────────────────────────
-// Carbon's ghost button sets link-primary (blue) on action buttons — override.
-:global(.cds--header .cds--header__global .cds--header__action),
-:global(.cds--header .cds--header__global .cds--header__action:hover),
-:global(.cds--header .cds--header__global .cds--header__action:active) {
-  color: $icon-inverse;
-}
-
-:global(.cds--header .cds--header__action) svg,
-:global(.cds--header .cds--header__action:hover) svg,
-:global(.cds--header .cds--header__action--active) svg {
-  fill: $icon-inverse;
+:global(.cds--header .cds--header__action),
+:global(.cds--header .cds--header__action:hover),
+:global(.cds--header .cds--header__action svg),
+:global(.cds--header .cds--overflow-menu svg) {
+  color: var(--qorlia-primary, #1f5238);
+  fill: currentColor;
 }
 
 :global(.cds--header .cds--header__action:hover),
-:global(.cds--header .cds--header__action--active) {
-  background-color: rgba(0, 0, 0, 0.15);
-}
-
-:global(.cds--header .cds--header__action:focus) {
-  border-color: $icon-inverse;
-}
-
-// ── Breadcrumb ───────────────────────────────────────────────────────────────
-:global(.cds--header .cds--breadcrumb) {
-  color: $text-inverse;
-}
-
-:global(.cds--header .cds--breadcrumb-item .cds--link),
-:global(.cds--header .cds--breadcrumb-item .cds--link:visited),
-:global(.cds--header .cds--breadcrumb-item .cds--link:hover),
-:global(.cds--header .cds--breadcrumb-item .cds--link:visited:hover) {
-  color: $text-inverse;
-}
-
-:global(.cds--header .cds--breadcrumb-item::after),
-:global(.cds--header .cds--breadcrumb-item [aria-current="page"]),
-:global(
-  .cds--header .cds--breadcrumb-item.cds--breadcrumb-item--current .cds--link
-) {
-  color: $text-inverse;
-  font-weight: 600;
-}
-
-// ── Layout ───────────────────────────────────────────────────────────────────
-.headerWSideNav {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  z-index: 2;
+:global(.cds--header .cds--overflow-menu:hover) {
+  background: var(--qorlia-canvas, #f5f7f5);
 }
 
 .breadcrumb {
   margin-left: $spacing-05;
 
   @include breakpoint-down(md) {
-    :global(.cds--breadcrumb-item) {
+    :global(.cds--breadcrumb-item:not(.cds--breadcrumb-item--current)) {
       display: none;
-    }
-
-    :global(.cds--breadcrumb-item--current) {
-      display: inline-block;
     }
   }
 }
 
-// ── Side nav icons ───────────────────────────────────────────────────────────
-// FontAwesome uses fill="currentColor" — Carbon doesn't set color on <a>
-// so icons inherit browser link blue without this override.
 .sideNavItems {
-  border-right: 1px solid $border-subtle-01;
+  background: var(--qorlia-primary, #1f5238);
+  border-right: 0;
 
   :global(.cds--side-nav__items) {
-    padding: 0rem !important;
+    padding: 1rem 0.5rem;
+  }
+
+  :global(.cds--side-nav__link) {
+    border-radius: 0.5rem;
+    color: #f2f7f4;
+    min-height: 2.75rem;
+  }
+
+  :global(.cds--side-nav__link:hover) {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+  }
+
+  :global(.cds--side-nav__item--active .cds--side-nav__link),
+  :global(.cds--side-nav__link--current) {
+    background: #ddf7e8;
+    color: #193d2c;
   }
 
   :global(.cds--side-nav__icon) svg {
-    color: $icon-secondary;
-  }
-
-  :global(.cds--side-nav__item--active .cds--side-nav__icon) svg,
-  :global(.cds--side-nav__link:hover .cds--side-nav__icon) svg {
-    color: $icon-primary;
+    color: currentColor;
   }
 }
