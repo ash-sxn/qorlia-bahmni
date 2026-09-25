@@ -14,7 +14,7 @@ import {
 } from '@bahmni/services';
 import { useUserPrivilege, UserGlobalAction } from '@bahmni/widgets';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useLocation } from 'react-router-dom';
 import styles from './styles/index.module.scss';
 
@@ -91,6 +91,12 @@ export const AppointmentListPage = () => {
     hasPrivilege(userPrivileges, 'Manage Appointments');
   const queryClient = useQueryClient();
   const [actionMessage, setActionMessage] = useState('');
+  const [checkInUuid, setCheckInUuid] = useState('');
+  const [checkInTime, setCheckInTime] = useState('');
+  const checkInInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (checkInUuid) checkInInput.current?.focus();
+  }, [checkInUuid]);
   const [date, setDate] = useState(() => dateKey(new Date()));
   const [serviceUuid, setServiceUuid] = useState('');
   const [providerUuid, setProviderUuid] = useState('');
@@ -106,11 +112,29 @@ export const AppointmentListPage = () => {
     enabled: canView && canManage,
   });
   const statusChange = useMutation({
-    mutationFn: ({ uuid, status }: { uuid: string; status: string }) =>
-      updateAppointmentStatus(uuid, status),
+    mutationFn: ({
+      uuid,
+      status,
+      onDate,
+    }: {
+      uuid: string;
+      status: string;
+      onDate?: Date;
+    }) => updateAppointmentStatus(uuid, status, onDate),
     onSuccess: async () => {
       setActionMessage(t('APPOINTMENTS_STATUS_UPDATED'));
-      await queryClient.invalidateQueries({ queryKey: ['appointment'] });
+      setCheckInUuid('');
+      await Promise.all(
+        [
+          'appointment',
+          'appointment-list-day',
+          'appointment-waitlist',
+          'appointment-calendar',
+          'appointment-summary',
+          'appointment-day',
+          'appointment-week',
+        ].map((key) => queryClient.invalidateQueries({ queryKey: [key] })),
+      );
     },
     onError: () => setActionMessage(t('APPOINTMENTS_STATUS_UPDATE_ERROR')),
   });
@@ -152,11 +176,24 @@ export const AppointmentListPage = () => {
     status: awaiting ? 'WaitList' : status,
     patient,
   }).sort((a, b) => a.startDateTime - b.startDateTime);
+  const checkInAppointment = rows.find((item) => item.uuid === checkInUuid);
 
   const shiftDate = (days: number) => {
     const next = new Date(`${date}T00:00:00`);
     next.setDate(next.getDate() + days);
     setDate(dateKey(next));
+  };
+
+  const submitCheckIn = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const onDate = new Date(`${dateKey(new Date())}T${checkInTime}:00`);
+    if (!checkInTime || Number.isNaN(onDate.getTime())) return;
+    setActionMessage('');
+    statusChange.mutate({
+      uuid: checkInUuid,
+      status: 'CheckedIn',
+      onDate,
+    });
   };
 
   return (
@@ -425,6 +462,15 @@ export const AppointmentListPage = () => {
                                     className={styles.textButton}
                                     disabled={statusChange.isPending}
                                     onClick={() => {
+                                      if (action === 'CheckedIn') {
+                                        const now = new Date();
+                                        setCheckInUuid(appointment.uuid);
+                                        setCheckInTime(
+                                          `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+                                        );
+                                        setActionMessage('');
+                                        return;
+                                      }
                                       if (
                                         !window.confirm(
                                           t('APPOINTMENTS_CONFIRM_STATUS', {
@@ -452,6 +498,38 @@ export const AppointmentListPage = () => {
                     </tbody>
                   </table>
                 </div>
+              )}
+              {checkInAppointment && (
+                <form className={styles.checkInForm} onSubmit={submitCheckIn}>
+                  <h3>{t('APPOINTMENTS_CHECK_IN')}</h3>
+                  <p>{checkInAppointment.patient.name}</p>
+                  <label>
+                    {t('APPOINTMENTS_CHECK_IN_TIME')}
+                    <input
+                      ref={checkInInput}
+                      type="time"
+                      value={checkInTime}
+                      onChange={(event) => setCheckInTime(event.target.value)}
+                      required
+                    />
+                  </label>
+                  <div className={styles.rowActions}>
+                    <button
+                      type="submit"
+                      className={styles.primaryButton}
+                      disabled={statusChange.isPending}
+                    >
+                      {t('APPOINTMENTS_CONFIRM_CHECK_IN')}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() => setCheckInUuid('')}
+                    >
+                      {t('APPOINTMENTS_CANCEL')}
+                    </button>
+                  </div>
+                </form>
               )}
             </section>
           )}

@@ -1,7 +1,7 @@
 import type { Appointment } from '@bahmni/services';
 import { useUserPrivilege } from '@bahmni/widgets';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   AppointmentListPage,
@@ -9,11 +9,12 @@ import {
   getAllowedTransitions,
 } from '../AppointmentListPage';
 
+const mockInvalidateQueries = jest.fn().mockResolvedValue(undefined);
 jest.mock('@tanstack/react-query', () => ({
   ...jest.requireActual('@tanstack/react-query'),
   useMutation: jest.fn(),
   useQuery: jest.fn(),
-  useQueryClient: () => ({ invalidateQueries: jest.fn() }),
+  useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
 }));
 
 jest.mock('@bahmni/widgets', () => ({
@@ -70,7 +71,7 @@ it('only exposes transitions allowed by the legacy configuration', () => {
   expect(getAllowedTransitions(undefined, 'Scheduled')).toEqual([]);
 });
 
-it('requires management access and confirmation before changing status', () => {
+it('requires management access, check-in time, and confirmation for other status changes', () => {
   const privileges = useUserPrivilege as jest.Mock;
   const mutate = jest.fn();
   (useMutation as jest.Mock).mockReturnValue({
@@ -131,18 +132,65 @@ it('requires management access and confirmation before changing status', () => {
   expect(
     screen.queryByRole('button', { name: 'Missed: Demo Patient' }),
   ).not.toBeInTheDocument();
-  const confirmation = jest.spyOn(window, 'confirm').mockReturnValue(false);
   fireEvent.click(
     screen.getByRole('button', { name: 'CheckedIn: Demo Patient' }),
   );
   expect(mutate).not.toHaveBeenCalled();
-  confirmation.mockReturnValue(true);
-  fireEvent.click(
-    screen.getByRole('button', { name: 'CheckedIn: Demo Patient' }),
-  );
+  fireEvent.change(screen.getByLabelText('Check-in time'), {
+    target: { value: '10:45' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm check-in' }));
+  const onDate = new Date();
+  onDate.setHours(10, 45, 0, 0);
   expect(mutate).toHaveBeenCalledWith({
     uuid: 'appointment-1',
     status: 'CheckedIn',
+    onDate,
+  });
+
+  const confirmation = jest.spyOn(window, 'confirm').mockReturnValue(false);
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Cancelled: Demo Patient' }),
+  );
+  expect(mutate).toHaveBeenCalledTimes(1);
+  confirmation.mockReturnValue(true);
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Cancelled: Demo Patient' }),
+  );
+  expect(mutate).toHaveBeenCalledWith({
+    uuid: 'appointment-1',
+    status: 'Cancelled',
   });
   confirmation.mockRestore();
+});
+
+it('refreshes all appointment views after a status change', async () => {
+  mockInvalidateQueries.mockClear();
+  (useMutation as jest.Mock).mockReturnValue({
+    mutate: jest.fn(),
+    isPending: false,
+    isError: false,
+  });
+  (useQuery as jest.Mock).mockReturnValue({
+    data: [],
+    isLoading: false,
+    isError: false,
+  });
+  (useUserPrivilege as jest.Mock).mockReturnValue({
+    userPrivileges: [{ name: 'app:appointments' }],
+    isLoading: false,
+  });
+  render(
+    <MemoryRouter initialEntries={['/bahmni-v2/appointments/list']}>
+      <AppointmentListPage />
+    </MemoryRouter>,
+  );
+  const mutation = (useMutation as jest.Mock).mock.calls.at(-1)?.[0];
+  await act(async () => mutation.onSuccess());
+  expect(mockInvalidateQueries).toHaveBeenCalledWith({
+    queryKey: ['appointment-list-day'],
+  });
+  expect(mockInvalidateQueries).toHaveBeenCalledWith({
+    queryKey: ['appointment-calendar'],
+  });
 });

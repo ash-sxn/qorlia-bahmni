@@ -335,6 +335,35 @@
   color: var(--brand);
   font-weight: 700;
 }
+.checkInForm {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 20px 24px;
+  border-top: 1px solid var(--line);
+}
+.checkInForm h3,
+.checkInForm p {
+  width: 100%;
+  margin: 0;
+}
+.checkInForm label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.checkInForm input {
+  min-height: 40px;
+  padding: 7px 11px;
+  border: 1px solid #cddbd4;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
 .tableScroll {
   overflow-x: auto;
 }

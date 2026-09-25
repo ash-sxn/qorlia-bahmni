@@ -123,10 +123,17 @@ export const BookingForm = ({
         return;
       }
       await bookAppointment(request);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['appointment-summary'] }),
-        queryClient.invalidateQueries({ queryKey: ['appointment-day'] }),
-      ]);
+      await Promise.all(
+        [
+          'appointment',
+          'appointment-summary',
+          'appointment-day',
+          'appointment-list-day',
+          'appointment-waitlist',
+          'appointment-calendar',
+          'appointment-week',
+        ].map((key) => queryClient.invalidateQueries({ queryKey: [key] })),
+      );
       onBooked();
     } catch {
       setError(t('APPOINTMENTS_BOOKING_ERROR'));

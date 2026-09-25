@@ -8,7 +8,7 @@ import {
   useTranslation,
 } from '@bahmni/services';
 import { useUserPrivilege, UserGlobalAction } from '@bahmni/widgets';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { BookingForm } from './BookingForm';
 import styles from './styles/index.module.scss';
@@ -47,7 +47,6 @@ const providersFor = (appointment: Appointment) => {
 
 export const CalendarPage = () => {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const { userPrivileges, isLoading: privilegesLoading } = useUserPrivilege();
   const canView = hasPrivilege(userPrivileges, 'app:appointments');
   const canBook =
@@ -282,9 +281,6 @@ export const CalendarPage = () => {
                   onBooked={() => {
                     setBookingOpen(false);
                     setBookingMessage(t('APPOINTMENTS_BOOKED'));
-                    queryClient.invalidateQueries({
-                      queryKey: ['appointment-calendar'],
-                    });
                   }}
                 />
               )}

@@ -127,7 +127,12 @@ it('saves a conflict-free booking with the selected patient and location', async
       }),
     ),
   );
-  expect(mockInvalidateQueries).toHaveBeenCalledTimes(2);
+  expect(mockInvalidateQueries).toHaveBeenCalledWith({
+    queryKey: ['appointment-calendar'],
+  });
+  expect(mockInvalidateQueries).toHaveBeenCalledWith({
+    queryKey: ['appointment-list-day'],
+  });
 });
 
 it('requests provider acceptance when the service starts as Requested', async () => {
