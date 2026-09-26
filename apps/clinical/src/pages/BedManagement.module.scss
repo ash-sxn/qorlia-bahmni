@@ -210,6 +210,62 @@
   margin: 0;
 }
 
+.programEnrollmentForm {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) minmax(180px, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.programEnrollmentForm label {
+  font-weight: 700;
+}
+
+.programEnrollmentForm input,
+.programEnrollmentForm select,
+.programEnrollmentForm button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.programEnrollmentForm input[type="checkbox"] {
+  width: 20px;
+  min-height: 20px;
+  padding: 0;
+}
+
+.programEnrollmentForm button {
+  grid-column: 2;
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.programEnrollmentForm button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.programEnrollmentForm p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+@media (max-width: 620px) {
+  .programEnrollmentForm {
+    grid-template-columns: 1fr;
+  }
+
+  .programEnrollmentForm button,
+  .programEnrollmentForm p {
+    grid-column: 1;
+  }
+}
+
 .card h2 {
   margin: 0 0 16px;
   font-size: 18px;

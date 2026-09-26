@@ -16,6 +16,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import styles from './BedManagement.module.scss';
+import { ProgramEnrollmentForm } from './ProgramEnrollmentForm';
 
 const patientName = (patient: PatientSearchResult) =>
   [patient.givenName, patient.middleName, patient.familyName]
@@ -305,6 +306,17 @@ export const ProgramsPage = () => {
                 <p role="alert">{t('PROGRAMS_ENROLLMENTS_ERROR')}</p>
               ) : (
                 <>
+                  {canEditPrograms && patient.data && (
+                    <section className={styles.card}>
+                      <h2>{t('PROGRAMS_ENROLL')}</h2>
+                      <ProgramEnrollmentForm
+                        patientUuid={patientUuid}
+                        activeProgramUuids={active.map(
+                          (item) => item.program.uuid,
+                        )}
+                      />
+                    </section>
+                  )}
                   {programTable(active, t('PROGRAMS_ACTIVE'))}
                   {programTable(past, t('PROGRAMS_PAST'))}
                 </>

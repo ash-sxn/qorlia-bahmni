@@ -9,6 +9,10 @@ jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   getFormattedPatientById: jest.fn(),
   getPatientPrograms: jest.fn(),
+  getAllPrograms: jest.fn(),
+  getProgramAttributeTypes: jest.fn(),
+  createProgramEnrollment: jest.fn(),
+  get: jest.fn(),
   searchPatientByNameOrId: jest.fn(),
   updateProgramState: jest.fn(),
   useTranslation: () => ({ t: (key: string) => key }),
@@ -23,6 +27,10 @@ const searchPatients = services.searchPatientByNameOrId as jest.Mock;
 const getPatient = services.getFormattedPatientById as jest.Mock;
 const getPrograms = services.getPatientPrograms as jest.Mock;
 const updateState = services.updateProgramState as jest.Mock;
+const getAllPrograms = services.getAllPrograms as jest.Mock;
+const getAttributes = services.getProgramAttributeTypes as jest.Mock;
+const getConfig = services.get as jest.Mock;
+const createEnrollment = services.createProgramEnrollment as jest.Mock;
 
 describe('ProgramsPage', () => {
   const renderPage = (
@@ -52,6 +60,9 @@ describe('ProgramsPage', () => {
       userPrivileges: [{ uuid: 'priv-1', name: 'app:clinical' }],
       isLoading: false,
     });
+    getAllPrograms.mockResolvedValue([]);
+    getAttributes.mockResolvedValue([]);
+    getConfig.mockResolvedValue({ config: { program: {} } });
   });
 
   it('searches real patients and opens their program route', async () => {
@@ -153,6 +164,9 @@ describe('ProgramsPage', () => {
     expect(
       screen.queryByRole('combobox', { name: 'PROGRAMS_CHANGE_STATE' }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'PROGRAMS_ENROLL' }),
+    ).not.toBeInTheDocument();
     expect(getPrograms).toHaveBeenCalledWith('patient-1');
     expect(
       screen.getByRole('link', { name: 'PROGRAMS_LEGACY_MANAGER' }),
@@ -213,6 +227,138 @@ describe('ProgramsPage', () => {
       'PROGRAMS_STATE_SAVED',
     );
     expect(getPrograms).toHaveBeenCalledTimes(2);
+  });
+
+  it('enrolls a patient with required and concept attributes through Bahmni', async () => {
+    (useUserPrivilege as jest.Mock).mockReturnValue({
+      userPrivileges: [
+        { uuid: 'priv-1', name: 'app:clinical' },
+        { uuid: 'priv-2', name: 'Edit Patient Programs' },
+      ],
+      isLoading: false,
+    });
+    getPatient.mockResolvedValue({
+      fullName: 'Meera Demo',
+      identifier: 'ABC123',
+    });
+    getPrograms.mockResolvedValue({ results: [] });
+    getAllPrograms.mockResolvedValue([
+      {
+        uuid: 'program-1',
+        name: 'Maternal health',
+        retired: false,
+        allWorkflows: [
+          {
+            retired: false,
+            states: [
+              {
+                uuid: 'workflow-state-1',
+                retired: false,
+                concept: { display: 'In care' },
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+    getAttributes.mockResolvedValue([
+      {
+        uuid: 'attr-1',
+        name: 'ID_Number',
+        description: 'ID number',
+        datatypeClassname: 'java.lang.String',
+      },
+      {
+        uuid: 'attr-2',
+        name: 'Care plan',
+        datatypeClassname: 'org.openmrs.Concept',
+        concept: {
+          answers: [
+            {
+              uuid: 'answer-1',
+              display: 'Standard',
+              name: { display: 'Standard care' },
+            },
+          ],
+        },
+      },
+    ]);
+    getConfig.mockResolvedValue({
+      config: { program: { ID_Number: { required: true } } },
+    });
+    createEnrollment.mockResolvedValue({ uuid: 'enrollment-1' });
+    renderPage('/clinical/programs/patient-1');
+
+    fireEvent.change(await screen.findByLabelText('PROGRAMS_NAME'), {
+      target: { value: 'program-1' },
+    });
+    fireEvent.change(screen.getByLabelText('PROGRAMS_ENROLLED'), {
+      target: { value: '2020-09-20' },
+    });
+    fireEvent.change(screen.getByLabelText('PROGRAMS_STATE'), {
+      target: { value: 'workflow-state-1' },
+    });
+    fireEvent.change(screen.getByLabelText('ID number'), {
+      target: { value: '123' },
+    });
+    fireEvent.change(screen.getByLabelText('Care plan'), {
+      target: { value: 'answer-1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'PROGRAMS_ENROLL' }));
+
+    await waitFor(() => expect(createEnrollment).toHaveBeenCalledTimes(1));
+    expect(createEnrollment).toHaveBeenCalledWith({
+      patient: 'patient-1',
+      program: 'program-1',
+      dateEnrolled: new Date('2020-09-20T00:00:00').toISOString(),
+      states: [
+        {
+          state: 'workflow-state-1',
+          startDate: new Date('2020-09-20T00:00:00').toISOString(),
+        },
+      ],
+      attributes: [
+        { attributeType: { uuid: 'attr-1' }, value: '123' },
+        {
+          attributeType: { uuid: 'attr-2' },
+          value: 'Standard care',
+          hydratedObject: 'answer-1',
+        },
+      ],
+    });
+    expect(await screen.findByText('PROGRAMS_ENROLLED_SUCCESS')).toBeVisible();
+  });
+
+  it('refuses a duplicate active enrollment when the patient record changes', async () => {
+    (useUserPrivilege as jest.Mock).mockReturnValue({
+      userPrivileges: [
+        { uuid: 'priv-1', name: 'app:clinical' },
+        { uuid: 'priv-2', name: 'Edit Patient Programs' },
+      ],
+      isLoading: false,
+    });
+    getPatient.mockResolvedValue({ fullName: 'Meera Demo' });
+    getPrograms.mockResolvedValueOnce({ results: [] }).mockResolvedValueOnce({
+      results: [
+        {
+          program: { uuid: 'program-1' },
+          dateCompleted: null,
+          voided: false,
+        },
+      ],
+    });
+    getAllPrograms.mockResolvedValue([
+      { uuid: 'program-1', name: 'Maternal health', retired: false },
+    ]);
+    renderPage('/clinical/programs/patient-1');
+
+    fireEvent.change(await screen.findByLabelText('PROGRAMS_NAME'), {
+      target: { value: 'program-1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'PROGRAMS_ENROLL' }));
+
+    expect(await screen.findByText('PROGRAMS_ALREADY_ENROLLED')).toBeVisible();
+    expect(createEnrollment).not.toHaveBeenCalled();
   });
 
   it('does not request patient data without clinical access', () => {

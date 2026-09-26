@@ -5,6 +5,8 @@ import {
   PATIENT_PROGRAMS_URL,
   PATIENT_PROGRAMS_PAGE_URL,
   ALL_PROGRAMS_URL,
+  PROGRAM_ATTRIBUTE_TYPES_URL,
+  PROGRAM_ENROLLMENTS_URL,
 } from '../constants';
 import {
   ProgramEnrollment,
@@ -14,6 +16,8 @@ import {
 import {
   extractAttributes,
   getAllPrograms,
+  getProgramAttributeTypes,
+  createProgramEnrollment,
   getCurrentStateName,
   getPatientPrograms,
   getPatientProgramsPage,
@@ -363,5 +367,32 @@ describe('programService', () => {
 
       await expect(getAllPrograms()).rejects.toThrow('Network error');
     });
+  });
+
+  it('loads only active program attribute types', async () => {
+    const active = { uuid: 'attr-1', name: 'ID_Number', retired: false };
+    (get as jest.Mock).mockResolvedValue({
+      results: [active, { uuid: 'attr-2', retired: true }],
+    });
+
+    expect(await getProgramAttributeTypes()).toEqual([active]);
+    expect(get).toHaveBeenCalledWith(PROGRAM_ATTRIBUTE_TYPES_URL);
+  });
+
+  it('posts a new enrollment to Bahmni without changing its fields', async () => {
+    const enrollment = {
+      patient: 'patient-1',
+      program: 'program-1',
+      dateEnrolled: '2026-09-26T00:00:00.000Z',
+      states: [
+        { state: 'workflow-state-1', startDate: '2026-09-26T00:00:00.000Z' },
+      ],
+      attributes: [{ attributeType: { uuid: 'attr-1' }, value: '123' }],
+    };
+    (post as jest.Mock).mockResolvedValue(mockEnrollments[0]);
+
+    await createProgramEnrollment(enrollment);
+
+    expect(post).toHaveBeenCalledWith(PROGRAM_ENROLLMENTS_URL, enrollment);
   });
 });

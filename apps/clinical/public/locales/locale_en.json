@@ -685,12 +685,18 @@
   "CLINICAL_WORKSPACE_TODAY": "Today",
   "CLINICAL_WORKSPACE_UNAVAILABLE": "Unavailable",
   "PROGRAMS_ACTIVE": "Active programs",
+  "PROGRAMS_ALREADY_ENROLLED": "This patient is already enrolled in that program.",
   "PROGRAMS_BY": "By",
   "PROGRAMS_CHANGE_STATE": "Change state",
   "PROGRAMS_CHOOSE_STATE": "Choose a state",
+  "PROGRAMS_CHOOSE_PROGRAM": "Choose a program",
   "PROGRAMS_COMPLETED": "Completed",
   "PROGRAMS_DESCRIPTION": "Find a patient and review their program enrollment and workflow state.",
   "PROGRAMS_ENROLLED": "Enrolled",
+  "PROGRAMS_ENROLL": "Enroll in a program",
+  "PROGRAMS_ENROLLED_SUCCESS": "Patient enrolled in the program.",
+  "PROGRAMS_ENROLL_CONFIG_ERROR": "Enrollment options could not be loaded. Use the Bahmni manager instead.",
+  "PROGRAMS_ENROLL_ERROR": "The patient could not be enrolled. Please try again.",
   "PROGRAMS_ENROLLMENTS_ERROR": "Program enrollments could not be loaded.",
   "PROGRAMS_FIND_PATIENT": "Find a patient",
   "PROGRAMS_ID": "Patient ID",
@@ -717,5 +723,6 @@
   "PROGRAMS_STATE_SAVED": "Program state updated.",
   "PROGRAMS_STATE_SAVE_ERROR": "The state could not be updated. Please try again.",
   "PROGRAMS_TO": "to",
-  "PROGRAMS_TITLE": "Programs"
+  "PROGRAMS_TITLE": "Programs",
+  "PROGRAMS_UNSUPPORTED_ATTRIBUTE": "This program uses an attribute this form cannot edit. Use the Bahmni manager instead."
 }

@@ -4,6 +4,8 @@ export {
   getProgramByUUID,
   getCurrentStateName,
   getAllPrograms,
+  getProgramAttributeTypes,
+  createProgramEnrollment,
   extractAttributes,
   updateProgramState,
   type ProgramPage,
@@ -12,4 +14,6 @@ export {
   type ProgramEnrollment,
   type PatientProgramsResponse,
   type Program,
+  type ProgramAttributeDefinition,
+  type NewProgramEnrollment,
 } from './model';

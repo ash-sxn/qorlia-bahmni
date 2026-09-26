@@ -664,12 +664,18 @@
   "CLINICAL_WORKSPACE_TODAY": "Hoy",
   "CLINICAL_WORKSPACE_UNAVAILABLE": "No disponible",
   "PROGRAMS_ACTIVE": "Programas activos",
+  "PROGRAMS_ALREADY_ENROLLED": "Este paciente ya está inscrito en ese programa.",
   "PROGRAMS_BY": "Por",
   "PROGRAMS_CHANGE_STATE": "Cambiar estado",
   "PROGRAMS_CHOOSE_STATE": "Elija un estado",
+  "PROGRAMS_CHOOSE_PROGRAM": "Elija un programa",
   "PROGRAMS_COMPLETED": "Finalizado",
   "PROGRAMS_DESCRIPTION": "Busque un paciente y revise sus programas y estados.",
   "PROGRAMS_ENROLLED": "Inscrito",
+  "PROGRAMS_ENROLL": "Inscribir en un programa",
+  "PROGRAMS_ENROLLED_SUCCESS": "Paciente inscrito en el programa.",
+  "PROGRAMS_ENROLL_CONFIG_ERROR": "No se pudieron cargar las opciones de inscripción. Use el gestor de Bahmni.",
+  "PROGRAMS_ENROLL_ERROR": "No se pudo inscribir al paciente. Inténtelo de nuevo.",
   "PROGRAMS_ENROLLMENTS_ERROR": "No se pudieron cargar los programas del paciente.",
   "PROGRAMS_FIND_PATIENT": "Buscar paciente",
   "PROGRAMS_ID": "ID del paciente",
@@ -696,5 +702,6 @@
   "PROGRAMS_STATE_SAVED": "Estado del programa actualizado.",
   "PROGRAMS_STATE_SAVE_ERROR": "No se pudo actualizar el estado. Inténtelo de nuevo.",
   "PROGRAMS_TO": "a",
-  "PROGRAMS_TITLE": "Programas"
+  "PROGRAMS_TITLE": "Programas",
+  "PROGRAMS_UNSUPPORTED_ATTRIBUTE": "Este programa utiliza un atributo que este formulario no puede editar. Use el gestor de Bahmni."
 }

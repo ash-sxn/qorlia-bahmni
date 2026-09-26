@@ -7,10 +7,14 @@ import {
   PROGRAM_DETAILS_URL,
   PROGRAMS_URL,
   ALL_PROGRAMS_URL,
+  PROGRAM_ATTRIBUTE_TYPES_URL,
+  PROGRAM_ENROLLMENTS_URL,
 } from './constants';
 import {
+  NewProgramEnrollment,
   PatientProgramsResponse,
   Program,
+  ProgramAttributeDefinition,
   ProgramEnrollment,
   ProgramsResponse,
 } from './model';
@@ -172,3 +176,17 @@ export const getAllPrograms = async (): Promise<Program[]> => {
   const response = await get<ProgramsResponse>(ALL_PROGRAMS_URL);
   return response.results;
 };
+
+export const getProgramAttributeTypes = async (): Promise<
+  ProgramAttributeDefinition[]
+> => {
+  const response = await get<{ results: ProgramAttributeDefinition[] }>(
+    PROGRAM_ATTRIBUTE_TYPES_URL,
+  );
+  return response.results.filter((attribute) => !attribute.retired);
+};
+
+export const createProgramEnrollment = async (
+  enrollment: NewProgramEnrollment,
+): Promise<ProgramEnrollment> =>
+  post<ProgramEnrollment>(PROGRAM_ENROLLMENTS_URL, enrollment);
