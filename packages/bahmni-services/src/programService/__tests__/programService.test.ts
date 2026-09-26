@@ -147,6 +147,18 @@ describe('programService', () => {
       expect(result).toBe('In Progress');
     });
 
+    it('ignores voided states when finding the current state', () => {
+      const mockEnrollment: ProgramEnrollment = {
+        ...mockEnrollments[1],
+        states: [
+          { ...mockEnrollments[1].states[1], voided: true },
+          mockEnrollments[1].states[0],
+        ],
+      };
+
+      expect(getCurrentStateName(mockEnrollment)).toBeNull();
+    });
+
     it('should return SHORT name when available', () => {
       const result = getCurrentStateName(mockEnrollments[1]);
       expect(result).toBe('In Progress');

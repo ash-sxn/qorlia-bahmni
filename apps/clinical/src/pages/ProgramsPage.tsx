@@ -12,7 +12,7 @@ import {
 } from '@bahmni/services';
 import { useUserPrivilege, UserGlobalAction } from '@bahmni/widgets';
 import { useQuery } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { Fragment, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import styles from './BedManagement.module.scss';
 
@@ -73,19 +73,82 @@ export const ProgramsPage = () => {
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
-                <tr key={item.uuid}>
-                  <td>{item.program?.name ?? item.program?.display}</td>
-                  <td>{displayDate(item.dateEnrolled)}</td>
-                  <td>
-                    {item.states?.length
-                      ? (getCurrentStateName(item) ??
-                        t('PROGRAMS_NONE_RECORDED'))
-                      : t('PROGRAMS_NONE_RECORDED')}
-                  </td>
-                  <td>{displayDate(item.dateCompleted)}</td>
-                </tr>
-              ))}
+              {items.map((item) => {
+                const attributes = (item.attributes ?? []).filter(
+                  (attribute) => !attribute.voided,
+                );
+                const states = (item.states ?? [])
+                  .filter((state) => !state.voided)
+                  .sort((a, b) => b.startDate.localeCompare(a.startDate));
+                return (
+                  <tr key={item.uuid}>
+                    <td>
+                      <details className={styles.programDetails}>
+                        <summary>
+                          {item.program?.name ??
+                            item.program?.display ??
+                            item.display}
+                        </summary>
+                        {(!!item.outcome || attributes.length > 0) && (
+                          <dl className={styles.details}>
+                            {item.outcome && (
+                              <>
+                                <dt>{t('PROGRAMS_OUTCOME')}</dt>
+                                <dd>{item.outcome.display}</dd>
+                              </>
+                            )}
+                            {attributes.map((attribute) => (
+                              <Fragment key={attribute.uuid}>
+                                <dt>
+                                  {attribute.attributeType?.description ??
+                                    attribute.attributeType?.display ??
+                                    attribute.display}
+                                </dt>
+                                <dd>
+                                  {typeof attribute.value === 'string'
+                                    ? attribute.value
+                                    : attribute.value?.display}
+                                </dd>
+                              </Fragment>
+                            ))}
+                          </dl>
+                        )}
+                        {states.length > 0 && (
+                          <>
+                            <h3>{t('PROGRAMS_STATE_HISTORY')}</h3>
+                            <ol className={styles.programHistory}>
+                              {states.map((state) => (
+                                <li key={state.uuid}>
+                                  <strong>{state.state.concept.display}</strong>
+                                  <span>
+                                    {displayDate(state.startDate)}
+                                    {state.endDate &&
+                                      ` ${t('PROGRAMS_TO')} ${displayDate(state.endDate)}`}
+                                  </span>
+                                  {state.auditInfo?.creator?.display && (
+                                    <small>
+                                      {t('PROGRAMS_BY')}{' '}
+                                      {state.auditInfo.creator.display}
+                                    </small>
+                                  )}
+                                </li>
+                              ))}
+                            </ol>
+                          </>
+                        )}
+                      </details>
+                    </td>
+                    <td>{displayDate(item.dateEnrolled)}</td>
+                    <td>
+                      {states.length
+                        ? (getCurrentStateName(item) ??
+                          t('PROGRAMS_NONE_RECORDED'))
+                        : t('PROGRAMS_NONE_RECORDED')}
+                    </td>
+                    <td>{displayDate(item.dateCompleted)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

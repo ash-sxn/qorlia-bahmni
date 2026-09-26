@@ -92,7 +92,37 @@ describe('ProgramsPage', () => {
           program: { name: 'Maternal health' },
           dateEnrolled: '2026-09-01',
           dateCompleted: null,
-          states: [],
+          states: [
+            {
+              uuid: 'state-1',
+              startDate: '2026-09-01',
+              endDate: null,
+              voided: false,
+              state: { concept: { display: 'In care', names: [] } },
+              auditInfo: { creator: { display: 'Nurse Demo' } },
+            },
+            {
+              uuid: 'state-2',
+              startDate: '2026-09-02',
+              endDate: null,
+              voided: true,
+              state: { concept: { display: 'Voided state' } },
+            },
+          ],
+          attributes: [
+            {
+              uuid: 'attribute-1',
+              attributeType: { description: 'District' },
+              value: 'Gwalior',
+              voided: false,
+            },
+            {
+              uuid: 'attribute-2',
+              attributeType: { description: 'Private note' },
+              value: 'Voided value',
+              voided: true,
+            },
+          ],
           voided: false,
         },
         {
@@ -101,6 +131,7 @@ describe('ProgramsPage', () => {
           dateEnrolled: '2025-01-01',
           dateCompleted: '2026-01-01',
           states: [],
+          outcome: { display: 'Completed care' },
           voided: false,
         },
       ],
@@ -109,6 +140,14 @@ describe('ProgramsPage', () => {
 
     expect(await screen.findByText('Maternal health')).toBeInTheDocument();
     expect(screen.getByText('Diabetes care')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Maternal health'));
+    expect(screen.getByText('District')).toBeVisible();
+    expect(screen.getByText('Gwalior')).toBeVisible();
+    expect(screen.getByText(/Nurse Demo/)).toBeVisible();
+    expect(screen.queryByText('Voided value')).not.toBeInTheDocument();
+    expect(screen.queryByText('Voided state')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Diabetes care'));
+    expect(screen.getByText('Completed care')).toBeVisible();
     expect(getPrograms).toHaveBeenCalledWith('patient-1');
     expect(
       screen.getByRole('link', { name: 'PROGRAMS_LEGACY_MANAGER' }),

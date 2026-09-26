@@ -664,6 +664,7 @@
   "CLINICAL_WORKSPACE_TODAY": "Hoy",
   "CLINICAL_WORKSPACE_UNAVAILABLE": "No disponible",
   "PROGRAMS_ACTIVE": "Programas activos",
+  "PROGRAMS_BY": "Por",
   "PROGRAMS_COMPLETED": "Finalizado",
   "PROGRAMS_DESCRIPTION": "Busque un paciente y revise sus programas y estados.",
   "PROGRAMS_ENROLLED": "Inscrito",
@@ -679,6 +680,7 @@
   "PROGRAMS_NONE_RECORDED": "No registrado",
   "PROGRAMS_NO_PATIENTS": "No se encontraron pacientes.",
   "PROGRAMS_OPEN": "Abrir programas",
+  "PROGRAMS_OUTCOME": "Resultado",
   "PROGRAMS_PAST": "Programas anteriores",
   "PROGRAMS_PATIENT": "Paciente",
   "PROGRAMS_PATIENT_ERROR": "No se pudieron cargar los datos del paciente.",
@@ -686,5 +688,7 @@
   "PROGRAMS_SEARCH_ERROR": "La búsqueda de pacientes no está disponible. Inténtelo de nuevo.",
   "PROGRAMS_SEARCH_LABEL": "Buscar por nombre o ID del paciente",
   "PROGRAMS_STATE": "Estado actual",
+  "PROGRAMS_STATE_HISTORY": "Historial de estados",
+  "PROGRAMS_TO": "a",
   "PROGRAMS_TITLE": "Programas"
 }

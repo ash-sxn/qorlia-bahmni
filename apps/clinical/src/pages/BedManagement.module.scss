@@ -146,6 +146,32 @@
   gap: 18px;
 }
 
+.programDetails summary {
+  color: var(--qorlia-primary, #1f5238);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.programDetails[open] summary {
+  margin-bottom: 16px;
+}
+
+.programDetails h3 {
+  margin: 16px 0 8px;
+  font-size: 14px;
+}
+
+.programHistory {
+  display: grid;
+  gap: 10px;
+  padding-left: 20px;
+}
+
+.programHistory li {
+  display: grid;
+  gap: 3px;
+}
+
 .card h2 {
   margin: 0 0 16px;
   font-size: 18px;

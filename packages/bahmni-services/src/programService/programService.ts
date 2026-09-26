@@ -97,16 +97,15 @@ export const updateProgramState = async (
 export function getCurrentStateName(
   enrollment: ProgramEnrollment,
 ): string | null {
-  if (enrollment.states.length === 0) {
+  const states = enrollment.states.filter((state) => !state.voided);
+  if (states.length === 0) {
     return null;
   }
 
   let currentState;
 
   if (enrollment.dateCompleted !== null) {
-    const statesWithEndDate = enrollment.states.filter(
-      (state) => state.endDate !== null,
-    );
+    const statesWithEndDate = states.filter((state) => state.endDate !== null);
     const sortedStates = statesWithEndDate.sort((a, b) => {
       const dateA = new Date(a.auditInfo.dateCreated).getTime();
       const dateB = new Date(b.auditInfo.dateCreated).getTime();
@@ -114,7 +113,7 @@ export function getCurrentStateName(
     });
     currentState = sortedStates[sortedStates.length - 1];
   } else {
-    currentState = enrollment.states.find((state) => state.endDate === null);
+    currentState = states.find((state) => state.endDate === null);
   }
 
   if (!currentState) {

@@ -685,6 +685,7 @@
   "CLINICAL_WORKSPACE_TODAY": "Today",
   "CLINICAL_WORKSPACE_UNAVAILABLE": "Unavailable",
   "PROGRAMS_ACTIVE": "Active programs",
+  "PROGRAMS_BY": "By",
   "PROGRAMS_COMPLETED": "Completed",
   "PROGRAMS_DESCRIPTION": "Find a patient and review their program enrollment and workflow state.",
   "PROGRAMS_ENROLLED": "Enrolled",
@@ -700,6 +701,7 @@
   "PROGRAMS_NONE_RECORDED": "Not recorded",
   "PROGRAMS_NO_PATIENTS": "No matching patients found.",
   "PROGRAMS_OPEN": "Open programs",
+  "PROGRAMS_OUTCOME": "Outcome",
   "PROGRAMS_PAST": "Past programs",
   "PROGRAMS_PATIENT": "Patient",
   "PROGRAMS_PATIENT_ERROR": "Patient details could not be loaded.",
@@ -707,5 +709,7 @@
   "PROGRAMS_SEARCH_ERROR": "Patient search is unavailable. Please try again.",
   "PROGRAMS_SEARCH_LABEL": "Search by patient name or ID",
   "PROGRAMS_STATE": "Current state",
+  "PROGRAMS_STATE_HISTORY": "State history",
+  "PROGRAMS_TO": "to",
   "PROGRAMS_TITLE": "Programs"
 }
