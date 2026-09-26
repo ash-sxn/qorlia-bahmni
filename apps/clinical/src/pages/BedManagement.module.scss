@@ -141,6 +141,11 @@
   background: var(--qorlia-surface, #fff);
 }
 
+.programSections {
+  display: grid;
+  gap: 18px;
+}
+
 .card h2 {
   margin: 0 0 16px;
   font-size: 18px;

@@ -12,8 +12,17 @@ const InpatientPatientList = lazy(
 const InpatientPatientDetails = lazy(
   () => import('../pages/InpatientPatientDetails'),
 );
+const ProgramsPage = lazy(() => import('../pages/ProgramsPage'));
 
 export const routes: Routes = [
+  {
+    path: 'programs/:patientUuid',
+    component: ProgramsPage,
+  },
+  {
+    path: 'programs',
+    component: ProgramsPage,
+  },
   {
     path: 'inpatient/:patientUuid',
     component: InpatientPatientDetails,

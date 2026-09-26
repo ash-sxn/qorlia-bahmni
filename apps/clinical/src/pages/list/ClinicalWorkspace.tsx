@@ -77,6 +77,10 @@ const ClinicalWorkspace = ({
           <Stethoscope size={19} />
           {t('CLINICAL_LABEL')}
         </Link>
+        <Link to="/clinical/programs">
+          <UserFollow size={19} />
+          {t('PROGRAMS_TITLE')}
+        </Link>
         {canRegister && (
           <Link to="/registration/search">
             <UserFollow size={19} />
