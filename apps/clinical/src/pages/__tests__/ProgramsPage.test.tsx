@@ -1,7 +1,7 @@
 import * as services from '@bahmni/services';
 import { useUserPrivilege } from '@bahmni/widgets';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import ProgramsPage from '../ProgramsPage';
 
@@ -10,6 +10,7 @@ jest.mock('@bahmni/services', () => ({
   getFormattedPatientById: jest.fn(),
   getPatientPrograms: jest.fn(),
   searchPatientByNameOrId: jest.fn(),
+  updateProgramState: jest.fn(),
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 jest.mock('@bahmni/widgets', () => ({
@@ -21,6 +22,7 @@ jest.mock('@bahmni/widgets', () => ({
 const searchPatients = services.searchPatientByNameOrId as jest.Mock;
 const getPatient = services.getFormattedPatientById as jest.Mock;
 const getPrograms = services.getPatientPrograms as jest.Mock;
+const updateState = services.updateProgramState as jest.Mock;
 
 describe('ProgramsPage', () => {
   const renderPage = (
@@ -148,6 +150,9 @@ describe('ProgramsPage', () => {
     expect(screen.queryByText('Voided state')).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('Diabetes care'));
     expect(screen.getByText('Completed care')).toBeVisible();
+    expect(
+      screen.queryByRole('combobox', { name: 'PROGRAMS_CHANGE_STATE' }),
+    ).not.toBeInTheDocument();
     expect(getPrograms).toHaveBeenCalledWith('patient-1');
     expect(
       screen.getByRole('link', { name: 'PROGRAMS_LEGACY_MANAGER' }),
@@ -155,6 +160,59 @@ describe('ProgramsPage', () => {
       'href',
       '/bahmni/clinical/#/programs/patient/patient-1/consultationContext',
     );
+  });
+
+  it('updates an allowed state only with the program editing privilege', async () => {
+    (useUserPrivilege as jest.Mock).mockReturnValue({
+      userPrivileges: [
+        { uuid: 'priv-1', name: 'app:clinical' },
+        { uuid: 'priv-2', name: 'Edit Patient Programs' },
+      ],
+      isLoading: false,
+    });
+    getPatient.mockResolvedValue({
+      fullName: 'Meera Demo',
+      identifier: 'ABC123',
+    });
+    getPrograms.mockResolvedValue({
+      results: [
+        {
+          uuid: 'active-1',
+          program: { name: 'Maternal health' },
+          dateEnrolled: '2026-09-01',
+          dateCompleted: null,
+          states: [],
+          attributes: [],
+          allowedStates: [
+            {
+              uuid: 'workflow-state-1',
+              retired: false,
+              concept: { display: 'In care' },
+            },
+          ],
+          voided: false,
+        },
+      ],
+    });
+    updateState.mockResolvedValue({ uuid: 'active-1' });
+    renderPage('/clinical/programs/patient-1');
+
+    fireEvent.click(await screen.findByText('Maternal health'));
+    const stateSelect = screen.getByRole('combobox', {
+      name: 'PROGRAMS_CHANGE_STATE',
+    });
+    fireEvent.change(stateSelect, { target: { value: 'workflow-state-1' } });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'PROGRAMS_SAVE_STATE' }),
+    );
+
+    await waitFor(() =>
+      expect(updateState).toHaveBeenCalledWith('active-1', 'workflow-state-1'),
+    );
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'PROGRAMS_STATE_SAVED',
+    );
+    expect(getPrograms).toHaveBeenCalledTimes(2);
   });
 
   it('does not request patient data without clinical access', () => {

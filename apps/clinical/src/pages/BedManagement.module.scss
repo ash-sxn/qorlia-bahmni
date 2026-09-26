@@ -172,6 +172,44 @@
   gap: 3px;
 }
 
+.programStateForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.programStateForm label {
+  font-weight: 700;
+}
+
+.programStateForm select,
+.programStateForm button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.programStateForm button {
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.programStateForm button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.programStateForm p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
 .card h2 {
   margin: 0 0 16px;
   font-size: 18px;

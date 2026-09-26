@@ -6,12 +6,13 @@ import {
   getPatientPrograms,
   hasPrivilege,
   searchPatientByNameOrId,
+  updateProgramState,
   type PatientSearchResult,
   type ProgramEnrollment,
   useTranslation,
 } from '@bahmni/services';
 import { useUserPrivilege, UserGlobalAction } from '@bahmni/widgets';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import styles from './BedManagement.module.scss';
@@ -24,11 +25,78 @@ const patientName = (patient: PatientSearchResult) =>
 const displayDate = (value: string | null | undefined) =>
   value ? new Date(value).toLocaleDateString() : '';
 
+const ProgramStateForm = ({
+  enrollment,
+  patientUuid,
+}: {
+  enrollment: ProgramEnrollment;
+  patientUuid: string;
+}) => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [stateUuid, setStateUuid] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const save = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!stateUuid || saving) return;
+    setSaving(true);
+    setMessage('');
+    try {
+      await updateProgramState(enrollment.uuid, stateUuid);
+      await Promise.allSettled([
+        queryClient.invalidateQueries({
+          queryKey: ['program-enrollments', patientUuid],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['programs', enrollment.uuid],
+        }),
+      ]);
+      setStateUuid('');
+      setMessage(t('PROGRAMS_STATE_SAVED'));
+    } catch {
+      setMessage(t('PROGRAMS_STATE_SAVE_ERROR'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form className={styles.programStateForm} onSubmit={save}>
+      <label htmlFor={`program-state-${enrollment.uuid}`}>
+        {t('PROGRAMS_CHANGE_STATE')}
+      </label>
+      <select
+        id={`program-state-${enrollment.uuid}`}
+        value={stateUuid}
+        onChange={(event) => setStateUuid(event.target.value)}
+        disabled={saving}
+        required
+      >
+        <option value="">{t('PROGRAMS_CHOOSE_STATE')}</option>
+        {enrollment.allowedStates
+          .filter((state) => !state.retired)
+          .map((state) => (
+            <option key={state.uuid} value={state.uuid}>
+              {state.concept.display}
+            </option>
+          ))}
+      </select>
+      <button type="submit" disabled={!stateUuid || saving}>
+        {saving ? t('PROGRAMS_SAVING') : t('PROGRAMS_SAVE_STATE')}
+      </button>
+      {message && <p role="status">{message}</p>}
+    </form>
+  );
+};
+
 export const ProgramsPage = () => {
   const { t } = useTranslation();
   const { patientUuid } = useParams<{ patientUuid: string }>();
   const { userPrivileges, isLoading: privilegesLoading } = useUserPrivilege();
   const canView = hasPrivilege(userPrivileges, 'app:clinical');
+  const canEditPrograms = hasPrivilege(userPrivileges, 'Edit Patient Programs');
   const [input, setInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const patients = useQuery({
@@ -136,6 +204,15 @@ export const ProgramsPage = () => {
                             </ol>
                           </>
                         )}
+                        {canEditPrograms &&
+                          !item.dateCompleted &&
+                          item.allowedStates?.length > 0 &&
+                          patientUuid && (
+                            <ProgramStateForm
+                              enrollment={item}
+                              patientUuid={patientUuid}
+                            />
+                          )}
                       </details>
                     </td>
                     <td>{displayDate(item.dateEnrolled)}</td>

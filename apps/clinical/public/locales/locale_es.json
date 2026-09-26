@@ -665,6 +665,8 @@
   "CLINICAL_WORKSPACE_UNAVAILABLE": "No disponible",
   "PROGRAMS_ACTIVE": "Programas activos",
   "PROGRAMS_BY": "Por",
+  "PROGRAMS_CHANGE_STATE": "Cambiar estado",
+  "PROGRAMS_CHOOSE_STATE": "Elija un estado",
   "PROGRAMS_COMPLETED": "Finalizado",
   "PROGRAMS_DESCRIPTION": "Busque un paciente y revise sus programas y estados.",
   "PROGRAMS_ENROLLED": "Inscrito",
@@ -687,8 +689,12 @@
   "PROGRAMS_SEARCH": "Buscar",
   "PROGRAMS_SEARCH_ERROR": "La búsqueda de pacientes no está disponible. Inténtelo de nuevo.",
   "PROGRAMS_SEARCH_LABEL": "Buscar por nombre o ID del paciente",
+  "PROGRAMS_SAVING": "Guardando...",
+  "PROGRAMS_SAVE_STATE": "Guardar estado",
   "PROGRAMS_STATE": "Estado actual",
   "PROGRAMS_STATE_HISTORY": "Historial de estados",
+  "PROGRAMS_STATE_SAVED": "Estado del programa actualizado.",
+  "PROGRAMS_STATE_SAVE_ERROR": "No se pudo actualizar el estado. Inténtelo de nuevo.",
   "PROGRAMS_TO": "a",
   "PROGRAMS_TITLE": "Programas"
 }

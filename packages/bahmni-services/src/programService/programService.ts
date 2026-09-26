@@ -68,18 +68,18 @@ export const getProgramByUUID = async (
 /**
  * Updates the state of a program enrollment
  * @param programEnrollmentUUID - The UUID of the program enrollment to update
- * @param stateConceptUUID - The UUID of the new state concept to set for the program enrollment
+ * @param workflowStateUUID - The UUID of the allowed workflow state to set for the program enrollment
  * @returns Promise resolving to the updated program enrollment
  */
 export const updateProgramState = async (
   programEnrollmentUUID: string,
-  stateConceptUUID: string,
+  workflowStateUUID: string,
 ): Promise<ProgramEnrollment> => {
   const body = {
     uuid: programEnrollmentUUID,
     states: [
       {
-        state: { uuid: stateConceptUUID },
+        state: { uuid: workflowStateUUID },
       },
     ],
   };
