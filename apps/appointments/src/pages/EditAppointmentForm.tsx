@@ -1,11 +1,13 @@
 import {
+  getAllAppointmentServices,
   getAppointmentBookingConflicts,
+  getLocationByTag,
   type Appointment,
   type AppointmentUpdateRequest,
   updateAppointment,
   useTranslation,
 } from '@bahmni/services';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { hasAppointmentConflicts } from './appointmentActions';
 import styles from './styles/index.module.scss';
@@ -42,9 +44,38 @@ export const EditAppointmentForm = ({
   const [endTime, setEndTime] = useState(() =>
     timeValue(appointment.endDateTime),
   );
+  const [serviceUuid, setServiceUuid] = useState(
+    appointment.service?.uuid ?? '',
+  );
+  const [locationUuid, setLocationUuid] = useState(
+    appointment.location?.uuid ?? '',
+  );
   const [comments, setComments] = useState(appointment.comments ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const services = useQuery({
+    queryKey: ['allAppointmentServices'],
+    queryFn: getAllAppointmentServices,
+  });
+  const locations = useQuery({
+    queryKey: ['appointment-locations'],
+    queryFn: () => getLocationByTag('Appointment Location'),
+  });
+  const service = services.data?.find((item) => item.uuid === serviceUuid);
+  const fixedLocation = service?.location;
+  const locationOptions = (locations.data ?? []).filter(
+    (item) => !fixedLocation?.uuid || item.uuid === fixedLocation.uuid,
+  );
+  const currentLocation = appointment.location;
+  const extraLocation =
+    fixedLocation ??
+    (serviceUuid === appointment.service?.uuid ? currentLocation : undefined);
+  if (
+    extraLocation &&
+    !locationOptions.some((item) => item.uuid === extraLocation.uuid)
+  ) {
+    locationOptions.push({ ...extraLocation, display: extraLocation.name });
+  }
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -66,7 +97,18 @@ export const EditAppointmentForm = ({
       !appointment.patient?.uuid ||
       !appointment.service?.uuid ||
       !appointment.location?.uuid ||
+      !serviceUuid ||
+      !locationUuid ||
       !appointment.appointmentKind
+    ) {
+      setError(t('APPOINTMENTS_BOOKING_REFERENCE_ERROR'));
+      return;
+    }
+    if (
+      (serviceUuid !== appointment.service.uuid && !service) ||
+      (locationUuid !== appointment.location.uuid &&
+        !locationOptions.some((item) => item.uuid === locationUuid)) ||
+      (fixedLocation?.uuid && fixedLocation.uuid !== locationUuid)
     ) {
       setError(t('APPOINTMENTS_BOOKING_REFERENCE_ERROR'));
       return;
@@ -75,11 +117,12 @@ export const EditAppointmentForm = ({
     const request: AppointmentUpdateRequest = {
       uuid: appointment.uuid,
       patientUuid: appointment.patient.uuid,
-      serviceUuid: appointment.service.uuid,
-      ...(appointment.serviceType?.uuid
+      serviceUuid,
+      ...(serviceUuid === appointment.service.uuid &&
+      appointment.serviceType?.uuid
         ? { serviceTypeUuid: appointment.serviceType.uuid }
         : {}),
-      locationUuid: appointment.location.uuid,
+      locationUuid,
       ...(Number.isFinite(scheduled)
         ? { dateAppointmentScheduled: new Date(scheduled).toISOString() }
         : {}),
@@ -146,13 +189,54 @@ export const EditAppointmentForm = ({
           <strong>{appointment.patient.name}</strong> (
           {appointment.patient.identifier})
         </p>
-        <p>
-          {appointment.service.name}
-          {appointment.serviceType?.name
-            ? `, ${appointment.serviceType.name}`
-            : ''}
-          {appointment.location?.name ? `, ${appointment.location.name}` : ''}
-        </p>
+        <label>
+          {t('APPOINTMENTS_SERVICE')}
+          <select
+            required
+            value={serviceUuid}
+            onChange={(event) => {
+              const selected = services.data?.find(
+                (item) => item.uuid === event.target.value,
+              );
+              setServiceUuid(event.target.value);
+              setLocationUuid(selected?.location?.uuid ?? '');
+            }}
+            disabled={services.isLoading || services.isError}
+          >
+            {!services.data?.some(
+              (item) => item.uuid === appointment.service.uuid,
+            ) && (
+              <option value={appointment.service.uuid}>
+                {appointment.service.name}
+              </option>
+            )}
+            {(services.data ?? []).map((item) => (
+              <option key={item.uuid} value={item.uuid}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t('APPOINTMENTS_LOCATION')}
+          <select
+            required
+            value={locationUuid}
+            onChange={(event) => setLocationUuid(event.target.value)}
+            disabled={locations.isLoading || locations.isError || !service}
+          >
+            <option value="">{t('APPOINTMENTS_SELECT_LOCATION')}</option>
+            {locationOptions.map((item) => (
+              <option key={item.uuid} value={item.uuid}>
+                {item.display}
+              </option>
+            ))}
+          </select>
+        </label>
+        {serviceUuid === appointment.service.uuid &&
+          appointment.serviceType?.name && (
+            <p>{appointment.serviceType.name}</p>
+          )}
         <label>
           {t('APPOINTMENTS_DATE')}
           <input

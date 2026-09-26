@@ -15,6 +15,24 @@ jest.mock('@bahmni/services', () => ({
 const mockInvalidateQueries = jest.fn().mockResolvedValue(undefined);
 jest.mock('@tanstack/react-query', () => ({
   ...jest.requireActual('@tanstack/react-query'),
+  useQuery: ({ queryKey }: { queryKey: string[] }) =>
+    queryKey[0] === 'allAppointmentServices'
+      ? {
+          data: [
+            { uuid: 'service-1', name: 'Consultation' },
+            {
+              uuid: 'service-2',
+              name: 'Follow-up visit',
+              location: { uuid: 'location-2', name: 'OPD-2' },
+            },
+          ],
+        }
+      : {
+          data: [
+            { uuid: 'location-1', display: 'OPD-1' },
+            { uuid: 'location-2', display: 'OPD-2' },
+          ],
+        },
   useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
 }));
 
@@ -134,5 +152,55 @@ it('does not replace an unset scheduling date with the Unix epoch', async () => 
   await waitFor(() => expect(updateAppointment).toHaveBeenCalled());
   expect((updateAppointment as jest.Mock).mock.calls[0][0]).not.toHaveProperty(
     'dateAppointmentScheduled',
+  );
+});
+
+it('changes service and its fixed location without retaining an unrelated service type', async () => {
+  (getAppointmentBookingConflicts as jest.Mock).mockResolvedValue({});
+  (updateAppointment as jest.Mock).mockResolvedValue(appointment);
+  render(
+    <EditAppointmentForm
+      appointment={appointment}
+      onClose={jest.fn()}
+      onSaved={jest.fn()}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText('Service'), {
+    target: { value: 'service-2' },
+  });
+  expect(screen.getByLabelText('Location')).toHaveValue('location-2');
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  await waitFor(() => expect(updateAppointment).toHaveBeenCalled());
+  const request = (updateAppointment as jest.Mock).mock.calls[0][0];
+  expect(request).toMatchObject({
+    serviceUuid: 'service-2',
+    locationUuid: 'location-2',
+  });
+  expect(getAppointmentBookingConflicts).toHaveBeenCalledWith(request);
+  expect(request).not.toHaveProperty('serviceTypeUuid');
+});
+
+it('changes the location for a service without a fixed location', async () => {
+  (getAppointmentBookingConflicts as jest.Mock).mockResolvedValue({});
+  (updateAppointment as jest.Mock).mockResolvedValue(appointment);
+  render(
+    <EditAppointmentForm
+      appointment={appointment}
+      onClose={jest.fn()}
+      onSaved={jest.fn()}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText('Location'), {
+    target: { value: 'location-2' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  await waitFor(() =>
+    expect(updateAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        serviceUuid: 'service-1',
+        serviceTypeUuid: 'type-1',
+        locationUuid: 'location-2',
+      }),
+    ),
   );
 });
