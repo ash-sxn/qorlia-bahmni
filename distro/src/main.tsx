@@ -1,7 +1,8 @@
 import {
   initFontAwesome,
-  applyBahmniTheme,
-  BAHMNI_DEFAULT_THEME,
+  applyHospitalBranding,
+  DEFAULT_BRANDING,
+  parseHospitalBranding,
 } from '@bahmni/design-system';
 import '@bahmni/widgets/styles';
 import React, { StrictMode } from 'react';
@@ -25,14 +26,27 @@ declare global {
 window.React = React;
 window.ReactDOM = ReactDOMModule;
 
-applyBahmniTheme(BAHMNI_DEFAULT_THEME);
 initFontAwesome();
 
-const root = createRoot(document.getElementById('root') as HTMLElement);
-root.render(
-  <StrictMode>
-    <BrowserRouter basename={PUBLIC_PATH ?? '/'}>
-      <App />
-    </BrowserRouter>
-  </StrictMode>,
-);
+async function start(): Promise<void> {
+  let branding = DEFAULT_BRANDING;
+  try {
+    const response = await fetch(`${PUBLIC_PATH}assets/branding.json`, {
+      cache: 'no-store',
+    });
+    if (response.ok) branding = parseHospitalBranding(await response.json());
+  } catch {
+    // An absent or invalid deployment config keeps the accessible Qorlia default.
+  }
+  applyHospitalBranding(branding);
+  const root = createRoot(document.getElementById('root') as HTMLElement);
+  root.render(
+    <StrictMode>
+      <BrowserRouter basename={PUBLIC_PATH ?? '/'}>
+        <App />
+      </BrowserRouter>
+    </StrictMode>,
+  );
+}
+
+void start();

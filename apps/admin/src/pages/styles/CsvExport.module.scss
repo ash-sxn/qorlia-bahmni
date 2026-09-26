@@ -1,0 +1,87 @@
+.page {
+  min-height: calc(100vh - 48px);
+  padding: 36px clamp(18px, 4vw, 56px);
+  background: var(--qorlia-canvas, #f8faf9);
+  color: var(--qorlia-ink, #202b29);
+}
+.eyebrow {
+  color: var(--qorlia-primary, #1f5238);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+.page h1 {
+  margin: 8px 0;
+  font-size: clamp(28px, 2.4vw, 38px);
+  letter-spacing: -0.04em;
+}
+.description {
+  color: var(--qorlia-muted, #5a6865);
+}
+.card {
+  max-width: 680px;
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 10px;
+  background: var(--qorlia-surface, #fff);
+}
+.card label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.actions input {
+  flex: 1 1 230px;
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid #cddbd4;
+  border-radius: 7px;
+  font: inherit;
+}
+.exportButton {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.exportButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.suggestions {
+  max-height: 270px;
+  margin: 10px 0 0;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 7px;
+  list-style: none;
+}
+.suggestions button {
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.suggestions button:hover,
+.suggestions button:focus-visible {
+  background: #e8f4ed;
+}

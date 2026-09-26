@@ -54,7 +54,9 @@ client.interceptors.response.use(
       }
     }
     const { message } = getFormattedError(error);
-    throw new Error(message);
+    throw Object.assign(new Error(message), {
+      status: axios.isAxiosError(error) ? error.response?.status : undefined,
+    });
   },
 );
 

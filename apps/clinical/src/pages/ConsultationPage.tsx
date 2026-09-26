@@ -236,7 +236,10 @@ const ConsultationPage: React.FC = () => {
     if (!dashboardConfig || !userPrivileges) return null;
     return {
       ...dashboardConfig,
-      sections: filterSectionsByPrivileges(dashboardConfig.sections),
+      sections: filterSectionsByPrivileges(
+        dashboardConfig.sections,
+        userPrivileges,
+      ),
     };
   }, [dashboardConfig, userPrivileges]);
 

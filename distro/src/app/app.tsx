@@ -2,6 +2,7 @@ import { Loading } from '@bahmni/design-system';
 import { AppContextProvider } from '@bahmni/widgets';
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { DesignPreview } from '../preview/DesignPreview';
 
 const HomeApp = lazy(() =>
   import('@bahmni/home-app').then((module) => ({ default: module.HomeApp })),
@@ -41,6 +42,12 @@ const ReportsApp = lazy(() =>
 );
 
 export function App() {
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    window.location.pathname.endsWith('/design-preview')
+  ) {
+    return <DesignPreview />;
+  }
   return (
     <AppContextProvider>
       <Suspense fallback={<Loading />}>

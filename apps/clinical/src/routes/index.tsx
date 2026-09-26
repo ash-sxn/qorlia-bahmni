@@ -5,8 +5,36 @@ import { Routes, RouteConfig } from './model';
 const ConsultationPage = lazy(() => import('../pages/ConsultationPage'));
 
 const ClinicalList = lazy(() => import('../pages/list'));
+const BedManagement = lazy(() => import('../pages/BedManagement'));
+const InpatientPatientList = lazy(
+  () => import('../pages/InpatientPatientList'),
+);
+const InpatientPatientDetails = lazy(
+  () => import('../pages/InpatientPatientDetails'),
+);
+const ProgramsPage = lazy(() => import('../pages/ProgramsPage'));
 
 export const routes: Routes = [
+  {
+    path: 'programs/:patientUuid',
+    component: ProgramsPage,
+  },
+  {
+    path: 'programs',
+    component: ProgramsPage,
+  },
+  {
+    path: 'inpatient/:patientUuid',
+    component: InpatientPatientDetails,
+  },
+  {
+    path: 'inpatient',
+    component: InpatientPatientList,
+  },
+  {
+    path: 'beds',
+    component: BedManagement,
+  },
   {
     path: ':patientUuid',
     component: ConsultationPage,

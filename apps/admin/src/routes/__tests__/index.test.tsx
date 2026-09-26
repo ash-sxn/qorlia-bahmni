@@ -25,6 +25,18 @@ jest.mock('../../pages/CsvUpload', () => ({
   CsvUpload: () => <div data-testid="admin-csv-upload-page-test-id" />,
 }));
 
+jest.mock('../../pages/CsvExport', () => ({
+  CsvExport: () => <div data-testid="admin-csv-export-page-test-id" />,
+}));
+
+jest.mock('../../pages/AuditLog', () => ({
+  AuditLog: () => <div data-testid="admin-audit-log-page-test-id" />,
+}));
+
+jest.mock('../../pages/OrderSets', () => ({
+  OrderSets: () => <div data-testid="admin-order-sets-page-test-id" />,
+}));
+
 const renderAt = (path: string) =>
   render(
     <MemoryRouter initialEntries={[path]}>
@@ -43,12 +55,29 @@ describe('routes', () => {
     ).toBeInTheDocument();
   });
 
-  it('resolves /csv to the CSV upload placeholder without a 404', async () => {
+  it('resolves /csv to the CSV upload page without a 404', async () => {
     renderAt('/csv');
 
     expect(
       await screen.findByTestId('admin-csv-upload-page-test-id'),
     ).toBeInTheDocument();
+  });
+
+  it('resolves /csv-export to concept export', async () => {
+    renderAt('/csv-export');
+    expect(await screen.findByTestId('admin-csv-export-page-test-id')).toBeInTheDocument();
+  });
+
+  it('resolves /audit-log to the audit viewer', async () => {
+    renderAt('/audit-log');
+    expect(await screen.findByTestId('admin-audit-log-page-test-id')).toBeInTheDocument();
+  });
+
+  it('resolves order set list and editor routes', async () => {
+    renderAt('/order-sets');
+    expect(await screen.findByTestId('admin-order-sets-page-test-id')).toBeInTheDocument();
+    renderAt('/order-sets/new');
+    expect(await screen.findAllByTestId('admin-order-sets-page-test-id')).toHaveLength(2);
   });
 
   // NOTE: this asserts the catch-all resolves to `/` within this route table,

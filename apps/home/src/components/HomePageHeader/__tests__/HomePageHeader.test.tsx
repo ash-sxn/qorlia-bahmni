@@ -6,9 +6,18 @@ import { HomePageHeader } from '../HomePageHeader';
 expect.extend(toHaveNoViolations);
 
 jest.mock('@bahmni/design-system', () => ({
-  Header: ({ ariaLabel, brandPrefix, globalFeatures, userMenu }: any) => (
+  getHospitalBranding: () => ({ name: 'Qorlia' }),
+  Header: ({
+    ariaLabel,
+    brandName,
+    brandPrefix,
+    globalFeatures,
+    userMenu,
+  }: any) => (
     <header aria-label={ariaLabel} data-testid="header">
-      <div data-testid="brand">{brandPrefix}</div>
+      <div data-testid="brand">
+        {brandName ?? 'Qorlia'} {brandPrefix}
+      </div>
       <div data-testid="global-features">{globalFeatures}</div>
       <div data-testid="user-menu-slot">{userMenu}</div>
     </header>
@@ -30,13 +39,13 @@ describe('HomePageHeader', () => {
 
     const header = screen.getByTestId('header');
     expect(header).toBeInTheDocument();
-    expect(header).toHaveAttribute('aria-label', 'Bahmni');
+    expect(header).toHaveAttribute('aria-label', 'Qorlia');
   });
 
   it('renders Home branding via brandPrefix', () => {
     render(<HomePageHeader />);
 
-    expect(screen.getByTestId('brand')).toHaveTextContent('Home');
+    expect(screen.getByTestId('brand')).toHaveTextContent('Qorlia Home');
   });
 
   describe('locale change', () => {

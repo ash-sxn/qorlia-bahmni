@@ -195,3 +195,25 @@ export interface PatientProgramsResponse {
 export interface ProgramsResponse {
   results: Program[];
 }
+
+export interface ProgramAttributeDefinition {
+  uuid: string;
+  name: string;
+  description?: string;
+  retired: boolean;
+  datatypeClassname: string;
+  datatypeConfig?: string;
+  concept?: Concept;
+}
+
+export interface NewProgramEnrollment {
+  patient: string;
+  program: string;
+  dateEnrolled: string;
+  states?: { state: string; startDate: string }[];
+  attributes?: {
+    attributeType: { uuid: string };
+    value: string;
+    hydratedObject?: string;
+  }[];
+}

@@ -323,10 +323,14 @@ describe('Header', () => {
       expect(screen.getByText('Home')).toBeInTheDocument();
     });
 
-    it('does not render brand when neither name nor prefix provided', () => {
+    it('shows the Qorlia brand and links home by default', () => {
       render(<Header {...defaultProps} />);
 
-      expect(screen.queryByTestId('header-name')).not.toBeInTheDocument();
+      const name = screen.getByTestId('header-name');
+      expect(name).toHaveTextContent('Qorlia');
+      expect(name).not.toHaveTextContent('IBM');
+      expect(name).toHaveAttribute('href', '/bahmni-v2/home');
+      expect(name.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
     });
   });
 

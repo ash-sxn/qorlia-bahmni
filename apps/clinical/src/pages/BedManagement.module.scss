@@ -1,0 +1,518 @@
+.page {
+  min-height: calc(100vh - 48px);
+  padding: 36px clamp(18px, 4vw, 56px);
+  background: var(--qorlia-canvas, #f8faf9);
+  color: var(--qorlia-ink, #202b29);
+}
+
+.intro {
+  margin-bottom: 24px;
+}
+
+.pageNav,
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 20px;
+}
+
+.pageNav a,
+.tabs button {
+  padding: 9px 14px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--qorlia-ink, #202b29);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.pageNav a[aria-current="page"],
+.tabs button[aria-pressed="true"] {
+  border-color: var(--qorlia-primary, #1f5238);
+  background: #e9f3eb;
+  color: var(--qorlia-primary, #1f5238);
+}
+
+.tabs button span {
+  margin-left: 7px;
+  color: var(--qorlia-muted, #5a6865);
+}
+
+.searchForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.searchForm label {
+  font-weight: 700;
+}
+
+.searchForm input {
+  flex: 1 1 240px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.searchForm button {
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.tableScroll table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.tableScroll th,
+.tableScroll td {
+  padding: 13px;
+  border-bottom: 1px solid var(--qorlia-border, #dbe5e1);
+}
+
+.tableScroll th {
+  background: #f1f6f3;
+}
+
+.intro h1 {
+  margin: 8px 0;
+  font-size: clamp(28px, 2.4vw, 38px);
+  letter-spacing: -0.04em;
+}
+
+.intro p,
+.card p,
+.wardList span,
+.roomList span {
+  color: var(--qorlia-muted, #5a6865);
+}
+
+.eyebrow {
+  color: var(--qorlia-primary, #1f5238);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(320px, 1fr) minmax(
+      220px,
+      280px
+    );
+  gap: 18px;
+  align-items: start;
+}
+
+.patientLayout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 10px;
+  background: var(--qorlia-surface, #fff);
+}
+
+.programSections {
+  display: grid;
+  gap: 18px;
+}
+
+.programDetails summary {
+  color: var(--qorlia-primary, #1f5238);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.programDetails[open] summary {
+  margin-bottom: 16px;
+}
+
+.programDetails h3 {
+  margin: 16px 0 8px;
+  font-size: 14px;
+}
+
+.programHistory {
+  display: grid;
+  gap: 10px;
+  padding-left: 20px;
+}
+
+.programHistory li {
+  display: grid;
+  gap: 3px;
+}
+
+.programStateForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.programStateForm label {
+  font-weight: 700;
+}
+
+.programStateForm select,
+.programStateForm button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.programStateForm button {
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.programStateForm button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.programStateForm p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.programEnrollmentForm {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) minmax(180px, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.programEnrollmentForm label {
+  font-weight: 700;
+}
+
+.programEnrollmentForm input,
+.programEnrollmentForm select,
+.programEnrollmentForm button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.programEnrollmentForm input[type="checkbox"] {
+  width: 20px;
+  min-height: 20px;
+  padding: 0;
+}
+
+.programEnrollmentForm button {
+  grid-column: 2;
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.programEnrollmentForm button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.programEnrollmentForm p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.programEdit {
+  margin-top: 16px;
+}
+
+.programEdit > button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--qorlia-primary, #1f5238);
+  font: inherit;
+  cursor: pointer;
+}
+
+.programEdit .programEnrollmentForm button[type='button'] {
+  background: #fff;
+  color: var(--qorlia-primary, #1f5238);
+}
+
+.programLifecycle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.programLifecycle form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.programLifecycle select,
+.programLifecycle button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.programLifecycle button {
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+  cursor: pointer;
+}
+
+.programLifecycle button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.programLifecycle p {
+  margin: 0;
+}
+
+@media (max-width: 620px) {
+  .programEnrollmentForm {
+    grid-template-columns: 1fr;
+  }
+
+  .programEnrollmentForm button,
+  .programEnrollmentForm p {
+    grid-column: 1;
+  }
+}
+
+.card h2 {
+  margin: 0 0 16px;
+  font-size: 18px;
+}
+
+.wardList,
+.roomList {
+  display: grid;
+  gap: 8px;
+}
+
+.roomList {
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+}
+
+.wardList button,
+.roomList button,
+.bedGrid button {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wardList button[aria-pressed="true"],
+.roomList button[aria-pressed="true"],
+.bedGrid button[aria-pressed="true"] {
+  border-color: var(--qorlia-primary, #1f5238);
+  box-shadow: 0 0 0 2px #1f523826;
+}
+
+.wardList button:hover,
+.roomList button:hover,
+.bedGrid button:hover,
+.wardList button:focus-visible,
+.roomList button:focus-visible,
+.bedGrid button:focus-visible {
+  border-color: var(--qorlia-primary, #1f5238);
+}
+
+.sectionTitle {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.bedGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.bedGrid .available {
+  background: #f0f8f2;
+}
+
+.bedGrid .occupied {
+  background: #fff2e9;
+}
+
+.bedGrid span {
+  text-transform: capitalize;
+}
+
+.details {
+  display: grid;
+  grid-template-columns: minmax(70px, auto) 1fr;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.details dt {
+  color: var(--qorlia-muted, #5a6865);
+}
+
+.details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.card a {
+  color: var(--qorlia-primary, #1f5238);
+  font-weight: 700;
+}
+
+.actionChoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actionChoices button {
+  padding: 9px 14px;
+  border: 1px solid var(--qorlia-primary, #1f5238);
+  border-radius: 8px;
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.actionChoices button:last-child:not(:first-child) {
+  background: #fff;
+  color: var(--qorlia-primary, #1f5238);
+}
+
+.actionChoices button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionForm {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--qorlia-border, #dbe5e1);
+}
+
+.actionForm h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.actionForm label {
+  display: grid;
+  gap: 5px;
+  font-weight: 700;
+}
+
+.actionForm select,
+.actionForm textarea {
+  min-width: 0;
+  width: 100%;
+  padding: 9px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+}
+
+.actionForm fieldset {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 8px;
+}
+
+.actionForm fieldset label {
+  display: flex;
+  gap: 8px;
+  font-weight: 400;
+}
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(180px, 240px) minmax(320px, 1fr);
+  }
+  .layout aside {
+    grid-column: 1 / -1;
+  }
+  .patientLayout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .patientLayout .card:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 700px) {
+  .layout,
+  .patientLayout {
+    grid-template-columns: 1fr;
+  }
+  .layout aside {
+    grid-column: auto;
+  }
+  .patientLayout .card:last-child {
+    grid-column: auto;
+  }
+}

@@ -29,6 +29,7 @@ const useUnavailabilityFormData = () => {
   } = useQuery<Location[]>({
     queryKey: ['providerLoginLocations', currentUser?.uuid],
     queryFn: async (): Promise<Location[]> => {
+      if (!currentUser?.uuid) return [];
       const providerLocations = await getProviderLoginLocations(
         currentUser.uuid,
       );

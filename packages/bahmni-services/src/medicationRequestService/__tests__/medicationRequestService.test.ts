@@ -112,6 +112,64 @@ describe('medicationRequestService', () => {
   });
 
   describe('getPatientMedications', () => {
+    it('reads legacy drug orders without enabling FHIR writes when this server returns 500', async () => {
+      (get as jest.Mock)
+        .mockRejectedValueOnce(
+          Object.assign(new Error('FHIR unavailable'), { status: 500 }),
+        )
+        .mockResolvedValueOnce([
+          {
+            uuid: 'legacy-order-1',
+            drug: {
+              uuid: 'drug-1',
+              name: 'Paracetamol 250 mg',
+              form: 'Tablet',
+            },
+            concept: { uuid: 'concept-1' },
+            encounterUuid: 'encounter-1',
+            dosingInstructions: {
+              dose: 4.5,
+              doseUnits: 'mg',
+              frequency: '1/day x 7 days/week',
+              route: 'Oral',
+              quantity: 6,
+              quantityUnits: 'Tablet(s)',
+            },
+            duration: 6,
+            durationUnits: 'd',
+            dateActivated: '2026-09-20T10:00:00Z',
+            effectiveStartDate: '2026-09-20T10:00:00Z',
+            provider: { name: 'Dr Demo' },
+          },
+        ]);
+
+      const result = await getPatientMedications(
+        patientUUID,
+        ['concept-1'],
+        ['encounter-1'],
+      );
+
+      expect(get).toHaveBeenLastCalledWith(
+        `/openmrs/ws/rest/v1/bahmnicore/drugOrders?patientUuid=${patientUUID}`,
+      );
+      expect(result).toEqual([
+        expect.objectContaining({
+          id: 'legacy-order-1',
+          name: 'Paracetamol 250 mg',
+          dose: { value: 4.5, unit: 'mg' },
+          status: MedicationStatus.Active,
+          readOnly: true,
+        }),
+      ]);
+    });
+
+    it('does not hide authorization errors behind the legacy fallback', async () => {
+      const error = Object.assign(new Error('Forbidden'), { status: 403 });
+      (get as jest.Mock).mockRejectedValueOnce(error);
+      await expect(getPatientMedications(patientUUID)).rejects.toBe(error);
+      expect(get).toHaveBeenCalledTimes(1);
+    });
+
     describe('Happy Path Cases', () => {
       it('should return array of formatted medications with all fields populated', async () => {
         const mockMedications = [

@@ -1,0 +1,182 @@
+.page {
+  min-height: calc(100vh - 48px);
+  padding: 36px clamp(18px, 4vw, 56px);
+  background: var(--qorlia-canvas, #f8faf9);
+  color: var(--qorlia-ink, #202b29);
+}
+.eyebrow {
+  color: var(--qorlia-primary, #1f5238);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+.heading,
+.subheading,
+.footer,
+.memberHeader,
+.rowActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.heading,
+.subheading {
+  justify-content: space-between;
+}
+.heading h1 {
+  margin: 8px 0;
+  font-size: clamp(28px, 2.4vw, 38px);
+  letter-spacing: -0.04em;
+}
+.heading p {
+  color: var(--qorlia-muted, #5a6865);
+}
+.card {
+  margin-top: 22px;
+  padding: 22px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 10px;
+  background: var(--qorlia-surface, #fff);
+}
+.card h2 {
+  margin: 0 0 16px;
+  font-size: 19px;
+}
+.fields,
+.template {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+.fields label,
+.template label,
+.memberHeader label {
+  display: grid;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.fields input,
+.fields select,
+.member input,
+.member select,
+.member textarea {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid #cddbd4;
+  border-radius: 7px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-weight: 400;
+}
+.page button {
+  min-height: 38px;
+  padding: 7px 13px;
+  border: 1px solid var(--qorlia-primary, #1f5238);
+  border-radius: 7px;
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.page button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.member {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 9px;
+}
+.member legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+.memberHeader {
+  align-items: end;
+}
+.memberHeader > label {
+  flex: 1 1 180px;
+}
+.searchField {
+  position: relative;
+  flex: 2 1 230px;
+}
+.rowActions button,
+.footer button:first-child,
+.heading button:first-child:not(:last-child) {
+  background: #fff;
+  color: var(--qorlia-primary, #1f5238);
+}
+.template {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--qorlia-border, #dbe5e1);
+}
+.wide {
+  grid-column: 1 / -1;
+}
+.footer {
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+.error {
+  padding: 12px;
+  border-left: 3px solid #ad3b3b;
+  background: #fff1f1;
+}
+.suggestions {
+  position: absolute;
+  z-index: 4;
+  width: 100%;
+  max-height: 220px;
+  margin: 2px 0 0;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 8px 20px #163a2a1c;
+  list-style: none;
+}
+.suggestions button {
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+}
+.suggestions button:hover,
+.suggestions button:focus-visible {
+  background: #e8f4ed;
+}
+.tableScroll {
+  overflow-x: auto;
+}
+.tableScroll table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.tableScroll th,
+.tableScroll td {
+  padding: 12px;
+  border-bottom: 1px solid var(--qorlia-border, #dbe5e1);
+}
+.tableScroll th {
+  background: #f1f6f3;
+}
+.page .textButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--qorlia-primary, #1f5238);
+  text-decoration: underline;
+}

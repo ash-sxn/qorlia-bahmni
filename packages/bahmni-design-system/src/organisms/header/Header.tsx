@@ -1,3 +1,4 @@
+import { BAHMNI_HOME_PATH } from '@bahmni/services';
 import {
   HeaderContainer,
   Header as CarbonHeader,
@@ -12,6 +13,7 @@ import {
 } from '@carbon/react';
 import React from 'react';
 import { Icon, ICON_SIZE } from '../../molecules/icon';
+import { getHospitalBranding } from '../../utils/branding';
 import { HeaderProps } from './models';
 import styles from './styles/Header.module.scss';
 import { useHeaderSideNav } from './useHeaderSideNav';
@@ -27,9 +29,9 @@ import { isMobile } from './utils';
  */
 export const Header: React.FC<HeaderProps> = React.memo(
   ({
-    brandName,
+    brandName: suppliedBrandName,
     brandPrefix,
-    brandHref = '/',
+    brandHref = BAHMNI_HOME_PATH,
     breadcrumbItems = [],
     globalActions = [],
     globalFeatures = [],
@@ -41,6 +43,8 @@ export const Header: React.FC<HeaderProps> = React.memo(
     extraContent,
     userMenu,
   }) => {
+    const hospitalBranding = getHospitalBranding();
+    const brandName = suppliedBrandName ?? hospitalBranding.name;
     const { isSideNavExpanded, handleSideNavItemClick } =
       useHeaderSideNav(onSideNavItemClick);
 
@@ -50,10 +54,26 @@ export const Header: React.FC<HeaderProps> = React.memo(
       return (
         <HeaderName
           href={brandHref}
-          prefix={brandPrefix}
+          prefix={brandPrefix ?? ''}
+          className={
+            brandName === hospitalBranding.name ? styles.qorliaBrand : undefined
+          }
           data-testid="header-name"
         >
-          {brandName}
+          {brandName === hospitalBranding.name &&
+            (hospitalBranding.logoPath ? (
+              <img
+                className={styles.brandLogo}
+                src={hospitalBranding.logoPath}
+                alt=""
+              />
+            ) : (
+              <span className={styles.qorliaMark} aria-hidden="true" />
+            ))}
+          <span>{brandName}</span>
+          {brandName === hospitalBranding.name && (
+            <span className={styles.brandCredit}>Built on Bahmni</span>
+          )}
         </HeaderName>
       );
     };

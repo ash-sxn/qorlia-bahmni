@@ -161,6 +161,7 @@ export interface OrderedAddressHierarchyLevel {
 export type OrderedAddressHierarchyLevels = OrderedAddressHierarchyLevel[];
 
 export interface AppointmentSearchResult extends PatientSearchResult {
+  appointmentUuid?: string;
   appointmentNumber?: string;
   appointmentDate?: string;
   appointmentReason?: string;
@@ -173,7 +174,6 @@ export interface CheckInAppointmentResponse {
   status: string;
 }
 export interface Appointment {
-  length: number;
   uuid: string;
   appointmentNumber: string;
   dateCreated: number;
@@ -209,7 +209,7 @@ export interface AppointmentService {
   appointmentServiceId: number;
   name: string;
   description: string | null;
-  speciality: null;
+  speciality: { uuid: string; name: string } | null;
   startTime: string;
   endTime: string;
   maxAppointmentsLimit: number;
@@ -230,6 +230,8 @@ export interface Provider {
   id?: number;
   name?: string;
   uuid?: string;
+  response?: string;
+  comments?: string | null;
 }
 
 export interface Extensions {
