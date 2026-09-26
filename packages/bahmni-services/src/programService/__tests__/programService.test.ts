@@ -1,4 +1,4 @@
-import { get, post } from '../../api';
+import { del, get, post } from '../../api';
 import { mockEnrollments, patientUUID, mockPrograms } from '../__mocks__/mocks';
 import {
   PROGRAM_DETAILS_URL,
@@ -18,6 +18,8 @@ import {
   getAllPrograms,
   getProgramAttributeTypes,
   createProgramEnrollment,
+  completeProgramEnrollment,
+  voidProgramEnrollment,
   getCurrentStateName,
   getPatientPrograms,
   getPatientProgramsPage,
@@ -189,6 +191,7 @@ describe('programService', () => {
       };
 
       (post as jest.Mock).mockResolvedValue(mockUpdatedEnrollment);
+      (get as jest.Mock).mockResolvedValue(mockUpdatedEnrollment);
 
       const result = await updateProgramState(
         programEnrollmentUUID,
@@ -200,6 +203,7 @@ describe('programService', () => {
         `/openmrs/ws/rest/v1/bahmniprogramenrollment/${programEnrollmentUUID}`,
         {
           uuid: programEnrollmentUUID,
+          dateEnrolled: mockUpdatedEnrollment.dateEnrolled,
           states: [
             {
               state: { uuid: stateConceptUUID },
@@ -214,6 +218,7 @@ describe('programService', () => {
       const stateConceptUUID = 'workflow-state-2';
 
       (post as jest.Mock).mockResolvedValue(mockEnrollments[1]);
+      (get as jest.Mock).mockResolvedValue(mockEnrollments[1]);
 
       await updateProgramState(programEnrollmentUUID, stateConceptUUID);
 
@@ -222,6 +227,7 @@ describe('programService', () => {
         `/openmrs/ws/rest/v1/bahmniprogramenrollment/${programEnrollmentUUID}`,
         expect.objectContaining({
           uuid: programEnrollmentUUID,
+          dateEnrolled: mockEnrollments[1].dateEnrolled,
           states: expect.arrayContaining([
             expect.objectContaining({
               state: { uuid: stateConceptUUID },
@@ -237,11 +243,41 @@ describe('programService', () => {
       const mockError = new Error('Failed to update program state');
 
       (post as jest.Mock).mockRejectedValue(mockError);
+      (get as jest.Mock).mockResolvedValue(mockEnrollments[0]);
 
       await expect(
         updateProgramState(programEnrollmentUUID, stateConceptUUID),
       ).rejects.toThrow('Failed to update program state');
     });
+  });
+
+  it('completes a current enrollment with its required original date', async () => {
+    (get as jest.Mock).mockResolvedValue(mockEnrollments[0]);
+    (post as jest.Mock).mockResolvedValue(mockEnrollments[0]);
+
+    await completeProgramEnrollment(
+      'enrollment-1',
+      '2026-09-26T00:00:00.000Z',
+      'outcome-1',
+    );
+
+    expect(post).toHaveBeenCalledWith(
+      '/openmrs/ws/rest/v1/bahmniprogramenrollment/enrollment-1',
+      {
+        uuid: 'enrollment-1',
+        dateEnrolled: mockEnrollments[0].dateEnrolled,
+        dateCompleted: '2026-09-26T00:00:00.000Z',
+        outcome: 'outcome-1',
+      },
+    );
+  });
+
+  it('voids through the dedicated Bahmni delete endpoint with a reason', async () => {
+    await voidProgramEnrollment('enrollment-1');
+
+    expect(del).toHaveBeenCalledWith(
+      '/openmrs/ws/rest/v1/bahmniprogramenrollment/enrollment-1?reason=Removed+from+the+Qorlia+program+manager',
+    );
   });
 
   describe('getPatientProgramsPage', () => {

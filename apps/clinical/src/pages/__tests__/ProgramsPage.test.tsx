@@ -12,6 +12,8 @@ jest.mock('@bahmni/services', () => ({
   getAllPrograms: jest.fn(),
   getProgramAttributeTypes: jest.fn(),
   createProgramEnrollment: jest.fn(),
+  completeProgramEnrollment: jest.fn(),
+  voidProgramEnrollment: jest.fn(),
   get: jest.fn(),
   searchPatientByNameOrId: jest.fn(),
   updateProgramState: jest.fn(),
@@ -31,6 +33,8 @@ const getAllPrograms = services.getAllPrograms as jest.Mock;
 const getAttributes = services.getProgramAttributeTypes as jest.Mock;
 const getConfig = services.get as jest.Mock;
 const createEnrollment = services.createProgramEnrollment as jest.Mock;
+const completeEnrollment = services.completeProgramEnrollment as jest.Mock;
+const voidEnrollment = services.voidProgramEnrollment as jest.Mock;
 
 describe('ProgramsPage', () => {
   const renderPage = (
@@ -234,6 +238,7 @@ describe('ProgramsPage', () => {
       userPrivileges: [
         { uuid: 'priv-1', name: 'app:clinical' },
         { uuid: 'priv-2', name: 'Edit Patient Programs' },
+        { uuid: 'priv-3', name: 'Add Patient Programs' },
       ],
       isLoading: false,
     });
@@ -334,6 +339,7 @@ describe('ProgramsPage', () => {
       userPrivileges: [
         { uuid: 'priv-1', name: 'app:clinical' },
         { uuid: 'priv-2', name: 'Edit Patient Programs' },
+        { uuid: 'priv-3', name: 'Add Patient Programs' },
       ],
       isLoading: false,
     });
@@ -359,6 +365,96 @@ describe('ProgramsPage', () => {
 
     expect(await screen.findByText('PROGRAMS_ALREADY_ENROLLED')).toBeVisible();
     expect(createEnrollment).not.toHaveBeenCalled();
+  });
+
+  it('completes an active program with a configured outcome', async () => {
+    (useUserPrivilege as jest.Mock).mockReturnValue({
+      userPrivileges: [
+        { uuid: 'priv-1', name: 'app:clinical' },
+        { uuid: 'priv-2', name: 'Edit Patient Programs' },
+      ],
+      isLoading: false,
+    });
+    getPatient.mockResolvedValue({ fullName: 'Meera Demo' });
+    getPrograms.mockResolvedValue({
+      results: [
+        {
+          uuid: 'enrollment-1',
+          program: { uuid: 'program-1', name: 'Maternal health' },
+          dateEnrolled: '2020-09-20',
+          dateCompleted: null,
+          states: [],
+          attributes: [],
+          voided: false,
+        },
+      ],
+    });
+    getAllPrograms.mockResolvedValue([
+      {
+        uuid: 'program-1',
+        outcomesConcept: {
+          setMembers: [{ uuid: 'outcome-1', display: 'Completed' }],
+        },
+      },
+    ]);
+    completeEnrollment.mockResolvedValue({ uuid: 'enrollment-1' });
+    renderPage('/clinical/programs/patient-1');
+
+    fireEvent.click(await screen.findByText('Maternal health'));
+    fireEvent.change(await screen.findByLabelText('PROGRAMS_OUTCOME'), {
+      target: { value: 'outcome-1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'PROGRAMS_COMPLETE' }));
+
+    await waitFor(() =>
+      expect(completeEnrollment).toHaveBeenCalledWith(
+        'enrollment-1',
+        expect.any(String),
+        'outcome-1',
+      ),
+    );
+    expect(await screen.findByText('PROGRAMS_COMPLETE_SUCCESS')).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'PROGRAMS_ENROLL' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('requires the delete privilege and confirmation before voiding', async () => {
+    (useUserPrivilege as jest.Mock).mockReturnValue({
+      userPrivileges: [
+        { uuid: 'priv-1', name: 'app:clinical' },
+        { uuid: 'priv-2', name: 'Delete Patient Programs' },
+      ],
+      isLoading: false,
+    });
+    getPatient.mockResolvedValue({ fullName: 'Meera Demo' });
+    getPrograms.mockResolvedValue({
+      results: [
+        {
+          uuid: 'enrollment-1',
+          program: { uuid: 'program-1', name: 'Maternal health' },
+          dateEnrolled: '2020-09-20',
+          dateCompleted: null,
+          states: [],
+          attributes: [],
+          voided: false,
+        },
+      ],
+    });
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false);
+    voidEnrollment.mockResolvedValue(undefined);
+    renderPage('/clinical/programs/patient-1');
+
+    fireEvent.click(await screen.findByText('Maternal health'));
+    fireEvent.click(screen.getByRole('button', { name: 'PROGRAMS_REMOVE' }));
+    expect(voidEnrollment).not.toHaveBeenCalled();
+
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: 'PROGRAMS_REMOVE' }));
+    await waitFor(() =>
+      expect(voidEnrollment).toHaveBeenCalledWith('enrollment-1'),
+    );
+    confirm.mockRestore();
   });
 
   it('does not request patient data without clinical access', () => {

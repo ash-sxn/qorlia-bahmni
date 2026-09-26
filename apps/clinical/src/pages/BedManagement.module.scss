@@ -255,6 +255,45 @@
   margin: 0;
 }
 
+.programLifecycle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.programLifecycle form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.programLifecycle select,
+.programLifecycle button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.programLifecycle button {
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+  cursor: pointer;
+}
+
+.programLifecycle button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.programLifecycle p {
+  margin: 0;
+}
+
 @media (max-width: 620px) {
   .programEnrollmentForm {
     grid-template-columns: 1fr;

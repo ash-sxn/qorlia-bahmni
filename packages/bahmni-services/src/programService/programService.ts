@@ -1,4 +1,4 @@
-import { get, post } from '../api';
+import { del, get, post } from '../api';
 import { getDisplayNameForConcept } from '../conceptService';
 import { isDate } from '../date/date';
 import {
@@ -79,8 +79,13 @@ export const updateProgramState = async (
   programEnrollmentUUID: string,
   workflowStateUUID: string,
 ): Promise<ProgramEnrollment> => {
+  const current = await getProgramByUUID(programEnrollmentUUID);
+  if (current.voided || current.dateCompleted) {
+    throw new Error('Only active program enrollments can change state');
+  }
   const body = {
     uuid: programEnrollmentUUID,
+    dateEnrolled: current.dateEnrolled,
     states: [
       {
         state: { uuid: workflowStateUUID },
@@ -92,6 +97,30 @@ export const updateProgramState = async (
     body,
   );
 };
+
+export const completeProgramEnrollment = async (
+  enrollmentUUID: string,
+  dateCompleted: string,
+  outcomeUUID: string,
+): Promise<ProgramEnrollment> => {
+  const current = await getProgramByUUID(enrollmentUUID);
+  if (current.voided || current.dateCompleted) {
+    throw new Error('Only active program enrollments can be completed');
+  }
+  return post<ProgramEnrollment>(PROGRAMS_URL(enrollmentUUID), {
+    uuid: enrollmentUUID,
+    dateEnrolled: current.dateEnrolled,
+    dateCompleted,
+    outcome: outcomeUUID,
+  });
+};
+
+export const voidProgramEnrollment = async (
+  enrollmentUUID: string,
+): Promise<void> =>
+  del<void>(
+    `${PROGRAMS_URL(enrollmentUUID)}?${new URLSearchParams({ reason: 'Removed from the Qorlia program manager' })}`,
+  );
 
 /**
  * Gets the current state name of a program enrollment

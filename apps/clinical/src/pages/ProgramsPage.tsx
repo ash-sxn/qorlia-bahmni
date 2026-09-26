@@ -17,6 +17,7 @@ import { Fragment, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import styles from './BedManagement.module.scss';
 import { ProgramEnrollmentForm } from './ProgramEnrollmentForm';
+import { ProgramLifecycleActions } from './ProgramLifecycleActions';
 
 const patientName = (patient: PatientSearchResult) =>
   [patient.givenName, patient.middleName, patient.familyName]
@@ -97,7 +98,12 @@ export const ProgramsPage = () => {
   const { patientUuid } = useParams<{ patientUuid: string }>();
   const { userPrivileges, isLoading: privilegesLoading } = useUserPrivilege();
   const canView = hasPrivilege(userPrivileges, 'app:clinical');
+  const canAddPrograms = hasPrivilege(userPrivileges, 'Add Patient Programs');
   const canEditPrograms = hasPrivilege(userPrivileges, 'Edit Patient Programs');
+  const canDeletePrograms = hasPrivilege(
+    userPrivileges,
+    'Delete Patient Programs',
+  );
   const [input, setInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const patients = useQuery({
@@ -214,6 +220,15 @@ export const ProgramsPage = () => {
                               patientUuid={patientUuid}
                             />
                           )}
+                        {(canEditPrograms || canDeletePrograms) &&
+                          patientUuid && (
+                            <ProgramLifecycleActions
+                              enrollment={item}
+                              patientUuid={patientUuid}
+                              canEdit={canEditPrograms}
+                              canDelete={canDeletePrograms}
+                            />
+                          )}
                       </details>
                     </td>
                     <td>{displayDate(item.dateEnrolled)}</td>
@@ -306,7 +321,7 @@ export const ProgramsPage = () => {
                 <p role="alert">{t('PROGRAMS_ENROLLMENTS_ERROR')}</p>
               ) : (
                 <>
-                  {canEditPrograms && patient.data && (
+                  {canAddPrograms && patient.data && (
                     <section className={styles.card}>
                       <h2>{t('PROGRAMS_ENROLL')}</h2>
                       <ProgramEnrollmentForm
