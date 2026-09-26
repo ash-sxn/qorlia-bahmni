@@ -23,10 +23,12 @@ const getPatient = services.getFormattedPatientById as jest.Mock;
 const getPrograms = services.getPatientPrograms as jest.Mock;
 
 describe('ProgramsPage', () => {
-  const renderPage = (path: string) => {
-    const client = new QueryClient({
+  const renderPage = (
+    path: string,
+    client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
-    });
+    }),
+  ) => {
     return render(
       <QueryClientProvider client={client}>
         <MemoryRouter initialEntries={[path]}>
@@ -121,9 +123,15 @@ describe('ProgramsPage', () => {
       userPrivileges: [],
       isLoading: false,
     });
-    renderPage('/clinical/programs/patient-1');
+    const client = new QueryClient();
+    client.setQueryData(['program-patient', 'patient-1'], {
+      fullName: 'Private Patient',
+      identifier: 'ABC123',
+    });
+    renderPage('/clinical/programs/patient-1', client);
 
     expect(screen.getByRole('alert')).toHaveTextContent('PROGRAMS_NO_ACCESS');
+    expect(screen.queryByText('Private Patient')).not.toBeInTheDocument();
     expect(getPatient).not.toHaveBeenCalled();
     expect(getPrograms).not.toHaveBeenCalled();
   });

@@ -109,7 +109,9 @@ export const ProgramsPage = () => {
               ? [
                   {
                     id: 'patient',
-                    label: patient.data?.fullName ?? t('PROGRAMS_PATIENT'),
+                    label: canView
+                      ? (patient.data?.fullName ?? t('PROGRAMS_PATIENT'))
+                      : t('PROGRAMS_PATIENT'),
                     isCurrentPage: true,
                   },
                 ]
