@@ -38,6 +38,8 @@
   "ADMIN_SERVICE_ADD_SLOT": "Agregar horario",
   "ADMIN_SERVICE_REMOVE_SLOT": "Quitar horario",
   "ADMIN_SERVICE_TYPES": "Tipos de servicio",
+  "APPOINTMENTS_NO_SERVICE_TYPE": "Sin tipo de servicio",
+  "APPOINTMENTS_SERVICE_TYPE": "Tipo de servicio",
   "ADMIN_SERVICE_TYPE_NAME": "Nombre del tipo",
   "ADMIN_SERVICE_MINUTES": "minutos",
   "ADMIN_SERVICE_ADD_TYPE": "Agregar tipo",

@@ -15,24 +15,39 @@ jest.mock('@bahmni/services', () => ({
 const mockInvalidateQueries = jest.fn().mockResolvedValue(undefined);
 jest.mock('@tanstack/react-query', () => ({
   ...jest.requireActual('@tanstack/react-query'),
-  useQuery: ({ queryKey }: { queryKey: string[] }) =>
-    queryKey[0] === 'allAppointmentServices'
-      ? {
-          data: [
-            { uuid: 'service-1', name: 'Consultation' },
-            {
-              uuid: 'service-2',
-              name: 'Follow-up visit',
-              location: { uuid: 'location-2', name: 'OPD-2' },
-            },
-          ],
-        }
-      : {
-          data: [
-            { uuid: 'location-1', display: 'OPD-1' },
-            { uuid: 'location-2', display: 'OPD-2' },
-          ],
+  useQuery: ({ queryKey }: { queryKey: string[] }) => {
+    if (queryKey[0] === 'allAppointmentServices')
+      return {
+        data: [
+          { uuid: 'service-1', name: 'Consultation' },
+          {
+            uuid: 'service-2',
+            name: 'Follow-up visit',
+            location: { uuid: 'location-2', name: 'OPD-2' },
+          },
+        ],
+      };
+    if (queryKey[0] === 'legacy-appointment-actions')
+      return { data: { config: { enableServiceTypes: true } } };
+    if (queryKey[0] === 'appointment-service')
+      return {
+        data: {
+          serviceTypes:
+            queryKey[1] === 'service-1'
+              ? [
+                  { uuid: 'type-1', name: 'Follow-up', duration: 20 },
+                  { uuid: 'type-2', name: 'New visit', duration: 30 },
+                ]
+              : [{ uuid: 'type-3', name: 'Review', duration: 15 }],
         },
+      };
+    return {
+      data: [
+        { uuid: 'location-1', display: 'OPD-1' },
+        { uuid: 'location-2', display: 'OPD-2' },
+      ],
+    };
+  },
   useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
 }));
 
@@ -201,6 +216,27 @@ it('changes the location for a service without a fixed location', async () => {
         serviceTypeUuid: 'type-1',
         locationUuid: 'location-2',
       }),
+    ),
+  );
+});
+
+it('edits a service type offered by the selected service', async () => {
+  (getAppointmentBookingConflicts as jest.Mock).mockResolvedValue({});
+  (updateAppointment as jest.Mock).mockResolvedValue(appointment);
+  render(
+    <EditAppointmentForm
+      appointment={appointment}
+      onClose={jest.fn()}
+      onSaved={jest.fn()}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText('Service type'), {
+    target: { value: 'type-2' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  await waitFor(() =>
+    expect(updateAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({ serviceTypeUuid: 'type-2' }),
     ),
   );
 });

@@ -1,6 +1,8 @@
 import {
   getAllAppointmentServices,
+  get,
   getAppointmentBookingConflicts,
+  getAppointmentService,
   getLocationByTag,
   type Appointment,
   type AppointmentUpdateRequest,
@@ -11,6 +13,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { hasAppointmentConflicts } from './appointmentActions';
 import styles from './styles/index.module.scss';
+
+type AppointmentConfig = { config: { enableServiceTypes?: boolean } };
 
 const dateValue = (timestamp: number) => {
   const date = new Date(timestamp);
@@ -47,6 +51,9 @@ export const EditAppointmentForm = ({
   const [serviceUuid, setServiceUuid] = useState(
     appointment.service?.uuid ?? '',
   );
+  const [serviceTypeUuid, setServiceTypeUuid] = useState(
+    appointment.serviceType?.uuid ?? '',
+  );
   const [locationUuid, setLocationUuid] = useState(
     appointment.location?.uuid ?? '',
   );
@@ -61,7 +68,22 @@ export const EditAppointmentForm = ({
     queryKey: ['appointment-locations'],
     queryFn: () => getLocationByTag('Appointment Location'),
   });
+  const config = useQuery({
+    queryKey: ['legacy-appointment-actions'],
+    queryFn: () =>
+      get<AppointmentConfig>(
+        '/bahmni_config/openmrs/apps/appointments/app.json',
+      ),
+  });
+  const serviceDetail = useQuery({
+    queryKey: ['appointment-service', serviceUuid],
+    queryFn: () => getAppointmentService(serviceUuid),
+    enabled: config.data?.config.enableServiceTypes === true && !!serviceUuid,
+  });
   const service = services.data?.find((item) => item.uuid === serviceUuid);
+  const serviceTypes = (serviceDetail.data?.serviceTypes ?? []).filter(
+    (item) => !item.voided,
+  );
   const fixedLocation = service?.location;
   const locationOptions = (locations.data ?? []).filter(
     (item) => !fixedLocation?.uuid || item.uuid === fixedLocation.uuid,
@@ -108,7 +130,11 @@ export const EditAppointmentForm = ({
       (serviceUuid !== appointment.service.uuid && !service) ||
       (locationUuid !== appointment.location.uuid &&
         !locationOptions.some((item) => item.uuid === locationUuid)) ||
-      (fixedLocation?.uuid && fixedLocation.uuid !== locationUuid)
+      (fixedLocation?.uuid && fixedLocation.uuid !== locationUuid) ||
+      (serviceTypeUuid &&
+        (serviceUuid !== appointment.service.uuid ||
+          serviceTypeUuid !== appointment.serviceType?.uuid) &&
+        !serviceTypes.some((item) => item.uuid === serviceTypeUuid))
     ) {
       setError(t('APPOINTMENTS_BOOKING_REFERENCE_ERROR'));
       return;
@@ -118,10 +144,7 @@ export const EditAppointmentForm = ({
       uuid: appointment.uuid,
       patientUuid: appointment.patient.uuid,
       serviceUuid,
-      ...(serviceUuid === appointment.service.uuid &&
-      appointment.serviceType?.uuid
-        ? { serviceTypeUuid: appointment.serviceType.uuid }
-        : {}),
+      ...(serviceTypeUuid ? { serviceTypeUuid } : {}),
       locationUuid,
       ...(Number.isFinite(scheduled)
         ? { dateAppointmentScheduled: new Date(scheduled).toISOString() }
@@ -199,6 +222,7 @@ export const EditAppointmentForm = ({
                 (item) => item.uuid === event.target.value,
               );
               setServiceUuid(event.target.value);
+              setServiceTypeUuid('');
               setLocationUuid(selected?.location?.uuid ?? '');
             }}
             disabled={services.isLoading || services.isError}
@@ -233,10 +257,32 @@ export const EditAppointmentForm = ({
             ))}
           </select>
         </label>
-        {serviceUuid === appointment.service.uuid &&
-          appointment.serviceType?.name && (
-            <p>{appointment.serviceType.name}</p>
-          )}
+        {config.data?.config.enableServiceTypes === true && (
+          <label>
+            {t('APPOINTMENTS_SERVICE_TYPE')}
+            <select
+              value={serviceTypeUuid}
+              onChange={(event) => setServiceTypeUuid(event.target.value)}
+              disabled={serviceDetail.isLoading || serviceDetail.isError}
+            >
+              <option value="">{t('APPOINTMENTS_NO_SERVICE_TYPE')}</option>
+              {serviceUuid === appointment.service.uuid &&
+                appointment.serviceType?.uuid &&
+                !serviceTypes.some(
+                  (item) => item.uuid === appointment.serviceType?.uuid,
+                ) && (
+                  <option value={appointment.serviceType.uuid}>
+                    {appointment.serviceType.name}
+                  </option>
+                )}
+              {serviceTypes.map((item) => (
+                <option key={item.uuid} value={item.uuid}>
+                  {item.name} ({item.duration} min)
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label>
           {t('APPOINTMENTS_DATE')}
           <input
