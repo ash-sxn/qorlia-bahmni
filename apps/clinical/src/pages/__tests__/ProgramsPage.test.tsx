@@ -115,4 +115,16 @@ describe('ProgramsPage', () => {
       '/bahmni/clinical/#/programs/patient/patient-1/consultationContext',
     );
   });
+
+  it('does not request patient data without clinical access', () => {
+    (useUserPrivilege as jest.Mock).mockReturnValue({
+      userPrivileges: [],
+      isLoading: false,
+    });
+    renderPage('/clinical/programs/patient-1');
+
+    expect(screen.getByRole('alert')).toHaveTextContent('PROGRAMS_NO_ACCESS');
+    expect(getPatient).not.toHaveBeenCalled();
+    expect(getPrograms).not.toHaveBeenCalled();
+  });
 });
