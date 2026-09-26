@@ -13,13 +13,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import styles from './BedManagement.module.scss';
 
-interface ProgramConfig {
+export interface ProgramConfig {
   config?: {
     program?: Record<string, { required?: boolean; excludeFrom?: string[] }>;
   };
 }
 
-const localToday = () => {
+export const localToday = () => {
   const now = new Date();
   return [
     now.getFullYear(),
@@ -27,7 +27,9 @@ const localToday = () => {
     String(now.getDate()).padStart(2, '0'),
   ].join('-');
 };
-const supportedFormats = new Set<string>(Object.values(AttributeFormat));
+export const supportedProgramAttributeFormats = new Set<string>(
+  Object.values(AttributeFormat),
+);
 
 export const ProgramEnrollmentForm = ({
   patientUuid,
@@ -70,7 +72,8 @@ export const ProgramEnrollmentForm = ({
       ),
   );
   const unsupported = visibleAttributes.some(
-    (attribute) => !supportedFormats.has(attribute.datatypeClassname),
+    (attribute) =>
+      !supportedProgramAttributeFormats.has(attribute.datatypeClassname),
   );
 
   const save = async (event: FormEvent<HTMLFormElement>) => {
@@ -219,18 +222,20 @@ export const ProgramEnrollmentForm = ({
   );
 };
 
-const ProgramAttributeField = ({
+export const ProgramAttributeField = ({
   attribute,
+  idPrefix = 'program-attribute',
   required,
   value,
   onChange,
 }: {
   attribute: ProgramAttributeDefinition;
+  idPrefix?: string;
   required: boolean;
   value: string;
   onChange: (value: string) => void;
 }) => {
-  const id = `program-attribute-${attribute.uuid}`;
+  const id = `${idPrefix}-${attribute.uuid}`;
   const type = getInputTypeForFormat(attribute.datatypeClassname);
   return (
     <>

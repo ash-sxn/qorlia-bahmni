@@ -14,6 +14,8 @@ jest.mock('@bahmni/services', () => ({
   createProgramEnrollment: jest.fn(),
   completeProgramEnrollment: jest.fn(),
   voidProgramEnrollment: jest.fn(),
+  removeProgramState: jest.fn(),
+  updateProgramEnrollmentDetails: jest.fn(),
   get: jest.fn(),
   searchPatientByNameOrId: jest.fn(),
   updateProgramState: jest.fn(),
@@ -35,6 +37,8 @@ const getConfig = services.get as jest.Mock;
 const createEnrollment = services.createProgramEnrollment as jest.Mock;
 const completeEnrollment = services.completeProgramEnrollment as jest.Mock;
 const voidEnrollment = services.voidProgramEnrollment as jest.Mock;
+const removeState = services.removeProgramState as jest.Mock;
+const updateEnrollment = services.updateProgramEnrollmentDetails as jest.Mock;
 
 describe('ProgramsPage', () => {
   const renderPage = (
@@ -231,6 +235,136 @@ describe('ProgramsPage', () => {
       'PROGRAMS_STATE_SAVED',
     );
     expect(getPrograms).toHaveBeenCalledTimes(2);
+  });
+
+  it('removes only the current state after confirmation', async () => {
+    (useUserPrivilege as jest.Mock).mockReturnValue({
+      userPrivileges: [
+        { uuid: 'priv-1', name: 'app:clinical' },
+        { uuid: 'priv-2', name: 'Edit Patient Programs' },
+      ],
+      isLoading: false,
+    });
+    getPatient.mockResolvedValue({
+      fullName: 'Meera Demo',
+      identifier: 'ABC123',
+    });
+    getPrograms.mockResolvedValue({
+      results: [
+        {
+          uuid: 'enrollment-1',
+          program: { uuid: 'program-1', name: 'Maternal health' },
+          dateEnrolled: '2026-09-01',
+          dateCompleted: null,
+          states: [
+            {
+              uuid: 'state-1',
+              startDate: '2026-09-01',
+              endDate: '2026-09-05',
+              voided: false,
+              state: { concept: { display: 'Started' } },
+              auditInfo: {},
+            },
+            {
+              uuid: 'state-2',
+              startDate: '2026-09-05',
+              endDate: null,
+              voided: false,
+              state: { concept: { display: 'In care' } },
+              auditInfo: {},
+            },
+          ],
+          attributes: [],
+          allowedStates: [],
+          voided: false,
+        },
+      ],
+    });
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
+    removeState.mockResolvedValue(undefined);
+    renderPage('/clinical/programs/patient-1');
+
+    fireEvent.click(await screen.findByText('Maternal health'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'PROGRAMS_REMOVE_STATE' }),
+    );
+
+    await waitFor(() =>
+      expect(removeState).toHaveBeenCalledWith('enrollment-1', 'state-2'),
+    );
+    expect(getPrograms).toHaveBeenCalledTimes(2);
+    confirm.mockRestore();
+  });
+
+  it('edits an active enrollment date and configured attribute', async () => {
+    (useUserPrivilege as jest.Mock).mockReturnValue({
+      userPrivileges: [
+        { uuid: 'priv-1', name: 'app:clinical' },
+        { uuid: 'priv-2', name: 'Edit Patient Programs' },
+      ],
+      isLoading: false,
+    });
+    getPatient.mockResolvedValue({
+      fullName: 'Meera Demo',
+      identifier: 'ABC123',
+    });
+    getAttributes.mockResolvedValue([
+      {
+        uuid: 'attr-type-1',
+        name: 'ID_Number',
+        description: 'ID number',
+        datatypeClassname: 'java.lang.String',
+        retired: false,
+      },
+    ]);
+    getPrograms.mockResolvedValue({
+      results: [
+        {
+          uuid: 'enrollment-1',
+          program: { uuid: 'program-1', name: 'Maternal health' },
+          dateEnrolled: '2023-01-01',
+          dateCompleted: null,
+          states: [],
+          allowedStates: [],
+          attributes: [
+            {
+              uuid: 'attr-1',
+              attributeType: { uuid: 'attr-type-1', display: 'ID_Number' },
+              value: '123',
+              voided: false,
+            },
+          ],
+          voided: false,
+        },
+      ],
+    });
+    updateEnrollment.mockResolvedValue({ uuid: 'enrollment-1' });
+    renderPage('/clinical/programs/patient-1');
+
+    fireEvent.click(await screen.findByText('Maternal health'));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'PROGRAMS_EDIT' }),
+    );
+    fireEvent.change(screen.getByLabelText('PROGRAMS_ENROLLED'), {
+      target: { value: '2022-12-01' },
+    });
+    fireEvent.change(screen.getByLabelText('ID number'), {
+      target: { value: '456' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'PROGRAMS_SAVE_CHANGES' }),
+    );
+
+    await waitFor(() =>
+      expect(updateEnrollment).toHaveBeenCalledWith(
+        'enrollment-1',
+        '2022-12-01',
+        expect.arrayContaining([
+          expect.objectContaining({ uuid: 'attr-type-1' }),
+        ]),
+        { 'attr-type-1': '456' },
+      ),
+    );
   });
 
   it('enrolls a patient with required and concept attributes through Bahmni', async () => {

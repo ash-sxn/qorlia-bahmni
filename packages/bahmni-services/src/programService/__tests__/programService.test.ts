@@ -20,6 +20,8 @@ import {
   createProgramEnrollment,
   completeProgramEnrollment,
   voidProgramEnrollment,
+  removeProgramState,
+  updateProgramEnrollmentDetails,
   getCurrentStateName,
   getPatientPrograms,
   getPatientProgramsPage,
@@ -277,6 +279,128 @@ describe('programService', () => {
 
     expect(del).toHaveBeenCalledWith(
       '/openmrs/ws/rest/v1/bahmniprogramenrollment/enrollment-1?reason=Removed+from+the+Qorlia+program+manager',
+    );
+  });
+
+  it('voids the current state through the legacy programenrollment endpoint', async () => {
+    await removeProgramState('enrollment-1', 'state-1');
+
+    expect(del).toHaveBeenCalledWith(
+      '/openmrs/ws/rest/v1/programenrollment/enrollment-1/state/state-1?reason=User+removed+the+current+state',
+    );
+  });
+
+  it('updates changed attributes and voids a cleared value without replacing the rest', async () => {
+    const current = mockEnrollments[0];
+    (get as jest.Mock).mockResolvedValue(current);
+    (post as jest.Mock).mockResolvedValue(current);
+
+    await updateProgramEnrollmentDetails(
+      current.uuid,
+      '2023-01-01',
+      [
+        {
+          uuid: current.attributes[0].attributeType.uuid,
+          name: 'ID_Number',
+          datatypeClassname: 'java.lang.String',
+          retired: false,
+        },
+        {
+          uuid: current.attributes[1].attributeType.uuid,
+          name: 'Treatment Date',
+          datatypeClassname: 'org.openmrs.customdatatype.datatype.DateDatatype',
+          retired: false,
+        },
+        {
+          uuid: current.attributes[2].attributeType.uuid,
+          name: 'Patient Stage',
+          datatypeClassname: 'org.openmrs.Concept',
+          retired: false,
+        },
+      ],
+      {
+        [current.attributes[0].attributeType.uuid]: '456',
+        [current.attributes[1].attributeType.uuid]: '',
+        [current.attributes[2].attributeType.uuid]: (
+          current.attributes[2].value as { uuid: string }
+        ).uuid,
+      },
+    );
+
+    expect(post).toHaveBeenCalledWith(
+      `/openmrs/ws/rest/v1/bahmniprogramenrollment/${current.uuid}`,
+      {
+        uuid: current.uuid,
+        dateEnrolled: new Date('2023-01-01T00:00:00').toISOString(),
+        attributes: [
+          {
+            uuid: current.attributes[0].uuid,
+            attributeType: { uuid: current.attributes[0].attributeType.uuid },
+            value: '456',
+          },
+          {
+            uuid: current.attributes[1].uuid,
+            attributeType: { uuid: current.attributes[1].attributeType.uuid },
+            voided: true,
+          },
+        ],
+      },
+    );
+  });
+
+  it('rejects an enrollment date later than its first state', async () => {
+    (get as jest.Mock).mockResolvedValue({
+      ...mockEnrollments[0],
+      states: [{ startDate: '2023-01-02', voided: false }],
+    });
+
+    await expect(
+      updateProgramEnrollmentDetails('enrollment-1', '2023-01-03', [], {}),
+    ).rejects.toThrow('Enrollment date must be on or before the first state');
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('sends a concept answer with its hydrated UUID', async () => {
+    const current = mockEnrollments[0];
+    const attribute = current.attributes[2];
+    (get as jest.Mock).mockResolvedValue(current);
+    (post as jest.Mock).mockResolvedValue(current);
+
+    await updateProgramEnrollmentDetails(
+      current.uuid,
+      '2023-01-01',
+      [
+        {
+          uuid: attribute.attributeType.uuid,
+          name: 'Patient Stage',
+          datatypeClassname: 'org.openmrs.Concept',
+          retired: false,
+          concept: {
+            answers: [
+              {
+                uuid: 'answer-2',
+                display: 'Follow-up',
+                name: { display: 'Follow-up care' },
+              },
+            ],
+          } as ProgramEnrollment['program']['concept'],
+        },
+      ],
+      { [attribute.attributeType.uuid]: 'answer-2' },
+    );
+
+    expect(post).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        attributes: [
+          {
+            uuid: attribute.uuid,
+            attributeType: { uuid: attribute.attributeType.uuid },
+            value: 'Follow-up care',
+            hydratedObject: 'answer-2',
+          },
+        ],
+      }),
     );
   });
 

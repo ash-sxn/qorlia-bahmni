@@ -16,5 +16,7 @@ export const PATIENT_PROGRAMS_PAGE_URL = (
   `${PROGRAM_ENROLLMENTS_URL}?patient=${patientUUID}&v=${PROGRAM_ENROLLMENT_CUSTOM_REP}&limit=${limit}&startIndex=${startIndex}&totalCount=true`;
 export const PROGRAMS_URL = (programUUID: string) =>
   `${PROGRAM_ENROLLMENTS_URL}/${programUUID}`;
+export const PROGRAM_STATE_URL = (enrollmentUUID: string, stateUUID: string) =>
+  `${OPENMRS_REST_V1}/programenrollment/${encodeURIComponent(enrollmentUUID)}/state/${encodeURIComponent(stateUUID)}`;
 export const PROGRAM_DETAILS_URL = (programUUID: string) =>
   `${PROGRAMS_URL(programUUID)}?v=${PROGRAM_ENROLLMENT_CUSTOM_REP}`;

@@ -255,6 +255,26 @@
   margin: 0;
 }
 
+.programEdit {
+  margin-top: 16px;
+}
+
+.programEdit > button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--qorlia-primary, #1f5238);
+  font: inherit;
+  cursor: pointer;
+}
+
+.programEdit .programEnrollmentForm button[type='button'] {
+  background: #fff;
+  color: var(--qorlia-primary, #1f5238);
+}
+
 .programLifecycle {
   display: flex;
   flex-wrap: wrap;

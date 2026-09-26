@@ -5,6 +5,7 @@ import {
   getFormattedPatientById,
   getPatientPrograms,
   hasPrivilege,
+  removeProgramState,
   searchPatientByNameOrId,
   updateProgramState,
   type PatientSearchResult,
@@ -16,6 +17,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import styles from './BedManagement.module.scss';
+import { ProgramEnrollmentEditForm } from './ProgramEnrollmentEditForm';
 import { ProgramEnrollmentForm } from './ProgramEnrollmentForm';
 import { ProgramLifecycleActions } from './ProgramLifecycleActions';
 
@@ -93,6 +95,51 @@ const ProgramStateForm = ({
   );
 };
 
+const RemoveProgramStateButton = ({
+  enrollmentUuid,
+  patientUuid,
+  stateUuid,
+}: {
+  enrollmentUuid: string;
+  patientUuid: string;
+  stateUuid: string;
+}) => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(false);
+
+  const remove = async () => {
+    if (saving || !window.confirm(t('PROGRAMS_REMOVE_STATE_CONFIRM'))) return;
+    setSaving(true);
+    setError(false);
+    try {
+      await removeProgramState(enrollmentUuid, stateUuid);
+      await Promise.allSettled([
+        queryClient.invalidateQueries({
+          queryKey: ['program-enrollments', patientUuid],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['programs', enrollmentUuid],
+        }),
+      ]);
+    } catch {
+      setError(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <button type="button" onClick={remove} disabled={saving}>
+        {t('PROGRAMS_REMOVE_STATE')}
+      </button>
+      {error && <span role="alert">{t('PROGRAMS_REMOVE_STATE_ERROR')}</span>}
+    </>
+  );
+};
+
 export const ProgramsPage = () => {
   const { t } = useTranslation();
   const { patientUuid } = useParams<{ patientUuid: string }>();
@@ -155,6 +202,9 @@ export const ProgramsPage = () => {
                 const states = (item.states ?? [])
                   .filter((state) => !state.voided)
                   .sort((a, b) => b.startDate.localeCompare(a.startDate));
+                const currentStateUuid = !states[0]?.endDate
+                  ? states[0]?.uuid
+                  : undefined;
                 return (
                   <tr key={item.uuid}>
                     <td>
@@ -206,11 +256,29 @@ export const ProgramsPage = () => {
                                       {state.auditInfo.creator.display}
                                     </small>
                                   )}
+                                  {canEditPrograms &&
+                                    !item.dateCompleted &&
+                                    state.uuid === currentStateUuid &&
+                                    patientUuid && (
+                                      <RemoveProgramStateButton
+                                        enrollmentUuid={item.uuid}
+                                        patientUuid={patientUuid}
+                                        stateUuid={state.uuid}
+                                      />
+                                    )}
                                 </li>
                               ))}
                             </ol>
                           </>
                         )}
+                        {canEditPrograms &&
+                          !item.dateCompleted &&
+                          patientUuid && (
+                            <ProgramEnrollmentEditForm
+                              enrollment={item}
+                              patientUuid={patientUuid}
+                            />
+                          )}
                         {canEditPrograms &&
                           !item.dateCompleted &&
                           item.allowedStates?.length > 0 &&

@@ -414,6 +414,8 @@ export {
   createProgramEnrollment,
   completeProgramEnrollment,
   voidProgramEnrollment,
+  removeProgramState,
+  updateProgramEnrollmentDetails,
   getProgramByUUID,
   getCurrentStateName,
   extractAttributes,

@@ -8,6 +8,8 @@ export {
   createProgramEnrollment,
   completeProgramEnrollment,
   voidProgramEnrollment,
+  removeProgramState,
+  updateProgramEnrollmentDetails,
   extractAttributes,
   updateProgramState,
   type ProgramPage,

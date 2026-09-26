@@ -1,6 +1,7 @@
 import { del, get, post } from '../api';
 import { getDisplayNameForConcept } from '../conceptService';
 import { isDate } from '../date/date';
+import { AttributeFormat } from '../patientService/attributeFormatMapper';
 import {
   PATIENT_PROGRAMS_URL,
   PATIENT_PROGRAMS_PAGE_URL,
@@ -9,6 +10,7 @@ import {
   ALL_PROGRAMS_URL,
   PROGRAM_ATTRIBUTE_TYPES_URL,
   PROGRAM_ENROLLMENTS_URL,
+  PROGRAM_STATE_URL,
 } from './constants';
 import {
   NewProgramEnrollment,
@@ -121,6 +123,117 @@ export const voidProgramEnrollment = async (
   del<void>(
     `${PROGRAMS_URL(enrollmentUUID)}?${new URLSearchParams({ reason: 'Removed from the Qorlia program manager' })}`,
   );
+
+export const removeProgramState = async (
+  enrollmentUUID: string,
+  stateUUID: string,
+): Promise<void> =>
+  del<void>(
+    `${PROGRAM_STATE_URL(enrollmentUUID, stateUUID)}?${new URLSearchParams({ reason: 'User removed the current state' })}`,
+  );
+
+export const updateProgramEnrollmentDetails = async (
+  enrollmentUUID: string,
+  date: string,
+  definitions: ProgramAttributeDefinition[],
+  values: Record<string, string>,
+): Promise<ProgramEnrollment> => {
+  const current = await getProgramByUUID(enrollmentUUID);
+  if (current.voided || current.dateCompleted) {
+    throw new Error('Only active program enrollments can be edited');
+  }
+  const today = new Date();
+  const maxDate = [
+    [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, '0'),
+      String(today.getDate()).padStart(2, '0'),
+    ].join('-'),
+    ...(current.states ?? [])
+      .filter((state) => !state.voided)
+      .map((state) => state.startDate.slice(0, 10)),
+  ].sort()[0];
+  const enrolledAt = new Date(`${date}T00:00:00`);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+    Number.isNaN(enrolledAt.getTime()) ||
+    [
+      enrolledAt.getFullYear(),
+      String(enrolledAt.getMonth() + 1).padStart(2, '0'),
+      String(enrolledAt.getDate()).padStart(2, '0'),
+    ].join('-') !== date ||
+    date > maxDate
+  ) {
+    throw new Error('Enrollment date must be on or before the first state');
+  }
+  const attributes = definitions.flatMap<{
+    uuid?: string;
+    attributeType: { uuid: string };
+    value?: string;
+    hydratedObject?: string;
+    voided?: boolean;
+  }>((definition) => {
+    const existing = (current.attributes ?? []).find(
+      (attribute) =>
+        !attribute.voided && attribute.attributeType.uuid === definition.uuid,
+    );
+    const value = values[definition.uuid] ?? '';
+    const currentValue = existing?.value;
+    const original =
+      typeof currentValue === 'string'
+        ? definition.datatypeClassname === AttributeFormat.CONCEPT
+          ? (definition.concept?.answers?.find(
+              (answer) =>
+                answer.display === currentValue ||
+                answer.name?.display === currentValue,
+            )?.uuid ?? currentValue)
+          : currentValue.slice(
+              0,
+              definition.datatypeClassname ===
+                AttributeFormat.ATTRIBUTABLE_DATE ||
+                definition.datatypeClassname === AttributeFormat.DATE_DATATYPE
+                ? 10
+                : undefined,
+            )
+        : (currentValue?.uuid ?? '');
+    if (value === original) return [];
+    if (!value) {
+      return existing
+        ? [
+            {
+              uuid: existing.uuid,
+              attributeType: { uuid: definition.uuid },
+              voided: true,
+            },
+          ]
+        : [];
+    }
+    const answer = definition.concept?.answers?.find(
+      (item) => item.uuid === value,
+    );
+    if (definition.datatypeClassname === AttributeFormat.CONCEPT && !answer) {
+      throw new Error(`Invalid concept answer for ${definition.name}`);
+    }
+    return [
+      {
+        ...(existing && { uuid: existing.uuid }),
+        attributeType: { uuid: definition.uuid },
+        value:
+          definition.datatypeClassname === AttributeFormat.CONCEPT
+            ? (answer?.name?.display ?? answer?.display ?? '')
+            : value,
+        ...(definition.datatypeClassname === AttributeFormat.CONCEPT && {
+          hydratedObject: value,
+        }),
+      },
+    ];
+  });
+  return post<ProgramEnrollment>(PROGRAMS_URL(enrollmentUUID), {
+    uuid: enrollmentUUID,
+    dateEnrolled: enrolledAt.toISOString(),
+    attributes,
+  });
+};
 
 /**
  * Gets the current state name of a program enrollment
