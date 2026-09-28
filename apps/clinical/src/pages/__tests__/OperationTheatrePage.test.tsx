@@ -1,4 +1,9 @@
-import { get, getLocationByTag, post } from '@bahmni/services';
+import {
+  fetchAllProviders,
+  get,
+  getLocationByTag,
+  post,
+} from '@bahmni/services';
 import { useUserPrivilege } from '@bahmni/widgets';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -14,6 +19,7 @@ jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   get: jest.fn(),
   getLocationByTag: jest.fn(),
+  fetchAllProviders: jest.fn(),
   post: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({
@@ -78,6 +84,7 @@ it('loads the theatre catalog and shows real surgical blocks in calendar layout'
   });
   jest.mocked(get).mockResolvedValueOnce({
     config: {
+      primarySurgeonsForOT: ['Dr Demo'],
       calendarView: {
         dayViewStart: '08:00',
         dayViewEnd: '18:00',
@@ -100,6 +107,29 @@ it('loads the theatre catalog and shows real surgical blocks in calendar layout'
   ).toBeInTheDocument();
   expect(screen.getByText(/Asha Demo/)).toBeInTheDocument();
   expect(getLocationByTag).toHaveBeenCalledWith('Operation Theater');
+  jest.mocked(fetchAllProviders).mockResolvedValueOnce([
+    {
+      uuid: 'surgeon-1',
+      display: 'Dr Demo',
+      person: { display: 'Dr Demo' },
+    },
+    {
+      uuid: 'surgeon-2',
+      display: 'Dr Other',
+      person: { display: 'Dr Other' },
+    },
+  ] as Awaited<ReturnType<typeof fetchAllProviders>>);
+  fireEvent.change(screen.getByLabelText('Group day by'), {
+    target: { value: 'surgeon' },
+  });
+  expect(
+    await screen.findByRole('heading', { name: 'Dr Demo' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole('heading', { name: 'Dr Other' }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByText(/Asha Demo/)).toBeInTheDocument();
+  expect(fetchAllProviders).toHaveBeenCalledTimes(1);
 });
 
 it('advances expected surgery times by estimated work and cleaning, skipping cancelled cases', () => {

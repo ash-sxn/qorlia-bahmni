@@ -1,10 +1,12 @@
 import { BaseLayout, Header } from '@bahmni/design-system';
 import {
   BAHMNI_HOME_PATH,
+  fetchAllProviders,
   get,
   getLocationByTag,
   hasPrivilege,
   post,
+  type Provider,
 } from '@bahmni/services';
 import { useUserPrivilege } from '@bahmni/widgets';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -39,6 +41,7 @@ interface SurgicalBlock {
 
 interface OtCalendarConfig {
   config?: {
+    primarySurgeonsForOT?: string[];
     calendarView?: {
       dayViewStart?: string;
       dayViewEnd?: string;
@@ -211,6 +214,7 @@ const OperationTheatrePage = () => {
   const [date, setDate] = useState(() => localDate(new Date()));
   const [period, setPeriod] = useState<'day' | 'week'>('day');
   const [view, setView] = useState<'list' | 'calendar'>('list');
+  const [groupBy, setGroupBy] = useState<'theatre' | 'surgeon'>('theatre');
   const [locationUuid, setLocationUuid] = useState('');
   const [providerUuid, setProviderUuid] = useState('');
   const [status, setStatus] = useState('');
@@ -237,6 +241,16 @@ const OperationTheatrePage = () => {
     queryKey: ['ot-calendar-theatres'],
     queryFn: () => getLocationByTag('Operation Theater'),
     enabled: !privilegesLoading && canView && view === 'calendar',
+  });
+  const surgeonCatalog = useQuery({
+    queryKey: ['ot-calendar-surgeons'],
+    queryFn: fetchAllProviders,
+    enabled:
+      !privilegesLoading &&
+      canView &&
+      view === 'calendar' &&
+      period === 'day' &&
+      groupBy === 'surgeon',
   });
   const activeBlocks = (blocks.data?.results ?? [])
     .filter((block) => !block.voided)
@@ -298,13 +312,27 @@ const OperationTheatrePage = () => {
   const theatreColumns = (theatreCatalog.data ?? []).filter(
     (theatre) => !locationUuid || theatre.uuid === locationUuid,
   );
+  const configuredSurgeons = calendarConfig.data?.config?.primarySurgeonsForOT;
+  const surgeonColumns = (surgeonCatalog.data ?? []).filter(
+    (surgeon: Provider) =>
+      surgeon.person?.display &&
+      (!configuredSurgeons?.length ||
+        configuredSurgeons.includes(surgeon.person.display)) &&
+      (!providerUuid || surgeon.uuid === providerUuid),
+  );
   const calendarColumns =
     period === 'day'
-      ? theatreColumns.map((theatre) => ({
-          key: theatre.uuid,
-          label: theatre.display,
-          day: localDate(selectedDay),
-        }))
+      ? groupBy === 'theatre'
+        ? theatreColumns.map((theatre) => ({
+            key: theatre.uuid,
+            label: theatre.display,
+            day: localDate(selectedDay),
+          }))
+        : surgeonColumns.map((surgeon) => ({
+            key: surgeon.uuid,
+            label: surgeon.person.display,
+            day: localDate(selectedDay),
+          }))
       : calendarDays.map((day) => ({
           key: day,
           label: new Intl.DateTimeFormat(undefined, {
@@ -405,6 +433,20 @@ const OperationTheatrePage = () => {
                     onChange={(event) => setDate(event.target.value)}
                   />
                 </label>
+                {view === 'calendar' && period === 'day' && (
+                  <label>
+                    Group day by
+                    <select
+                      value={groupBy}
+                      onChange={(event) =>
+                        setGroupBy(event.target.value as 'theatre' | 'surgeon')
+                      }
+                    >
+                      <option value="theatre">Theatre</option>
+                      <option value="surgeon">Surgeon</option>
+                    </select>
+                  </label>
+                )}
                 <label>
                   View
                   <select
@@ -496,11 +538,18 @@ const OperationTheatrePage = () => {
               ) : blocks.isError ? (
                 <p role="alert">Could not load the surgical schedule.</p>
               ) : view === 'calendar' &&
-                (calendarConfig.isLoading || theatreCatalog.isLoading) ? (
+                (calendarConfig.isLoading ||
+                  theatreCatalog.isLoading ||
+                  (period === 'day' &&
+                    groupBy === 'surgeon' &&
+                    surgeonCatalog.isLoading)) ? (
                 <p role="status">Loading theatre calendar...</p>
               ) : view === 'calendar' &&
                 (calendarConfig.isError ||
                   theatreCatalog.isError ||
+                  (period === 'day' &&
+                    groupBy === 'surgeon' &&
+                    surgeonCatalog.isError) ||
                   !Number.isFinite(calendarStart) ||
                   !Number.isFinite(calendarEnd) ||
                   calendarEnd <= calendarStart) ? (
@@ -548,7 +597,9 @@ const OperationTheatrePage = () => {
                             .filter(
                               (block) =>
                                 period === 'week' ||
-                                block.location?.uuid === column.key,
+                                (groupBy === 'theatre'
+                                  ? block.location?.uuid === column.key
+                                  : block.provider?.uuid === column.key),
                             )
                             .map((block) => {
                               const placement = calendarPlacement(
@@ -584,14 +635,16 @@ const OperationTheatrePage = () => {
                                       href={`/bahmni-v2/clinical/operation-theatre/${encodeURIComponent(block.uuid)}`}
                                     >
                                       {formatTime(block.startDatetime)} ·{' '}
-                                      {period === 'week'
+                                      {period === 'week' ||
+                                      groupBy === 'surgeon'
                                         ? block.location?.name
                                         : block.provider?.person?.display}
                                     </a>
                                   ) : (
                                     <strong>
                                       {formatTime(block.startDatetime)} ·{' '}
-                                      {period === 'week'
+                                      {period === 'week' ||
+                                      groupBy === 'surgeon'
                                         ? block.location?.name
                                         : block.provider?.person?.display}
                                     </strong>
@@ -625,7 +678,13 @@ const OperationTheatrePage = () => {
                     ))}
                   </div>
                   {calendarColumns.length === 0 && (
-                    <p>No operation theatres are configured.</p>
+                    <p>
+                      No{' '}
+                      {groupBy === 'surgeon' && period === 'day'
+                        ? 'surgeons'
+                        : 'operation theatres'}{' '}
+                      are configured.
+                    </p>
                   )}
                 </div>
               ) : visible.length === 0 ? (
