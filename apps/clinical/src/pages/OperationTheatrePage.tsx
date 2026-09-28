@@ -616,7 +616,7 @@ const OperationTheatrePage = () => {
         />
       }
       main={
-        <div className={styles.page}>
+        <div className={`${styles.page} ${styles.otPrint}`}>
           <div className={styles.intro}>
             <span className={styles.eyebrow}>Surgical care</span>
             <h1>Operation theatre schedule</h1>
@@ -757,7 +757,28 @@ const OperationTheatrePage = () => {
                 <button type="button" onClick={() => changeDate(1)}>
                   Next {period}
                 </button>
+                {view === 'list' && (
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    disabled={
+                      blocks.isLoading ||
+                      blocks.isError ||
+                      attributeTypes.isLoading ||
+                      providerCatalog.isLoading
+                    }
+                  >
+                    Print list
+                  </button>
+                )}
               </div>
+              {view === 'list' && (
+                <p className={styles.printHeading}>
+                  {period === 'day'
+                    ? `Schedule for ${date}`
+                    : `Week: ${localDate(rangeStart)} to ${localDate(new Date(rangeEnd.getTime() - 1))}`}
+                </p>
+              )}
               {view === 'list' && attributeTypes.isError && (
                 <p role="alert">
                   Surgery columns could not be loaded. Showing fields found in
@@ -967,7 +988,11 @@ const OperationTheatrePage = () => {
                             </button>
                           </th>
                         ))}
-                        {canEdit && <th scope="col">Action</th>}
+                        {canEdit && (
+                          <th className={styles.printHide} scope="col">
+                            Action
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -1015,7 +1040,7 @@ const OperationTheatrePage = () => {
                             <td>{appointment.bedLocation ?? ''}</td>
                             <td>{appointment.bedNumber ?? ''}</td>
                             {canEdit && (
-                              <td>
+                              <td className={styles.printHide}>
                                 <a
                                   href={`/bahmni-v2/clinical/operation-theatre/${encodeURIComponent(block.uuid)}`}
                                 >

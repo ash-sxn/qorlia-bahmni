@@ -180,6 +180,83 @@
   overflow-x: auto;
 }
 
+.printHeading {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 8mm;
+  }
+
+  .otPrint {
+    min-height: 0;
+    padding: 0;
+    background: #fff;
+    color: #000;
+  }
+
+  .otPrint .pageNav,
+  .otPrint .filterForm,
+  .otPrint .eyebrow,
+  .otPrint .intro p,
+  .otPrint .printHide,
+  .otPrint form {
+    display: none;
+  }
+
+  .otPrint .intro {
+    margin-bottom: 0;
+  }
+
+  .otPrint .intro h1 {
+    font-size: 16px;
+  }
+
+  .otPrint .printHeading {
+    display: block;
+    margin: 0 0 8px;
+    color: #000;
+  }
+
+  .otPrint .card {
+    border: 0;
+    padding: 0;
+  }
+
+  .otPrint .tableScroll {
+    overflow: visible;
+  }
+
+  .otPrint table {
+    table-layout: fixed;
+    font-size: 7px;
+  }
+
+  .otPrint th,
+  .otPrint td {
+    padding: 2px;
+    overflow-wrap: anywhere;
+    vertical-align: top;
+  }
+
+  .otPrint th button {
+    color: #000;
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+  }
+
+  .otPrint thead {
+    display: table-header-group;
+  }
+
+  .otPrint tr {
+    break-inside: avoid;
+  }
+}
+
 .tableScroll table {
   width: 100%;
   border-collapse: collapse;
@@ -381,7 +458,7 @@
   cursor: pointer;
 }
 
-.programEdit .programEnrollmentForm button[type='button'] {
+.programEdit .programEnrollmentForm button[type="button"] {
   background: #fff;
   color: var(--qorlia-primary, #1f5238);
 }

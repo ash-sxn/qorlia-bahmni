@@ -294,6 +294,10 @@ it('shows live bookings and filters by patient without changing them', async () 
   expect(screen.getByText('GW-2')).toBeInTheDocument();
   expect(screen.getAllByText('Theatre 1')).toHaveLength(2);
   expect(screen.queryByText('Hidden Patient')).not.toBeInTheDocument();
+  const print = jest.spyOn(window, 'print').mockImplementation(() => {});
+  fireEvent.click(screen.getByRole('button', { name: 'Print list' }));
+  expect(print).toHaveBeenCalledTimes(1);
+  print.mockRestore();
   expect(
     screen.queryByRole('button', { name: 'Record actual time' }),
   ).not.toBeInTheDocument();
