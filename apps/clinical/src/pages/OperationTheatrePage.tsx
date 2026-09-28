@@ -183,12 +183,14 @@ export const saveSurgicalActualTime = async (
   endValue: string,
   notes: string,
 ) => {
-  const start = new Date(startValue);
+  const start = startValue ? new Date(startValue) : null;
   const end = endValue ? new Date(endValue) : null;
   if (
-    !startValue ||
-    !Number.isFinite(start.getTime()) ||
-    (end && (!Number.isFinite(end.getTime()) || end <= start))
+    !!start !== !!end ||
+    ((startValue || endValue || notes.trim()) && (!start || !end)) ||
+    (start && !Number.isFinite(start.getTime())) ||
+    (end && !Number.isFinite(end.getTime())) ||
+    (start && end && end <= start)
   ) {
     throw new Error('Enter a valid start time and a later end time.');
   }
@@ -227,8 +229,8 @@ export const saveSurgicalActualTime = async (
       surgicalBlock: { uuid: block.uuid },
       patient: { uuid: current.patient.uuid },
       sortWeight: current.sortWeight,
-      status: 'COMPLETED',
-      actualStartDatetime: start.toISOString(),
+      status: start ? 'COMPLETED' : 'SCHEDULED',
+      actualStartDatetime: start?.toISOString() ?? null,
       actualEndDatetime: end?.toISOString() ?? null,
       notes,
     },
@@ -824,12 +826,21 @@ const OperationTheatrePage = () => {
                                       setEditingUuid(appointment.uuid);
                                       setActualStart(
                                         localDateTime(
-                                          appointment.actualStartDatetime,
+                                          appointment.actualStartDatetime ??
+                                            expectedStart,
                                         ),
                                       );
                                       setActualEnd(
                                         localDateTime(
-                                          appointment.actualEndDatetime,
+                                          appointment.actualEndDatetime ??
+                                            (expectedStart
+                                              ? new Date(
+                                                  new Date(
+                                                    expectedStart,
+                                                  ).getTime() +
+                                                    durationMinutes * 60_000,
+                                                ).toISOString()
+                                              : undefined),
                                         ),
                                       );
                                       setNotes(appointment.notes ?? '');
@@ -860,7 +871,7 @@ const OperationTheatrePage = () => {
                       Actual start
                       <input
                         type="datetime-local"
-                        required
+                        required={!!(actualStart || actualEnd || notes.trim())}
                         value={actualStart}
                         onChange={(event) => setActualStart(event.target.value)}
                       />
@@ -869,6 +880,7 @@ const OperationTheatrePage = () => {
                       Actual end
                       <input
                         type="datetime-local"
+                        required={!!(actualStart || actualEnd || notes.trim())}
                         value={actualEnd}
                         min={actualStart}
                         onChange={(event) => setActualEnd(event.target.value)}
@@ -876,7 +888,7 @@ const OperationTheatrePage = () => {
                     </label>
                     <label>
                       Notes
-                      <input
+                      <textarea
                         value={notes}
                         onChange={(event) => setNotes(event.target.value)}
                       />
@@ -886,6 +898,19 @@ const OperationTheatrePage = () => {
                     <button type="submit" disabled={saving}>
                       {saving ? 'Saving...' : 'Save actual time'}
                     </button>
+                    {(!!editing.appointment.actualStartDatetime ||
+                      !!editing.appointment.actualEndDatetime) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActualStart('');
+                          setActualEnd('');
+                          setNotes('');
+                        }}
+                      >
+                        Clear recorded time
+                      </button>
+                    )}
                     <button type="button" onClick={() => setEditingUuid('')}>
                       Cancel
                     </button>

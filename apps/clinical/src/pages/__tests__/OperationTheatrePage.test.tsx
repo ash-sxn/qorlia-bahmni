@@ -42,7 +42,7 @@ const renderPage = () =>
   );
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  jest.resetAllMocks();
   jest.mocked(useUserPrivilege).mockReturnValue({
     userPrivileges: [{ uuid: 'ot-privilege', name: 'app:ot' }],
     isLoading: false,
@@ -328,6 +328,48 @@ it('shows the actual-time form only to OT writers', async () => {
     screen.getByRole('form', { name: 'Record actual surgery time' }),
   ).toBeInTheDocument();
   expect(screen.getByLabelText('Actual start')).toBeRequired();
+  expect(screen.getByLabelText('Actual end')).toBeRequired();
+  expect(screen.getByLabelText('Actual start')).toHaveValue();
+});
+
+it('can clear a completed surgery time before saving it', async () => {
+  jest.mocked(useUserPrivilege).mockReturnValue({
+    userPrivileges: [
+      { uuid: 'ot-privilege', name: 'app:ot' },
+      { uuid: 'ot-write-privilege', name: 'app:ot:write' },
+    ],
+    isLoading: false,
+  });
+  jest.mocked(get).mockResolvedValueOnce({
+    results: [
+      {
+        uuid: 'block-1',
+        startDatetime: '2026-09-28T09:00:00.000+0530',
+        surgicalAppointments: [
+          {
+            id: 9,
+            uuid: 'appointment-1',
+            patient: { uuid: 'patient-1', display: 'ABC123 - Asha Demo' },
+            status: 'COMPLETED',
+            actualStartDatetime: '2026-09-28T09:10:00.000+0530',
+            actualEndDatetime: '2026-09-28T10:10:00.000+0530',
+            notes: 'Completed',
+          },
+        ],
+      },
+    ],
+  });
+
+  renderPage();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Record actual time' }),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Clear recorded time' }));
+
+  expect(screen.getByLabelText('Actual start')).toHaveValue('');
+  expect(screen.getByLabelText('Actual end')).toHaveValue('');
+  expect(screen.getByLabelText('Notes')).toHaveValue('');
+  expect(screen.getByLabelText('Actual start')).not.toBeRequired();
 });
 
 it('does not request bookings without the OT privilege', () => {
@@ -422,7 +464,46 @@ it('rejects stale and invalid actual-time updates before posting', async () => {
     surgicalAppointments: [{ ...appointment, status: 'CANCELLED' }],
   });
   await expect(
-    saveSurgicalActualTime(block, appointment, '2026-09-28T09:10', '', ''),
+    saveSurgicalActualTime(
+      block,
+      appointment,
+      '2026-09-28T09:10',
+      '2026-09-28T10:10',
+      '',
+    ),
   ).rejects.toThrow('This booking changed');
   expect(post).not.toHaveBeenCalled();
+});
+
+it('clears actual time and restores the scheduled status', async () => {
+  const appointment = {
+    id: 9,
+    uuid: 'appointment-1',
+    patient: { uuid: 'patient-1' },
+    status: 'COMPLETED',
+    sortWeight: 0,
+    actualStartDatetime: '2026-09-28T09:10:00.000Z',
+    actualEndDatetime: '2026-09-28T10:10:00.000Z',
+    notes: 'Completed',
+  };
+  const block = {
+    uuid: 'block-1',
+    startDatetime: '2026-09-28T09:00:00.000Z',
+    surgicalAppointments: [appointment],
+  };
+  jest.mocked(get).mockResolvedValueOnce(block);
+  jest.mocked(post).mockResolvedValueOnce(appointment);
+
+  await saveSurgicalActualTime(block, appointment, '', '', '');
+
+  expect(post).toHaveBeenCalledWith(
+    '/openmrs/ws/rest/v1/surgicalAppointment/appointment-1',
+    expect.objectContaining({
+      status: 'SCHEDULED',
+      actualStartDatetime: null,
+      actualEndDatetime: null,
+      notes: '',
+    }),
+    { params: { v: 'full' } },
+  );
 });
