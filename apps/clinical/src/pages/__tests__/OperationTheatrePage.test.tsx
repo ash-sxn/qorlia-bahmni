@@ -178,17 +178,33 @@ it('advances expected surgery times by estimated work and cleaning, skipping can
 it('queries the surgical block API for the selected week', async () => {
   jest.mocked(get).mockResolvedValueOnce({ results: [] });
 
-  await fetchSurgicalBlocks('2026-09-24', 'week');
+  await fetchSurgicalBlocks('2026-09-24', 'week', 'Monday');
 
   expect(get).toHaveBeenCalledWith('/openmrs/ws/rest/v1/surgicalBlock', {
     params: {
       startDatetime: new Date('2026-09-21T00:00:00').toISOString(),
       endDatetime: new Date('2026-09-27T23:59:59.999').toISOString(),
-      includeVoided: true,
+      includeVoided: false,
       activeBlocks: true,
       v: 'full',
     },
   });
+});
+
+it('uses a configured Tuesday week boundary', async () => {
+  jest.mocked(get).mockResolvedValueOnce({ results: [] });
+
+  await fetchSurgicalBlocks('2026-09-24', 'week', 'Tuesday');
+
+  expect(get).toHaveBeenCalledWith(
+    '/openmrs/ws/rest/v1/surgicalBlock',
+    expect.objectContaining({
+      params: expect.objectContaining({
+        startDatetime: new Date('2026-09-22T00:00:00').toISOString(),
+        endDatetime: new Date('2026-09-28T23:59:59.999').toISOString(),
+      }),
+    }),
+  );
 });
 
 it('shows live bookings and filters by patient without changing them', async () => {

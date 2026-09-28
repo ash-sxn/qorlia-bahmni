@@ -41,6 +41,7 @@ interface SurgicalBlock {
 
 interface OtCalendarConfig {
   config?: {
+    startOfWeek?: string;
     primarySurgeonsForOT?: string[];
     calendarView?: {
       dayViewStart?: string;
@@ -116,10 +117,31 @@ export const calendarPlacement = (
   };
 };
 
-export const fetchSurgicalBlocks = (date: string, period: 'day' | 'week') => {
+const startOfWeek = (date: Date, dayName: string) => {
+  const configuredDay = [
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+  ].indexOf(dayName);
+  const firstDay = new Date(date);
+  firstDay.setDate(
+    firstDay.getDate() -
+      ((firstDay.getDay() - (configuredDay < 0 ? 0 : configuredDay) + 7) % 7),
+  );
+  return firstDay;
+};
+
+export const fetchSurgicalBlocks = (
+  date: string,
+  period: 'day' | 'week',
+  firstDay = 'Sunday',
+) => {
   const start = new Date(`${date}T00:00:00`);
-  if (period === 'week')
-    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  if (period === 'week') start.setTime(startOfWeek(start, firstDay).getTime());
   const end = new Date(start);
   end.setDate(end.getDate() + (period === 'week' ? 6 : 0));
   end.setHours(23, 59, 59, 999);
@@ -130,7 +152,7 @@ export const fetchSurgicalBlocks = (date: string, period: 'day' | 'week') => {
       params: {
         startDatetime: start.toISOString(),
         endDatetime: end.toISOString(),
-        includeVoided: true,
+        includeVoided: false,
         activeBlocks: true,
         v: 'full',
       },
@@ -226,16 +248,24 @@ const OperationTheatrePage = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
-  const blocks = useQuery({
-    queryKey: ['ot-surgical-blocks', date, period],
-    queryFn: () => fetchSurgicalBlocks(date, period),
-    enabled: !privilegesLoading && canView && !!date,
-  });
   const calendarConfig = useQuery({
     queryKey: ['ot-calendar-config'],
     queryFn: () =>
       get<OtCalendarConfig>('/bahmni_config/openmrs/apps/ot/app.json'),
-    enabled: !privilegesLoading && canView && view === 'calendar',
+    enabled:
+      !privilegesLoading &&
+      canView &&
+      (view === 'calendar' || period === 'week'),
+  });
+  const firstDay = calendarConfig.data?.config?.startOfWeek ?? 'Sunday';
+  const blocks = useQuery({
+    queryKey: ['ot-surgical-blocks', date, period, firstDay],
+    queryFn: () => fetchSurgicalBlocks(date, period, firstDay),
+    enabled:
+      !privilegesLoading &&
+      canView &&
+      !!date &&
+      (period === 'day' || !!calendarConfig.data),
   });
   const theatreCatalog = useQuery({
     queryKey: ['ot-calendar-theatres'],
@@ -299,8 +329,7 @@ const OperationTheatrePage = () => {
     Number(calendarConfig.data?.config?.calendarView?.dayViewSplit ?? 60) || 60,
   );
   const selectedDay = new Date(`${date || localDate(new Date())}T00:00:00`);
-  const weekStart = new Date(selectedDay);
-  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  const weekStart = startOfWeek(selectedDay, firstDay);
   const calendarDays = Array.from(
     { length: period === 'day' ? 1 : 7 },
     (_, index) => {
@@ -533,7 +562,11 @@ const OperationTheatrePage = () => {
                   Next {period}
                 </button>
               </div>
-              {blocks.isLoading ? (
+              {period === 'week' && calendarConfig.isLoading ? (
+                <p role="status">Loading theatre settings...</p>
+              ) : period === 'week' && calendarConfig.isError ? (
+                <p role="alert">Could not load the theatre settings.</p>
+              ) : blocks.isLoading ? (
                 <p role="status">Loading surgical schedule...</p>
               ) : blocks.isError ? (
                 <p role="alert">Could not load the surgical schedule.</p>
