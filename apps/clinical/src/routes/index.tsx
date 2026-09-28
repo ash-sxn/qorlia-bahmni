@@ -13,8 +13,15 @@ const InpatientPatientDetails = lazy(
   () => import('../pages/InpatientPatientDetails'),
 );
 const ProgramsPage = lazy(() => import('../pages/ProgramsPage'));
+const OperationTheatrePage = lazy(
+  () => import('../pages/OperationTheatrePage'),
+);
 
 export const routes: Routes = [
+  {
+    path: 'operation-theatre',
+    component: OperationTheatrePage,
+  },
   {
     path: 'programs/:patientUuid',
     component: ProgramsPage,

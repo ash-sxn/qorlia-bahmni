@@ -1,0 +1,266 @@
+import { BaseLayout, Header } from '@bahmni/design-system';
+import { BAHMNI_HOME_PATH, get, hasPrivilege } from '@bahmni/services';
+import { useUserPrivilege } from '@bahmni/widgets';
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import styles from './BedManagement.module.scss';
+
+interface SurgicalAppointment {
+  uuid: string;
+  voided?: boolean;
+  sortWeight?: number;
+  status?: string;
+  patient?: { uuid: string; display?: string };
+  actualStartDatetime?: string;
+}
+
+interface SurgicalBlock {
+  uuid: string;
+  voided?: boolean;
+  startDatetime: string;
+  location?: { uuid: string; name: string };
+  provider?: { uuid: string; display?: string; person?: { display?: string } };
+  surgicalAppointments?: SurgicalAppointment[];
+}
+
+const localDate = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+export const fetchSurgicalBlocks = (date: string, period: 'day' | 'week') => {
+  const start = new Date(`${date}T00:00:00`);
+  if (period === 'week')
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  const end = new Date(start);
+  end.setDate(end.getDate() + (period === 'week' ? 6 : 0));
+  end.setHours(23, 59, 59, 999);
+
+  return get<{ results: SurgicalBlock[] }>(
+    '/openmrs/ws/rest/v1/surgicalBlock',
+    {
+      params: {
+        startDatetime: start.toISOString(),
+        endDatetime: end.toISOString(),
+        includeVoided: true,
+        activeBlocks: true,
+        v: 'full',
+      },
+    },
+  );
+};
+
+const formatTime = (value?: string) =>
+  value
+    ? new Intl.DateTimeFormat(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(new Date(value))
+    : 'Not recorded';
+
+const OperationTheatrePage = () => {
+  const { userPrivileges, isLoading: privilegesLoading } = useUserPrivilege();
+  const canView = hasPrivilege(userPrivileges, 'app:ot');
+  const [date, setDate] = useState(() => localDate(new Date()));
+  const [period, setPeriod] = useState<'day' | 'week'>('day');
+  const [locationUuid, setLocationUuid] = useState('');
+  const [providerUuid, setProviderUuid] = useState('');
+  const [status, setStatus] = useState('');
+  const [patientSearch, setPatientSearch] = useState('');
+  const blocks = useQuery({
+    queryKey: ['ot-surgical-blocks', date, period],
+    queryFn: () => fetchSurgicalBlocks(date, period),
+    enabled: !privilegesLoading && canView && !!date,
+  });
+  const activeBlocks = (blocks.data?.results ?? [])
+    .filter((block) => !block.voided)
+    .sort((a, b) => a.startDatetime.localeCompare(b.startDatetime));
+  const locations = Array.from(
+    new Map(
+      activeBlocks
+        .filter((block) => block.location)
+        .map((block) => [block.location!.uuid, block.location!]),
+    ).values(),
+  );
+  const providers = Array.from(
+    new Map(
+      activeBlocks
+        .filter((block) => block.provider)
+        .map((block) => [block.provider!.uuid, block.provider!]),
+    ).values(),
+  );
+  const appointments = activeBlocks.flatMap((block) =>
+    [...(block.surgicalAppointments ?? [])]
+      .filter((appointment) => !appointment.voided)
+      .sort((a, b) => (a.sortWeight ?? 0) - (b.sortWeight ?? 0))
+      .map((appointment) => ({ block, appointment })),
+  );
+  const statuses = Array.from(
+    new Set(
+      appointments.map(({ appointment }) => appointment.status).filter(Boolean),
+    ),
+  );
+  const visible = appointments.filter(
+    ({ block, appointment }) =>
+      (!locationUuid || block.location?.uuid === locationUuid) &&
+      (!providerUuid || block.provider?.uuid === providerUuid) &&
+      (!status || appointment.status === status) &&
+      (!patientSearch ||
+        (appointment.patient?.display ?? '')
+          .toLowerCase()
+          .includes(patientSearch.trim().toLowerCase())),
+  );
+
+  return (
+    <BaseLayout
+      header={
+        <Header
+          breadcrumbItems={[
+            { id: 'home', label: 'Home', href: BAHMNI_HOME_PATH },
+            { id: 'ot', label: 'Operation theatre', isCurrentPage: true },
+          ]}
+        />
+      }
+      main={
+        <div className={styles.page}>
+          <div className={styles.intro}>
+            <span className={styles.eyebrow}>Surgical care</span>
+            <h1>Operation theatre schedule</h1>
+            <p>Review live Bahmni theatre bookings.</p>
+          </div>
+          <nav className={styles.pageNav} aria-label="Operation theatre views">
+            <a href="/bahmni/ot/#/otScheduling">Open full OT tools</a>
+          </nav>
+          {privilegesLoading ? (
+            <p role="status">Loading operation theatre access...</p>
+          ) : !canView ? (
+            <p role="alert">You do not have access to operation theatre.</p>
+          ) : (
+            <section className={styles.card} aria-label="Surgical schedule">
+              <div className={styles.filterForm}>
+                <label>
+                  Date
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(event) => setDate(event.target.value)}
+                  />
+                </label>
+                <label>
+                  View
+                  <select
+                    value={period}
+                    onChange={(event) =>
+                      setPeriod(event.target.value as 'day' | 'week')
+                    }
+                  >
+                    <option value="day">Day</option>
+                    <option value="week">Week</option>
+                  </select>
+                </label>
+                <label>
+                  Theatre
+                  <select
+                    value={locationUuid}
+                    onChange={(event) => setLocationUuid(event.target.value)}
+                  >
+                    <option value="">All theatres</option>
+                    {locations.map((location) => (
+                      <option key={location.uuid} value={location.uuid}>
+                        {location.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Surgeon
+                  <select
+                    value={providerUuid}
+                    onChange={(event) => setProviderUuid(event.target.value)}
+                  >
+                    <option value="">All surgeons</option>
+                    {providers.map((provider) => (
+                      <option key={provider.uuid} value={provider.uuid}>
+                        {provider.person?.display ??
+                          provider.display ??
+                          'Unknown provider'}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Status
+                  <select
+                    value={status}
+                    onChange={(event) => setStatus(event.target.value)}
+                  >
+                    <option value="">All statuses</option>
+                    {statuses.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Patient
+                  <input
+                    type="search"
+                    value={patientSearch}
+                    onChange={(event) => setPatientSearch(event.target.value)}
+                    placeholder="Name or ID"
+                  />
+                </label>
+              </div>
+              {blocks.isLoading ? (
+                <p role="status">Loading surgical schedule...</p>
+              ) : blocks.isError ? (
+                <p role="alert">Could not load the surgical schedule.</p>
+              ) : visible.length === 0 ? (
+                <p>No surgical appointments match these filters.</p>
+              ) : (
+                <div className={styles.tableScroll}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th scope="col">Block start</th>
+                        <th scope="col">Patient</th>
+                        <th scope="col">Theatre</th>
+                        <th scope="col">Surgeon</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actual time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visible.map(({ block, appointment }) => (
+                        <tr key={appointment.uuid}>
+                          <td>{formatTime(block.startDatetime)}</td>
+                          <td>
+                            {appointment.patient?.display ?? 'Unknown patient'}
+                          </td>
+                          <td>{block.location?.name ?? 'Unassigned'}</td>
+                          <td>
+                            {block.provider?.person?.display ??
+                              block.provider?.display ??
+                              'Unassigned'}
+                          </td>
+                          <td>{appointment.status ?? 'Unspecified'}</td>
+                          <td>
+                            {appointment.actualStartDatetime
+                              ? formatTime(appointment.actualStartDatetime)
+                              : 'Not started'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p>To create or change a booking, use the full OT tools.</p>
+            </section>
+          )}
+        </div>
+      }
+    />
+  );
+};
+
+export default OperationTheatrePage;

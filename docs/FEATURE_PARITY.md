@@ -17,6 +17,10 @@ This is an implementation ledger, not a claim that the redesign is complete. It 
 
 For every migrated workflow, the release gate is the same: compare old and new screens for each role, map every read and write to the same backend API or a documented equivalent, exercise success and failure paths with synthetic data, verify audit and permission boundaries, then switch the tile link. Until then, keep the working legacy route available. Do not infer parity from shared CSS or from the static design preview.
 
+## 28 September operation theatre preview
+
+- `/bahmni-v2/clinical/operation-theatre` now reads day or week surgical blocks from Bahmni's `/openmrs/ws/rest/v1/surgicalBlock` API behind `app:ot`. It shows non-voided bookings, actual start times, and local filters for theatre, surgeon, status and patient. The clinical React sidebar links to this preview only for OT-authorized users. Mocked tests cover its API range, rendering, filtering and privilege gate. The older OT calendar, patient queue, booking creation and editing, status changes, notes, and detailed theatre time-slot behavior are not yet covered. Authenticated browser and populated-backend verification are pending. The official OT tile and all writes remain on the legacy screen.
+
 The inpatient row above records the earlier read-only milestone. The update below describes the newer action implementation and its remaining release checks.
 
 ## 26 September local verification
