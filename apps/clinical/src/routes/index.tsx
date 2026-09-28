@@ -16,8 +16,17 @@ const ProgramsPage = lazy(() => import('../pages/ProgramsPage'));
 const OperationTheatrePage = lazy(
   () => import('../pages/OperationTheatrePage'),
 );
+const SurgicalBlockEditor = lazy(() => import('../pages/SurgicalBlockEditor'));
 
 export const routes: Routes = [
+  {
+    path: 'operation-theatre/new',
+    component: SurgicalBlockEditor,
+  },
+  {
+    path: 'operation-theatre/:blockUuid',
+    component: SurgicalBlockEditor,
+  },
   {
     path: 'operation-theatre',
     component: OperationTheatrePage,

@@ -234,6 +234,11 @@ const OperationTheatrePage = () => {
             <p>Review live Bahmni theatre bookings.</p>
           </div>
           <nav className={styles.pageNav} aria-label="Operation theatre views">
+            {canEdit && (
+              <a href="/bahmni-v2/clinical/operation-theatre/new">
+                New surgical block
+              </a>
+            )}
             <a href="/bahmni/ot/#/otScheduling">Open full OT tools</a>
           </nav>
           {privilegesLoading ? (
@@ -358,6 +363,11 @@ const OperationTheatrePage = () => {
                           </td>
                           {canEdit && (
                             <td>
+                              <a
+                                href={`/bahmni-v2/clinical/operation-theatre/${encodeURIComponent(block.uuid)}`}
+                              >
+                                Edit block
+                              </a>{' '}
                               {['SCHEDULED', 'COMPLETED'].includes(
                                 appointment.status ?? '',
                               ) && (
@@ -438,8 +448,7 @@ const OperationTheatrePage = () => {
               {saveError && <p role="alert">{saveError}</p>}
               {saveSuccess && <p role="status">{saveSuccess}</p>}
               <p>
-                To create, reschedule or cancel a booking, use the full OT
-                tools.
+                For cancellations and calendar views, use the full OT tools.
               </p>
             </section>
           )}
