@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import OperationTheatrePage, {
+  appointmentOverlapsRange,
   appointmentsForBlock,
   calendarPlacement,
   fetchSurgicalBlocks,
@@ -173,6 +174,40 @@ it('advances expected surgery times by estimated work and cleaning, skipping can
   expect(schedule[0].expectedStart).toBe('2026-09-28T09:00:00.000Z');
   expect(schedule[1].expectedStart).toBeUndefined();
   expect(schedule[2].expectedStart).toBe('2026-09-28T10:15:00.000Z');
+});
+
+it('shows a cross-midnight case only on days its scheduled time overlaps', () => {
+  const block = {
+    uuid: 'overnight-block',
+    startDatetime: '2026-09-28T23:00:00',
+    surgicalAppointments: [
+      {
+        uuid: 'late-case',
+        status: 'SCHEDULED',
+        sortWeight: 0,
+        surgicalAppointmentAttributes: [
+          {
+            value: '2',
+            surgicalAppointmentAttributeType: { name: 'estTimeHours' },
+          },
+        ],
+      },
+      {
+        uuid: 'next-day-case',
+        status: 'SCHEDULED',
+        sortWeight: 1,
+        surgicalAppointmentAttributes: [],
+      },
+    ],
+  };
+  const [late, nextDay] = appointmentsForBlock(block);
+  const monday = new Date('2026-09-28T00:00:00');
+  const tuesday = new Date('2026-09-29T00:00:00');
+  const wednesday = new Date('2026-09-30T00:00:00');
+  expect(appointmentOverlapsRange(late, monday, tuesday)).toBe(true);
+  expect(appointmentOverlapsRange(late, tuesday, wednesday)).toBe(true);
+  expect(appointmentOverlapsRange(nextDay, monday, tuesday)).toBe(false);
+  expect(appointmentOverlapsRange(nextDay, tuesday, wednesday)).toBe(true);
 });
 
 it('queries the surgical block API for the selected week', async () => {

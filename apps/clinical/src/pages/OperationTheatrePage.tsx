@@ -85,6 +85,20 @@ export const appointmentsForBlock = (block: SurgicalBlock) => {
     });
 };
 
+export const appointmentOverlapsRange = (
+  entry: ReturnType<typeof appointmentsForBlock>[number],
+  rangeStart: Date,
+  rangeEnd: Date,
+) => {
+  const start = new Date(
+    entry.expectedStart ?? entry.block.startDatetime,
+  ).getTime();
+  const end = start + entry.durationMinutes * 60_000;
+  return entry.expectedStart && entry.durationMinutes > 0
+    ? start < rangeEnd.getTime() && end > rangeStart.getTime()
+    : start >= rangeStart.getTime() && start < rangeEnd.getTime();
+};
+
 const localDate = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
@@ -307,13 +321,19 @@ const OperationTheatrePage = () => {
       appointments.map(({ appointment }) => appointment.status).filter(Boolean),
     ),
   );
+  const selectedDay = new Date(`${date || localDate(new Date())}T00:00:00`);
+  const weekStart = startOfWeek(selectedDay, firstDay);
+  const rangeStart = period === 'day' ? selectedDay : weekStart;
+  const rangeEnd = new Date(rangeStart);
+  rangeEnd.setDate(rangeEnd.getDate() + (period === 'day' ? 1 : 7));
   const visible = appointments.filter(
-    ({ block, appointment }) =>
-      (!locationUuid || block.location?.uuid === locationUuid) &&
-      (!providerUuid || block.provider?.uuid === providerUuid) &&
-      (!status || appointment.status === status) &&
+    (entry) =>
+      appointmentOverlapsRange(entry, rangeStart, rangeEnd) &&
+      (!locationUuid || entry.block.location?.uuid === locationUuid) &&
+      (!providerUuid || entry.block.provider?.uuid === providerUuid) &&
+      (!status || entry.appointment.status === status) &&
       (!patientSearch ||
-        (appointment.patient?.display ?? '')
+        (entry.appointment.patient?.display ?? '')
           .toLowerCase()
           .includes(patientSearch.trim().toLowerCase())),
   );
@@ -330,8 +350,6 @@ const OperationTheatrePage = () => {
     15,
     Number(calendarConfig.data?.config?.calendarView?.dayViewSplit ?? 60) || 60,
   );
-  const selectedDay = new Date(`${date || localDate(new Date())}T00:00:00`);
-  const weekStart = startOfWeek(selectedDay, firstDay);
   const calendarDays = Array.from(
     { length: period === 'day' ? 1 : 7 },
     (_, index) => {
@@ -644,14 +662,25 @@ const OperationTheatrePage = () => {
                                 calendarEnd,
                               );
                               if (!placement) return null;
+                              const dayStart = new Date(
+                                `${column.day}T00:00:00`,
+                              );
+                              const dayEnd = new Date(dayStart);
+                              dayEnd.setDate(dayEnd.getDate() + 1);
                               const cases = appointmentsForBlock(block).filter(
-                                ({ appointment }) =>
-                                  ['SCHEDULED', 'COMPLETED'].includes(
-                                    appointment.status ?? '',
+                                (entry) =>
+                                  appointmentOverlapsRange(
+                                    entry,
+                                    dayStart,
+                                    dayEnd,
                                   ) &&
-                                  (!status || appointment.status === status) &&
+                                  ['SCHEDULED', 'COMPLETED'].includes(
+                                    entry.appointment.status ?? '',
+                                  ) &&
+                                  (!status ||
+                                    entry.appointment.status === status) &&
                                   (!patientSearch ||
-                                    (appointment.patient?.display ?? '')
+                                    (entry.appointment.patient?.display ?? '')
                                       .toLowerCase()
                                       .includes(
                                         patientSearch.trim().toLowerCase(),
