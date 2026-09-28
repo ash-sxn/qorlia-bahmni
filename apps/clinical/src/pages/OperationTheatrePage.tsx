@@ -20,9 +20,11 @@ interface SurgicalAppointment {
   sortWeight?: number;
   status?: string;
   notes?: string;
-  patient?: { uuid: string; display?: string };
+  patient?: { uuid: string; display?: string; person?: { age?: number } };
   actualStartDatetime?: string;
   actualEndDatetime?: string;
+  bedLocation?: string;
+  bedNumber?: string;
   surgicalAppointmentAttributes?: {
     value?: string | number | null;
     surgicalAppointmentAttributeType: { name: string };
@@ -729,11 +731,15 @@ const OperationTheatrePage = () => {
                       <tr>
                         <th scope="col">Expected start</th>
                         <th scope="col">Patient</th>
+                        <th scope="col">Patient age</th>
                         <th scope="col">Theatre</th>
                         <th scope="col">Surgeon</th>
                         <th scope="col">Status</th>
                         <th scope="col">Estimated time</th>
                         <th scope="col">Actual time</th>
+                        <th scope="col">Status change notes</th>
+                        <th scope="col">Bed location</th>
+                        <th scope="col">Bed ID</th>
                         {canEdit && <th scope="col">Action</th>}
                       </tr>
                     </thead>
@@ -755,6 +761,7 @@ const OperationTheatrePage = () => {
                               {appointment.patient?.display ??
                                 'Unknown patient'}
                             </td>
+                            <td>{appointment.patient?.person?.age ?? ''}</td>
                             <td>{block.location?.name ?? 'Unassigned'}</td>
                             <td>
                               {block.provider?.person?.display ??
@@ -768,6 +775,9 @@ const OperationTheatrePage = () => {
                                 ? formatTime(appointment.actualStartDatetime)
                                 : 'Not started'}
                             </td>
+                            <td>{appointment.notes ?? ''}</td>
+                            <td>{appointment.bedLocation ?? ''}</td>
+                            <td>{appointment.bedNumber ?? ''}</td>
                             {canEdit && (
                               <td>
                                 <a
@@ -855,10 +865,7 @@ const OperationTheatrePage = () => {
               )}
               {saveError && <p role="alert">{saveError}</p>}
               {saveSuccess && <p role="status">{saveSuccess}</p>}
-              <p>
-                For individual surgery changes and advanced OT tools, open the
-                full OT screen.
-              </p>
+              <p>For advanced OT tools, open the full OT screen.</p>
             </section>
           )}
         </div>

@@ -219,8 +219,15 @@ it('shows live bookings and filters by patient without changing them', async () 
         surgicalAppointments: [
           {
             uuid: 'appointment-1',
-            patient: { uuid: 'patient-1', display: 'ABC123 - Asha Demo' },
+            patient: {
+              uuid: 'patient-1',
+              display: 'ABC123 - Asha Demo',
+              person: { age: 42 },
+            },
             status: 'SCHEDULED',
+            notes: 'Moved from Tuesday',
+            bedLocation: 'General Ward',
+            bedNumber: 'GW-2',
           },
           {
             uuid: 'appointment-2',
@@ -235,6 +242,10 @@ it('shows live bookings and filters by patient without changing them', async () 
   renderPage();
 
   expect(await screen.findByText('ABC123 - Asha Demo')).toBeInTheDocument();
+  expect(screen.getByText('42')).toBeInTheDocument();
+  expect(screen.getByText('Moved from Tuesday')).toBeInTheDocument();
+  expect(screen.getByText('General Ward')).toBeInTheDocument();
+  expect(screen.getByText('GW-2')).toBeInTheDocument();
   expect(screen.getAllByText('Theatre 1')).toHaveLength(2);
   expect(screen.queryByText('Hidden Patient')).not.toBeInTheDocument();
   expect(
