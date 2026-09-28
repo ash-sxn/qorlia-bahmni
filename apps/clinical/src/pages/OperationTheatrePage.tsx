@@ -26,8 +26,12 @@ interface SurgicalAppointment {
   bedLocation?: string;
   bedNumber?: string;
   surgicalAppointmentAttributes?: {
-    value?: string | number | null;
-    surgicalAppointmentAttributeType: { name: string };
+    value?:
+      | string
+      | number
+      | { display?: string; person?: { display?: string } }
+      | null;
+    surgicalAppointmentAttributeType: { name: string; format?: string };
   }[];
 }
 
@@ -97,6 +101,56 @@ export const appointmentOverlapsRange = (
   return entry.expectedStart && entry.durationMinutes > 0
     ? start < rangeEnd.getTime() && end > rangeStart.getTime()
     : start >= rangeStart.getTime() && start < rangeEnd.getTime();
+};
+
+const attributeValue = (
+  appointment: SurgicalAppointment,
+  name: string,
+  providers: Provider[],
+) => {
+  const attribute = appointment.surgicalAppointmentAttributes?.find(
+    (item) => item.surgicalAppointmentAttributeType.name === name,
+  );
+  const value = attribute?.value;
+  if (value == null) return '';
+  if (typeof value === 'object')
+    return value.person?.display ?? value.display ?? '';
+  if (
+    attribute?.surgicalAppointmentAttributeType.format ===
+      'org.openmrs.Provider' ||
+    name === 'otherSurgeon'
+  )
+    return (
+      providers.find(
+        (provider) =>
+          String(provider.id) === String(value) || provider.uuid === value,
+      )?.person?.display ?? String(value)
+    );
+  return String(value);
+};
+
+type OtListEntry = ReturnType<typeof appointmentsForBlock>[number];
+type OtListColumn = {
+  key: string;
+  label: string;
+  value: (entry: OtListEntry) => string | number | null | undefined;
+};
+
+const compareOtValues = (
+  left: string | number | null | undefined,
+  right: string | number | null | undefined,
+  descending: boolean,
+) => {
+  if (left == null || left === '') return right == null || right === '' ? 0 : 1;
+  if (right == null || right === '') return -1;
+  const difference =
+    typeof left === 'number' && typeof right === 'number'
+      ? left - right
+      : String(left).localeCompare(String(right), undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+  return descending ? -difference : difference;
 };
 
 const localDate = (date: Date) =>
@@ -259,6 +313,10 @@ const OperationTheatrePage = () => {
   const [providerUuid, setProviderUuid] = useState('');
   const [status, setStatus] = useState('');
   const [patientSearch, setPatientSearch] = useState('');
+  const [listSort, setListSort] = useState<{
+    key: string;
+    descending: boolean;
+  } | null>(null);
   const [editingUuid, setEditingUuid] = useState('');
   const [actualStart, setActualStart] = useState('');
   const [actualEnd, setActualEnd] = useState('');
@@ -290,16 +348,6 @@ const OperationTheatrePage = () => {
     queryFn: () => getLocationByTag('Operation Theater'),
     enabled: !privilegesLoading && canView && view === 'calendar',
   });
-  const surgeonCatalog = useQuery({
-    queryKey: ['ot-calendar-surgeons'],
-    queryFn: fetchAllProviders,
-    enabled:
-      !privilegesLoading &&
-      canView &&
-      view === 'calendar' &&
-      period === 'day' &&
-      groupBy === 'surgeon',
-  });
   const activeBlocks = (blocks.data?.results ?? [])
     .filter((block) => !block.voided)
     .sort((a, b) => a.startDatetime.localeCompare(b.startDatetime));
@@ -318,6 +366,37 @@ const OperationTheatrePage = () => {
     ).values(),
   );
   const appointments = activeBlocks.flatMap(appointmentsForBlock);
+  const detailAttributes = Array.from(
+    new Map(
+      appointments
+        .flatMap(
+          ({ appointment }) => appointment.surgicalAppointmentAttributes ?? [],
+        )
+        .filter(
+          ({ surgicalAppointmentAttributeType }) =>
+            !['estTimeHours', 'estTimeMinutes', 'cleaningTime'].includes(
+              surgicalAppointmentAttributeType.name,
+            ),
+        )
+        .map(({ surgicalAppointmentAttributeType }) => [
+          surgicalAppointmentAttributeType.name,
+          surgicalAppointmentAttributeType,
+        ]),
+    ).values(),
+  );
+  const providerCatalog = useQuery({
+    queryKey: ['ot-providers'],
+    queryFn: fetchAllProviders,
+    enabled:
+      !privilegesLoading &&
+      canView &&
+      ((view === 'calendar' && period === 'day' && groupBy === 'surgeon') ||
+        (view === 'list' &&
+          detailAttributes.some(
+            ({ name, format }) =>
+              format === 'org.openmrs.Provider' || name === 'otherSurgeon',
+          ))),
+  });
   const statuses = Array.from(
     new Set(
       appointments.map(({ appointment }) => appointment.status).filter(Boolean),
@@ -339,6 +418,88 @@ const OperationTheatrePage = () => {
           .toLowerCase()
           .includes(patientSearch.trim().toLowerCase())),
   );
+  const listColumns: OtListColumn[] = [
+    {
+      key: 'expected',
+      label: 'Expected start',
+      value: (entry) =>
+        entry.expectedStart ? Date.parse(entry.expectedStart) : null,
+    },
+    {
+      key: 'patient',
+      label: 'Patient',
+      value: (entry) => entry.appointment.patient?.display,
+    },
+    {
+      key: 'age',
+      label: 'Patient age',
+      value: (entry) => entry.appointment.patient?.person?.age,
+    },
+    {
+      key: 'theatre',
+      label: 'Theatre',
+      value: (entry) => entry.block.location?.name,
+    },
+    {
+      key: 'surgeon',
+      label: 'Surgeon',
+      value: (entry) =>
+        entry.block.provider?.person?.display ?? entry.block.provider?.display,
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      value: (entry) => entry.appointment.status,
+    },
+    {
+      key: 'duration',
+      label: 'Estimated time',
+      value: (entry) => entry.durationMinutes,
+    },
+    {
+      key: 'actual',
+      label: 'Actual time',
+      value: (entry) =>
+        entry.appointment.actualStartDatetime
+          ? Date.parse(entry.appointment.actualStartDatetime)
+          : null,
+    },
+    ...detailAttributes.map(
+      ({ name }): OtListColumn => ({
+        key: `attribute:${name}`,
+        label: name.replace(/([a-z])([A-Z])/g, '$1 $2'),
+        value: (entry) =>
+          attributeValue(entry.appointment, name, providerCatalog.data ?? []),
+      }),
+    ),
+    {
+      key: 'notes',
+      label: 'Status change notes',
+      value: (entry) => entry.appointment.notes,
+    },
+    {
+      key: 'bedLocation',
+      label: 'Bed location',
+      value: (entry) => entry.appointment.bedLocation,
+    },
+    {
+      key: 'bedNumber',
+      label: 'Bed ID',
+      value: (entry) => entry.appointment.bedNumber,
+    },
+  ];
+  const selectedSort = listColumns.find(
+    (column) => column.key === listSort?.key,
+  );
+  const sortedVisible = selectedSort
+    ? [...visible].sort((left, right) =>
+        compareOtValues(
+          selectedSort.value(left),
+          selectedSort.value(right),
+          listSort?.descending ?? false,
+        ),
+      )
+    : visible;
   const editing = visible.find(
     ({ appointment }) => appointment.uuid === editingUuid,
   );
@@ -364,7 +525,7 @@ const OperationTheatrePage = () => {
     (theatre) => !locationUuid || theatre.uuid === locationUuid,
   );
   const configuredSurgeons = calendarConfig.data?.config?.primarySurgeonsForOT;
-  const surgeonColumns = (surgeonCatalog.data ?? []).filter(
+  const surgeonColumns = (providerCatalog.data ?? []).filter(
     (surgeon: Provider) =>
       surgeon.person?.display &&
       (!configuredSurgeons?.length ||
@@ -597,14 +758,14 @@ const OperationTheatrePage = () => {
                   theatreCatalog.isLoading ||
                   (period === 'day' &&
                     groupBy === 'surgeon' &&
-                    surgeonCatalog.isLoading)) ? (
+                    providerCatalog.isLoading)) ? (
                 <p role="status">Loading theatre calendar...</p>
               ) : view === 'calendar' &&
                 (calendarConfig.isError ||
                   theatreCatalog.isError ||
                   (period === 'day' &&
                     groupBy === 'surgeon' &&
-                    surgeonCatalog.isError) ||
+                    providerCatalog.isError) ||
                   !Number.isFinite(calendarStart) ||
                   !Number.isFinite(calendarEnd) ||
                   calendarEnd <= calendarStart) ? (
@@ -760,22 +921,40 @@ const OperationTheatrePage = () => {
                   <table>
                     <thead>
                       <tr>
-                        <th scope="col">Expected start</th>
-                        <th scope="col">Patient</th>
-                        <th scope="col">Patient age</th>
-                        <th scope="col">Theatre</th>
-                        <th scope="col">Surgeon</th>
-                        <th scope="col">Status</th>
-                        <th scope="col">Estimated time</th>
-                        <th scope="col">Actual time</th>
-                        <th scope="col">Status change notes</th>
-                        <th scope="col">Bed location</th>
-                        <th scope="col">Bed ID</th>
+                        {listColumns.map((column) => (
+                          <th
+                            key={column.key}
+                            scope="col"
+                            aria-sort={
+                              listSort?.key === column.key
+                                ? listSort.descending
+                                  ? 'descending'
+                                  : 'ascending'
+                                : 'none'
+                            }
+                          >
+                            <button
+                              type="button"
+                              className={styles.inlineButton}
+                              onClick={() =>
+                                setListSort((current) => ({
+                                  key: column.key,
+                                  descending:
+                                    current?.key === column.key
+                                      ? !current.descending
+                                      : false,
+                                }))
+                              }
+                            >
+                              {column.label}
+                            </button>
+                          </th>
+                        ))}
                         {canEdit && <th scope="col">Action</th>}
                       </tr>
                     </thead>
                     <tbody>
-                      {visible.map(
+                      {sortedVisible.map(
                         ({
                           block,
                           appointment,
@@ -806,6 +985,15 @@ const OperationTheatrePage = () => {
                                 ? formatTime(appointment.actualStartDatetime)
                                 : 'Not started'}
                             </td>
+                            {detailAttributes.map(({ name }) => (
+                              <td key={name}>
+                                {attributeValue(
+                                  appointment,
+                                  name,
+                                  providerCatalog.data ?? [],
+                                )}
+                              </td>
+                            ))}
                             <td>{appointment.notes ?? ''}</td>
                             <td>{appointment.bedLocation ?? ''}</td>
                             <td>{appointment.bedNumber ?? ''}</td>

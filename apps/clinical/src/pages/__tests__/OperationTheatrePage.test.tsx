@@ -294,6 +294,72 @@ it('shows live bookings and filters by patient without changing them', async () 
   ).toBeInTheDocument();
 });
 
+it('shows configured case attributes and sorts the OT list', async () => {
+  const attributes = (procedure: string) => [
+    {
+      value: procedure,
+      surgicalAppointmentAttributeType: {
+        name: 'procedure',
+        format: 'java.lang.String',
+      },
+    },
+    {
+      value: '7',
+      surgicalAppointmentAttributeType: {
+        name: 'otherSurgeon',
+        format: 'org.openmrs.Provider',
+      },
+    },
+  ];
+  jest.mocked(get).mockResolvedValueOnce({
+    results: [
+      {
+        uuid: 'block-1',
+        startDatetime: '2026-09-28T09:00:00.000+0530',
+        location: { uuid: 'theatre-1', name: 'Theatre 1' },
+        surgicalAppointments: [
+          {
+            uuid: 'case-2',
+            sortWeight: 0,
+            status: 'SCHEDULED',
+            patient: { uuid: 'patient-2', display: 'P2 - Zoya' },
+            surgicalAppointmentAttributes: attributes('Knee repair'),
+          },
+          {
+            uuid: 'case-1',
+            sortWeight: 1,
+            status: 'SCHEDULED',
+            patient: { uuid: 'patient-1', display: 'P1 - Asha' },
+            surgicalAppointmentAttributes: attributes('Appendectomy'),
+          },
+        ],
+      },
+    ],
+  });
+  jest
+    .mocked(fetchAllProviders)
+    .mockResolvedValueOnce([
+      { id: 7, uuid: 'surgeon-7', person: { display: 'Dr Assistant' } },
+    ] as Awaited<ReturnType<typeof fetchAllProviders>>);
+
+  renderPage();
+  fireEvent.change(screen.getByLabelText('Date'), {
+    target: { value: '2026-09-28' },
+  });
+  expect(await screen.findByText('Appendectomy')).toBeInTheDocument();
+  expect(await screen.findAllByText('Dr Assistant')).toHaveLength(2);
+  const names = () =>
+    screen
+      .getAllByRole('row')
+      .slice(1)
+      .map((entry) => entry.querySelectorAll('td')[1]?.textContent);
+  expect(names()).toEqual(['P2 - Zoya', 'P1 - Asha']);
+  fireEvent.click(screen.getByRole('button', { name: 'Patient', exact: true }));
+  expect(names()).toEqual(['P1 - Asha', 'P2 - Zoya']);
+  fireEvent.click(screen.getByRole('button', { name: 'Patient', exact: true }));
+  expect(names()).toEqual(['P2 - Zoya', 'P1 - Asha']);
+});
+
 it('shows the actual-time form only to OT writers', async () => {
   jest.mocked(useUserPrivilege).mockReturnValue({
     userPrivileges: [
