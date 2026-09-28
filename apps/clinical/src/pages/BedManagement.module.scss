@@ -18,6 +18,7 @@
 }
 
 .pageNav a,
+.pageNav button,
 .tabs button {
   padding: 9px 14px;
   border: 1px solid var(--qorlia-border, #dbe5e1);
@@ -28,6 +29,82 @@
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
+}
+
+.otCalendarScroll {
+  overflow-x: auto;
+}
+
+.otCalendar {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(220px, 1fr);
+  gap: 12px;
+  min-width: min(100%, 720px);
+}
+
+.otCalendarColumn {
+  min-width: 0;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.otCalendarColumn h2 {
+  position: sticky;
+  left: 0;
+  margin: 0;
+  padding: 12px;
+  border-bottom: 1px solid var(--qorlia-border, #dbe5e1);
+  font-size: 16px;
+}
+
+.otCalendarTimeline {
+  position: relative;
+  height: 720px;
+  margin-left: 40px;
+  border-left: 1px solid var(--qorlia-border, #dbe5e1);
+}
+
+.otCalendarTick {
+  position: absolute;
+  right: 0;
+  left: 0;
+  border-top: 1px solid #edf2ef;
+  color: var(--qorlia-muted, #5a6865);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.otCalendarTick span {
+  position: absolute;
+  left: -37px;
+  top: -7px;
+}
+
+.otCalendarBlock {
+  position: absolute;
+  right: 4px;
+  left: 4px;
+  z-index: 1;
+  min-height: 32px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--qorlia-primary, #1f5238);
+  border-radius: 8px;
+  background: #e9f3eb;
+  font-size: 12px;
+}
+
+.otCalendarBlock a,
+.otCalendarBlock strong {
+  color: var(--qorlia-primary, #1f5238);
+  font-weight: 700;
+}
+
+.otCalendarBlock p {
+  margin: 4px 0 0;
+  color: var(--qorlia-ink, #202b29);
 }
 
 .pageNav a[aria-current="page"],

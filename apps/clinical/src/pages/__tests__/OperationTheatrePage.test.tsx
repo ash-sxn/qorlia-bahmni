@@ -1,9 +1,11 @@
-import { get, post } from '@bahmni/services';
+import { get, getLocationByTag, post } from '@bahmni/services';
 import { useUserPrivilege } from '@bahmni/widgets';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import OperationTheatrePage, {
+  appointmentsForBlock,
+  calendarPlacement,
   fetchSurgicalBlocks,
   saveSurgicalActualTime,
 } from '../OperationTheatrePage';
@@ -11,6 +13,7 @@ import OperationTheatrePage, {
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   get: jest.fn(),
+  getLocationByTag: jest.fn(),
   post: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({
@@ -37,6 +40,109 @@ beforeEach(() => {
     userPrivileges: [{ uuid: 'ot-privilege', name: 'app:ot' }],
     isLoading: false,
   });
+});
+
+it('places a block at its configured time in the calendar', () => {
+  expect(
+    calendarPlacement(
+      {
+        uuid: 'block-1',
+        startDatetime: '2026-09-28T09:00:00',
+        endDatetime: '2026-09-28T12:00:00',
+      },
+      '2026-09-28',
+      8 * 60,
+      18 * 60,
+    ),
+  ).toEqual({ top: '10%', height: '30%' });
+});
+
+it('loads the theatre catalog and shows real surgical blocks in calendar layout', async () => {
+  jest.mocked(get).mockResolvedValueOnce({
+    results: [
+      {
+        uuid: 'block-1',
+        startDatetime: '2026-09-28T09:00:00',
+        endDatetime: '2026-09-28T12:00:00',
+        location: { uuid: 'theatre-1', name: 'Theatre 1' },
+        provider: { uuid: 'surgeon-1', person: { display: 'Dr Demo' } },
+        surgicalAppointments: [
+          {
+            uuid: 'case-1',
+            status: 'SCHEDULED',
+            patient: { uuid: 'patient-1', display: 'Asha Demo' },
+          },
+        ],
+      },
+    ],
+  });
+  jest.mocked(get).mockResolvedValueOnce({
+    config: {
+      calendarView: {
+        dayViewStart: '08:00',
+        dayViewEnd: '18:00',
+        dayViewSplit: '60',
+      },
+    },
+  });
+  jest
+    .mocked(getLocationByTag)
+    .mockResolvedValueOnce([{ uuid: 'theatre-1', display: 'Theatre 1' }]);
+  renderPage();
+  fireEvent.change(screen.getByLabelText('Date'), {
+    target: { value: '2026-09-28' },
+  });
+  fireEvent.change(screen.getByLabelText('Layout'), {
+    target: { value: 'calendar' },
+  });
+  expect(
+    await screen.findByRole('heading', { name: 'Theatre 1' }),
+  ).toBeInTheDocument();
+  expect(screen.getByText(/Asha Demo/)).toBeInTheDocument();
+  expect(getLocationByTag).toHaveBeenCalledWith('Operation Theater');
+});
+
+it('advances expected surgery times by estimated work and cleaning, skipping cancelled cases', () => {
+  const attribute = (name: string, value: string) => ({
+    surgicalAppointmentAttributeType: { name },
+    value,
+  });
+  const block = {
+    uuid: 'block-1',
+    startDatetime: '2026-09-28T09:00:00.000Z',
+    surgicalAppointments: [
+      {
+        uuid: 'second',
+        status: 'SCHEDULED',
+        sortWeight: 2,
+        surgicalAppointmentAttributes: [],
+      },
+      {
+        uuid: 'first',
+        status: 'SCHEDULED',
+        sortWeight: 0,
+        surgicalAppointmentAttributes: [
+          attribute('estTimeHours', '1'),
+          attribute('cleaningTime', '15'),
+        ],
+      },
+      {
+        uuid: 'cancelled',
+        status: 'CANCELLED',
+        sortWeight: 1,
+        surgicalAppointmentAttributes: [attribute('estTimeHours', '4')],
+      },
+    ],
+  };
+  const schedule = appointmentsForBlock(block);
+  expect(schedule.map(({ appointment }) => appointment.uuid)).toEqual([
+    'first',
+    'cancelled',
+    'second',
+  ]);
+  expect(schedule[0].expectedStart).toBe('2026-09-28T09:00:00.000Z');
+  expect(schedule[1].expectedStart).toBeUndefined();
+  expect(schedule[2].expectedStart).toBe('2026-09-28T10:15:00.000Z');
 });
 
 it('queries the surgical block API for the selected week', async () => {

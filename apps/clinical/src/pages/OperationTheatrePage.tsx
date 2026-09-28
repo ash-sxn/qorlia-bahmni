@@ -1,5 +1,11 @@
 import { BaseLayout, Header } from '@bahmni/design-system';
-import { BAHMNI_HOME_PATH, get, hasPrivilege, post } from '@bahmni/services';
+import {
+  BAHMNI_HOME_PATH,
+  get,
+  getLocationByTag,
+  hasPrivilege,
+  post,
+} from '@bahmni/services';
 import { useUserPrivilege } from '@bahmni/widgets';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
@@ -15,16 +21,63 @@ interface SurgicalAppointment {
   patient?: { uuid: string; display?: string };
   actualStartDatetime?: string;
   actualEndDatetime?: string;
+  surgicalAppointmentAttributes?: {
+    value?: string | number | null;
+    surgicalAppointmentAttributeType: { name: string };
+  }[];
 }
 
 interface SurgicalBlock {
   uuid: string;
   voided?: boolean;
   startDatetime: string;
+  endDatetime?: string;
   location?: { uuid: string; name: string };
   provider?: { uuid: string; display?: string; person?: { display?: string } };
   surgicalAppointments?: SurgicalAppointment[];
 }
+
+interface OtCalendarConfig {
+  config?: {
+    calendarView?: {
+      dayViewStart?: string;
+      dayViewEnd?: string;
+      dayViewSplit?: string;
+    };
+  };
+}
+
+const estimateMinutes = (appointment: SurgicalAppointment) => {
+  const value = (name: string) => {
+    const raw = appointment.surgicalAppointmentAttributes?.find(
+      (attribute) => attribute.surgicalAppointmentAttributeType.name === name,
+    )?.value;
+    const parsed = Number(raw ?? 0);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  };
+  return (
+    value('estTimeHours') * 60 + value('estTimeMinutes') + value('cleaningTime')
+  );
+};
+
+export const appointmentsForBlock = (block: SurgicalBlock) => {
+  let expectedStart = new Date(block.startDatetime).getTime();
+  return [...(block.surgicalAppointments ?? [])]
+    .filter((appointment) => !appointment.voided)
+    .sort((a, b) => (a.sortWeight ?? 0) - (b.sortWeight ?? 0))
+    .map((appointment) => {
+      const durationMinutes = estimateMinutes(appointment);
+      const scheduled = ['SCHEDULED', 'COMPLETED'].includes(
+        appointment.status ?? '',
+      );
+      const start =
+        scheduled && Number.isFinite(expectedStart)
+          ? new Date(expectedStart).toISOString()
+          : undefined;
+      if (scheduled) expectedStart += durationMinutes * 60_000;
+      return { block, appointment, expectedStart: start, durationMinutes };
+    });
+};
 
 const localDate = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -33,6 +86,31 @@ const localDateTime = (value?: string) => {
   if (!value) return '';
   const date = new Date(value);
   return `${localDate(date)}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+};
+
+const minutesOfDay = (value: string) => {
+  const [hours, minutes] = value.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+export const calendarPlacement = (
+  block: SurgicalBlock,
+  day: string,
+  startMinutes: number,
+  endMinutes: number,
+) => {
+  const start = new Date(block.startDatetime);
+  const end = new Date(block.endDatetime ?? block.startDatetime);
+  const midnight = new Date(`${day}T00:00:00`);
+  const first = midnight.getTime() + startMinutes * 60_000;
+  const last = midnight.getTime() + endMinutes * 60_000;
+  const overlapStart = Math.max(first, start.getTime());
+  const overlapEnd = Math.min(last, end.getTime());
+  if (overlapEnd <= overlapStart || last <= first) return null;
+  return {
+    top: `${((overlapStart - first) / (last - first)) * 100}%`,
+    height: `${((overlapEnd - overlapStart) / (last - first)) * 100}%`,
+  };
 };
 
 export const fetchSurgicalBlocks = (date: string, period: 'day' | 'week') => {
@@ -132,6 +210,7 @@ const OperationTheatrePage = () => {
   const queryClient = useQueryClient();
   const [date, setDate] = useState(() => localDate(new Date()));
   const [period, setPeriod] = useState<'day' | 'week'>('day');
+  const [view, setView] = useState<'list' | 'calendar'>('list');
   const [locationUuid, setLocationUuid] = useState('');
   const [providerUuid, setProviderUuid] = useState('');
   const [status, setStatus] = useState('');
@@ -147,6 +226,17 @@ const OperationTheatrePage = () => {
     queryKey: ['ot-surgical-blocks', date, period],
     queryFn: () => fetchSurgicalBlocks(date, period),
     enabled: !privilegesLoading && canView && !!date,
+  });
+  const calendarConfig = useQuery({
+    queryKey: ['ot-calendar-config'],
+    queryFn: () =>
+      get<OtCalendarConfig>('/bahmni_config/openmrs/apps/ot/app.json'),
+    enabled: !privilegesLoading && canView && view === 'calendar',
+  });
+  const theatreCatalog = useQuery({
+    queryKey: ['ot-calendar-theatres'],
+    queryFn: () => getLocationByTag('Operation Theater'),
+    enabled: !privilegesLoading && canView && view === 'calendar',
   });
   const activeBlocks = (blocks.data?.results ?? [])
     .filter((block) => !block.voided)
@@ -165,12 +255,7 @@ const OperationTheatrePage = () => {
         .map((block) => [block.provider!.uuid, block.provider!]),
     ).values(),
   );
-  const appointments = activeBlocks.flatMap((block) =>
-    [...(block.surgicalAppointments ?? [])]
-      .filter((appointment) => !appointment.voided)
-      .sort((a, b) => (a.sortWeight ?? 0) - (b.sortWeight ?? 0))
-      .map((appointment) => ({ block, appointment })),
-  );
+  const appointments = activeBlocks.flatMap(appointmentsForBlock);
   const statuses = Array.from(
     new Set(
       appointments.map(({ appointment }) => appointment.status).filter(Boolean),
@@ -189,6 +274,56 @@ const OperationTheatrePage = () => {
   const editing = visible.find(
     ({ appointment }) => appointment.uuid === editingUuid,
   );
+  const calendarStart = minutesOfDay(
+    calendarConfig.data?.config?.calendarView?.dayViewStart ?? '08:00',
+  );
+  const calendarEnd = minutesOfDay(
+    calendarConfig.data?.config?.calendarView?.dayViewEnd ?? '18:00',
+  );
+  const split = Math.max(
+    15,
+    Number(calendarConfig.data?.config?.calendarView?.dayViewSplit ?? 60) || 60,
+  );
+  const selectedDay = new Date(`${date || localDate(new Date())}T00:00:00`);
+  const weekStart = new Date(selectedDay);
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  const calendarDays = Array.from(
+    { length: period === 'day' ? 1 : 7 },
+    (_, index) => {
+      const day = new Date(period === 'day' ? selectedDay : weekStart);
+      day.setDate(day.getDate() + index);
+      return localDate(day);
+    },
+  );
+  const theatreColumns = (theatreCatalog.data ?? []).filter(
+    (theatre) => !locationUuid || theatre.uuid === locationUuid,
+  );
+  const calendarColumns =
+    period === 'day'
+      ? theatreColumns.map((theatre) => ({
+          key: theatre.uuid,
+          label: theatre.display,
+          day: localDate(selectedDay),
+        }))
+      : calendarDays.map((day) => ({
+          key: day,
+          label: new Intl.DateTimeFormat(undefined, {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+          }).format(new Date(`${day}T00:00:00`)),
+          day,
+        }));
+  const calendarBlocks = activeBlocks.filter(
+    (block) =>
+      (!locationUuid || block.location?.uuid === locationUuid) &&
+      (!providerUuid || block.provider?.uuid === providerUuid),
+  );
+  const changeDate = (direction: number) => {
+    const next = new Date(`${date}T00:00:00`);
+    next.setDate(next.getDate() + direction * (period === 'day' ? 1 : 7));
+    setDate(localDate(next));
+  };
 
   const submitActualTime = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -216,6 +351,7 @@ const OperationTheatrePage = () => {
     }
   };
 
+  /* eslint-disable react/forbid-dom-props -- Timeline positions follow configured minutes and real block timestamps. */
   return (
     <BaseLayout
       header={
@@ -248,6 +384,19 @@ const OperationTheatrePage = () => {
           ) : (
             <section className={styles.card} aria-label="Surgical schedule">
               <div className={styles.filterForm}>
+                <label>
+                  Layout
+                  <select
+                    value={view}
+                    onChange={(event) => {
+                      setView(event.target.value as 'list' | 'calendar');
+                      setStatus('');
+                    }}
+                  >
+                    <option value="list">List</option>
+                    <option value="calendar">Calendar</option>
+                  </select>
+                </label>
                 <label>
                   Date
                   <input
@@ -305,11 +454,17 @@ const OperationTheatrePage = () => {
                     onChange={(event) => setStatus(event.target.value)}
                   >
                     <option value="">All statuses</option>
-                    {statuses.map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
+                    {statuses
+                      .filter(
+                        (value) =>
+                          view === 'list' ||
+                          ['SCHEDULED', 'COMPLETED'].includes(value ?? ''),
+                      )
+                      .map((value) => (
+                        <option key={value} value={value}>
+                          {value}
+                        </option>
+                      ))}
                   </select>
                 </label>
                 <label>
@@ -322,10 +477,157 @@ const OperationTheatrePage = () => {
                   />
                 </label>
               </div>
+              <div className={styles.pageNav} aria-label="Schedule navigation">
+                <button type="button" onClick={() => changeDate(-1)}>
+                  Previous {period}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDate(localDate(new Date()))}
+                >
+                  Today
+                </button>
+                <button type="button" onClick={() => changeDate(1)}>
+                  Next {period}
+                </button>
+              </div>
               {blocks.isLoading ? (
                 <p role="status">Loading surgical schedule...</p>
               ) : blocks.isError ? (
                 <p role="alert">Could not load the surgical schedule.</p>
+              ) : view === 'calendar' &&
+                (calendarConfig.isLoading || theatreCatalog.isLoading) ? (
+                <p role="status">Loading theatre calendar...</p>
+              ) : view === 'calendar' &&
+                (calendarConfig.isError ||
+                  theatreCatalog.isError ||
+                  !Number.isFinite(calendarStart) ||
+                  !Number.isFinite(calendarEnd) ||
+                  calendarEnd <= calendarStart) ? (
+                <p role="alert">Could not load the theatre calendar.</p>
+              ) : view === 'calendar' ? (
+                <div className={styles.otCalendarScroll}>
+                  <div className={styles.otCalendar}>
+                    {calendarColumns.map((column) => (
+                      <section
+                        key={column.key}
+                        className={styles.otCalendarColumn}
+                        aria-label={column.label}
+                      >
+                        <h2>{column.label}</h2>
+                        <div className={styles.otCalendarTimeline}>
+                          {Array.from(
+                            {
+                              length:
+                                Math.ceil(
+                                  (calendarEnd - calendarStart) / split,
+                                ) + 1,
+                            },
+                            (_, index) => {
+                              const minutes = calendarStart + index * split;
+                              return (
+                                <div
+                                  key={minutes}
+                                  className={styles.otCalendarTick}
+                                  style={{
+                                    top: `${((minutes - calendarStart) / (calendarEnd - calendarStart)) * 100}%`,
+                                  }}
+                                >
+                                  <span>
+                                    {String(Math.floor(minutes / 60)).padStart(
+                                      2,
+                                      '0',
+                                    )}
+                                    :{String(minutes % 60).padStart(2, '0')}
+                                  </span>
+                                </div>
+                              );
+                            },
+                          )}
+                          {calendarBlocks
+                            .filter(
+                              (block) =>
+                                period === 'week' ||
+                                block.location?.uuid === column.key,
+                            )
+                            .map((block) => {
+                              const placement = calendarPlacement(
+                                block,
+                                column.day,
+                                calendarStart,
+                                calendarEnd,
+                              );
+                              if (!placement) return null;
+                              const cases = appointmentsForBlock(block).filter(
+                                ({ appointment }) =>
+                                  ['SCHEDULED', 'COMPLETED'].includes(
+                                    appointment.status ?? '',
+                                  ) &&
+                                  (!status || appointment.status === status) &&
+                                  (!patientSearch ||
+                                    (appointment.patient?.display ?? '')
+                                      .toLowerCase()
+                                      .includes(
+                                        patientSearch.trim().toLowerCase(),
+                                      )),
+                              );
+                              if ((status || patientSearch) && !cases.length)
+                                return null;
+                              return (
+                                <article
+                                  key={block.uuid}
+                                  className={styles.otCalendarBlock}
+                                  style={placement}
+                                >
+                                  {canEdit ? (
+                                    <a
+                                      href={`/bahmni-v2/clinical/operation-theatre/${encodeURIComponent(block.uuid)}`}
+                                    >
+                                      {formatTime(block.startDatetime)} ·{' '}
+                                      {period === 'week'
+                                        ? block.location?.name
+                                        : block.provider?.person?.display}
+                                    </a>
+                                  ) : (
+                                    <strong>
+                                      {formatTime(block.startDatetime)} ·{' '}
+                                      {period === 'week'
+                                        ? block.location?.name
+                                        : block.provider?.person?.display}
+                                    </strong>
+                                  )}
+                                  {cases.length ? (
+                                    cases.map(
+                                      ({ appointment, expectedStart }) => (
+                                        <p key={appointment.uuid}>
+                                          {expectedStart
+                                            ? new Intl.DateTimeFormat(
+                                                undefined,
+                                                {
+                                                  hour: 'numeric',
+                                                  minute: '2-digit',
+                                                },
+                                              ).format(new Date(expectedStart))
+                                            : ''}{' '}
+                                          {appointment.patient?.display ??
+                                            'Unknown patient'}
+                                        </p>
+                                      ),
+                                    )
+                                  ) : (
+                                    <p>Available block</p>
+                                  )}
+                                </article>
+                              );
+                            })}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                  {calendarColumns.length === 0 && (
+                    <p>No operation theatres are configured.</p>
+                  )}
+                </div>
               ) : visible.length === 0 ? (
                 <p>No surgical appointments match these filters.</p>
               ) : (
@@ -333,71 +635,85 @@ const OperationTheatrePage = () => {
                   <table>
                     <thead>
                       <tr>
-                        <th scope="col">Block start</th>
+                        <th scope="col">Expected start</th>
                         <th scope="col">Patient</th>
                         <th scope="col">Theatre</th>
                         <th scope="col">Surgeon</th>
                         <th scope="col">Status</th>
+                        <th scope="col">Estimated time</th>
                         <th scope="col">Actual time</th>
                         {canEdit && <th scope="col">Action</th>}
                       </tr>
                     </thead>
                     <tbody>
-                      {visible.map(({ block, appointment }) => (
-                        <tr key={appointment.uuid}>
-                          <td>{formatTime(block.startDatetime)}</td>
-                          <td>
-                            {appointment.patient?.display ?? 'Unknown patient'}
-                          </td>
-                          <td>{block.location?.name ?? 'Unassigned'}</td>
-                          <td>
-                            {block.provider?.person?.display ??
-                              block.provider?.display ??
-                              'Unassigned'}
-                          </td>
-                          <td>{appointment.status ?? 'Unspecified'}</td>
-                          <td>
-                            {appointment.actualStartDatetime
-                              ? formatTime(appointment.actualStartDatetime)
-                              : 'Not started'}
-                          </td>
-                          {canEdit && (
+                      {visible.map(
+                        ({
+                          block,
+                          appointment,
+                          expectedStart,
+                          durationMinutes,
+                        }) => (
+                          <tr key={appointment.uuid}>
                             <td>
-                              <a
-                                href={`/bahmni-v2/clinical/operation-theatre/${encodeURIComponent(block.uuid)}`}
-                              >
-                                Edit block
-                              </a>{' '}
-                              {['SCHEDULED', 'COMPLETED'].includes(
-                                appointment.status ?? '',
-                              ) && (
-                                <button
-                                  className={styles.inlineButton}
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingUuid(appointment.uuid);
-                                    setActualStart(
-                                      localDateTime(
-                                        appointment.actualStartDatetime,
-                                      ),
-                                    );
-                                    setActualEnd(
-                                      localDateTime(
-                                        appointment.actualEndDatetime,
-                                      ),
-                                    );
-                                    setNotes(appointment.notes ?? '');
-                                    setSaveError('');
-                                    setSaveSuccess('');
-                                  }}
-                                >
-                                  Record actual time
-                                </button>
-                              )}
+                              {expectedStart
+                                ? formatTime(expectedStart)
+                                : 'Not scheduled'}
                             </td>
-                          )}
-                        </tr>
-                      ))}
+                            <td>
+                              {appointment.patient?.display ??
+                                'Unknown patient'}
+                            </td>
+                            <td>{block.location?.name ?? 'Unassigned'}</td>
+                            <td>
+                              {block.provider?.person?.display ??
+                                block.provider?.display ??
+                                'Unassigned'}
+                            </td>
+                            <td>{appointment.status ?? 'Unspecified'}</td>
+                            <td>{durationMinutes} min</td>
+                            <td>
+                              {appointment.actualStartDatetime
+                                ? formatTime(appointment.actualStartDatetime)
+                                : 'Not started'}
+                            </td>
+                            {canEdit && (
+                              <td>
+                                <a
+                                  href={`/bahmni-v2/clinical/operation-theatre/${encodeURIComponent(block.uuid)}`}
+                                >
+                                  Edit block
+                                </a>{' '}
+                                {['SCHEDULED', 'COMPLETED'].includes(
+                                  appointment.status ?? '',
+                                ) && (
+                                  <button
+                                    className={styles.inlineButton}
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingUuid(appointment.uuid);
+                                      setActualStart(
+                                        localDateTime(
+                                          appointment.actualStartDatetime,
+                                        ),
+                                      );
+                                      setActualEnd(
+                                        localDateTime(
+                                          appointment.actualEndDatetime,
+                                        ),
+                                      );
+                                      setNotes(appointment.notes ?? '');
+                                      setSaveError('');
+                                      setSaveSuccess('');
+                                    }}
+                                  >
+                                    Record actual time
+                                  </button>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        ),
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -448,7 +764,8 @@ const OperationTheatrePage = () => {
               {saveError && <p role="alert">{saveError}</p>}
               {saveSuccess && <p role="status">{saveSuccess}</p>}
               <p>
-                For cancellations and calendar views, use the full OT tools.
+                For individual surgery changes and advanced OT tools, open the
+                full OT screen.
               </p>
             </section>
           )}
@@ -457,5 +774,6 @@ const OperationTheatrePage = () => {
     />
   );
 };
+/* eslint-enable react/forbid-dom-props */
 
 export default OperationTheatrePage;
