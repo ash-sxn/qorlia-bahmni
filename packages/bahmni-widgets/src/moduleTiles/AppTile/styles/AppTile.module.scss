@@ -45,3 +45,19 @@
   justify-content: space-between;
   color: var(--qorlia-primary, #1f5238);
 }
+
+.unavailable {
+  cursor: default;
+  opacity: 0.62;
+
+  &:hover {
+    transform: none;
+    border-color: var(--qorlia-border, #dce3de);
+    box-shadow: 0 2px 8px rgba(28, 65, 45, 0.04);
+  }
+}
+
+.pending {
+  color: var(--qorlia-muted, #58615b);
+  font-size: 0.875rem;
+}

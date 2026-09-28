@@ -263,6 +263,7 @@ export {
   updateSessionLocation,
   type User,
   type UserLocation,
+  BAHMNI_USER_COOKIE_NAME,
   BAHMNI_USER_LOCATION_COOKIE,
 } from './userService';
 export { logout, validateSessionUser } from './authService';

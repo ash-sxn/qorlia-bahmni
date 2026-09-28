@@ -75,4 +75,27 @@ describe('ClinicalWorkspace', () => {
     ).toHaveAttribute('href', '/clinical/patient-1');
     expect(await axe(container)).toHaveNoViolations();
   });
+
+  it('keeps appointment navigation inside the React workspace', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ClinicalWorkspace
+            userPrivileges={[{ uuid: 'priv-1', name: 'app:appointments' }]}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const links = await screen.findAllByRole('link', {
+      name: 'CLINICAL_WORKSPACE_APPOINTMENTS',
+    });
+    expect(links).toHaveLength(2);
+    links.forEach((link) =>
+      expect(link).toHaveAttribute('href', '/appointments/'),
+    );
+  });
 });

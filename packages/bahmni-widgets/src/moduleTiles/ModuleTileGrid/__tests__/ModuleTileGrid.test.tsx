@@ -104,6 +104,18 @@ describe('ModuleTileGrid', () => {
     expect(screen.getByTestId('app-tile-inpatient')).toBeInTheDocument();
   });
 
+  it('uses review URLs and leaves unfinished modules without legacy links', async () => {
+    mockGetVisibleModules.mockResolvedValue(mockModules);
+
+    renderGrid({ reviewUrls: { clinical: '/bahmni-v2/clinical/' } });
+
+    const clinical = await screen.findByTestId('app-tile-clinical');
+    expect(clinical).toHaveAttribute('href', '/bahmni-v2/clinical/');
+    expect(screen.getByTestId('app-tile-registration')).not.toHaveAttribute(
+      'href',
+    );
+  });
+
   it('renders empty state when no modules available', async () => {
     mockGetVisibleModules.mockResolvedValue(mockEmptyModules);
 

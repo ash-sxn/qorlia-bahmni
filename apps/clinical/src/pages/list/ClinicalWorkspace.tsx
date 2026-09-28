@@ -89,10 +89,10 @@ const ClinicalWorkspace = ({
           </Link>
         )}
         {canSchedule && (
-          <a href="/appointments/#/home/manage/summary">
+          <Link to="/appointments/">
             <Calendar size={19} />
             {t('CLINICAL_WORKSPACE_APPOINTMENTS')}
-          </a>
+          </Link>
         )}
         {canManageBeds && <Link to="/clinical/inpatient">Inpatient care</Link>}
         {canViewOT && (
@@ -288,10 +288,10 @@ const ClinicalWorkspace = ({
             </Link>
           )}
           {canSchedule && (
-            <a href="/appointments/#/home/manage/summary">
+            <Link to="/appointments/">
               <Calendar size={18} />
               {t('CLINICAL_WORKSPACE_APPOINTMENTS')}
-            </a>
+            </Link>
           )}
         </div>
       </aside>

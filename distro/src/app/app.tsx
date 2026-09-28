@@ -3,6 +3,7 @@ import { AppContextProvider } from '@bahmni/widgets';
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { DesignPreview } from '../preview/DesignPreview';
+import { LoginPage } from './LoginPage';
 
 const HomeApp = lazy(() =>
   import('@bahmni/home-app').then((module) => ({ default: module.HomeApp })),
@@ -53,6 +54,7 @@ export function App() {
       <Suspense fallback={<Loading />}>
         <Routes>
           <Route index element={<Navigate to="/home/" replace />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/home/*" element={<HomeApp />} />
           <Route path="/clinical/*" element={<ClinicalApp />} />
           <Route path="/registration/*" element={<RegistrationApp />} />

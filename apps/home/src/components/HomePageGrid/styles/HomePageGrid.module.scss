@@ -5,3 +5,11 @@ $header-height: 3.75rem;
 .headerOffset {
   margin-top: $header-height;
 }
+
+.reviewNote {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 22px 24px 0;
+  color: var(--qorlia-muted, #58615b);
+  text-align: center;
+}
