@@ -63,6 +63,7 @@ interface OtConfig {
 
 interface SurgeryRow {
   uuid?: string;
+  status?: string;
   patientUuid: string;
   patientLabel: string;
   notes: string;
@@ -80,6 +81,7 @@ const toLocal = (value: string) => {
 
 const rowFromSurgery = (surgery: Surgery): SurgeryRow => ({
   uuid: surgery.uuid,
+  status: surgery.status,
   patientUuid: surgery.patient.uuid,
   patientLabel: surgery.patient.display ?? surgery.patient.uuid,
   notes: surgery.notes ?? '',
@@ -93,6 +95,7 @@ const rowFromSurgery = (surgery: Surgery): SurgeryRow => ({
 });
 
 const newRow = (): SurgeryRow => ({
+  status: 'SCHEDULED',
   patientUuid: '',
   patientLabel: '',
   notes: '',
@@ -124,12 +127,25 @@ export const validateSurgicalBlock = (
     return 'Enter a valid block start and a later end time.';
   if (!providerUuid || !locationUuid)
     return 'Choose a surgeon and an operation theatre.';
-  if (rows.some((row) => !row.patientUuid))
+  if (
+    rows.some(
+      (row) =>
+        ['CANCELLED', 'POSTPONED'].includes(row.status ?? '') &&
+        !row.notes.trim(),
+    )
+  )
+    return 'Enter a reason for each cancelled or postponed surgery.';
+  const activeRows = rows.filter(
+    (row) => !['CANCELLED', 'POSTPONED'].includes(row.status ?? 'SCHEDULED'),
+  );
+  if (activeRows.some((row) => !row.patientUuid))
     return 'Choose a patient for every surgery.';
-  if (rows.some((row) => required.some((name) => !row.values[name]?.trim())))
+  if (
+    activeRows.some((row) => required.some((name) => !row.values[name]?.trim()))
+  )
     return 'Complete the required surgery details.';
   if (
-    rows.some((row) =>
+    activeRows.some((row) =>
       ['estTimeHours', 'estTimeMinutes', 'cleaningTime'].some(
         (name) =>
           !/^\d+$/.test(row.values[name] ?? '0') ||
@@ -139,7 +155,7 @@ export const validateSurgicalBlock = (
   )
     return 'Enter valid surgery and cleaning durations.';
   if (
-    rows.reduce((total, row) => total + minutesFor(row), 0) >
+    activeRows.reduce((total, row) => total + minutesFor(row), 0) >
     (endDate.getTime() - startDate.getTime()) / 60000
   )
     return 'The surgeries and cleaning time exceed the block duration.';
@@ -155,6 +171,20 @@ export const saveSurgicalBlock = async (
   rows: SurgeryRow[],
   attributeTypes: AttributeType[],
 ) => {
+  if (
+    rows.some((row) => {
+      const status = row.status ?? row.original?.status ?? 'SCHEDULED';
+      return (
+        (status !== (row.original?.status ?? 'SCHEDULED') &&
+          !(
+            row.original?.status === 'SCHEDULED' &&
+            ['CANCELLED', 'POSTPONED'].includes(status)
+          )) ||
+        (['CANCELLED', 'POSTPONED'].includes(status) && !row.notes.trim())
+      );
+    })
+  )
+    throw new Error('Check the surgery status and reason before saving.');
   if (loaded?.uuid) {
     const latest = await get<Block>(
       `${blockUrl}/${encodeURIComponent(loaded.uuid)}`,
@@ -163,13 +193,18 @@ export const saveSurgicalBlock = async (
     if (JSON.stringify(latest) !== JSON.stringify(loaded) || latest.voided)
       throw new Error('This block changed. Refresh it before editing.');
   }
+  let nextSortWeight = 0;
   const active = rows.map(
-    (row, index): Surgery => ({
+    (row): Surgery => ({
       ...(row.original ?? {}),
       patient: { uuid: row.patientUuid },
-      status: row.original?.status ?? 'SCHEDULED',
-      sortWeight: index,
-      notes: row.notes,
+      status: row.status ?? row.original?.status ?? 'SCHEDULED',
+      sortWeight: ['CANCELLED', 'POSTPONED'].includes(row.status ?? '')
+        ? null
+        : nextSortWeight++,
+      notes: ['CANCELLED', 'POSTPONED'].includes(row.status ?? '')
+        ? row.notes.trim()
+        : row.notes,
       surgicalAppointmentAttributes: attributeTypes.map((type) => {
         const previous = row.original?.surgicalAppointmentAttributes?.find(
           (attribute) =>
@@ -376,6 +411,15 @@ const SurgicalBlockEditor = () => {
       return;
     }
     if (
+      rows.some(
+        (row) =>
+          row.original?.status === 'SCHEDULED' &&
+          ['CANCELLED', 'POSTPONED'].includes(row.status ?? ''),
+      ) &&
+      !window.confirm('Save these surgery cancellations or postponements?')
+    )
+      return;
+    if (
       start.slice(0, 10) !== end.slice(0, 10) &&
       !window.confirm('This block spans multiple dates. Save it?')
     )
@@ -547,6 +591,21 @@ const SurgicalBlockEditor = () => {
                   >
                     <h3>Surgery {index + 1}</h3>
                     <p>Patient: {row.patientLabel || 'Not selected'}</p>
+                    {row.original?.status === 'SCHEDULED' && (
+                      <label>
+                        Surgery action
+                        <select
+                          value={row.status ?? 'SCHEDULED'}
+                          onChange={(event) =>
+                            updateRow(index, { status: event.target.value })
+                          }
+                        >
+                          <option value="SCHEDULED">Keep scheduled</option>
+                          <option value="CANCELLED">Cancel surgery</option>
+                          <option value="POSTPONED">Postpone surgery</option>
+                        </select>
+                      </label>
+                    )}
                     <div className={styles.searchForm}>
                       <label htmlFor={`ot-patient-${index}`}>
                         Find patient
@@ -635,9 +694,14 @@ const SurgicalBlockEditor = () => {
                               }
                               min={0}
                               max={type.name === 'estTimeHours' ? 23 : 59}
-                              required={configured?.requiredSurgeryAttributes?.includes(
-                                type.name,
-                              )}
+                              required={
+                                !['CANCELLED', 'POSTPONED'].includes(
+                                  row.status ?? '',
+                                ) &&
+                                configured?.requiredSurgeryAttributes?.includes(
+                                  type.name,
+                                )
+                              }
                               value={row.values[type.name] ?? ''}
                               onChange={(event) =>
                                 updateValue(
@@ -652,8 +716,13 @@ const SurgicalBlockEditor = () => {
                       ))}
                     </div>
                     <label>
-                      Notes
+                      {['CANCELLED', 'POSTPONED'].includes(row.status ?? '')
+                        ? 'Reason for change'
+                        : 'Notes'}
                       <input
+                        required={['CANCELLED', 'POSTPONED'].includes(
+                          row.status ?? '',
+                        )}
                         value={row.notes}
                         onChange={(event) =>
                           updateRow(index, { notes: event.target.value })

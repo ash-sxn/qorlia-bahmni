@@ -154,6 +154,74 @@ it('keeps existing unshown attributes and cancelled surgeries on edit', async ()
   expect(payload.surgicalAppointments[1]).toMatchObject(cancelled);
 });
 
+it('cancels one surgery with a reason and keeps the other scheduled', async () => {
+  const surgeries = [
+    {
+      uuid: 'surgery-1',
+      patient: { uuid: 'patient-1' },
+      status: 'SCHEDULED',
+      sortWeight: 0,
+      surgicalAppointmentAttributes: [],
+    },
+    {
+      uuid: 'surgery-2',
+      patient: { uuid: 'patient-2' },
+      status: 'SCHEDULED',
+      sortWeight: 1,
+      surgicalAppointmentAttributes: [],
+    },
+  ];
+  const loaded = {
+    uuid: 'block-1',
+    startDatetime: '2026-09-28T09:00:00.000Z',
+    endDatetime: '2026-09-28T11:00:00.000Z',
+    provider: { uuid: 'surgeon-1' },
+    location: { uuid: 'theatre-1' },
+    surgicalAppointments: surgeries,
+  };
+  const rows = surgeries.map((surgery) => ({
+    ...row,
+    uuid: surgery.uuid,
+    patientUuid: surgery.patient.uuid,
+    original: surgery,
+  }));
+  await expect(
+    saveSurgicalBlock(
+      loaded,
+      '2026-09-28T09:00',
+      '2026-09-28T11:00',
+      'surgeon-1',
+      'theatre-1',
+      [{ ...rows[0], status: 'CANCELLED' }, rows[1]],
+      [],
+    ),
+  ).rejects.toThrow(/reason/);
+  expect(get).not.toHaveBeenCalled();
+  jest.mocked(get).mockResolvedValueOnce(loaded);
+  jest.mocked(post).mockResolvedValueOnce(loaded);
+  await saveSurgicalBlock(
+    loaded,
+    '2026-09-28T09:00',
+    '2026-09-28T11:00',
+    'surgeon-1',
+    'theatre-1',
+    [{ ...rows[0], status: 'CANCELLED', notes: 'Patient unwell' }, rows[1]],
+    [],
+  );
+  const payload = jest.mocked(post).mock.calls[0][1] as typeof loaded;
+  expect(payload.surgicalAppointments[0]).toMatchObject({
+    uuid: 'surgery-1',
+    status: 'CANCELLED',
+    sortWeight: null,
+    notes: 'Patient unwell',
+  });
+  expect(payload.surgicalAppointments[1]).toMatchObject({
+    uuid: 'surgery-2',
+    status: 'SCHEDULED',
+    sortWeight: 0,
+  });
+});
+
 it('cancels only scheduled surgeries when cancelling a block', async () => {
   const loaded = {
     id: 1,
