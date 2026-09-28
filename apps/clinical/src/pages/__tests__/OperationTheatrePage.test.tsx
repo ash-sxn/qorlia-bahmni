@@ -65,7 +65,7 @@ it('places a block at its configured time in the calendar', () => {
 });
 
 it('loads the theatre catalog and shows real surgical blocks in calendar layout', async () => {
-  jest.mocked(get).mockResolvedValueOnce({
+  const blocks = {
     results: [
       {
         uuid: 'block-1',
@@ -82,8 +82,8 @@ it('loads the theatre catalog and shows real surgical blocks in calendar layout'
         ],
       },
     ],
-  });
-  jest.mocked(get).mockResolvedValueOnce({
+  };
+  const config = {
     config: {
       primarySurgeonsForOT: ['Dr Demo'],
       calendarView: {
@@ -92,7 +92,18 @@ it('loads the theatre catalog and shows real surgical blocks in calendar layout'
         dayViewSplit: '60',
       },
     },
-  });
+  };
+  jest
+    .mocked(get)
+    .mockImplementation((url) =>
+      Promise.resolve(
+        url.includes('/apps/ot/app.json')
+          ? config
+          : url.includes('/surgicalAppointmentAttributeType')
+            ? { results: [] }
+            : blocks,
+      ),
+    );
   jest
     .mocked(getLocationByTag)
     .mockResolvedValueOnce([{ uuid: 'theatre-1', display: 'Theatre 1' }]);
@@ -358,6 +369,49 @@ it('shows configured case attributes and sorts the OT list', async () => {
   expect(names()).toEqual(['P1 - Asha', 'P2 - Zoya']);
   fireEvent.click(screen.getByRole('button', { name: 'Patient', exact: true }));
   expect(names()).toEqual(['P2 - Zoya', 'P1 - Asha']);
+});
+
+it('keeps configured surgery columns when bookings have no values', async () => {
+  jest.mocked(get).mockImplementation((url) =>
+    Promise.resolve(
+      url.includes('/surgicalAppointmentAttributeType')
+        ? {
+            results: [
+              { name: 'scrubNurse', format: 'java.lang.String' },
+              { name: 'estTimeHours', format: 'java.lang.Integer' },
+            ],
+          }
+        : {
+            results: [
+              {
+                uuid: 'block-1',
+                startDatetime: '2026-09-28T09:00:00.000+0530',
+                surgicalAppointments: [
+                  {
+                    uuid: 'case-1',
+                    status: 'SCHEDULED',
+                    patient: { uuid: 'patient-1', display: 'Asha Demo' },
+                    surgicalAppointmentAttributes: [],
+                  },
+                ],
+              },
+            ],
+          },
+    ),
+  );
+
+  renderPage();
+  fireEvent.change(screen.getByLabelText('Date'), {
+    target: { value: '2026-09-28' },
+  });
+
+  expect(await screen.findByText('Asha Demo')).toBeInTheDocument();
+  expect(
+    await screen.findByRole('button', { name: 'scrub Nurse' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'est Time Hours' }),
+  ).not.toBeInTheDocument();
 });
 
 it('shows the actual-time form only to OT writers', async () => {

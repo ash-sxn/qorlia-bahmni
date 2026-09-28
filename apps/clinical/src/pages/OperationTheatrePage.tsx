@@ -343,6 +343,16 @@ const OperationTheatrePage = () => {
       !!date &&
       (period === 'day' || !!calendarConfig.data),
   });
+  const attributeTypes = useQuery({
+    queryKey: ['ot-attribute-types'],
+    queryFn: () =>
+      get<{
+        results: { name: string; format?: string }[];
+      }>('/openmrs/ws/rest/v1/surgicalAppointmentAttributeType', {
+        params: { v: 'custom:(uuid,name,format)' },
+      }),
+    enabled: !privilegesLoading && canView && view === 'list',
+  });
   const theatreCatalog = useQuery({
     queryKey: ['ot-calendar-theatres'],
     queryFn: () => getLocationByTag('Operation Theater'),
@@ -366,23 +376,25 @@ const OperationTheatrePage = () => {
     ).values(),
   );
   const appointments = activeBlocks.flatMap(appointmentsForBlock);
-  const detailAttributes = Array.from(
+  const observedAttributes = Array.from(
     new Map(
       appointments
         .flatMap(
           ({ appointment }) => appointment.surgicalAppointmentAttributes ?? [],
-        )
-        .filter(
-          ({ surgicalAppointmentAttributeType }) =>
-            !['estTimeHours', 'estTimeMinutes', 'cleaningTime'].includes(
-              surgicalAppointmentAttributeType.name,
-            ),
         )
         .map(({ surgicalAppointmentAttributeType }) => [
           surgicalAppointmentAttributeType.name,
           surgicalAppointmentAttributeType,
         ]),
     ).values(),
+  );
+  const detailAttributes = (
+    attributeTypes.data?.results?.length
+      ? attributeTypes.data.results
+      : observedAttributes
+  ).filter(
+    ({ name }) =>
+      !['estTimeHours', 'estTimeMinutes', 'cleaningTime'].includes(name),
   );
   const providerCatalog = useQuery({
     queryKey: ['ot-providers'],
@@ -392,6 +404,7 @@ const OperationTheatrePage = () => {
       canView &&
       ((view === 'calendar' && period === 'day' && groupBy === 'surgeon') ||
         (view === 'list' &&
+          appointments.length > 0 &&
           detailAttributes.some(
             ({ name, format }) =>
               format === 'org.openmrs.Provider' || name === 'otherSurgeon',
@@ -745,6 +758,12 @@ const OperationTheatrePage = () => {
                   Next {period}
                 </button>
               </div>
+              {view === 'list' && attributeTypes.isError && (
+                <p role="alert">
+                  Surgery columns could not be loaded. Showing fields found in
+                  these bookings.
+                </p>
+              )}
               {period === 'week' && calendarConfig.isLoading ? (
                 <p role="status">Loading theatre settings...</p>
               ) : period === 'week' && calendarConfig.isError ? (
@@ -914,8 +933,6 @@ const OperationTheatrePage = () => {
                     </p>
                   )}
                 </div>
-              ) : visible.length === 0 ? (
-                <p>No surgical appointments match these filters.</p>
               ) : (
                 <div className={styles.tableScroll}>
                   <table>
@@ -1043,6 +1060,13 @@ const OperationTheatrePage = () => {
                             )}
                           </tr>
                         ),
+                      )}
+                      {sortedVisible.length === 0 && (
+                        <tr>
+                          <td colSpan={listColumns.length + (canEdit ? 1 : 0)}>
+                            No surgical appointments match these filters.
+                          </td>
+                        </tr>
                       )}
                     </tbody>
                   </table>
