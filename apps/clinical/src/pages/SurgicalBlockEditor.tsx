@@ -34,7 +34,7 @@ interface Surgery {
   voided?: boolean;
   patient: { uuid: string; display?: string };
   status: string;
-  sortWeight: number;
+  sortWeight: number | null;
   notes?: string;
   actualStartDatetime?: string;
   actualEndDatetime?: string;
@@ -45,6 +45,7 @@ interface Block {
   id?: number;
   uuid?: string;
   voided?: boolean;
+  voidReason?: string;
   startDatetime: string;
   endDatetime: string;
   provider: { uuid: string };
@@ -207,6 +208,47 @@ export const saveSurgicalBlock = async (
   );
 };
 
+export const cancelSurgicalBlock = async (
+  loaded: Block,
+  status: 'CANCELLED' | 'POSTPONED',
+  reason: string,
+) => {
+  if (!loaded.uuid || !reason.trim())
+    throw new Error('Enter a reason before cancelling this block.');
+  const latest = await get<Block>(
+    `${blockUrl}/${encodeURIComponent(loaded.uuid)}`,
+    { params: { v: 'full' } },
+  );
+  if (JSON.stringify(latest) !== JSON.stringify(loaded) || latest.voided)
+    throw new Error('This block changed. Refresh it before cancelling.');
+  return post<Block>(
+    `${blockUrl}/${encodeURIComponent(loaded.uuid)}`,
+    {
+      id: latest.id,
+      uuid: latest.uuid,
+      voided: true,
+      voidReason: reason.trim(),
+      startDatetime: latest.startDatetime,
+      endDatetime: latest.endDatetime,
+      provider: { uuid: latest.provider.uuid },
+      location: { uuid: latest.location.uuid },
+      surgicalAppointments: latest.surgicalAppointments.map((surgery) => ({
+        id: surgery.id,
+        uuid: surgery.uuid,
+        voided: surgery.voided ?? false,
+        patient: { uuid: surgery.patient.uuid },
+        status: surgery.status === 'SCHEDULED' ? status : surgery.status,
+        sortWeight: surgery.status === 'SCHEDULED' ? null : surgery.sortWeight,
+        notes: surgery.status === 'SCHEDULED' ? reason.trim() : surgery.notes,
+        actualStartDatetime: surgery.actualStartDatetime,
+        actualEndDatetime: surgery.actualEndDatetime,
+        surgicalAppointmentAttributes: surgery.surgicalAppointmentAttributes,
+      })),
+    },
+    { params: { v: 'full' } },
+  );
+};
+
 const SurgicalBlockEditor = () => {
   const { blockUuid } = useParams();
   const { userPrivileges, isLoading: privilegesLoading } = useUserPrivilege();
@@ -254,6 +296,11 @@ const SurgicalBlockEditor = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [showCancel, setShowCancel] = useState(false);
+  const [cancelStatus, setCancelStatus] = useState<'CANCELLED' | 'POSTPONED'>(
+    'CANCELLED',
+  );
+  const [cancelReason, setCancelReason] = useState('');
   const patients = useQuery({
     queryKey: ['ot-patient-search', patientSearch],
     queryFn: () => searchPatientByNameOrId(patientSearch),
@@ -273,7 +320,7 @@ const SurgicalBlockEditor = () => {
             !surgery.voided &&
             !['CANCELLED', 'POSTPONED'].includes(surgery.status),
         )
-        .sort((a, b) => a.sortWeight - b.sortWeight)
+        .sort((a, b) => (a.sortWeight ?? 0) - (b.sortWeight ?? 0))
         .map(rowFromSurgery),
     );
   }, [block.data]);
@@ -361,6 +408,30 @@ const SurgicalBlockEditor = () => {
     }
   };
 
+  const submitCancel = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canEdit || !block.data || saving || !cancelReason.trim()) return;
+    if (
+      !window.confirm(`Mark this surgical block ${cancelStatus.toLowerCase()}?`)
+    )
+      return;
+    setSaving(true);
+    setError('');
+    try {
+      await cancelSurgicalBlock(block.data, cancelStatus, cancelReason);
+      void queryClient.invalidateQueries({ queryKey: ['ot-surgical-blocks'] });
+      window.location.assign('/bahmni-v2/clinical/operation-theatre');
+    } catch (cancelError) {
+      setError(
+        cancelError instanceof Error
+          ? cancelError.message
+          : 'Could not cancel the surgical block.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <BaseLayout
       header={
@@ -407,204 +478,268 @@ const SurgicalBlockEditor = () => {
             !attributes.data ||
             !config.data ? (
             <p role="status">Loading booking form...</p>
+          ) : block.data?.voided ? (
+            <p role="alert">This surgical block was cancelled or postponed.</p>
           ) : (
-            <form
-              className={styles.card}
-              onSubmit={submit}
-              aria-label="Surgical block"
-            >
-              <div className={styles.filterForm}>
-                <label>
-                  Primary surgeon
-                  <select
-                    required
-                    value={providerUuid}
-                    onChange={(event) => setProviderUuid(event.target.value)}
-                  >
-                    <option value="">Select surgeon</option>
-                    {eligibleProviders.map((provider: Provider) => (
-                      <option key={provider.uuid} value={provider.uuid}>
-                        {provider.person.display}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Operation theatre
-                  <select
-                    required
-                    value={locationUuid}
-                    onChange={(event) => setLocationUuid(event.target.value)}
-                  >
-                    <option value="">Select theatre</option>
-                    {theatres.data.map((theatre) => (
-                      <option key={theatre.uuid} value={theatre.uuid}>
-                        {theatre.display}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Block start
-                  <input
-                    type="datetime-local"
-                    required
-                    value={start}
-                    onChange={(event) => setStart(event.target.value)}
-                  />
-                </label>
-                <label>
-                  Block end
-                  <input
-                    type="datetime-local"
-                    required
-                    min={start}
-                    value={end}
-                    onChange={(event) => setEnd(event.target.value)}
-                  />
-                </label>
-              </div>
-              <h2>Surgeries</h2>
-              {rows.map((row, index) => (
-                <section
-                  key={row.uuid ?? `new-${index}`}
-                  className={styles.card}
-                  aria-label={`Surgery ${index + 1}`}
-                >
-                  <h3>Surgery {index + 1}</h3>
-                  <p>Patient: {row.patientLabel || 'Not selected'}</p>
-                  <div className={styles.searchForm}>
-                    <label htmlFor={`ot-patient-${index}`}>Find patient</label>
-                    <input
-                      id={`ot-patient-${index}`}
-                      type="search"
-                      value={searchRow === index ? patientSearch : ''}
-                      onFocus={() => {
-                        setSearchRow(index);
-                        setPatientSearch('');
-                      }}
-                      onChange={(event) => {
-                        setSearchRow(index);
-                        setPatientSearch(event.target.value);
-                      }}
-                      placeholder="Name or patient ID"
-                    />
-                  </div>
-                  {searchRow === index && patients.data && (
-                    <div
-                      className={styles.tableScroll}
-                      role="group"
-                      aria-label="Patient results"
-                    >
-                      {patients.data.pageOfResults.map((patient) => (
-                        <button
-                          className={styles.inlineButton}
-                          type="button"
-                          key={patient.uuid}
-                          onClick={() => {
-                            updateRow(index, {
-                              patientUuid: patient.uuid,
-                              patientLabel: `${patient.identifier} - ${patient.givenName} ${patient.familyName}`,
-                            });
-                            setSearchRow(null);
-                            setPatientSearch('');
-                          }}
-                        >
-                          {patient.identifier} - {patient.givenName}{' '}
-                          {patient.familyName}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <div className={styles.filterForm}>
-                    {types.map((type) => (
-                      <label key={type.uuid}>
-                        {type.name}
-                        {type.name === 'otherSurgeon' ? (
-                          <select
-                            value={row.values[type.name] ?? ''}
-                            onChange={(event) =>
-                              updateValue(index, type.name, event.target.value)
-                            }
-                          >
-                            <option value="">None</option>
-                            {(providers.data ?? [])
-                              .filter(
-                                (provider) =>
-                                  provider.id && provider.person?.display,
-                              )
-                              .map((provider) => (
-                                <option key={provider.uuid} value={provider.id}>
-                                  {provider.person.display}
-                                </option>
-                              ))}
-                          </select>
-                        ) : (
-                          <input
-                            type={
-                              [
-                                'estTimeHours',
-                                'estTimeMinutes',
-                                'cleaningTime',
-                              ].includes(type.name)
-                                ? 'number'
-                                : 'text'
-                            }
-                            min={0}
-                            max={type.name === 'estTimeHours' ? 23 : 59}
-                            required={configured?.requiredSurgeryAttributes?.includes(
-                              type.name,
-                            )}
-                            value={row.values[type.name] ?? ''}
-                            onChange={(event) =>
-                              updateValue(index, type.name, event.target.value)
-                            }
-                          />
-                        )}
-                      </label>
-                    ))}
-                  </div>
+            <>
+              <form
+                className={styles.card}
+                onSubmit={submit}
+                aria-label="Surgical block"
+              >
+                <div className={styles.filterForm}>
                   <label>
-                    Notes
+                    Primary surgeon
+                    <select
+                      required
+                      value={providerUuid}
+                      onChange={(event) => setProviderUuid(event.target.value)}
+                    >
+                      <option value="">Select surgeon</option>
+                      {eligibleProviders.map((provider: Provider) => (
+                        <option key={provider.uuid} value={provider.uuid}>
+                          {provider.person.display}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Operation theatre
+                    <select
+                      required
+                      value={locationUuid}
+                      onChange={(event) => setLocationUuid(event.target.value)}
+                    >
+                      <option value="">Select theatre</option>
+                      {theatres.data.map((theatre) => (
+                        <option key={theatre.uuid} value={theatre.uuid}>
+                          {theatre.display}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Block start
                     <input
-                      value={row.notes}
-                      onChange={(event) =>
-                        updateRow(index, { notes: event.target.value })
-                      }
+                      type="datetime-local"
+                      required
+                      value={start}
+                      onChange={(event) => setStart(event.target.value)}
                     />
                   </label>
-                  {!row.original && (
-                    <button
-                      type="button"
-                      className={styles.inlineButton}
-                      onClick={() =>
-                        setRows((current) =>
-                          current.filter((_, position) => position !== index),
-                        )
-                      }
+                  <label>
+                    Block end
+                    <input
+                      type="datetime-local"
+                      required
+                      min={start}
+                      value={end}
+                      onChange={(event) => setEnd(event.target.value)}
+                    />
+                  </label>
+                </div>
+                <h2>Surgeries</h2>
+                {rows.map((row, index) => (
+                  <section
+                    key={row.uuid ?? `new-${index}`}
+                    className={styles.card}
+                    aria-label={`Surgery ${index + 1}`}
+                  >
+                    <h3>Surgery {index + 1}</h3>
+                    <p>Patient: {row.patientLabel || 'Not selected'}</p>
+                    <div className={styles.searchForm}>
+                      <label htmlFor={`ot-patient-${index}`}>
+                        Find patient
+                      </label>
+                      <input
+                        id={`ot-patient-${index}`}
+                        type="search"
+                        value={searchRow === index ? patientSearch : ''}
+                        onFocus={() => {
+                          setSearchRow(index);
+                          setPatientSearch('');
+                        }}
+                        onChange={(event) => {
+                          setSearchRow(index);
+                          setPatientSearch(event.target.value);
+                        }}
+                        placeholder="Name or patient ID"
+                      />
+                    </div>
+                    {searchRow === index && patients.data && (
+                      <div
+                        className={styles.tableScroll}
+                        role="group"
+                        aria-label="Patient results"
+                      >
+                        {patients.data.pageOfResults.map((patient) => (
+                          <button
+                            className={styles.inlineButton}
+                            type="button"
+                            key={patient.uuid}
+                            onClick={() => {
+                              updateRow(index, {
+                                patientUuid: patient.uuid,
+                                patientLabel: `${patient.identifier} - ${patient.givenName} ${patient.familyName}`,
+                              });
+                              setSearchRow(null);
+                              setPatientSearch('');
+                            }}
+                          >
+                            {patient.identifier} - {patient.givenName}{' '}
+                            {patient.familyName}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className={styles.filterForm}>
+                      {types.map((type) => (
+                        <label key={type.uuid}>
+                          {type.name}
+                          {type.name === 'otherSurgeon' ? (
+                            <select
+                              value={row.values[type.name] ?? ''}
+                              onChange={(event) =>
+                                updateValue(
+                                  index,
+                                  type.name,
+                                  event.target.value,
+                                )
+                              }
+                            >
+                              <option value="">None</option>
+                              {(providers.data ?? [])
+                                .filter(
+                                  (provider) =>
+                                    provider.id && provider.person?.display,
+                                )
+                                .map((provider) => (
+                                  <option
+                                    key={provider.uuid}
+                                    value={provider.id}
+                                  >
+                                    {provider.person.display}
+                                  </option>
+                                ))}
+                            </select>
+                          ) : (
+                            <input
+                              type={
+                                [
+                                  'estTimeHours',
+                                  'estTimeMinutes',
+                                  'cleaningTime',
+                                ].includes(type.name)
+                                  ? 'number'
+                                  : 'text'
+                              }
+                              min={0}
+                              max={type.name === 'estTimeHours' ? 23 : 59}
+                              required={configured?.requiredSurgeryAttributes?.includes(
+                                type.name,
+                              )}
+                              value={row.values[type.name] ?? ''}
+                              onChange={(event) =>
+                                updateValue(
+                                  index,
+                                  type.name,
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                    <label>
+                      Notes
+                      <input
+                        value={row.notes}
+                        onChange={(event) =>
+                          updateRow(index, { notes: event.target.value })
+                        }
+                      />
+                    </label>
+                    {!row.original && (
+                      <button
+                        type="button"
+                        className={styles.inlineButton}
+                        onClick={() =>
+                          setRows((current) =>
+                            current.filter((_, position) => position !== index),
+                          )
+                        }
+                      >
+                        Remove surgery
+                      </button>
+                    )}
+                  </section>
+                ))}
+                <div className={styles.searchForm}>
+                  <button
+                    type="button"
+                    onClick={() => setRows((current) => [...current, newRow()])}
+                  >
+                    Add surgery
+                  </button>
+                  <button type="submit" disabled={saving}>
+                    {saving ? 'Saving...' : 'Save block'}
+                  </button>
+                  <a href="/bahmni-v2/clinical/operation-theatre">
+                    Back to schedule
+                  </a>
+                </div>
+                {error && <p role="alert">{error}</p>}
+                {message && <p role="status">{message}</p>}
+              </form>
+              {blockUuid && (
+                <section className={styles.card}>
+                  <button
+                    className={styles.inlineButton}
+                    type="button"
+                    onClick={() => setShowCancel((value) => !value)}
+                  >
+                    Cancel or postpone block
+                  </button>
+                  {showCancel && (
+                    <form
+                      onSubmit={submitCancel}
+                      aria-label="Cancel surgical block"
                     >
-                      Remove surgery
-                    </button>
+                      <div className={styles.filterForm}>
+                        <label>
+                          Action
+                          <select
+                            value={cancelStatus}
+                            onChange={(event) =>
+                              setCancelStatus(
+                                event.target.value as 'CANCELLED' | 'POSTPONED',
+                              )
+                            }
+                          >
+                            <option value="CANCELLED">Cancel</option>
+                            <option value="POSTPONED">Postpone</option>
+                          </select>
+                        </label>
+                        <label>
+                          Reason
+                          <input
+                            required
+                            value={cancelReason}
+                            onChange={(event) =>
+                              setCancelReason(event.target.value)
+                            }
+                          />
+                        </label>
+                      </div>
+                      <button type="submit" disabled={saving}>
+                        {saving ? 'Saving...' : 'Confirm action'}
+                      </button>
+                    </form>
                   )}
                 </section>
-              ))}
-              <div className={styles.searchForm}>
-                <button
-                  type="button"
-                  onClick={() => setRows((current) => [...current, newRow()])}
-                >
-                  Add surgery
-                </button>
-                <button type="submit" disabled={saving}>
-                  {saving ? 'Saving...' : 'Save block'}
-                </button>
-                <a href="/bahmni-v2/clinical/operation-theatre">
-                  Back to schedule
-                </a>
-              </div>
-              {error && <p role="alert">{error}</p>}
-              {message && <p role="status">{message}</p>}
-            </form>
+              )}
+            </>
           )}
         </div>
       }

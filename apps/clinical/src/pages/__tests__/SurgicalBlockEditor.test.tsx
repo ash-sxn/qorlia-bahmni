@@ -1,5 +1,6 @@
 import { get, post } from '@bahmni/services';
 import {
+  cancelSurgicalBlock,
   saveSurgicalBlock,
   validateSurgicalBlock,
 } from '../SurgicalBlockEditor';
@@ -151,4 +152,54 @@ it('keeps existing unshown attributes and cancelled surgeries on edit', async ()
     payload.surgicalAppointments[0].surgicalAppointmentAttributes[0],
   ).toMatchObject(attribute);
   expect(payload.surgicalAppointments[1]).toMatchObject(cancelled);
+});
+
+it('cancels only scheduled surgeries when cancelling a block', async () => {
+  const loaded = {
+    id: 1,
+    uuid: 'block-1',
+    startDatetime: '2026-09-28T09:00:00.000Z',
+    endDatetime: '2026-09-28T11:00:00.000Z',
+    provider: { uuid: 'surgeon-1' },
+    location: { uuid: 'theatre-1' },
+    surgicalAppointments: [
+      {
+        id: 2,
+        uuid: 'surgery-1',
+        patient: { uuid: 'patient-1' },
+        status: 'SCHEDULED',
+        sortWeight: 0,
+        notes: 'Old note',
+        surgicalAppointmentAttributes: [],
+      },
+      {
+        id: 3,
+        uuid: 'surgery-2',
+        patient: { uuid: 'patient-2' },
+        status: 'COMPLETED',
+        sortWeight: 1,
+        notes: 'Keep this note',
+        surgicalAppointmentAttributes: [],
+      },
+    ],
+  };
+  jest.mocked(get).mockResolvedValueOnce(loaded);
+  jest.mocked(post).mockResolvedValueOnce(loaded);
+  await cancelSurgicalBlock(loaded, 'CANCELLED', 'Theatre unavailable');
+  const payload = jest.mocked(post).mock.calls[0][1] as typeof loaded & {
+    voided: boolean;
+    voidReason: string;
+  };
+  expect(payload.voided).toBe(true);
+  expect(payload.voidReason).toBe('Theatre unavailable');
+  expect(payload.surgicalAppointments[0]).toMatchObject({
+    status: 'CANCELLED',
+    sortWeight: null,
+    notes: 'Theatre unavailable',
+  });
+  expect(payload.surgicalAppointments[1]).toMatchObject({
+    status: 'COMPLETED',
+    sortWeight: 1,
+    notes: 'Keep this note',
+  });
 });
