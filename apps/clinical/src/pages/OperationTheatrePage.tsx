@@ -1,17 +1,20 @@
 import { BaseLayout, Header } from '@bahmni/design-system';
-import { BAHMNI_HOME_PATH, get, hasPrivilege } from '@bahmni/services';
+import { BAHMNI_HOME_PATH, get, hasPrivilege, post } from '@bahmni/services';
 import { useUserPrivilege } from '@bahmni/widgets';
-import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { type FormEvent, useState } from 'react';
 import styles from './BedManagement.module.scss';
 
 interface SurgicalAppointment {
+  id?: number;
   uuid: string;
   voided?: boolean;
   sortWeight?: number;
   status?: string;
+  notes?: string;
   patient?: { uuid: string; display?: string };
   actualStartDatetime?: string;
+  actualEndDatetime?: string;
 }
 
 interface SurgicalBlock {
@@ -25,6 +28,12 @@ interface SurgicalBlock {
 
 const localDate = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+const localDateTime = (value?: string) => {
+  if (!value) return '';
+  const date = new Date(value);
+  return `${localDate(date)}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+};
 
 export const fetchSurgicalBlocks = (date: string, period: 'day' | 'week') => {
   const start = new Date(`${date}T00:00:00`);
@@ -48,6 +57,66 @@ export const fetchSurgicalBlocks = (date: string, period: 'day' | 'week') => {
   );
 };
 
+export const saveSurgicalActualTime = async (
+  block: SurgicalBlock,
+  appointment: SurgicalAppointment,
+  startValue: string,
+  endValue: string,
+  notes: string,
+) => {
+  const start = new Date(startValue);
+  const end = endValue ? new Date(endValue) : null;
+  if (
+    !startValue ||
+    !Number.isFinite(start.getTime()) ||
+    (end && (!Number.isFinite(end.getTime()) || end <= start))
+  ) {
+    throw new Error('Enter a valid start time and a later end time.');
+  }
+  const latest = await get<SurgicalBlock>(
+    `/openmrs/ws/rest/v1/surgicalBlock/${encodeURIComponent(block.uuid)}`,
+    { params: { v: 'full' } },
+  );
+  const current = latest.surgicalAppointments?.find(
+    ({ uuid }) => uuid === appointment.uuid,
+  );
+  const timestamp = (value?: string) =>
+    value ? new Date(value).getTime() : null;
+  if (
+    latest.voided ||
+    !current?.id ||
+    !current.patient?.uuid ||
+    current.voided ||
+    !['SCHEDULED', 'COMPLETED'].includes(current.status ?? '') ||
+    current.status !== appointment.status ||
+    current.sortWeight !== appointment.sortWeight ||
+    timestamp(current.actualStartDatetime) !==
+      timestamp(appointment.actualStartDatetime) ||
+    timestamp(current.actualEndDatetime) !==
+      timestamp(appointment.actualEndDatetime) ||
+    (current.notes ?? '') !== (appointment.notes ?? '')
+  ) {
+    throw new Error(
+      'This booking changed. Refresh the schedule before editing.',
+    );
+  }
+  return post<SurgicalAppointment>(
+    `/openmrs/ws/rest/v1/surgicalAppointment/${encodeURIComponent(current.uuid)}`,
+    {
+      id: current.id,
+      uuid: current.uuid,
+      surgicalBlock: { uuid: block.uuid },
+      patient: { uuid: current.patient.uuid },
+      sortWeight: current.sortWeight,
+      status: 'COMPLETED',
+      actualStartDatetime: start.toISOString(),
+      actualEndDatetime: end?.toISOString() ?? null,
+      notes,
+    },
+    { params: { v: 'full' } },
+  );
+};
+
 const formatTime = (value?: string) =>
   value
     ? new Intl.DateTimeFormat(undefined, {
@@ -59,12 +128,21 @@ const formatTime = (value?: string) =>
 const OperationTheatrePage = () => {
   const { userPrivileges, isLoading: privilegesLoading } = useUserPrivilege();
   const canView = hasPrivilege(userPrivileges, 'app:ot');
+  const canEdit = hasPrivilege(userPrivileges, 'app:ot:write');
+  const queryClient = useQueryClient();
   const [date, setDate] = useState(() => localDate(new Date()));
   const [period, setPeriod] = useState<'day' | 'week'>('day');
   const [locationUuid, setLocationUuid] = useState('');
   const [providerUuid, setProviderUuid] = useState('');
   const [status, setStatus] = useState('');
   const [patientSearch, setPatientSearch] = useState('');
+  const [editingUuid, setEditingUuid] = useState('');
+  const [actualStart, setActualStart] = useState('');
+  const [actualEnd, setActualEnd] = useState('');
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState('');
   const blocks = useQuery({
     queryKey: ['ot-surgical-blocks', date, period],
     queryFn: () => fetchSurgicalBlocks(date, period),
@@ -108,6 +186,35 @@ const OperationTheatrePage = () => {
           .toLowerCase()
           .includes(patientSearch.trim().toLowerCase())),
   );
+  const editing = visible.find(
+    ({ appointment }) => appointment.uuid === editingUuid,
+  );
+
+  const submitActualTime = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canEdit || !editing || saving) return;
+    setSaving(true);
+    setSaveError('');
+    setSaveSuccess('');
+    try {
+      await saveSurgicalActualTime(
+        editing.block,
+        editing.appointment,
+        actualStart,
+        actualEnd,
+        notes,
+      );
+      setEditingUuid('');
+      setSaveSuccess('Actual surgery time saved.');
+      void queryClient.invalidateQueries({ queryKey: ['ot-surgical-blocks'] });
+    } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : 'Could not save actual time.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <BaseLayout
@@ -227,6 +334,7 @@ const OperationTheatrePage = () => {
                         <th scope="col">Surgeon</th>
                         <th scope="col">Status</th>
                         <th scope="col">Actual time</th>
+                        {canEdit && <th scope="col">Action</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -248,13 +356,91 @@ const OperationTheatrePage = () => {
                               ? formatTime(appointment.actualStartDatetime)
                               : 'Not started'}
                           </td>
+                          {canEdit && (
+                            <td>
+                              {['SCHEDULED', 'COMPLETED'].includes(
+                                appointment.status ?? '',
+                              ) && (
+                                <button
+                                  className={styles.inlineButton}
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingUuid(appointment.uuid);
+                                    setActualStart(
+                                      localDateTime(
+                                        appointment.actualStartDatetime,
+                                      ),
+                                    );
+                                    setActualEnd(
+                                      localDateTime(
+                                        appointment.actualEndDatetime,
+                                      ),
+                                    );
+                                    setNotes(appointment.notes ?? '');
+                                    setSaveError('');
+                                    setSaveSuccess('');
+                                  }}
+                                >
+                                  Record actual time
+                                </button>
+                              )}
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               )}
-              <p>To create or change a booking, use the full OT tools.</p>
+              {editing && canEdit && (
+                <form
+                  onSubmit={submitActualTime}
+                  aria-label="Record actual surgery time"
+                >
+                  <h2>{editing.appointment.patient?.display ?? 'Surgery'}</h2>
+                  <div className={styles.filterForm}>
+                    <label>
+                      Actual start
+                      <input
+                        type="datetime-local"
+                        required
+                        value={actualStart}
+                        onChange={(event) => setActualStart(event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      Actual end
+                      <input
+                        type="datetime-local"
+                        value={actualEnd}
+                        min={actualStart}
+                        onChange={(event) => setActualEnd(event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      Notes
+                      <input
+                        value={notes}
+                        onChange={(event) => setNotes(event.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <div className={styles.searchForm}>
+                    <button type="submit" disabled={saving}>
+                      {saving ? 'Saving...' : 'Save actual time'}
+                    </button>
+                    <button type="button" onClick={() => setEditingUuid('')}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+              {saveError && <p role="alert">{saveError}</p>}
+              {saveSuccess && <p role="status">{saveSuccess}</p>}
+              <p>
+                To create, reschedule or cancel a booking, use the full OT
+                tools.
+              </p>
             </section>
           )}
         </div>

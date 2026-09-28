@@ -1,15 +1,17 @@
-import { get } from '@bahmni/services';
+import { get, post } from '@bahmni/services';
 import { useUserPrivilege } from '@bahmni/widgets';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import OperationTheatrePage, {
   fetchSurgicalBlocks,
+  saveSurgicalActualTime,
 } from '../OperationTheatrePage';
 
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   get: jest.fn(),
+  post: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({
   ...jest.requireActual('@bahmni/widgets'),
@@ -83,12 +85,51 @@ it('shows live bookings and filters by patient without changing them', async () 
   expect(await screen.findByText('ABC123 - Asha Demo')).toBeInTheDocument();
   expect(screen.getAllByText('Theatre 1')).toHaveLength(2);
   expect(screen.queryByText('Hidden Patient')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'Record actual time' }),
+  ).not.toBeInTheDocument();
   fireEvent.change(screen.getByRole('searchbox'), {
     target: { value: 'Other patient' },
   });
   expect(
     screen.getByText('No surgical appointments match these filters.'),
   ).toBeInTheDocument();
+});
+
+it('shows the actual-time form only to OT writers', async () => {
+  jest.mocked(useUserPrivilege).mockReturnValue({
+    userPrivileges: [
+      { uuid: 'ot-privilege', name: 'app:ot' },
+      { uuid: 'ot-write-privilege', name: 'app:ot:write' },
+    ],
+    isLoading: false,
+  });
+  jest.mocked(get).mockResolvedValueOnce({
+    results: [
+      {
+        uuid: 'block-1',
+        startDatetime: '2026-09-28T09:00:00.000+0530',
+        surgicalAppointments: [
+          {
+            id: 9,
+            uuid: 'appointment-1',
+            patient: { uuid: 'patient-1', display: 'ABC123 - Asha Demo' },
+            status: 'SCHEDULED',
+          },
+        ],
+      },
+    ],
+  });
+
+  renderPage();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Record actual time' }),
+  );
+
+  expect(
+    screen.getByRole('form', { name: 'Record actual surgery time' }),
+  ).toBeInTheDocument();
+  expect(screen.getByLabelText('Actual start')).toBeRequired();
 });
 
 it('does not request bookings without the OT privilege', () => {
@@ -103,4 +144,87 @@ it('does not request bookings without the OT privilege', () => {
     'You do not have access to operation theatre.',
   );
   expect(get).not.toHaveBeenCalled();
+});
+
+it('rechecks a booking and uses the Bahmni actual-time update API', async () => {
+  const appointment = {
+    id: 9,
+    uuid: 'appointment-1',
+    patient: { uuid: 'patient-1', display: 'ABC123 - Asha Demo' },
+    status: 'SCHEDULED',
+    sortWeight: 0,
+    notes: '',
+  };
+  const block = {
+    uuid: 'block-1',
+    startDatetime: '2026-09-28T09:00:00.000+0530',
+    surgicalAppointments: [appointment],
+  };
+  jest.mocked(get).mockResolvedValueOnce(block);
+  jest
+    .mocked(post)
+    .mockResolvedValueOnce({ ...appointment, status: 'COMPLETED' });
+
+  await saveSurgicalActualTime(
+    block,
+    appointment,
+    '2026-09-28T09:10',
+    '2026-09-28T10:10',
+    'Completed as planned',
+  );
+
+  expect(get).toHaveBeenCalledWith(
+    '/openmrs/ws/rest/v1/surgicalBlock/block-1',
+    { params: { v: 'full' } },
+  );
+  expect(post).toHaveBeenCalledWith(
+    '/openmrs/ws/rest/v1/surgicalAppointment/appointment-1',
+    {
+      id: 9,
+      uuid: 'appointment-1',
+      surgicalBlock: { uuid: 'block-1' },
+      patient: { uuid: 'patient-1' },
+      sortWeight: 0,
+      status: 'COMPLETED',
+      actualStartDatetime: new Date('2026-09-28T09:10').toISOString(),
+      actualEndDatetime: new Date('2026-09-28T10:10').toISOString(),
+      notes: 'Completed as planned',
+    },
+    { params: { v: 'full' } },
+  );
+});
+
+it('rejects stale and invalid actual-time updates before posting', async () => {
+  const appointment = {
+    id: 9,
+    uuid: 'appointment-1',
+    patient: { uuid: 'patient-1' },
+    status: 'SCHEDULED',
+    sortWeight: 0,
+  };
+  const block = {
+    uuid: 'block-1',
+    startDatetime: '2026-09-28T09:00:00.000+0530',
+    surgicalAppointments: [appointment],
+  };
+
+  await expect(
+    saveSurgicalActualTime(
+      block,
+      appointment,
+      '2026-09-28T10:10',
+      '2026-09-28T09:10',
+      '',
+    ),
+  ).rejects.toThrow('Enter a valid start time');
+  expect(get).not.toHaveBeenCalled();
+
+  jest.mocked(get).mockResolvedValueOnce({
+    ...block,
+    surgicalAppointments: [{ ...appointment, status: 'CANCELLED' }],
+  });
+  await expect(
+    saveSurgicalActualTime(block, appointment, '2026-09-28T09:10', '', ''),
+  ).rejects.toThrow('This booking changed');
+  expect(post).not.toHaveBeenCalled();
 });

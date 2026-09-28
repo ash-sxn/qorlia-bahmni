@@ -119,6 +119,16 @@
   background: #f1f6f3;
 }
 
+.inlineButton {
+  border: 0;
+  background: none;
+  color: var(--qorlia-primary, #1f5238);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .intro h1 {
   margin: 8px 0;
   font-size: clamp(28px, 2.4vw, 38px);
