@@ -110,7 +110,7 @@ const NotAdministeredTab: React.FC<NotAdministeredTabProps> = ({
     >
       <SortableDataTable
         headers={headers}
-        rows={data}
+        rows={data ?? []}
         sortable={sortable}
         ariaLabel={t('IMMUNIZATION_HISTORY_WIDGET_NOT_ADMINISTERED_TABLE_ARIA')}
         loading={isLoading}

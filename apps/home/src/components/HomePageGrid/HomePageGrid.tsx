@@ -11,7 +11,12 @@ const reviewUrls = {
   'bahmni.admin': '/bahmni-v2/admin',
   'bahmni.reports': '/bahmni-v2/reports/',
   'bahmni.ot': '/bahmni-v2/clinical/operation-theatre',
+  'bahmni.orders': '/bahmni-v2/clinical/orders',
   'bahmni.appointment.scheduling': '/bahmni-v2/appointments/',
+  'bahmni.patient.document.upload':
+    '/bahmni-v2/patient-documents/search?encounterType=Patient%20Document&topLevelConcept=Patient%20Document&defaultOption=Patient%20file',
+  'bahmni.radiology.document.upload':
+    '/bahmni-v2/patient-documents/search?encounterType=RADIOLOGY&topLevelConcept=All%20Radiology%20orders',
 };
 
 export const HomePageGrid: React.FC = () => (

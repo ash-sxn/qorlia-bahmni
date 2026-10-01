@@ -26,6 +26,15 @@ import styles from './styles/AllergiesForm.module.scss';
 const allergiesQueryKeys = (patientUUID: string) =>
   ['allergies', patientUUID] as const;
 
+type AllergenOption =
+  | AllergenConcept
+  | {
+      uuid: string;
+      display: string;
+      type: null;
+      disabled: boolean;
+    };
+
 /**
  * AllergiesForm component
  *
@@ -141,12 +150,7 @@ const AllergiesForm: React.FC<{
     isDuplicateAllergy,
   ]);
 
-  const handleOnChange = (
-    selectedItem:
-      | AllergenConcept
-      | { uuid: string; display: string; type: null; disabled: boolean }
-      | null,
-  ) => {
+  const handleOnChange = (selectedItem: AllergenOption | null) => {
     if (!selectedItem?.uuid || !selectedItem.display || !selectedItem.type) {
       return;
     }
@@ -242,7 +246,7 @@ const AllergiesForm: React.FC<{
           : t('ALLERGIES_FORM_TITLE')}
       </div>
       {!isEditMode && (
-        <ComboBox
+        <ComboBox<AllergenOption>
           id="allergies-search"
           data-testid="allergies-search-combobox"
           placeholder={t('ALLERGIES_SEARCH_PLACEHOLDER')}

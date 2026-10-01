@@ -102,6 +102,28 @@ const newRow = (): SurgeryRow => ({
   values: { estTimeHours: '0', estTimeMinutes: '0', cleaningTime: '15' },
 });
 
+// The OT REST response includes read-only bed and observation fields.
+const surgeryForSave = (surgery: Surgery) => ({
+  id: surgery.id,
+  uuid: surgery.uuid,
+  patient: { uuid: surgery.patient.uuid },
+  status: surgery.status,
+  sortWeight: surgery.sortWeight,
+  notes: surgery.notes,
+  actualStartDatetime: surgery.actualStartDatetime,
+  actualEndDatetime: surgery.actualEndDatetime,
+  surgicalAppointmentAttributes: surgery.surgicalAppointmentAttributes.map(
+    (attribute) => ({
+      id: attribute.id,
+      uuid: attribute.uuid,
+      value: attribute.value,
+      surgicalAppointmentAttributeType: {
+        uuid: attribute.surgicalAppointmentAttributeType.uuid,
+      },
+    }),
+  ),
+});
+
 const minutesFor = (row: SurgeryRow) =>
   Number(row.values.estTimeHours ?? 0) * 60 +
   Number(row.values.estTimeMinutes ?? 0) +
@@ -227,14 +249,14 @@ export const saveSurgicalBlock = async (
       (surgery.voided ?? false) ||
       ['CANCELLED', 'POSTPONED'].includes(surgery.status),
   );
-  const payload: Block = {
+  const payload = {
     ...(loaded?.id ? { id: loaded.id } : {}),
     ...(loaded?.uuid ? { uuid: loaded.uuid } : {}),
     startDatetime: new Date(start).toISOString(),
     endDatetime: new Date(end).toISOString(),
     provider: { uuid: providerUuid },
     location: { uuid: locationUuid },
-    surgicalAppointments: [...active, ...excluded],
+    surgicalAppointments: [...active, ...excluded].map(surgeryForSave),
   };
   return post<Block>(
     loaded?.uuid ? `${blockUrl}/${encodeURIComponent(loaded.uuid)}` : blockUrl,
@@ -267,18 +289,15 @@ export const cancelSurgicalBlock = async (
       endDatetime: latest.endDatetime,
       provider: { uuid: latest.provider.uuid },
       location: { uuid: latest.location.uuid },
-      surgicalAppointments: latest.surgicalAppointments.map((surgery) => ({
-        id: surgery.id,
-        uuid: surgery.uuid,
-        voided: surgery.voided ?? false,
-        patient: { uuid: surgery.patient.uuid },
-        status: surgery.status === 'SCHEDULED' ? status : surgery.status,
-        sortWeight: surgery.status === 'SCHEDULED' ? null : surgery.sortWeight,
-        notes: surgery.status === 'SCHEDULED' ? reason.trim() : surgery.notes,
-        actualStartDatetime: surgery.actualStartDatetime,
-        actualEndDatetime: surgery.actualEndDatetime,
-        surgicalAppointmentAttributes: surgery.surgicalAppointmentAttributes,
-      })),
+      surgicalAppointments: latest.surgicalAppointments.map((surgery) =>
+        surgeryForSave({
+          ...surgery,
+          status: surgery.status === 'SCHEDULED' ? status : surgery.status,
+          sortWeight:
+            surgery.status === 'SCHEDULED' ? null : surgery.sortWeight,
+          notes: surgery.status === 'SCHEDULED' ? reason.trim() : surgery.notes,
+        }),
+      ),
     },
     { params: { v: 'full' } },
   );
@@ -592,19 +611,21 @@ const SurgicalBlockEditor = () => {
                     <h3>Surgery {index + 1}</h3>
                     <p>Patient: {row.patientLabel || 'Not selected'}</p>
                     {row.original?.status === 'SCHEDULED' && (
-                      <label>
-                        Surgery action
-                        <select
-                          value={row.status ?? 'SCHEDULED'}
-                          onChange={(event) =>
-                            updateRow(index, { status: event.target.value })
-                          }
-                        >
-                          <option value="SCHEDULED">Keep scheduled</option>
-                          <option value="CANCELLED">Cancel surgery</option>
-                          <option value="POSTPONED">Postpone surgery</option>
-                        </select>
-                      </label>
+                      <div className={styles.filterForm}>
+                        <label>
+                          Surgery action
+                          <select
+                            value={row.status ?? 'SCHEDULED'}
+                            onChange={(event) =>
+                              updateRow(index, { status: event.target.value })
+                            }
+                          >
+                            <option value="SCHEDULED">Keep scheduled</option>
+                            <option value="CANCELLED">Cancel surgery</option>
+                            <option value="POSTPONED">Postpone surgery</option>
+                          </select>
+                        </label>
+                      </div>
                     )}
                     <div className={styles.searchForm}>
                       <label htmlFor={`ot-patient-${index}`}>
@@ -654,7 +675,7 @@ const SurgicalBlockEditor = () => {
                     <div className={styles.filterForm}>
                       {types.map((type) => (
                         <label key={type.uuid}>
-                          {type.name}
+                          {type.name.replace(/([a-z])([A-Z])/g, '$1 $2')}
                           {type.name === 'otherSurgeon' ? (
                             <select
                               value={row.values[type.name] ?? ''}
@@ -715,11 +736,12 @@ const SurgicalBlockEditor = () => {
                         </label>
                       ))}
                     </div>
-                    <label>
+                    <label className={styles.resultText}>
                       {['CANCELLED', 'POSTPONED'].includes(row.status ?? '')
                         ? 'Reason for change'
                         : 'Notes'}
-                      <input
+                      <textarea
+                        rows={3}
                         required={['CANCELLED', 'POSTPONED'].includes(
                           row.status ?? '',
                         )}

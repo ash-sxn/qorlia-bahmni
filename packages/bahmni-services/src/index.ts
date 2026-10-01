@@ -470,7 +470,11 @@ export {
 } from './locationService';
 export { getPatientImmunizations } from './immunizationService';
 export type { ImmunizationStatus } from './immunizationService';
-export { uploadDocument } from './documentUploadService';
+export {
+  uploadDocument,
+  getDocumentPath,
+  getAuthenticatedDocumentUrl,
+} from './documentUploadService';
 export type {
   DocumentUploadResponse,
   ProcessedFileData,

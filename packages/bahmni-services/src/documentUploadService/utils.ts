@@ -1,6 +1,38 @@
 import { DEFAULT_FILE_TYPE } from './constants';
 import { ProcessedFileData } from './models';
 
+export const getDocumentPath = (
+  value: unknown,
+  directory: 'document_images' | 'uploaded_results' = 'document_images',
+): string | undefined => {
+  if (typeof value !== 'string' || !value) return undefined;
+  let path = value.replace(new RegExp(`^/?${directory}/`), '');
+  try {
+    for (let i = 0; i < 3 && path.includes('%'); i++)
+      path = decodeURIComponent(path);
+  } catch {
+    return undefined;
+  }
+  if (
+    // eslint-disable-next-line no-control-regex -- Reject control characters in server-provided paths.
+    /[:?#\\%\u0000-\u001f\u007f]/.test(path) ||
+    path.startsWith('/') ||
+    path.split('/').some((part) => part === '..' || part === '.' || !part)
+  )
+    return undefined;
+  return path;
+};
+
+export const getAuthenticatedDocumentUrl = (
+  value: unknown,
+  directory: 'document_images' | 'uploaded_results' = 'document_images',
+): string | undefined => {
+  const path = getDocumentPath(value, directory);
+  return path
+    ? `/openmrs/auth?requested_document=/${directory}/${path.split('/').map(encodeURIComponent).join('/')}`
+    : undefined;
+};
+
 export async function processFileForUpload(
   file: File,
 ): Promise<ProcessedFileData> {

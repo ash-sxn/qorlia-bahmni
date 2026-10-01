@@ -36,6 +36,17 @@ describe('programService', () => {
     jest.clearAllMocks();
   });
 
+  it('uses full representation for enrollment reads without requiring newer module getters', () => {
+    for (const url of [
+      PATIENT_PROGRAMS_URL(patientUUID),
+      PATIENT_PROGRAMS_PAGE_URL(patientUUID, 15, 0),
+      PROGRAM_DETAILS_URL('enrollment-1'),
+    ]) {
+      expect(url).toContain('v=full');
+      expect(url).not.toContain('custom:');
+    }
+  });
+
   describe('getPatientProgramEnrollments', () => {
     it('should fetch and return program enrollments for a valid patient UUID', async () => {
       const mockResponse: PatientProgramsResponse = {

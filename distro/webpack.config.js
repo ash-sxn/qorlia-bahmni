@@ -27,6 +27,18 @@ module.exports = (env, argv) => {
     resolve: {
       alias: isDevelopment
         ? {
+            '@bahmni/services$': join(
+              __dirname,
+              '../packages/bahmni-services/src',
+            ),
+            '@bahmni/design-system$': join(
+              __dirname,
+              '../packages/bahmni-design-system/src',
+            ),
+            '@bahmni/widgets$': join(
+              __dirname,
+              '../packages/bahmni-widgets/src',
+            ),
             '@bahmni/home-app': join(__dirname, '../apps/home/src'),
             '@bahmni/clinical-app': join(__dirname, '../apps/clinical/src'),
             '@bahmni/registration-app': join(
@@ -52,6 +64,7 @@ module.exports = (env, argv) => {
     },
     devServer: {
       host: '127.0.0.1',
+      allowedHosts: ['127.0.0.1', 'localhost'],
       port: 3000,
       setupMiddlewares: (middlewares, devServer) => {
         devServer.app.get(

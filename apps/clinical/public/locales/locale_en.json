@@ -706,6 +706,7 @@
   "PROGRAMS_ENROLL_CONFIG_ERROR": "Enrollment options could not be loaded. Use the Bahmni manager instead.",
   "PROGRAMS_ENROLL_ERROR": "The patient could not be enrolled. Please try again.",
   "PROGRAMS_ENROLLMENTS_ERROR": "Program enrollments could not be loaded.",
+  "PROGRAMS_STATE_SUPPORT_MISSING": "Choosing a next workflow state is unavailable on this server.",
   "PROGRAMS_FIND_PATIENT": "Find a patient",
   "PROGRAMS_ID": "Patient ID",
   "PROGRAMS_LEGACY_MANAGER": "Manage enrollment in Bahmni",

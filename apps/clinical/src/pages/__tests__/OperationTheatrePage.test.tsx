@@ -41,6 +41,14 @@ const renderPage = () =>
     </QueryClientProvider>,
   );
 
+const mockBookings = (data: { results: unknown[] }) => {
+  jest
+    .mocked(get)
+    .mockImplementation((url) =>
+      Promise.resolve(url.includes('/surgicalBlock') ? data : { results: [] }),
+    );
+};
+
 beforeEach(() => {
   jest.resetAllMocks();
   jest.mocked(useUserPrivilege).mockReturnValue({
@@ -254,7 +262,7 @@ it('uses a configured Tuesday week boundary', async () => {
 });
 
 it('shows live bookings and filters by patient without changing them', async () => {
-  jest.mocked(get).mockResolvedValueOnce({
+  mockBookings({
     results: [
       {
         uuid: 'block-1',
@@ -286,6 +294,10 @@ it('shows live bookings and filters by patient without changing them', async () 
   });
 
   renderPage();
+
+  fireEvent.change(screen.getByLabelText('Date'), {
+    target: { value: '2026-09-28' },
+  });
 
   expect(await screen.findByText('ABC123 - Asha Demo')).toBeInTheDocument();
   expect(screen.getByText('42')).toBeInTheDocument();
@@ -326,7 +338,7 @@ it('shows configured case attributes and sorts the OT list', async () => {
       },
     },
   ];
-  jest.mocked(get).mockResolvedValueOnce({
+  mockBookings({
     results: [
       {
         uuid: 'block-1',
@@ -426,7 +438,7 @@ it('shows the actual-time form only to OT writers', async () => {
     ],
     isLoading: false,
   });
-  jest.mocked(get).mockResolvedValueOnce({
+  mockBookings({
     results: [
       {
         uuid: 'block-1',
@@ -444,6 +456,9 @@ it('shows the actual-time form only to OT writers', async () => {
   });
 
   renderPage();
+  fireEvent.change(screen.getByLabelText('Date'), {
+    target: { value: '2026-09-28' },
+  });
   fireEvent.click(
     await screen.findByRole('button', { name: 'Record actual time' }),
   );
@@ -464,7 +479,7 @@ it('can clear a completed surgery time before saving it', async () => {
     ],
     isLoading: false,
   });
-  jest.mocked(get).mockResolvedValueOnce({
+  mockBookings({
     results: [
       {
         uuid: 'block-1',
@@ -485,6 +500,9 @@ it('can clear a completed surgery time before saving it', async () => {
   });
 
   renderPage();
+  fireEvent.change(screen.getByLabelText('Date'), {
+    target: { value: '2026-09-28' },
+  });
   fireEvent.click(
     await screen.findByRole('button', { name: 'Record actual time' }),
   );

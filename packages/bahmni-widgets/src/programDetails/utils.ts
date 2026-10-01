@@ -41,7 +41,7 @@ export function createProgramDetailsViewModel(
     currentStateName: getCurrentStateName(enrollment),
     careManagerDisplay: episodeOfCare?.careManager?.display ?? null,
     attributes: extractAttributes(enrollment, programAttributes),
-    allowedStates: enrollment.allowedStates.map((state) => ({
+    allowedStates: (enrollment.allowedStates ?? []).map((state) => ({
       uuid: state.uuid,
       display: state.concept.display,
     })),

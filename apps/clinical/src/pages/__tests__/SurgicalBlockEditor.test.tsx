@@ -95,14 +95,17 @@ it('does not overwrite a block changed since it was loaded', async () => {
   expect(post).not.toHaveBeenCalled();
 });
 
-it('keeps existing unshown attributes and cancelled surgeries on edit', async () => {
+it('preserves attributes and cancelled surgeries without sending read-only fields', async () => {
   const attribute = {
     id: 4,
     value: 'Keep me',
+    resourceVersion: '1.8',
     surgicalAppointmentAttributeType: {
       uuid: 'hidden-1',
       name: 'hiddenAttribute',
       format: 'java.lang.String',
+      sortWeight: 1,
+      resourceVersion: '1.8',
     },
   };
   const surgery = {
@@ -111,6 +114,10 @@ it('keeps existing unshown attributes and cancelled surgeries on edit', async ()
     patient: { uuid: 'patient-1' },
     status: 'SCHEDULED',
     sortWeight: 0,
+    bedNumber: 'GW-1',
+    bedLocation: { uuid: 'ward-1' },
+    patientObservations: [{ uuid: 'observation-1' }],
+    resourceVersion: '1.8',
     surgicalAppointmentAttributes: [attribute],
   };
   const cancelled = {
@@ -148,10 +155,25 @@ it('keeps existing unshown attributes and cancelled surgeries on edit', async ()
   );
   const payload = jest.mocked(post).mock.calls[0][1] as typeof loaded;
   expect(payload.surgicalAppointments).toHaveLength(2);
-  expect(
-    payload.surgicalAppointments[0].surgicalAppointmentAttributes[0],
-  ).toMatchObject(attribute);
-  expect(payload.surgicalAppointments[1]).toMatchObject(cancelled);
+  for (const saved of payload.surgicalAppointments) {
+    expect(saved).not.toHaveProperty('bedNumber');
+    expect(saved).not.toHaveProperty('bedLocation');
+    expect(saved).not.toHaveProperty('patientObservations');
+    expect(saved).not.toHaveProperty('resourceVersion');
+    expect(saved.surgicalAppointmentAttributes).toEqual([
+      {
+        id: 4,
+        value: 'Keep me',
+        surgicalAppointmentAttributeType: { uuid: 'hidden-1' },
+      },
+    ]);
+  }
+  expect(payload.surgicalAppointments[1]).toMatchObject({
+    id: cancelled.id,
+    uuid: cancelled.uuid,
+    status: 'CANCELLED',
+    patient: { uuid: 'patient-1' },
+  });
 });
 
 it('cancels one surgery with a reason and keeps the other scheduled', async () => {
@@ -238,7 +260,21 @@ it('cancels only scheduled surgeries when cancelling a block', async () => {
         status: 'SCHEDULED',
         sortWeight: 0,
         notes: 'Old note',
-        surgicalAppointmentAttributes: [],
+        bedNumber: 'GW-1',
+        resourceVersion: '1.8',
+        surgicalAppointmentAttributes: [
+          {
+            id: 4,
+            value: 'Keep this attribute',
+            resourceVersion: '1.8',
+            surgicalAppointmentAttributeType: {
+              uuid: 'attribute-type-1',
+              name: 'procedure',
+              format: 'java.lang.String',
+              sortWeight: 1,
+            },
+          },
+        ],
       },
       {
         id: 3,
@@ -265,6 +301,17 @@ it('cancels only scheduled surgeries when cancelling a block', async () => {
     sortWeight: null,
     notes: 'Theatre unavailable',
   });
+  expect(payload.surgicalAppointments[0]).not.toHaveProperty('bedNumber');
+  expect(payload.surgicalAppointments[0]).not.toHaveProperty('resourceVersion');
+  expect(payload.surgicalAppointments[0].surgicalAppointmentAttributes).toEqual(
+    [
+      {
+        id: 4,
+        value: 'Keep this attribute',
+        surgicalAppointmentAttributeType: { uuid: 'attribute-type-1' },
+      },
+    ],
+  );
   expect(payload.surgicalAppointments[1]).toMatchObject({
     status: 'COMPLETED',
     sortWeight: 1,

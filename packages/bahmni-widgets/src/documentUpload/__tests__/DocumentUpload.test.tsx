@@ -137,6 +137,20 @@ describe('DocumentUpload', () => {
     expect(screen.getByText('DOCUMENT_UPLOAD_BUTTON')).toBeInTheDocument();
   });
 
+  it('uses a keyboard-accessible button to toggle the note', () => {
+    renderWidget();
+    selectFile();
+    const toggle = screen.getByRole('button', {
+      name: 'DOCUMENT_UPLOAD_ADD_NOTE',
+    });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.getByRole('textbox', { name: 'DOCUMENT_UPLOAD_ADD_NOTE' }),
+    ).toBeInTheDocument();
+  });
+
   it('creates pending blob on file select and uploads on save', async () => {
     renderWidget();
     selectFile();

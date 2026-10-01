@@ -1,4 +1,4 @@
-import { Button, Dropdown, IconButton, Link } from '@bahmni/design-system';
+import { Button, Dropdown, IconButton } from '@bahmni/design-system';
 import {
   AUDIT_LOG_EVENT_DETAILS,
   AuditEventType,
@@ -348,8 +348,11 @@ export const DocumentUpload = forwardRef<
                   </IconButton>
                 </div>
               </div>
-              <Link
+              <Button
+                kind="ghost"
                 className={styles.addNoteLink}
+                disabled={isSaving}
+                aria-expanded={document.isNoteVisible}
                 onClick={() =>
                   updatePending(document.id, {
                     isNoteVisible: !document.isNoteVisible,
@@ -357,7 +360,7 @@ export const DocumentUpload = forwardRef<
                 }
               >
                 {t('DOCUMENT_UPLOAD_ADD_NOTE')}
-              </Link>
+              </Button>
               {document.isNoteVisible && (
                 <TextArea
                   id={`document-note-${document.id}`}

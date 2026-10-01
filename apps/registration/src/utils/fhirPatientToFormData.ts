@@ -29,9 +29,7 @@ function parseBirthDate(birthDate?: string): {
 }
 
 function extractBirthTime(patient: Patient): string {
-  const el = (patient as Record<string, unknown>)._birthDate as
-    | { extension?: { url: string; valueDateTime?: string }[] }
-    | undefined;
+  const el = patient._birthDate;
   const ext = el?.extension?.find((e) => e.url === BIRTH_TIME_EXT_URL);
   if (!ext?.valueDateTime) return '';
   const date = parseISO(ext.valueDateTime);

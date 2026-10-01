@@ -505,7 +505,7 @@ describe('getComboBoxItems', () => {
         false,
         COMBO_BOX_MESSAGES,
       ),
-    ).toEqual([{ display: 'Loading...', disabled: true }]);
+    ).toEqual([{ code: '', display: 'Loading...', disabled: true }]);
   });
 
   it('returns disabled error sentinel when isError is true', () => {
@@ -517,7 +517,7 @@ describe('getComboBoxItems', () => {
         true,
         COMBO_BOX_MESSAGES,
       ),
-    ).toEqual([{ display: 'Error occurred', disabled: true }]);
+    ).toEqual([{ code: '', display: 'Error occurred', disabled: true }]);
   });
 
   it('returns disabled empty sentinel when no items match', () => {
@@ -529,7 +529,7 @@ describe('getComboBoxItems', () => {
         false,
         COMBO_BOX_MESSAGES,
       ),
-    ).toEqual([{ display: 'No results', disabled: true }]);
+    ).toEqual([{ code: '', display: 'No results', disabled: true }]);
   });
 
   it.each([['covid'], ['COVID']])(

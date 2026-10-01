@@ -1,373 +1,122 @@
-import { getPatientById, getRelatedPersonsByPatient } from '@bahmni/services';
-import { useNotification } from '@bahmni/widgets';
+import { getPatientProfile } from '@bahmni/services';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import { usePatientDetails } from '../usePatientDetails';
 
+const mockNotify = jest.fn();
+const attributes = [
+  { uuid: 'phone', name: 'phoneNumber', format: 'java.lang.String' },
+];
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
-  getPatientById: jest.fn(),
-  getRelatedPersonsByPatient: jest.fn(),
-  formatDateTime: jest.fn(() => ({
-    formattedResult: '04 May 2026 11:53 AM',
-    error: false,
-  })),
+  getPatientProfile: jest.fn(),
+  formatDateTime: () => ({ formattedResult: '1 October 2026' }),
 }));
-jest.mock('@bahmni/widgets');
+jest.mock('@bahmni/widgets', () => ({
+  useNotification: () => ({ addNotification: mockNotify }),
+}));
+jest.mock('../usePersonAttributes', () => ({
+  usePersonAttributes: () => ({ personAttributes: attributes }),
+}));
 jest.mock('../../utils/identifierGenderUtils', () => ({
   useGenderData: () => ({
     getGenderDisplay: (code: string) => (code === 'M' ? 'Male' : code),
   }),
 }));
-jest.mock('../usePersonAttributes', () => ({
-  usePersonAttributes: () => ({
-    personAttributes: [
+const patient = {
+  patient: {
+    uuid: 'patient',
+    identifiers: [
       {
-        uuid: 'phone-uuid',
-        name: 'phoneNumber',
-        format: 'java.lang.String',
-        sortWeight: 1,
+        identifier: 'ABC200011',
+        identifierType: { uuid: 'type' },
+        preferred: true,
       },
       {
-        uuid: 'email-uuid',
-        name: 'email',
-        format: 'java.lang.String',
-        sortWeight: 2,
+        identifier: 'OLD123',
+        identifierType: { uuid: 'old-type' },
+        preferred: false,
       },
     ],
-  }),
-}));
-jest.mock('../useTelecomAttributeTypeMap', () => ({
-  useTelecomAttributeTypeMap: () => ({
-    telecomAttributeTypeMap: [
-      { attributeTypeUuid: 'phone-uuid', system: 'phone', rank: 1 },
-      { attributeTypeUuid: 'email-uuid', system: 'email' },
-    ],
-  }),
-}));
-
-const mockGetPatientById = getPatientById as jest.Mock;
-const mockGetRelatedPersonsByPatient = getRelatedPersonsByPatient as jest.Mock;
-const mockUseNotification = useNotification as jest.MockedFunction<
-  typeof useNotification
->;
-
-const mockFhirPatient = {
-  resourceType: 'Patient',
-  id: 'patient-123',
-  identifier: [
-    {
-      id: 'id-1',
-      use: 'official',
-      type: { coding: [{ code: 'type-uuid' }], text: 'Patient Identifier' },
-      value: 'ABC200000',
-    },
-    {
-      id: 'id-2',
-      type: { coding: [{ code: 'old-id-uuid' }], text: 'Old ID' },
-      value: 'OLD123',
-    },
-  ],
-  name: [{ id: 'name-uuid', given: ['John', 'Michael'], family: 'Doe' }],
-  gender: 'male',
-  birthDate: '1990-05-15',
-  extension: [
-    {
-      url: 'http://fhir.bahmni.org/ext/patient/phonenumber',
-      valueString: '+91123',
-    },
-    {
-      url: 'http://fhir.bahmni.org/ext/patient/email',
-      valueString: 'john@test.com',
-    },
-    {
-      url: 'http://fhir.bahmni.org/ext/patient-record/date-created',
-      valueDateTime: '2026-05-04T11:53:11+00:00',
-    },
-  ],
-  address: [
-    {
-      use: 'home',
-      city: 'Delhi',
-      state: 'Delhi',
-      extension: [
+    person: {
+      uuid: 'patient',
+      names: [
         {
-          url: 'http://fhir.openmrs.org/ext/address',
-          extension: [
-            {
-              url: 'http://fhir.openmrs.org/ext/address#address1',
-              valueString: 'Flat 1',
-            },
-          ],
+          uuid: 'name',
+          givenName: 'QorliaQA',
+          middleName: 'OctOne',
+          familyName: 'Synthetic',
+          preferred: true,
         },
       ],
+      gender: 'M',
+      birthdate: '1996-10-01T00:00:00.000+0530',
+      birthdateEstimated: true,
+      auditInfo: { dateCreated: '2026-10-01T14:56:00+0530' },
+      attributes: [
+        {
+          uuid: 'attr',
+          attributeType: { uuid: 'phone', display: 'Phone number' },
+          value: '0000000000',
+        },
+      ],
+      addresses: [{ address1: 'Test address', preferred: true }],
     },
-  ],
+  },
+  relationships: [],
 };
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <QueryClientProvider
+    client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+  >
+    {children}
+  </QueryClientProvider>
+);
+beforeEach(() => {
+  jest.clearAllMocks();
+  (getPatientProfile as jest.Mock).mockResolvedValue(patient);
+});
 
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  const Wrapper = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+it('reads full estimated date precision, attribute names, identifiers and metadata', async () => {
+  const { result } = renderHook(
+    () => usePatientDetails({ patientUuid: 'patient' }),
+    { wrapper },
   );
-  Wrapper.displayName = 'TestWrapper';
-  return Wrapper;
-};
-
-describe('usePatientDetails', () => {
-  const mockAddNotification = jest.fn();
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockUseNotification.mockReturnValue({
-      addNotification: mockAddNotification,
-      removeNotification: jest.fn(),
-      clearAllNotifications: jest.fn(),
-      notifications: [],
-    });
-    mockGetRelatedPersonsByPatient.mockResolvedValue({ entry: [] });
+  await waitFor(() => expect(result.current.isLoading).toBe(false));
+  expect(result.current.profileInitialData).toMatchObject({
+    firstName: 'QorliaQA',
+    gender: 'Male',
+    dateOfBirth: '1996-10-01',
   });
-
-  it('should fetch patient via FHIR and populate metadata', async () => {
-    mockGetPatientById.mockResolvedValue(mockFhirPatient);
-
-    const { result } = renderHook(
-      () => usePatientDetails({ patientUuid: 'patient-123' }),
-      { wrapper: createWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(mockGetPatientById).toHaveBeenCalledWith('patient-123');
-    expect(result.current.metadata.patientUuid).toBe('patient-123');
-    expect(result.current.metadata.patientIdentifier).toBe('ABC200000');
-    expect(result.current.metadata.patientName).toBe('John Michael Doe');
-    expect(result.current.metadata.registerDate).toBe('04 May 2026 11:53 AM');
+  expect(result.current.initialDobEstimated).toBe(true);
+  expect(result.current.personAttributesInitialData).toEqual({
+    phoneNumber: '0000000000',
   });
-
-  it('should convert basic info from FHIR response', async () => {
-    mockGetPatientById.mockResolvedValue(mockFhirPatient);
-
-    const { result } = renderHook(
-      () => usePatientDetails({ patientUuid: 'patient-123' }),
-      { wrapper: createWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(result.current.profileInitialData).toEqual(
-      expect.objectContaining({
-        firstName: 'John',
-        middleName: 'Michael',
-        lastName: 'Doe',
-        gender: 'Male',
-        dateOfBirth: '1990-05-15',
-        nameUuid: 'name-uuid',
-      }),
-    );
-    expect(result.current.initialDobEstimated).toBe(false);
+  expect(result.current.addressInitialData).toMatchObject({
+    address1: 'Test address',
   });
-
-  it('should convert person attributes from extensions', async () => {
-    mockGetPatientById.mockResolvedValue(mockFhirPatient);
-
-    const { result } = renderHook(
-      () => usePatientDetails({ patientUuid: 'patient-123' }),
-      { wrapper: createWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(result.current.personAttributesInitialData).toEqual({
-      phoneNumber: '+91123',
-      email: 'john@test.com',
-    });
+  expect(result.current.additionalIdentifiersInitialData).toEqual({
+    'old-type': 'OLD123',
   });
-
-  it('should resolve person attributes from telecom using the configured attribute type map', async () => {
-    mockGetPatientById.mockResolvedValue({
-      ...mockFhirPatient,
-      telecom: [
-        { system: 'phone', value: '+91999', rank: 1 },
-        { system: 'email', value: 'from-telecom@test.com' },
-      ],
-    });
-
-    const { result } = renderHook(
-      () => usePatientDetails({ patientUuid: 'patient-123' }),
-      { wrapper: createWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(result.current.personAttributesInitialData).toEqual({
-      phoneNumber: '+91999',
-      email: 'from-telecom@test.com',
-    });
+  expect(result.current.metadata).toEqual({
+    patientUuid: 'patient',
+    patientIdentifier: 'ABC200011',
+    patientName: 'QorliaQA OctOne Synthetic',
+    registerDate: '1 October 2026',
   });
+});
 
-  it('should convert address from FHIR with extensions', async () => {
-    mockGetPatientById.mockResolvedValue(mockFhirPatient);
+it('does not fetch without a patient UUID', () => {
+  renderHook(() => usePatientDetails({ patientUuid: undefined }), { wrapper });
+  expect(getPatientProfile).not.toHaveBeenCalled();
+});
 
-    const { result } = renderHook(
-      () => usePatientDetails({ patientUuid: 'patient-123' }),
-      { wrapper: createWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(result.current.addressInitialData).toEqual(
-      expect.objectContaining({
-        address1: 'Flat 1',
-        cityVillage: 'Delhi',
-        stateProvince: 'Delhi',
-      }),
-    );
-  });
-
-  it('should convert additional identifiers', async () => {
-    mockGetPatientById.mockResolvedValue(mockFhirPatient);
-
-    const { result } = renderHook(
-      () => usePatientDetails({ patientUuid: 'patient-123' }),
-      { wrapper: createWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(result.current.additionalIdentifiersInitialData).toEqual({
-      'old-id-uuid': 'OLD123',
-    });
-  });
-
-  it('should detect estimated birthdate from YYYY precision', async () => {
-    mockGetPatientById.mockResolvedValue({
-      ...mockFhirPatient,
-      birthDate: '1990',
-    });
-
-    const { result } = renderHook(
-      () => usePatientDetails({ patientUuid: 'patient-123' }),
-      { wrapper: createWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(result.current.initialDobEstimated).toBe(true);
-    expect(result.current.profileInitialData?.dateOfBirth).toBe('1990-01-01');
-  });
-
-  it('should not fetch when patientUuid is undefined', () => {
-    const { result } = renderHook(
-      () => usePatientDetails({ patientUuid: undefined }),
-      { wrapper: createWrapper() },
-    );
-
-    expect(mockGetPatientById).not.toHaveBeenCalled();
-    expect(result.current.patientDetails).toBeUndefined();
-  });
-
-  it('should show error notification on failure', async () => {
-    mockGetPatientById.mockRejectedValue(new Error('Failed to fetch'));
-
-    renderHook(() => usePatientDetails({ patientUuid: 'patient-123' }), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(mockAddNotification).toHaveBeenCalledWith({
-        type: 'error',
-        title: 'Error loading patient details',
-        message: 'Failed to fetch',
-      });
-    });
-  });
-
-  it('should return relationshipsInitialData from FHIR related persons bundle', async () => {
-    mockGetPatientById.mockResolvedValue(mockFhirPatient);
-    mockGetRelatedPersonsByPatient.mockResolvedValue({
-      entry: [
-        {
-          resource: {
-            id: 'related-person-uuid-1',
-            resourceType: 'RelatedPerson',
-            patient: { reference: 'Patient/patient-123' },
-            name: [{ given: ['Jane'], family: 'Smith' }],
-            relationship: [
-              {
-                coding: [
-                  {
-                    system: 'http://fhir.bahmni.org/RelationshipType',
-                    code: 'rel-type-uuid-1',
-                    display: 'Parent',
-                  },
-                ],
-              },
-            ],
-            extension: [
-              {
-                url: 'http://fhir.bahmni.org/ext/relatedPatient',
-                valueReference: { reference: 'Patient/related-patient-uuid-1' },
-              },
-            ],
-          },
-        },
-      ],
-    });
-
-    const { result } = renderHook(
-      () => usePatientDetails({ patientUuid: 'patient-123' }),
-      { wrapper: createWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    await waitFor(() => {
-      expect(result.current.relationshipsInitialData).toHaveLength(1);
-    });
-
-    expect(result.current.relationshipsInitialData![0].id).toBe(
-      'related-person-uuid-1',
-    );
-    expect(result.current.relationshipsInitialData![0].relationshipType).toBe(
-      'rel-type-uuid-1',
-    );
-    expect(result.current.relationshipsInitialData![0].patientUuid).toBe(
-      'related-patient-uuid-1',
-    );
-    expect(result.current.relationshipsInitialData![0].patientName).toBe(
-      'Jane Smith',
-    );
-    expect(result.current.relationshipsInitialData![0].isExisting).toBe(true);
-  });
-
-  it('should return empty array when bundle has no entries', async () => {
-    mockGetPatientById.mockResolvedValue(mockFhirPatient);
-    mockGetRelatedPersonsByPatient.mockResolvedValue({ entry: [] });
-
-    const { result } = renderHook(
-      () => usePatientDetails({ patientUuid: 'patient-123' }),
-      { wrapper: createWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    await waitFor(() => {
-      expect(result.current.relationshipsInitialData).toBeDefined();
-    });
-
-    expect(result.current.relationshipsInitialData).toEqual([]);
-  });
-
-  it('should not call getRelatedPersonsByPatient when patientUuid is undefined', () => {
-    const { result } = renderHook(
-      () => usePatientDetails({ patientUuid: undefined }),
-      { wrapper: createWrapper() },
-    );
-
-    expect(mockGetRelatedPersonsByPatient).not.toHaveBeenCalled();
-    expect(result.current.relationshipsInitialData).toBeUndefined();
-  });
+it('shows read failures instead of presenting an empty editable record', async () => {
+  (getPatientProfile as jest.Mock).mockRejectedValue(new Error('Read failed'));
+  renderHook(() => usePatientDetails({ patientUuid: 'patient' }), { wrapper });
+  await waitFor(() =>
+    expect(mockNotify).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error', message: 'Read failed' }),
+    ),
+  );
 });

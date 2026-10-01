@@ -79,7 +79,7 @@ const ProgramStateForm = ({
         required
       >
         <option value="">{t('PROGRAMS_CHOOSE_STATE')}</option>
-        {enrollment.allowedStates
+        {(enrollment.allowedStates ?? [])
           .filter((state) => !state.retired)
           .map((state) => (
             <option key={state.uuid} value={state.uuid}>
@@ -281,12 +281,19 @@ export const ProgramsPage = () => {
                           )}
                         {canEditPrograms &&
                           !item.dateCompleted &&
-                          item.allowedStates?.length > 0 &&
+                          (item.allowedStates?.length ?? 0) > 0 &&
                           patientUuid && (
                             <ProgramStateForm
                               enrollment={item}
                               patientUuid={patientUuid}
                             />
+                          )}
+                        {canEditPrograms &&
+                          !item.dateCompleted &&
+                          !item.allowedStates && (
+                            <p role="status">
+                              {t('PROGRAMS_STATE_SUPPORT_MISSING')}
+                            </p>
                           )}
                         {(canEditPrograms || canDeletePrograms) &&
                           patientUuid && (

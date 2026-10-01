@@ -664,7 +664,14 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
             }}
             observations={observationsWithValues}
             patient={patientContext}
-            translations={formMetadata.translations ?? {}}
+            // The installed library's handwritten type says flat strings, but its
+            // getDecodedTranslations implementation reads labels and concepts.
+            translations={
+              (formMetadata.translations ??
+                {}) as unknown as React.ComponentProps<
+                typeof CarbonContainer
+              >['translations']
+            }
             validate={validationErrorType !== null}
             validateForm
             collapse={false}

@@ -237,6 +237,46 @@ describe('ProgramsPage', () => {
     expect(getPrograms).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps enrollment review available when workflow metadata is missing', async () => {
+    (useUserPrivilege as jest.Mock).mockReturnValue({
+      userPrivileges: [
+        { uuid: 'priv-1', name: 'app:clinical' },
+        { uuid: 'priv-2', name: 'Edit Patient Programs' },
+      ],
+      isLoading: false,
+    });
+    getPatient.mockResolvedValue({
+      fullName: 'Meera Demo',
+      identifier: 'ABC123',
+    });
+    getPrograms.mockResolvedValue({
+      results: [
+        {
+          uuid: 'enrollment-1',
+          program: { uuid: 'program-1', name: 'Maternal health' },
+          dateEnrolled: '2026-09-01',
+          dateCompleted: null,
+          states: [],
+          attributes: [],
+          voided: false,
+        },
+      ],
+    });
+    renderPage('/clinical/programs/patient-1');
+
+    fireEvent.click(await screen.findByText('Maternal health'));
+    expect(screen.getByText('PROGRAMS_STATE_SUPPORT_MISSING')).toBeVisible();
+    expect(
+      await screen.findByRole('button', { name: 'PROGRAMS_EDIT' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('combobox', {
+        name: 'PROGRAMS_CHANGE_STATE',
+      }),
+    ).not.toBeInTheDocument();
+    expect(updateState).not.toHaveBeenCalled();
+  });
+
   it('removes only the current state after confirmation', async () => {
     (useUserPrivilege as jest.Mock).mockReturnValue({
       userPrivileges: [

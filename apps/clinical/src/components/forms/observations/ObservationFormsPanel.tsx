@@ -176,7 +176,13 @@ const ObservationFormsPanel: React.FC<ObservationFormsPanelProps> = ({
         // formFieldPath is "<formName>.<version>/..."), otherwise a stray
         // observation from a different form can end up first in the array and
         // silently corrupt this form's version/prepopulation matching.
-        const form2Observations = getObservationsFromFhir(bundle).filter(
+        const entries =
+          bundle.entry?.flatMap((entry) =>
+            entry.resource?.resourceType === 'Observation'
+              ? [{ ...entry }]
+              : [],
+          ) ?? [];
+        const form2Observations = getObservationsFromFhir(entries).filter(
           (obs) =>
             obs.formFieldPath
               ?.toLowerCase()

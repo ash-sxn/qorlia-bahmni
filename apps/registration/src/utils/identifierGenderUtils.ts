@@ -2,6 +2,8 @@ import { getGenders, getIdentifierData } from '@bahmni/services';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 
+const NO_GENDERS: Record<string, string> = {};
+
 export const useIdentifierData = () => {
   const { data: identifierData } = useQuery({
     queryKey: ['identifierData'],
@@ -41,7 +43,7 @@ export const useIdentifierData = () => {
 };
 
 export const useGenderData = (t: (key: string) => string) => {
-  const { data: gendersFromApi = {} } = useQuery({
+  const { data: gendersFromApi = NO_GENDERS } = useQuery({
     queryKey: ['genders'],
     queryFn: getGenders,
     staleTime: 5 * 60 * 1000,

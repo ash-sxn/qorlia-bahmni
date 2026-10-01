@@ -27,6 +27,7 @@ const startTime = (encounter: Encounter): number =>
 export const useVisitDocuments = (
   patientUuid: string | null,
   documentEncounterTypeUuid?: string[],
+  uploadContext?: { providerUuid?: string; locationUuid?: string },
 ) => {
   const hasCompletedInitialLoad = useRef(false);
   // Both queries re-key when the patient changes, which is a genuine first load for that patient.
@@ -48,6 +49,7 @@ export const useVisitDocuments = (
 
   const encounterToVisit = new Map<string, string>();
   const documentEncounterByVisit = new Map<string, Encounter>();
+  const matchingEncounterInstanceUuids: string[] = [];
   encounters
     .filter((encounter) => !isVisit(encounter))
     .forEach((encounter) => {
@@ -62,13 +64,25 @@ export const useVisitDocuments = (
         typeCode &&
         documentEncounterTypeUuid.includes(typeCode)
       ) {
-        documentEncounterByVisit.set(visitId, encounter);
+        matchingEncounterInstanceUuids.push(encounter.id);
+        if (
+          !uploadContext ||
+          (uploadContext.providerUuid &&
+            uploadContext.locationUuid &&
+            encounter.participant?.some(
+              (entry) =>
+                entry.individual?.reference ===
+                `Practitioner/${uploadContext.providerUuid}`,
+            ) &&
+            encounter.location?.some(
+              (entry) =>
+                entry.location.reference ===
+                `Location/${uploadContext.locationUuid}`,
+            ))
+        )
+          documentEncounterByVisit.set(visitId, encounter);
       }
     });
-
-  const matchingEncounterInstanceUuids = Array.from(
-    documentEncounterByVisit.values(),
-  ).flatMap((encounter) => (encounter.id ? [encounter.id] : []));
 
   const documentsQuery = useQuery({
     queryKey: [

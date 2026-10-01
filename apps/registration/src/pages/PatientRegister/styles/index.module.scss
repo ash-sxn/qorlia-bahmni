@@ -111,7 +111,7 @@
   .nameFields,
   .demographicsFields,
   .birthInfoFields {
-    >* {
+    > * {
       position: relative;
 
       div[class*="cds--form-requirement"] {
@@ -141,7 +141,7 @@
     margin-top: $spacing-05;
     padding-bottom: $spacing-03 + $spacing-01;
 
-    >* {
+    > * {
       flex: 1 1 0;
       min-width: 0;
     }
@@ -195,6 +195,40 @@
 
 .col {
   flex: 1 1;
+  min-width: 0;
+}
+
+@media (max-width: 42rem) {
+  .form,
+  .formContainer,
+  .formActions {
+    width: calc(100% - 2rem);
+  }
+
+  .formContainer {
+    .nameFields,
+    .demographicsFields,
+    .birthInfoFields {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .nameFields > *,
+    .dropdownField {
+      width: 100%;
+      flex-basis: auto;
+    }
+  }
+
+  .row {
+    flex-direction: column;
+  }
+
+  .formActions,
+  .infoContainer {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
 }
 
 .ageFieldsWrapper {
@@ -318,6 +352,4 @@
   :global(.cds--accordion--start .cds--accordion__content) {
     margin-inline-start: 0 !important;
   }
-
 }
-

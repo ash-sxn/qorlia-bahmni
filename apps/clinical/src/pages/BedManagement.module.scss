@@ -329,6 +329,54 @@
   background: var(--qorlia-surface, #fff);
 }
 
+.resultForm {
+  margin-top: 20px;
+}
+
+.resultForm fieldset {
+  min-width: 0;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.resultForm legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+
+.resultText {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+  font-weight: 600;
+}
+
+.resultText textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 8px;
+  font: inherit;
+  resize: vertical;
+}
+
+.resultForm button {
+  min-height: 44px;
+  padding: 9px 14px;
+  border: 1px solid var(--qorlia-primary, #1f5238);
+  border-radius: 8px;
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.resultForm button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .programSections {
   display: grid;
   gap: 18px;
