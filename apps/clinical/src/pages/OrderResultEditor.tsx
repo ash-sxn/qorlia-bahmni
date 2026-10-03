@@ -9,15 +9,33 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent } from 'react';
 import styles from './BedManagement.module.scss';
 import {
+  codedResultUuid,
+  fulfillmentAnswerLabel,
   makeFulfillmentObservation,
   observationsForOrder,
   saveFulfillment,
   supportsFulfillmentForm,
+  validateFulfillmentObservation,
   type FulfillmentConcept,
   type FulfillmentEncounter,
   type FulfillmentOrder,
   type OrderObservation,
 } from './ordersApi';
+
+const resultValueLabel = (value: unknown): string => {
+  if (!value || typeof value !== 'object') return String(value ?? '');
+  const coded = value as {
+    shortName?: unknown;
+    name?: unknown;
+    display?: unknown;
+  };
+  const name =
+    coded.name && typeof coded.name === 'object' && 'name' in coded.name
+      ? coded.name.name
+      : coded.name;
+  const label = coded.shortName ?? name ?? coded.display;
+  return typeof label === 'string' ? label : JSON.stringify(value);
+};
 
 export const OrderResultValues = ({
   observations,
@@ -36,22 +54,14 @@ export const OrderResultValues = ({
             <a href={documentLink(obs.value)} target="_blank" rel="noreferrer">
               Open attachment
             </a>
-          ) : typeof obs.value === 'object' ? (
-            JSON.stringify(obs.value)
           ) : (
-            String(obs.value ?? '')
+            resultValueLabel(obs.value)
           )}
+          {obs.comment && <p>{obs.comment}</p>}
         </li>
       ))}
   </ul>
 );
-
-const hasUiRules = (
-  form: FulfillmentConcept,
-  config: Record<string, Record<string, unknown>>,
-): boolean =>
-  Object.keys(config[form.name.name] ?? {}).length > 0 ||
-  form.setMembers.some((member) => hasUiRules(member, config));
 
 const matchesForm = (
   observation: OrderObservation,
@@ -67,6 +77,8 @@ const matchesForm = (
 
 interface FieldProps {
   observation: OrderObservation;
+  concept: FulfillmentConcept;
+  uiConfig: Record<string, Record<string, unknown>>;
   id: string;
   patientUuid: string;
   maxSize?: number;
@@ -77,6 +89,8 @@ interface FieldProps {
 
 const ResultField = ({
   observation: obs,
+  concept,
+  uiConfig,
   id,
   patientUuid,
   maxSize,
@@ -149,6 +163,12 @@ const ResultField = ({
           <ResultField
             key={member.uuid ?? `${member.concept.uuid}:${index}`}
             observation={member}
+            concept={
+              concept.setMembers.find(
+                (field) => field.uuid === member.concept.uuid,
+              )!
+            }
+            uiConfig={uiConfig}
             id={`${id}-${index}`}
             patientUuid={patientUuid}
             maxSize={maxSize}
@@ -170,6 +190,98 @@ const ResultField = ({
         ))}
       </fieldset>
     );
+  if (['Numeric', 'Coded'].includes(obs.concept.dataType)) {
+    const note =
+      uiConfig[label]?.disableAddNotes === true ? null : (
+        <label className={styles.resultText} htmlFor={`${id}-notes`}>
+          Notes for {label}
+          <textarea
+            id={`${id}-notes`}
+            rows={2}
+            value={obs.comment ?? ''}
+            onChange={(event) =>
+              onChange([{ ...obs, comment: event.target.value }])
+            }
+          />
+        </label>
+      );
+    if (obs.concept.dataType === 'Numeric') {
+      const value = obs.value;
+      const abnormal =
+        typeof value === 'number' &&
+        ((concept.lowNormal != null && value < concept.lowNormal) ||
+          (concept.hiNormal != null && value > concept.hiNormal));
+      return (
+        <div>
+          <div className={styles.resultText}>
+            <label htmlFor={id}>{label}</label>
+            <input
+              id={id}
+              type="number"
+              value={String(value ?? '')}
+              min={concept.lowAbsolute ?? 0}
+              max={concept.hiAbsolute ?? undefined}
+              step={concept.allowDecimal ? 'any' : 1}
+              aria-describedby={
+                concept.units || abnormal ? `${id}-hint` : undefined
+              }
+              onChange={(event) =>
+                onChange([
+                  {
+                    ...obs,
+                    value:
+                      event.target.value === ''
+                        ? undefined
+                        : Number(event.target.value),
+                  },
+                ])
+              }
+            />
+            {(concept.units || abnormal) && (
+              <span id={`${id}-hint`}>
+                {abnormal
+                  ? `Outside the reference range: ${concept.lowNormal ?? 'no lower limit'} to ${concept.hiNormal ?? 'no upper limit'}${concept.units ? ` ${concept.units}` : ''}.`
+                  : concept.units}
+              </span>
+            )}
+          </div>
+          {note}
+        </div>
+      );
+    }
+    return (
+      <fieldset>
+        <legend>{label}</legend>
+        <div className={styles.tabs}>
+          {concept.answers!.map((answer) => (
+            <button
+              type="button"
+              key={answer.uuid}
+              aria-pressed={codedResultUuid(obs.value) === answer.uuid}
+              onClick={() =>
+                onChange([
+                  {
+                    ...obs,
+                    value:
+                      codedResultUuid(obs.value) === answer.uuid
+                        ? undefined
+                        : {
+                            uuid: answer.uuid,
+                            name: answer.name.name,
+                            shortName: fulfillmentAnswerLabel(answer),
+                          },
+                  },
+                ])
+              }
+            >
+              {fulfillmentAnswerLabel(answer)}
+            </button>
+          ))}
+        </div>
+        {note}
+      </fieldset>
+    );
+  }
   if (obs.concept.dataType === 'Text')
     return (
       <label className={styles.resultText} htmlFor={id}>
@@ -272,8 +384,7 @@ const OrderResultEditor = ({
     hasPrivilege(userPrivileges, 'Add Observations') &&
     (!existing || hasPrivilege(userPrivileges, 'Edit Observations'));
   const supported =
-    supportsFulfillmentForm(form) &&
-    !hasUiRules(form, uiConfig) &&
+    supportsFulfillmentForm(form, uiConfig) &&
     current.length <= 1 &&
     (!current.length || (!!existing && matchesForm(existing, form)));
   useEffect(() => {
@@ -304,6 +415,9 @@ const OrderResultEditor = ({
     event.preventDefault();
     if (!canWrite || !supported || !dirty || uploading || saving || saved)
       return;
+    const validation = validateFulfillmentObservation(form, draft, uiConfig);
+    setError(validation ?? '');
+    if (validation) return;
     setConfirming(true);
   };
   const confirmSave = async () => {
@@ -317,6 +431,12 @@ const OrderResultEditor = ({
       saved
     )
       return;
+    const validation = validateFulfillmentObservation(form, draft, uiConfig);
+    if (validation) {
+      setConfirming(false);
+      setError(validation);
+      return;
+    }
     setConfirming(false);
     setSaving(true);
     setError('');
@@ -384,6 +504,8 @@ const OrderResultEditor = ({
           <legend>Order results</legend>
           <ResultField
             observation={draft}
+            concept={form}
+            uiConfig={uiConfig}
             id={`result-${order.orderUuid}`}
             patientUuid={patientUuid}
             maxSize={maxSize.isSuccess ? (maxSize.data ?? Infinity) : undefined}

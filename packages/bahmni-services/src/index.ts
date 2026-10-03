@@ -207,6 +207,7 @@ export {
   searchFHIRConceptsByName,
   getConceptById,
   searchConceptByName,
+  getDisplayNameForConcept,
   type ConceptSearch,
   type ConceptClass,
   type ConceptData,

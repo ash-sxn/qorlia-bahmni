@@ -3,7 +3,7 @@ import { useUserPrivilege } from '@bahmni/widgets';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import OrderResultEditor from '../OrderResultEditor';
+import OrderResultEditor, { OrderResultValues } from '../OrderResultEditor';
 import {
   saveFulfillment,
   type FulfillmentConcept,
@@ -49,6 +49,8 @@ const form: FulfillmentConcept = {
 const onSaved = jest.fn();
 const renderEditor = (
   snapshot: FulfillmentEncounter = { observations: [] },
+  resultForm: FulfillmentConcept = form,
+  uiConfig: Record<string, Record<string, unknown>> = {},
 ) => {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -58,11 +60,11 @@ const renderEditor = (
       <OrderResultEditor
         patientUuid="patient"
         order={{ orderUuid: 'order', concept: { name: 'Chest X-ray' } }}
-        form={form}
+        form={resultForm}
         snapshot={next}
         locationUuid="location"
         providerUuid="provider"
-        uiConfig={{}}
+        uiConfig={uiConfig}
         onSaved={onSaved}
       />
     </QueryClientProvider>
@@ -244,4 +246,145 @@ it('does not expose a write path to a read-only role', async () => {
   await waitFor(() => expect(getDocumentUploadMaxSizeMb).toHaveBeenCalled());
   expect(screen.getByRole('button', { name: 'Save result' })).toBeDisabled();
   expect(screen.getByLabelText('Radiology Notes')).toBeDisabled();
+});
+
+const numericCodedForm: FulfillmentConcept = {
+  ...form,
+  setMembers: [
+    {
+      uuid: 'measurement',
+      name: { name: 'Measurement' },
+      datatype: { name: 'Numeric' },
+      set: false,
+      setMembers: [],
+      units: 'mm',
+      allowDecimal: false,
+      lowAbsolute: 0,
+      hiAbsolute: 100,
+      lowNormal: 10,
+      hiNormal: 20,
+    },
+    {
+      uuid: 'finding',
+      name: { name: 'Finding' },
+      datatype: { name: 'Coded' },
+      set: false,
+      setMembers: [],
+      answers: [
+        {
+          uuid: 'negative',
+          name: { name: 'No abnormality detected' },
+          names: [{ name: 'Negative', conceptNameType: 'SHORT' }],
+        },
+      ],
+    },
+  ],
+};
+
+it('uses numeric metadata, accepts zero and saves a coded answer with its notes', async () => {
+  jest.mocked(saveFulfillment).mockResolvedValueOnce({});
+  onSaved.mockResolvedValueOnce({ observations: [] });
+  renderEditor({ observations: [] }, numericCodedForm);
+  const measurement = screen.getByRole('spinbutton', { name: 'Measurement' });
+  expect(measurement).toHaveAttribute('min', '0');
+  expect(measurement).toHaveAttribute('max', '100');
+  expect(measurement).toHaveAttribute('step', '1');
+  fireEvent.change(measurement, { target: { value: '0' } });
+  expect(measurement).toHaveValue(0);
+  expect(measurement).toBeValid();
+  expect(
+    screen.getByText('Outside the reference range: 10 to 20 mm.'),
+  ).toBeInTheDocument();
+  const answer = screen.getByRole('button', { name: 'Negative' });
+  await userEvent.click(answer);
+  expect(answer).toHaveAttribute('aria-pressed', 'true');
+  await userEvent.click(answer);
+  expect(answer).toHaveAttribute('aria-pressed', 'false');
+  await userEvent.click(answer);
+  fireEvent.change(screen.getByLabelText('Notes for Finding'), {
+    target: { value: 'QorliaQA synthetic coded-result note' },
+  });
+  await confirmSave();
+  await waitFor(() => expect(onSaved).toHaveBeenCalled());
+  expect(saveFulfillment).toHaveBeenCalledWith(
+    'patient',
+    'location',
+    'provider',
+    'order',
+    { observations: [] },
+    expect.objectContaining({
+      groupMembers: [
+        expect.objectContaining({ value: 0 }),
+        expect.objectContaining({
+          value: {
+            uuid: 'negative',
+            name: 'No abnormality detected',
+            shortName: 'Negative',
+          },
+          comment: 'QorliaQA synthetic coded-result note',
+        }),
+      ],
+    }),
+  );
+});
+
+it('validates configured required coded fields before opening confirmation', async () => {
+  renderEditor({ observations: [] }, numericCodedForm, {
+    Finding: { required: true, disableAddNotes: true },
+  });
+  expect(screen.queryByLabelText('Notes for Finding')).not.toBeInTheDocument();
+  fireEvent.change(screen.getByRole('spinbutton', { name: 'Measurement' }), {
+    target: { value: '12' },
+  });
+  await userEvent.click(screen.getByRole('button', { name: 'Save result' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Finding is required.',
+  );
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(saveFulfillment).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole('button', { name: 'Negative' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Save result' }));
+  expect(await screen.findByRole('dialog')).toBeInTheDocument();
+});
+
+it('keeps unimplemented concept-set rules read-only instead of dropping them', async () => {
+  renderEditor({ observations: [] }, numericCodedForm, {
+    Finding: { multiSelect: true },
+  });
+  expect(screen.getByRole('alert')).toHaveTextContent('still being migrated');
+  expect(
+    screen.queryByRole('button', { name: 'Save result' }),
+  ).not.toBeInTheDocument();
+  expect(saveFulfillment).not.toHaveBeenCalled();
+});
+
+it('shows readable saved coded results, zero values and notes', () => {
+  render(
+    <OrderResultValues
+      observations={[
+        {
+          concept: { uuid: 'finding', name: 'Finding', dataType: 'Coded' },
+          value: {
+            uuid: 'negative',
+            name: 'No abnormality detected',
+            shortName: 'Negative',
+          },
+          groupMembers: [],
+          comment: 'Synthetic note',
+        },
+        {
+          concept: {
+            uuid: 'measurement',
+            name: 'Measurement',
+            dataType: 'Numeric',
+          },
+          value: 0,
+          groupMembers: [],
+        },
+      ]}
+    />,
+  );
+  expect(screen.getByText('Negative')).toBeInTheDocument();
+  expect(screen.getByText('Synthetic note')).toBeInTheDocument();
+  expect(screen.getByText('0')).toBeInTheDocument();
 });

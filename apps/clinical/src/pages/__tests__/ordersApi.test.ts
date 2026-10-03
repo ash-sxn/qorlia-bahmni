@@ -6,6 +6,7 @@ import {
   makeFulfillmentObservation,
   saveFulfillment,
   supportsFulfillmentForm,
+  validateFulfillmentObservation,
   type FulfillmentConcept,
   type OrderObservation,
 } from '../ordersApi';
@@ -235,4 +236,78 @@ it('does not silently render an unsupported datatype as free text', () => {
   expect(supportsFulfillmentForm({ ...image, handler: 'OtherHandler' })).toBe(
     false,
   );
+});
+
+it.each([
+  [0, {}, undefined],
+  [12, {}, undefined],
+  [4, { lowNormal: 10 }, undefined],
+  [-1, {}, 'allowable range'],
+  [-1, { lowAbsolute: -2 }, undefined],
+  [1, { hiAbsolute: 0 }, 'allowable range'],
+  [101, { hiAbsolute: 100 }, 'allowable range'],
+  [1.5, {}, 'whole number'],
+  [1.5, { allowDecimal: true }, undefined],
+  ['1', {}, 'must be a number'],
+  [NaN, {}, 'must be a number'],
+  [Infinity, {}, 'must be a number'],
+] as const)(
+  'validates numeric results without blocking abnormal reference values: %p, %p',
+  (value, metadata, error) => {
+    const field = {
+      ...notes,
+      datatype: { name: 'Numeric' },
+      ...metadata,
+    };
+    const draft = { ...makeFulfillmentObservation(field), value };
+    const result = validateFulfillmentObservation(field, draft, {});
+    if (error) expect(result).toContain(error);
+    else expect(result).toBeUndefined();
+  },
+);
+
+it('validates configured coded answers and preserves zero, answer IDs and notes', () => {
+  const field = {
+    ...notes,
+    datatype: { name: 'Coded' },
+    answers: [{ uuid: 'answer', name: { name: 'Answer' } }],
+  };
+  const draft = makeFulfillmentObservation(field);
+  for (const value of ['answer', { uuid: 'answer', name: 'Answer' }]) {
+    draft.value = value;
+    draft.comment = 'Synthetic note';
+    expect(validateFulfillmentObservation(field, draft, {})).toBeUndefined();
+    expect(fulfillmentPayload(draft, 'order')).toMatchObject({
+      value,
+      comment: 'Synthetic note',
+      orderUuid: 'order',
+    });
+  }
+  draft.value = { uuid: 'unknown' };
+  expect(validateFulfillmentObservation(field, draft, {})).toContain(
+    'configured answer',
+  );
+  draft.value = 0;
+  expect(fulfillmentPayload(draft, 'order')).toMatchObject({ value: 0 });
+});
+
+it('checks required results only when some result remains, so existing results can be cleared', () => {
+  const draft = makeFulfillmentObservation(form);
+  const required = { 'Radiology Notes': { required: true } };
+  expect(validateFulfillmentObservation(form, draft, required)).toBeUndefined();
+  draft.groupMembers[0].groupMembers[1].value = 'patient/image.png';
+  expect(validateFulfillmentObservation(form, draft, required)).toBe(
+    'Radiology Notes is required.',
+  );
+  draft.groupMembers[0].groupMembers[1].voided = true;
+  expect(validateFulfillmentObservation(form, draft, required)).toBeUndefined();
+  draft.groupMembers[0].groupMembers[0].value = 'Synthetic note';
+  expect(validateFulfillmentObservation(form, draft, required)).toBeUndefined();
+  expect(supportsFulfillmentForm(form, required)).toBe(true);
+  expect(
+    supportsFulfillmentForm(form, { 'Radiology Notes': { required: 'true' } }),
+  ).toBe(false);
+  expect(
+    supportsFulfillmentForm({ ...notes, conceptClass: { name: 'Computed' } }),
+  ).toBe(false);
 });

@@ -352,8 +352,10 @@
   font-weight: 600;
 }
 
-.resultText textarea {
+.resultText textarea,
+.resultText input {
   width: 100%;
+  min-width: 0;
   padding: 10px;
   border: 1px solid var(--qorlia-border, #dbe5e1);
   border-radius: 8px;
@@ -375,6 +377,16 @@
 .resultForm button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.resultForm .tabs button {
+  background: var(--qorlia-surface, #fff);
+  color: var(--qorlia-primary, #1f5238);
+}
+
+.resultForm .tabs button[aria-pressed="true"] {
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
 }
 
 .programSections {

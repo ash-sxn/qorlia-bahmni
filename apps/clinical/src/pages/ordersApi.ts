@@ -1,4 +1,9 @@
-import { get, getOrderTypes, post } from '@bahmni/services';
+import {
+  get,
+  getDisplayNameForConcept,
+  getOrderTypes,
+  post,
+} from '@bahmni/services';
 
 const core = '/openmrs/ws/rest/v1/bahmnicore';
 
@@ -9,7 +14,34 @@ export interface FulfillmentConcept {
   handler?: string;
   set: boolean;
   setMembers: FulfillmentConcept[];
+  conceptClass?: { name: string };
+  units?: string | null;
+  allowDecimal?: boolean | null;
+  lowAbsolute?: number | null;
+  hiAbsolute?: number | null;
+  lowNormal?: number | null;
+  hiNormal?: number | null;
+  answers?: FulfillmentAnswer[];
 }
+
+interface FulfillmentAnswer {
+  uuid: string;
+  name: { name: string };
+  names?: { name: string; conceptNameType: string }[];
+}
+
+export const fulfillmentAnswerLabel = (answer: FulfillmentAnswer) =>
+  getDisplayNameForConcept(answer.names) ?? answer.name.name;
+
+export const codedResultUuid = (value: unknown): string | undefined =>
+  typeof value === 'string'
+    ? value
+    : value &&
+        typeof value === 'object' &&
+        'uuid' in value &&
+        typeof value.uuid === 'string'
+      ? value.uuid
+      : undefined;
 
 export interface OrderObservation {
   uuid?: string;
@@ -123,17 +155,95 @@ export const makeFulfillmentObservation = (
     : [],
 });
 
-// ponytail: this editor covers Standard's text/image form. Other form controls
-// remain blocked until their validation and behavior have a React equivalent.
+// ponytail: conditional, repeated, computed and specialized controls stay
+// read-only until their rules have equivalent React implementations.
 export const supportsFulfillmentForm = (
   concept: FulfillmentConcept,
-): boolean =>
-  concept.set
+  uiConfig: Record<string, Record<string, unknown>> = {},
+): boolean => {
+  if (
+    ['Computed', 'Computed/Editable', 'Concept Details'].includes(
+      concept.conceptClass?.name ?? '',
+    ) ||
+    Object.entries(uiConfig[concept.name.name] ?? {}).some(
+      ([key, value]) =>
+        !['required', 'disableAddNotes'].includes(key) ||
+        typeof value !== 'boolean',
+    )
+  )
+    return false;
+  return concept.set
     ? concept.setMembers.length > 0 &&
-      concept.setMembers.every(supportsFulfillmentForm)
-    : concept.datatype.name === 'Text' ||
-      (concept.datatype.name === 'Complex' &&
-        concept.handler === 'ImageUrlHandler');
+        concept.setMembers.every((member) =>
+          supportsFulfillmentForm(member, uiConfig),
+        )
+    : ['Text', 'Numeric'].includes(concept.datatype.name) ||
+        (concept.datatype.name === 'Coded' && !!concept.answers?.length) ||
+        (concept.datatype.name === 'Complex' &&
+          concept.handler === 'ImageUrlHandler');
+};
+
+const hasResultValue = (observation: OrderObservation): boolean =>
+  !observation.voided &&
+  (observation.groupMembers.length
+    ? observation.groupMembers.some(hasResultValue)
+    : observation.value !== undefined &&
+      observation.value !== null &&
+      observation.value !== '');
+
+export const validateFulfillmentObservation = (
+  form: FulfillmentConcept,
+  observation: OrderObservation,
+  uiConfig: Record<string, Record<string, unknown>>,
+  checkRequired = hasResultValue(observation),
+): string | undefined => {
+  if (observation.voided) return;
+  if (observation.concept.uuid !== form.uuid)
+    return 'The result does not match its configured form.';
+  if (form.set) {
+    for (const member of observation.groupMembers) {
+      const child = form.setMembers.find(
+        (field) => field.uuid === member.concept.uuid,
+      );
+      if (!child)
+        return 'The result contains a field that is no longer configured.';
+      const error = validateFulfillmentObservation(
+        child,
+        member,
+        uiConfig,
+        checkRequired,
+      );
+      if (error) return error;
+    }
+    return;
+  }
+  const label = form.name.name;
+  if (!hasResultValue(observation)) {
+    if (checkRequired && uiConfig[label]?.required === true)
+      return `${label} is required.`;
+    return;
+  }
+  if (form.datatype.name === 'Numeric') {
+    const value = observation.value;
+    if (typeof value !== 'number' || !Number.isFinite(value))
+      return `${label} must be a number.`;
+    if (!form.allowDecimal && !Number.isInteger(value))
+      return `${label} must be a whole number.`;
+    if (
+      value < (form.lowAbsolute ?? 0) ||
+      value > (form.hiAbsolute ?? Infinity)
+    )
+      return `${label} is outside the allowable range.`;
+  }
+  if (
+    form.datatype.name === 'Coded' &&
+    !form.answers?.some(
+      (answer) => answer.uuid === codedResultUuid(observation.value),
+    )
+  )
+    return `Choose a configured answer for ${label}.`;
+  return undefined;
+};
 
 export const fulfillmentPayload = (
   observation: OrderObservation,
