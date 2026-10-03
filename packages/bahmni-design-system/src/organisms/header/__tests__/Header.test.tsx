@@ -335,6 +335,41 @@ describe('Header', () => {
   });
 
   describe('Side Navigation', () => {
+    it('opens mobile navigation explicitly and dismisses it without trapping the page', () => {
+      mockIsMobile.mockReturnValue(true);
+      const { container } = render(<Header {...defaultProps} />);
+      const nav = screen.getByTestId('side-nav');
+      const menu = screen.getByRole('button', { name: 'Open navigation' });
+
+      expect(menu).toHaveAttribute('aria-expanded', 'false');
+      expect(menu).toHaveAttribute('aria-controls', nav.id);
+      expect(nav).not.toHaveClass('cds--side-nav--rail');
+      fireEvent.mouseEnter(nav);
+      expect(nav).not.toHaveClass('cds--side-nav--expanded');
+
+      fireEvent.click(menu);
+      expect(nav).toHaveClass('cds--side-nav--expanded');
+      expect(menu).toHaveAttribute('aria-expanded', 'true');
+      expect(menu).toHaveAccessibleName('Close navigation');
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(nav).not.toHaveClass('cds--side-nav--expanded');
+
+      fireEvent.click(menu);
+      fireEvent.click(container.querySelector('.cds--side-nav__overlay')!);
+      expect(menu).toHaveAttribute('aria-expanded', 'false');
+
+      fireEvent.click(menu);
+      fireEvent.click(screen.getByTestId('sidenav-item-patients'));
+      expect(mockOnSideNavItemClick).toHaveBeenCalledWith('patients');
+      expect(menu).toHaveAttribute('aria-expanded', 'false');
+      expect(nav).not.toHaveClass('cds--side-nav--expanded');
+    });
+
+    it('retains the compact desktop rail during consultation entry', () => {
+      render(<Header {...defaultProps} isRail />);
+      expect(screen.getByTestId('side-nav')).toHaveClass('cds--side-nav--rail');
+    });
+
     it('renders side nav items with correct content and icons', () => {
       render(<Header {...defaultProps} />);
 

@@ -128,8 +128,8 @@
   }
 
   .expand {
-    left: $spacing-05 !important;
-    width: calc(100vw - $spacing-11) !important;
+    left: 0 !important;
+    width: 100% !important;
   }
 
   .collapse {
@@ -137,7 +137,7 @@
   }
 
   .panelGroup {
-    margin-left: $spacing-09;
+    margin-left: 0;
 
     > [data-panel] {
       &:first-child:not(:last-child) {

@@ -108,4 +108,8 @@
   :global(.cds--side-nav__icon) svg {
     color: currentColor;
   }
+
+  :global(.cds--side-nav__link .cds--side-nav__link-text) {
+    color: inherit;
+  }
 }

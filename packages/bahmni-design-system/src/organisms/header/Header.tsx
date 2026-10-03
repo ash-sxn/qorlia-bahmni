@@ -1,6 +1,7 @@
 import { BAHMNI_HOME_PATH } from '@bahmni/services';
 import {
   HeaderContainer,
+  HeaderMenuButton,
   Header as CarbonHeader,
   HeaderName,
   HeaderGlobalBar,
@@ -127,15 +128,25 @@ export const Header: React.FC<HeaderProps> = React.memo(
       );
     };
 
-    const renderSideNav = () => {
+    const renderSideNav = (
+      isMenuExpanded: boolean,
+      onClickSideNavExpand: () => void,
+    ) => {
       if (sideNavItems.length === 0) return null;
+      const mobile = isMobile();
+      const closeMobileMenu = () => {
+        if (mobile && isMenuExpanded) onClickSideNavExpand();
+      };
 
       return (
         <SideNav
+          id="qorlia-side-navigation"
           aria-label={'SIDE_NAVIGATION'}
-          expanded={isSideNavExpanded && !isRail}
+          expanded={mobile ? isMenuExpanded : isSideNavExpanded && !isRail}
           isPersistent
-          isRail={isRail || isMobile()}
+          isRail={isRail && !mobile}
+          onOverlayClick={closeMobileMenu}
+          onSideNavBlur={closeMobileMenu}
           data-testid="side-nav"
           className={styles.sideNavItems}
         >
@@ -152,7 +163,10 @@ export const Header: React.FC<HeaderProps> = React.memo(
                   />
                 )}
                 href={item.href ?? '#'}
-                onClick={(e) => handleSideNavItemClick(e, item.id)}
+                onClick={(e) => {
+                  handleSideNavItemClick(e, item.id);
+                  closeMobileMenu();
+                }}
                 isActive={item.id === activeSideNavItemId}
                 data-testid={`sidenav-item-${item.id}`}
                 large
@@ -167,12 +181,26 @@ export const Header: React.FC<HeaderProps> = React.memo(
 
     return (
       <HeaderContainer
-        render={() => (
+        render={({
+          isSideNavExpanded: isMenuExpanded,
+          onClickSideNavExpand,
+        }) => (
           <CarbonHeader aria-label={ariaLabel} data-testid="header">
+            {sideNavItems.length > 0 && (
+              <HeaderMenuButton
+                aria-label={
+                  isMenuExpanded ? 'Close navigation' : 'Open navigation'
+                }
+                aria-expanded={isMenuExpanded}
+                aria-controls="qorlia-side-navigation"
+                isActive={isMenuExpanded}
+                onClick={onClickSideNavExpand}
+              />
+            )}
             {renderBrand()}
             {renderBreadcrumbs()}
             {renderGlobalBar()}
-            {renderSideNav()}
+            {renderSideNav(isMenuExpanded, onClickSideNavExpand)}
             {extraContent}
           </CarbonHeader>
         )}
