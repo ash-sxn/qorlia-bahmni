@@ -1,8 +1,20 @@
 # Qorlia React frontend backend readiness
 
-Updated 1 October 2026. The local React review build uses the existing synthetic demo backend at `demo-bahmni.qorlia.com`. No redesigned frontend or backend upgrade has been deployed there. This is development evidence, not a production release gate.
+Updated 4 October 2026. The local review at `http://localhost:3002/bahmni-v2/login` uses the isolated synthetic staging backend. The earlier port 3000 review uses the existing synthetic demo backend at `demo-bahmni.qorlia.com`. No redesigned frontend or backend upgrade has been deployed there. This is development evidence, not a production release gate.
 
-## Verified synthetic workflows
+## 4 October isolated browser checkpoint
+
+- Actual browser sign-in, login-location selection and React home navigation passed. A dropped private development connection caused the reported sign-in availability failure; restoring that connection restored authentication. The private review connection now retries after a disconnect, with a forced-disconnect recovery check passing. Staging remains internal-only.
+- The development proxy removes the Basic authentication challenge header only from OpenMRS REST/FHIR HTTP 401 responses. The status still reaches the React login handler; this prevents a second native browser login prompt without disabling authentication or changing other services' challenges. A regression test covers that boundary.
+- For `QorliaQA StageClinical Synthetic` (`QST910001`), the React Vitals form and Done action saved pulse 78, oxygen saturation 98 and respiratory rate 16 through an HTTP 201 `EncounterBundle` transaction. The saved observations and form history persisted after a full browser reload.
+- History and Examination opened, its conditional custom-complaint field appeared after selecting Other generic, and its save event rejected missing required data. After completing the fields, Save Form and Done submitted an HTTP 201 transaction. History, complaint text, duration and units persisted after reload. Editing the saved history submitted another HTTP 201 transaction retaining the same consultation UUID and preserving the other form fields; the edited text was re-read.
+- The shared metadata reader now converts legacy plain-text event scripts to UTF-8 base64 for the installed form renderer while preserving already encoded scripts. This applies to nested control events and all callers, with a regression check for Unicode, encoded events and non-event fields. No script is executed during normalization.
+- Staging's duplicated legacy/CIEL diagnosis mappings caused flowsheet HTTP 500 responses. Only the nine exact conflicting reference mappings were removed after a recoverable backup, preserving concepts and records. Restarting only isolated OpenMRS cleared its mapping cache. The real flowsheet API now returns 200 and displays the saved pulse and respiratory rate. Other initializer metadata errors still need targeted verification.
+- Narrow-screen form cards and action controls no longer overflow their container or put the save footer outside the viewport. This is a shared layout correction, not evidence that every form control has completed visual and accessibility review.
+
+These are populated browser proofs for two observation forms, not full consultation parity. Medication, allergy, diagnosis, order/result, attachment, permissions and failure-path verification remain.
+
+## 1 October shared-demo synthetic workflows
 
 Signed-in browser testing exercised the React screens, checked their API responses, and re-read saved data. The clearly labelled test patient is `QorliaQA OctTwo Synthetic` (`ABC200013`).
 
@@ -32,13 +44,13 @@ An isolated staging backend uses the official public demo seed, separate databas
 - OpenMRS session and FHIR capability APIs return 200. FHIR2 and its additional extension report `started: true` through the module API.
 - A direct API `EncounterBundle` transaction saved one consultation and a synthetic weight observation for `QorliaQA StageClinical Synthetic`. Subsequent FHIR and REST reads returned the weight and its consultation/visit association.
 - A second transaction containing an invalid observation returned 400. Re-reading the test patient's encounters and observations confirmed unchanged counts, with no orphan encounter left behind.
-- These are backend integration checks, not browser save proof. The React consultation form must still submit successfully and display persisted data after reload before clinical parity is claimed.
+- These direct API checks were not browser save proof. The 4 October checkpoint above adds populated Vitals and History and Examination browser save/read-back evidence; it does not establish complete clinical parity.
 - Metadata initialization completed but logged concept-import and location-attribute errors. Startup success does not establish that every Standard form, concept or workflow is available; those mappings still need targeted checks.
 
 The production frontend build and local login tests pass. Bundles and service-worker precaching remain large (40.4 MB across 113 precached URLs); build success is not a performance release gate.
 
 `/bahmni-v2/login` and `/bahmni-v2/home/` are the local review entry points. The local legacy home URL redirects there. Implemented module tiles stay within React; full legacy tools remain available where parity is incomplete. Check the detailed [feature parity ledger](FEATURE_PARITY.md) before switching production defaults.
 
-Still needed: complete consultation transactions on a compatible staging backend, populated order-result writes, program lifecycle/state writes, reports generation/download/deletion, administrative imports and order-set writes, remaining advanced OT/IPD/appointment actions, and role-specific permission/error checks.
+Still needed: the remaining consultation transaction components on staging, populated order-result writes, program lifecycle/state writes, reports generation/download/deletion, administrative imports and order-set writes, remaining advanced OT/IPD/appointment actions, and role-specific permission/error checks.
 
 OpenELIS laboratory, Odoo billing, DCM4CHEE radiology and the external analytics/outreach applications remain separate products. Reskinning this React repository does not redesign them. They are the next phase after React workflow parity.

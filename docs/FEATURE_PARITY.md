@@ -1,5 +1,17 @@
 # Bahmni workflow parity ledger
 
+## 4 October 2026 isolated clinical checkpoint
+
+The isolated review at `http://localhost:3002/bahmni-v2/login` now has verified browser sign-in, location selection and React home navigation. A private development connection failure was repaired; its reconnect loop also passed a forced-disconnect recovery check. Production and the shared public demo are unchanged.
+
+- Vitals form save and the consultation Done action returned HTTP 201 from the real `EncounterBundle` API. Pulse 78, oxygen saturation 98 and respiratory rate 16 persisted for the clearly labelled synthetic staging patient after reload.
+- History and Examination now supports legacy plain-text form events through shared metadata normalization. Its conditional chief-complaint field and required-field save validation worked in the browser. Completed form creation returned HTTP 201 and persisted after reload. A later edit returned HTTP 201 with the original consultation UUID and preserved complaint, duration and units while updating history text.
+- A recoverable, exact-row staging metadata repair resolved ambiguous diagnosis mappings. An isolated application restart cleared the mapping cache; the vitals flowsheet returned HTTP 200 and displayed saved data.
+- The shared narrow-screen card/action layout keeps the save footer inside the viewport. Full form-control visual/accessibility parity is still pending.
+- Focused checks passed for the proxy challenge-header boundary, metadata normalization, action layouts, form containers/hooks and event execution. Shared service/design-system type checks and library builds passed.
+
+This supersedes the observation-form browser-save gap in the 1 October checkpoint below, not its other remaining items. Medication, allergy, diagnosis, order/result, attachment and permission/failure flows still need populated end-to-end verification. Separate products remain the later phase.
+
 ## 1 October 2026 integration checkpoint
 
 This section supersedes the earlier "no writes tested" milestones below. It does not declare full parity or authorize production replacement.

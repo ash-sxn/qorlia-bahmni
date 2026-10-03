@@ -106,6 +106,16 @@ module.exports = (env, argv) => {
           secure: backendOrigin !== 'https://localhost/',
           cookieDomainRewrite: { '*': '' },
           logLevel: 'debug',
+          onProxyRes: (proxyResponse, request) => {
+            // Keep API authentication failures in the React login flow,
+            // instead of opening a second, browser-owned Basic auth dialog.
+            if (
+              proxyResponse.statusCode === 401 &&
+              request.url.startsWith('/openmrs/ws/')
+            ) {
+              delete proxyResponse.headers['www-authenticate'];
+            }
+          },
         },
       ],
     },
