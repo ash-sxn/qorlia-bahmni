@@ -1,8 +1,18 @@
-import { get, getUserLoginLocation } from '@bahmni/services';
+import {
+  formatDateTime,
+  get,
+  getFormattedPatientById,
+  getUserLoginLocation,
+} from '@bahmni/services';
 import { useActivePractitioner, useUserPrivilege } from '@bahmni/widgets';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import {
+  findFulfillmentEncounter,
+  getFulfillmentForm,
+  getFulfillmentOrders,
+} from '../ordersApi';
 import OrdersPage, {
   fetchOrderPatients,
   fulfillmentOrderType,
@@ -11,7 +21,18 @@ import OrdersPage, {
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   get: jest.fn(),
+  getFormattedPatientById: jest.fn(),
   getUserLoginLocation: jest.fn(),
+}));
+jest.mock('../ordersApi', () => ({
+  findFulfillmentEncounter: jest.fn(),
+  getFulfillmentForm: jest.fn(),
+  getFulfillmentOrders: jest.fn(),
+}));
+jest.mock('../OrderResultEditor', () => ({
+  __esModule: true,
+  default: () => null,
+  OrderResultValues: () => null,
 }));
 jest.mock('@bahmni/widgets', () => ({
   ...jest.requireActual('@bahmni/widgets'),
@@ -35,7 +56,7 @@ const tab = {
 beforeEach(() => {
   jest.resetAllMocks();
   jest.mocked(useUserPrivilege).mockReturnValue({
-    userPrivileges: ['app:radiologyOrders', 'app:orders'].map((name) => ({
+    userPrivileges: ['app:orders'].map((name) => ({
       name,
       uuid: name,
     })),
@@ -52,15 +73,21 @@ beforeEach(() => {
     >);
 });
 
-const renderPage = () =>
+const renderPage = (path = '/clinical/orders') =>
   render(
     <QueryClientProvider
       client={
         new QueryClient({ defaultOptions: { queries: { retry: false } } })
       }
     >
-      <MemoryRouter>
-        <OrdersPage />
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/clinical/orders" element={<OrdersPage />} />
+          <Route
+            path="/clinical/orders/:patientUuid/:orderType"
+            element={<OrdersPage />}
+          />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -122,3 +149,52 @@ it('does not query clinical data without the legacy Orders access privilege', ()
   expect(screen.getByRole('alert')).toHaveTextContent('do not have access');
   expect(get).not.toHaveBeenCalled();
 });
+
+it('does not substitute radiology access for the Orders privilege', () => {
+  jest.mocked(useUserPrivilege).mockReturnValue({
+    userPrivileges: [{ name: 'app:radiologyOrders', uuid: 'radiology' }],
+    isLoading: false,
+  });
+  renderPage();
+  expect(screen.getByRole('alert')).toHaveTextContent('do not have access');
+  expect(get).not.toHaveBeenCalled();
+});
+
+it.each([1791067650000, '2026-10-04T04:07:30.000Z'])(
+  'formats the fulfillment timestamp %s using the shared date formatter',
+  async (date) => {
+    jest
+      .mocked(get)
+      .mockImplementation(async (url) =>
+        url.includes('extension.json') ? { tab } : { config: {} },
+      );
+    jest
+      .mocked(getFormattedPatientById)
+      .mockResolvedValue({ fullName: 'QorliaQA Synthetic' } as Awaited<
+        ReturnType<typeof getFormattedPatientById>
+      >);
+    jest
+      .mocked(getFulfillmentForm)
+      .mockResolvedValue({} as Awaited<ReturnType<typeof getFulfillmentForm>>);
+    jest
+      .mocked(findFulfillmentEncounter)
+      .mockResolvedValue({ observations: [] });
+    jest
+      .mocked(getFulfillmentOrders)
+      .mockResolvedValue([
+        {
+          orderUuid: 'order',
+          orderNumber: 'ORD-5',
+          orderDate: date,
+          concept: { name: 'Chest X-ray' },
+        },
+      ]);
+    renderPage('/clinical/orders/patient/Radiology%20Order');
+    expect(
+      await screen.findByText(
+        `ORD-5 · ${formatDateTime(date, undefined, true).formattedResult}`,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(`ORD-5 · ${date}`)).not.toBeInTheDocument();
+  },
+);

@@ -25,7 +25,7 @@ export interface FulfillmentOrder {
   orderUuid: string;
   concept: { name: string; shortName?: string };
   orderNumber?: string;
-  orderDate?: string;
+  orderDate?: string | number;
   commentToFulfiller?: string;
   hasObservations?: boolean;
   bahmniObservations?: OrderObservation[];

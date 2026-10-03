@@ -1,6 +1,7 @@
 import { BaseLayout, Header } from '@bahmni/design-system';
 import {
   BAHMNI_HOME_PATH,
+  formatDateTime,
   get,
   getFormattedPatientById,
   getUserLoginLocation,
@@ -79,7 +80,7 @@ const OrdersPage = () => {
   const [tabId, setTabId] = useState('');
   const [input, setInput] = useState('');
   const [term, setTerm] = useState('');
-  const canView = hasPrivilege(userPrivileges, 'app:radiologyOrders');
+  const canView = hasPrivilege(userPrivileges, 'app:orders');
   let locationUuid = '';
   try {
     locationUuid = getUserLoginLocation().uuid;
@@ -276,7 +277,13 @@ const OrdersPage = () => {
                   <section className={styles.card} key={order.orderUuid}>
                     <h2>{order.concept.shortName ?? order.concept.name}</h2>
                     <p>
-                      {[order.orderNumber, order.orderDate]
+                      {[
+                        order.orderNumber,
+                        order.orderDate == null
+                          ? undefined
+                          : formatDateTime(order.orderDate, undefined, true)
+                              .formattedResult,
+                      ]
                         .filter(Boolean)
                         .join(' · ')}
                     </p>

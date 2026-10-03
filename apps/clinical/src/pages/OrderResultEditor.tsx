@@ -4,7 +4,7 @@ import {
   hasPrivilege,
   uploadDocument,
 } from '@bahmni/services';
-import { useUserPrivilege } from '@bahmni/widgets';
+import { ConfirmationModal, useUserPrivilege } from '@bahmni/widgets';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent } from 'react';
 import styles from './BedManagement.module.scss';
@@ -260,6 +260,7 @@ const OrderResultEditor = ({
   const [dirty, setDirty] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const maxSize = useQuery({
@@ -299,16 +300,24 @@ const OrderResultEditor = ({
       document.removeEventListener('click', followLink, true);
     };
   }, [dirty, uploading]);
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canWrite || !supported || !dirty || uploading || saving || saved)
       return;
+    setConfirming(true);
+  };
+  const confirmSave = async () => {
     if (
-      !window.confirm(
-        `Save results for ${order.concept.shortName ?? order.concept.name}?`,
-      )
+      !confirming ||
+      !canWrite ||
+      !supported ||
+      !dirty ||
+      uploading ||
+      saving ||
+      saved
     )
       return;
+    setConfirming(false);
     setSaving(true);
     setError('');
     try {
@@ -358,44 +367,60 @@ const OrderResultEditor = ({
       </p>
     );
   return (
-    <form className={styles.resultForm} onSubmit={submit}>
-      {!canWrite && (
-        <p>You can view results, but your role cannot save them.</p>
-      )}
-      {maxSize.isError && (
-        <p role="alert">
-          Could not load the attachment size limit. File uploads are
-          unavailable.
-        </p>
-      )}
-      <fieldset disabled={!canWrite || uploading || saving || saved}>
-        <legend>Order results</legend>
-        <ResultField
-          observation={draft}
-          id={`result-${order.orderUuid}`}
-          patientUuid={patientUuid}
-          maxSize={maxSize.isSuccess ? (maxSize.data ?? Infinity) : undefined}
-          onChange={([next]) => {
-            setDraft(next);
-            setDirty(true);
-          }}
-          onUploading={setUploading}
-          onError={setError}
+    <>
+      <form className={styles.resultForm} onSubmit={submit}>
+        {!canWrite && (
+          <p>You can view results, but your role cannot save them.</p>
+        )}
+        {maxSize.isError && (
+          <p role="alert">
+            Could not load the attachment size limit. File uploads are
+            unavailable.
+          </p>
+        )}
+        <fieldset
+          disabled={!canWrite || uploading || saving || saved || confirming}
+        >
+          <legend>Order results</legend>
+          <ResultField
+            observation={draft}
+            id={`result-${order.orderUuid}`}
+            patientUuid={patientUuid}
+            maxSize={maxSize.isSuccess ? (maxSize.data ?? Infinity) : undefined}
+            onChange={([next]) => {
+              setDraft(next);
+              setDirty(true);
+            }}
+            onUploading={setUploading}
+            onError={setError}
+          />
+          <button type="submit" disabled={!dirty}>
+            Save result
+          </button>
+        </fieldset>
+        {uploading && <p role="status">Uploading attachments…</p>}
+        {saving && <p role="status">Saving result…</p>}
+        {saved && <p role="status">Result saved.</p>}
+        {saved && !error && (
+          <button type="button" onClick={() => setSaved(false)}>
+            Edit saved result
+          </button>
+        )}
+        {error && <p role="alert">{error}</p>}
+      </form>
+      {confirming && (
+        <ConfirmationModal
+          open
+          heading={`Save results for ${order.concept.shortName ?? order.concept.name}?`}
+          body="These results will be saved to this patient's record."
+          confirmLabel="Confirm save"
+          cancelLabel="Keep editing"
+          isSubmitting={saving || !canWrite || !supported}
+          onConfirm={() => void confirmSave()}
+          onCancel={() => setConfirming(false)}
         />
-        <button type="submit" disabled={!dirty}>
-          Save result
-        </button>
-      </fieldset>
-      {uploading && <p role="status">Uploading attachments…</p>}
-      {saving && <p role="status">Saving result…</p>}
-      {saved && <p role="status">Result saved.</p>}
-      {saved && !error && (
-        <button type="button" onClick={() => setSaved(false)}>
-          Edit saved result
-        </button>
       )}
-      {error && <p role="alert">{error}</p>}
-    </form>
+    </>
   );
 };
 

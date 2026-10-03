@@ -2,6 +2,7 @@ import { getDocumentUploadMaxSizeMb, uploadDocument } from '@bahmni/services';
 import { useUserPrivilege } from '@bahmni/widgets';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import OrderResultEditor from '../OrderResultEditor';
 import {
   saveFulfillment,
@@ -87,6 +88,35 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
+const confirmSave = async () => {
+  await userEvent.click(screen.getByRole('button', { name: 'Save result' }));
+  await userEvent.click(
+    await screen.findByRole('button', { name: 'Confirm save' }),
+  );
+};
+
+it('requires confirmation and keeps the draft when confirmation is cancelled', async () => {
+  renderEditor();
+  fireEvent.change(screen.getByLabelText('Radiology Notes'), {
+    target: { value: 'QorliaQA synthetic result' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save result' }));
+  expect(await screen.findByRole('dialog')).toHaveAccessibleName(
+    'Save results for Chest X-ray?',
+  );
+  expect(saveFulfillment).not.toHaveBeenCalled();
+  expect(window.confirm).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+  );
+  expect(screen.getByLabelText('Radiology Notes')).toHaveValue(
+    'QorliaQA synthetic result',
+  );
+  expect(screen.getByLabelText('Radiology Notes')).toBeEnabled();
+  expect(saveFulfillment).not.toHaveBeenCalled();
+});
+
 it('keeps the result draft when saving fails', async () => {
   jest
     .mocked(saveFulfillment)
@@ -95,12 +125,53 @@ it('keeps the result draft when saving fails', async () => {
   fireEvent.change(screen.getByLabelText('Radiology Notes'), {
     target: { value: 'Normal' },
   });
-  fireEvent.click(screen.getByRole('button', { name: 'Save result' }));
+  await confirmSave();
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Another user changed',
   );
   expect(screen.getByLabelText('Radiology Notes')).toHaveValue('Normal');
   expect(onSaved).not.toHaveBeenCalled();
+});
+
+it('does not repeat a successful save when the read-back fails', async () => {
+  jest.mocked(saveFulfillment).mockResolvedValueOnce({});
+  onSaved.mockRejectedValueOnce(new Error('Read-back is unavailable'));
+  renderEditor();
+  fireEvent.change(screen.getByLabelText('Radiology Notes'), {
+    target: { value: 'QorliaQA synthetic result' },
+  });
+  await confirmSave();
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Read-back is unavailable',
+  );
+  expect(screen.getByRole('status')).toHaveTextContent('Result saved.');
+  expect(screen.getByRole('button', { name: 'Save result' })).toBeDisabled();
+  expect(
+    screen.queryByRole('button', { name: 'Edit saved result' }),
+  ).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Save result' }));
+  expect(saveFulfillment).toHaveBeenCalledTimes(1);
+});
+
+it('blocks confirmation when the write privilege is lost with a draft open', async () => {
+  const { refresh } = renderEditor();
+  fireEvent.change(screen.getByLabelText('Radiology Notes'), {
+    target: { value: 'QorliaQA synthetic result' },
+  });
+  await userEvent.click(screen.getByRole('button', { name: 'Save result' }));
+  jest.mocked(useUserPrivilege).mockReturnValue({
+    userPrivileges: [],
+    isLoading: false,
+  });
+  refresh({ observations: [] });
+  expect(screen.getByRole('button', { name: 'Confirm save' })).toBeDisabled();
+  await userEvent.click(screen.getByRole('button', { name: 'Confirm save' }));
+  expect(saveFulfillment).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+  expect(screen.getByLabelText('Radiology Notes')).toHaveValue(
+    'QorliaQA synthetic result',
+  );
+  expect(screen.getByLabelText('Radiology Notes')).toBeDisabled();
 });
 
 it('uploads an order attachment without changing its encounter type and includes it in the saved draft', async () => {
@@ -119,7 +190,7 @@ it('uploads an order attachment without changing its encounter type and includes
   });
   await screen.findByRole('link', { name: 'Open Diagnostic Images' });
   expect(uploadDocument).toHaveBeenCalledWith(file, undefined, 'patient');
-  fireEvent.click(screen.getByRole('button', { name: 'Save result' }));
+  await confirmSave();
   await waitFor(() => expect(onSaved).toHaveBeenCalled());
   expect(saveFulfillment).toHaveBeenCalledWith(
     'patient',
@@ -149,7 +220,7 @@ it('keeps its draft and original snapshot when another order refreshes the page'
     'Unsaved result',
   );
   jest.mocked(saveFulfillment).mockRejectedValueOnce(new Error('changed'));
-  fireEvent.click(screen.getByRole('button', { name: 'Save result' }));
+  await confirmSave();
   await screen.findByRole('alert');
   expect(saveFulfillment).toHaveBeenCalledWith(
     'patient',
