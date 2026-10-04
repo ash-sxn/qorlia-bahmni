@@ -2,6 +2,14 @@
 
 Updated 4 October 2026. The local review at `http://localhost:3002/bahmni-v2/login` uses the isolated synthetic staging backend. The earlier port 3000 review uses the existing synthetic demo backend at `demo-bahmni.qorlia.com`. No redesigned frontend or backend upgrade has been deployed there. This is development evidence, not a production release gate.
 
+## 4 October retrospective Programs date checkpoint
+
+The state and completion controls now accept local calendar dates between the latest non-voided state and today. Shared preflight re-reads the enrollment and rejects invalid or out-of-range dates before posting; existing sibling state actions retain their today default.
+
+An actual-service isolated integration check saved September 25 state progression and September 26 completion for a synthetic September 24 enrollment. Independent REST read-back preserved both state boundaries, the configured outcome and all three attribute UUIDs/values. Earlier invalid dates produced no POST. This is service/API proof; populated browser date saves remain pending because review-tab focus commands time out.
+
+Page/service tests passed in Asia/Kolkata and America/Los_Angeles. Clinical/service type checks and library builds passed; existing eval/bundle warnings remain. The fixture's initial legacy hydrated-object payload was rejected without creating an enrollment. Using the modern ConceptDatatype UUID value corrected the fixture, not application code or staging metadata. No production/shared-demo changes occurred.
+
 ## 4 October Programs lifecycle checkpoint
 
 React browser TB enrollment and state update returned HTTP 200 and persisted after reload. Isolated staging returns `allowedStates`; the missing metadata described below applies to the older shared demo. Native REST independently retained the synthetic patient/enrollment link, enrollment date, configured attributes and state history.

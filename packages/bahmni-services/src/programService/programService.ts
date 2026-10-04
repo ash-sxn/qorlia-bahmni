@@ -1,6 +1,6 @@
 import { del, get, post } from '../api';
 import { getDisplayNameForConcept } from '../conceptService';
-import { isDate } from '../date/date';
+import { formatDateTime, isDate } from '../date/date';
 import { AttributeFormat } from '../patientService/attributeFormatMapper';
 import {
   PATIENT_PROGRAMS_URL,
@@ -71,15 +71,46 @@ export const getProgramByUUID = async (
   return await get<ProgramEnrollment>(PROGRAM_DETAILS_URL(programUUID));
 };
 
+export const getProgramDateBounds = (enrollment: ProgramEnrollment) => ({
+  min: [
+    enrollment.dateEnrolled,
+    ...(enrollment.states ?? [])
+      .filter((state) => !state.voided)
+      .map((state) => state.startDate),
+  ]
+    .map((date) => date.slice(0, 10))
+    .sort()
+    .at(-1)!,
+  max: formatDateTime(new Date(), undefined, false, 'yyyy-MM-dd')
+    .formattedResult,
+});
+
+const programDate = (enrollment: ProgramEnrollment, date: string) => {
+  const { min, max } = getProgramDateBounds(enrollment);
+  const value = new Date(`${date}T00:00:00`);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+    formatDateTime(value, undefined, false, 'yyyy-MM-dd').formattedResult !==
+      date ||
+    date < min ||
+    date > max
+  ) {
+    throw new Error('Program date must be between the latest state and today');
+  }
+  return value.toISOString();
+};
+
 /**
  * Updates the state of a program enrollment
  * @param programEnrollmentUUID - The UUID of the program enrollment to update
  * @param workflowStateUUID - The UUID of the allowed workflow state to set for the program enrollment
+ * @param date - Local calendar date (yyyy-MM-dd), defaulting to today
  * @returns Promise resolving to the updated program enrollment
  */
 export const updateProgramState = async (
   programEnrollmentUUID: string,
   workflowStateUUID: string,
+  date?: string,
 ): Promise<ProgramEnrollment> => {
   const current = await getProgramByUUID(programEnrollmentUUID);
   if (current.voided || current.dateCompleted) {
@@ -98,6 +129,10 @@ export const updateProgramState = async (
     states: [
       {
         state: { uuid: workflowStateUUID },
+        startDate: programDate(
+          current,
+          date ?? getProgramDateBounds(current).max,
+        ),
       },
     ],
   };
@@ -107,6 +142,7 @@ export const updateProgramState = async (
   );
 };
 
+/** Completes an active enrollment on a local calendar date (yyyy-MM-dd). */
 export const completeProgramEnrollment = async (
   enrollmentUUID: string,
   dateCompleted: string,
@@ -119,7 +155,7 @@ export const completeProgramEnrollment = async (
   return post<ProgramEnrollment>(PROGRAMS_URL(enrollmentUUID), {
     uuid: enrollmentUUID,
     dateEnrolled: current.dateEnrolled,
-    dateCompleted,
+    dateCompleted: programDate(current, dateCompleted),
     outcome: outcomeUUID,
   });
 };

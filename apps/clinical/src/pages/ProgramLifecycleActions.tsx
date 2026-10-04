@@ -2,6 +2,7 @@ import {
   completeProgramEnrollment,
   get,
   getAllPrograms,
+  getProgramDateBounds,
   voidProgramEnrollment,
   type ProgramEnrollment,
   useTranslation,
@@ -24,7 +25,9 @@ export const ProgramLifecycleActions = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { min, max } = getProgramDateBounds(enrollment);
   const [outcomeUuid, setOutcomeUuid] = useState('');
+  const [date, setDate] = useState(max);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [confirmingRemoval, setConfirmingRemoval] = useState(false);
@@ -64,6 +67,9 @@ export const ProgramLifecycleActions = ({
     if (
       !canEdit ||
       !isActive ||
+      !date ||
+      date < min ||
+      date > max ||
       !outcomes.some((item) => item.uuid === outcomeUuid) ||
       saving
     )
@@ -71,11 +77,7 @@ export const ProgramLifecycleActions = ({
     setSaving(true);
     setMessage('');
     try {
-      await completeProgramEnrollment(
-        enrollment.uuid,
-        new Date().toISOString(),
-        outcomeUuid,
-      );
+      await completeProgramEnrollment(enrollment.uuid, date, outcomeUuid);
       await refresh();
       setOutcomeUuid('');
       setMessage(t('PROGRAMS_COMPLETE_SUCCESS'));
@@ -130,7 +132,25 @@ export const ProgramLifecycleActions = ({
                 </option>
               ))}
             </select>
-            <button type="submit" disabled={!outcomeUuid || saving}>
+            <label htmlFor={`program-completed-date-${enrollment.uuid}`}>
+              {t('PROGRAMS_COMPLETED')}
+            </label>
+            <input
+              id={`program-completed-date-${enrollment.uuid}`}
+              type="date"
+              required
+              min={min}
+              max={max}
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              disabled={saving}
+            />
+            <button
+              type="submit"
+              disabled={
+                !outcomeUuid || !date || date < min || date > max || saving
+              }
+            >
               {saving ? t('PROGRAMS_SAVING') : t('PROGRAMS_COMPLETE')}
             </button>
           </form>

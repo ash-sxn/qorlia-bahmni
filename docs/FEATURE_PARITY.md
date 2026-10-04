@@ -1,5 +1,16 @@
 # Bahmni workflow parity ledger
 
+## 4 October 2026 retrospective Programs date checkpoint
+
+This supersedes the missing state/completion date controls below, not full Programs parity.
+
+- State changes and completion now use labelled native date controls with the latest non-voided state as the minimum and local today as the maximum. The shared service re-reads the enrollment and rejects impossible, future or too-early dates before writing. The sibling state action still defaults to today.
+- The actual shared service saved a backdated state and completion on isolated synthetic staging. Independent REST read-back retained the enrollment date, both state boundaries, configured outcome and all three attribute UUIDs/values. Invalid earlier dates caused no POST. This is service/API evidence, not browser-save proof.
+- Programs page tests (11) and shared service tests (53) passed in Asia/Kolkata and America/Los_Angeles. Clinical/service type checks and library builds passed. Existing form-renderer eval and bundle-size warnings remain.
+- The private test initially used the legacy hydrated-object payload for a modern ConceptDatatype attribute. The backend rejected it without creating an enrollment. The corrected fixture sends the modern concept UUID value; no application serializer or backend metadata was changed for this test.
+
+Remaining: populated browser date/removal/completion/void proofs, configured multi-workflow behavior, attribute datatype edit parity, concurrent-write/failure and limited-role backend checks. Browser controls remain unavailable because the review tab's focus operation times out. No production or shared-demo changes occurred.
+
 ## 4 October 2026 Programs lifecycle checkpoint
 
 This supersedes the missing isolated-program state metadata and enrollment/state-save evidence below, not full Programs parity.

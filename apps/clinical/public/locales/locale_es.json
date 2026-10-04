@@ -668,6 +668,7 @@
   "PROGRAMS_BY": "Por",
   "PROGRAMS_CANCEL": "Cancelar",
   "PROGRAMS_CHANGE_STATE": "Cambiar estado",
+  "PROGRAMS_STATE_DATE": "Fecha de inicio del estado",
   "PROGRAMS_CHOOSE_OUTCOME": "Elija un resultado",
   "PROGRAMS_CHOOSE_STATE": "Elija un estado",
   "PROGRAMS_CHOOSE_PROGRAM": "Elija un programa",

@@ -209,7 +209,24 @@ describe('ProgramsPage', () => {
           program: { name: 'Maternal health' },
           dateEnrolled: '2026-09-01',
           dateCompleted: null,
-          states: [],
+          states: [
+            {
+              uuid: 'state-1',
+              startDate: '2026-09-05T00:00:00.000+0530',
+              endDate: null,
+              voided: false,
+              state: { concept: { display: 'Started', names: [] } },
+              auditInfo: {},
+            },
+            {
+              uuid: 'voided-state',
+              startDate: '2026-09-20',
+              endDate: null,
+              voided: true,
+              state: { concept: { display: 'Voided' } },
+              auditInfo: {},
+            },
+          ],
           attributes: [],
           allowedStates: [
             {
@@ -230,12 +247,23 @@ describe('ProgramsPage', () => {
       name: 'PROGRAMS_CHANGE_STATE',
     });
     fireEvent.change(stateSelect, { target: { value: 'workflow-state-1' } });
+    const stateDate = screen.getByLabelText('PROGRAMS_STATE_DATE');
+    expect(stateDate).toHaveAttribute('type', 'date');
+    expect(stateDate).toHaveAttribute('min', '2026-09-05');
+    fireEvent.change(stateDate, { target: { value: '2026-09-04' } });
+    fireEvent.submit(stateSelect.closest('form')!);
+    expect(updateState).not.toHaveBeenCalled();
+    fireEvent.change(stateDate, { target: { value: '2026-09-06' } });
     fireEvent.click(
       screen.getByRole('button', { name: 'PROGRAMS_SAVE_STATE' }),
     );
 
     await waitFor(() =>
-      expect(updateState).toHaveBeenCalledWith('active-1', 'workflow-state-1'),
+      expect(updateState).toHaveBeenCalledWith(
+        'active-1',
+        'workflow-state-1',
+        '2026-09-06',
+      ),
     );
     expect(await screen.findByRole('status')).toHaveTextContent(
       'PROGRAMS_STATE_SAVED',
@@ -613,12 +641,19 @@ describe('ProgramsPage', () => {
     fireEvent.change(await screen.findByLabelText('PROGRAMS_OUTCOME'), {
       target: { value: 'outcome-1' },
     });
+    const completionDate = screen.getByLabelText('PROGRAMS_COMPLETED');
+    expect(completionDate).toHaveAttribute('type', 'date');
+    expect(completionDate).toHaveAttribute('min', '2020-09-20');
+    fireEvent.change(completionDate, { target: { value: '2020-09-19' } });
+    fireEvent.submit(completionDate.closest('form')!);
+    expect(completeEnrollment).not.toHaveBeenCalled();
+    fireEvent.change(completionDate, { target: { value: '2020-09-21' } });
     fireEvent.click(screen.getByRole('button', { name: 'PROGRAMS_COMPLETE' }));
 
     await waitFor(() =>
       expect(completeEnrollment).toHaveBeenCalledWith(
         'enrollment-1',
-        expect.any(String),
+        '2020-09-21',
         'outcome-1',
       ),
     );

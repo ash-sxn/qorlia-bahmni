@@ -419,6 +419,7 @@ export {
   removeProgramState,
   updateProgramEnrollmentDetails,
   getProgramByUUID,
+  getProgramDateBounds,
   getCurrentStateName,
   extractAttributes,
   updateProgramState,

@@ -4,6 +4,7 @@ import {
   getCurrentStateName,
   getFormattedPatientById,
   getPatientPrograms,
+  getProgramDateBounds,
   hasPrivilege,
   removeProgramState,
   searchPatientByNameOrId,
@@ -42,17 +43,19 @@ const ProgramStateForm = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { min, max } = getProgramDateBounds(enrollment);
   const [stateUuid, setStateUuid] = useState('');
+  const [date, setDate] = useState(max);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!stateUuid || saving) return;
+    if (!stateUuid || !date || date < min || date > max || saving) return;
     setSaving(true);
     setMessage('');
     try {
-      await updateProgramState(enrollment.uuid, stateUuid);
+      await updateProgramState(enrollment.uuid, stateUuid, date);
       await Promise.allSettled([
         queryClient.invalidateQueries({
           queryKey: ['program-enrollments', patientUuid],
@@ -91,7 +94,23 @@ const ProgramStateForm = ({
             </option>
           ))}
       </select>
-      <button type="submit" disabled={!stateUuid || saving}>
+      <label htmlFor={`program-state-date-${enrollment.uuid}`}>
+        {t('PROGRAMS_STATE_DATE')}
+      </label>
+      <input
+        id={`program-state-date-${enrollment.uuid}`}
+        type="date"
+        required
+        min={min}
+        max={max}
+        value={date}
+        onChange={(event) => setDate(event.target.value)}
+        disabled={saving}
+      />
+      <button
+        type="submit"
+        disabled={!stateUuid || !date || date < min || date > max || saving}
+      >
         {saving ? t('PROGRAMS_SAVING') : t('PROGRAMS_SAVE_STATE')}
       </button>
       {message && <p role="status">{message}</p>}

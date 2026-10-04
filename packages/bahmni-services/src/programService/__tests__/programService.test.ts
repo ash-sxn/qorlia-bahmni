@@ -26,6 +26,7 @@ import {
   getPatientPrograms,
   getPatientProgramsPage,
   getProgramByUUID,
+  getProgramDateBounds,
   updateProgramState,
 } from '../programService';
 
@@ -220,6 +221,9 @@ describe('programService', () => {
           states: [
             {
               state: { uuid: stateConceptUUID },
+              startDate: new Date(
+                `${getProgramDateBounds(mockUpdatedEnrollment).max}T00:00:00`,
+              ).toISOString(),
             },
           ],
         },
@@ -278,24 +282,82 @@ describe('programService', () => {
       ).rejects.toThrow('The selected program state is no longer allowed');
       expect(post).not.toHaveBeenCalled();
     });
+
+    it('sends an explicit retrospective state start date with the original enrollment date', async () => {
+      (get as jest.Mock).mockResolvedValue(mockEnrollments[1]);
+      (post as jest.Mock).mockResolvedValue(mockEnrollments[1]);
+
+      await updateProgramState('enrollment-2', 'allowed-state-3', '2024-06-02');
+
+      expect(post).toHaveBeenCalledWith(
+        PROGRAM_DETAILS_URL('enrollment-2').split('?')[0],
+        {
+          uuid: 'enrollment-2',
+          dateEnrolled: mockEnrollments[1].dateEnrolled,
+          states: [
+            {
+              state: { uuid: 'allowed-state-3' },
+              startDate: new Date('2024-06-02T00:00:00').toISOString(),
+            },
+          ],
+        },
+      );
+    });
+  });
+
+  it.each([
+    '',
+    '2024-02-30',
+    '2024-05-31',
+    '9999-01-01',
+    '2024-06-02T00:00:00Z',
+  ])(
+    'rejects invalid/out-of-range program dates before either write: %s',
+    async (date) => {
+      (get as jest.Mock).mockResolvedValue(mockEnrollments[1]);
+
+      await expect(
+        updateProgramState('enrollment-2', 'allowed-state-3', date),
+      ).rejects.toThrow(
+        'Program date must be between the latest state and today',
+      );
+      await expect(
+        completeProgramEnrollment('enrollment-2', date, 'outcome-1'),
+      ).rejects.toThrow(
+        'Program date must be between the latest state and today',
+      );
+      expect(post).not.toHaveBeenCalled();
+    },
+  );
+
+  it('uses the latest non-voided state date for the date bounds', () => {
+    const current = mockEnrollments[1];
+    expect(
+      getProgramDateBounds({
+        ...current,
+        states: [
+          { ...current.states[0], startDate: '2024-07-01', voided: true },
+          ...current.states,
+        ],
+      }).min,
+    ).toBe('2024-06-01');
+    expect(getProgramDateBounds({ ...current, states: [] }).min).toBe(
+      '2024-01-01',
+    );
   });
 
   it('completes a current enrollment with its required original date', async () => {
     (get as jest.Mock).mockResolvedValue(mockEnrollments[0]);
     (post as jest.Mock).mockResolvedValue(mockEnrollments[0]);
 
-    await completeProgramEnrollment(
-      'enrollment-1',
-      '2026-09-26T00:00:00.000Z',
-      'outcome-1',
-    );
+    await completeProgramEnrollment('enrollment-1', '2026-09-26', 'outcome-1');
 
     expect(post).toHaveBeenCalledWith(
       '/openmrs/ws/rest/v1/bahmniprogramenrollment/enrollment-1',
       {
         uuid: 'enrollment-1',
         dateEnrolled: mockEnrollments[0].dateEnrolled,
-        dateCompleted: '2026-09-26T00:00:00.000Z',
+        dateCompleted: new Date('2026-09-26T00:00:00').toISOString(),
         outcome: 'outcome-1',
       },
     );

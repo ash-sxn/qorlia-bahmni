@@ -2,6 +2,7 @@ export {
   getPatientPrograms,
   getPatientProgramsPage,
   getProgramByUUID,
+  getProgramDateBounds,
   getCurrentStateName,
   getAllPrograms,
   getProgramAttributeTypes,
