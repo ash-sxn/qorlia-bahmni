@@ -7,6 +7,7 @@ import {
   makeFulfillmentObservation,
   saveFulfillment,
   supportsFulfillmentForm,
+  toggleFulfillmentAnswer,
   validateFulfillmentObservation,
   type FulfillmentConcept,
   type OrderObservation,
@@ -328,6 +329,138 @@ it('supports ordinary date and datetime fields without ignoring specialized cale
       }),
     ).toBe(false);
   }
+});
+
+const multiAnswer: FulfillmentConcept = {
+  ...notes,
+  uuid: 'finding',
+  name: { name: 'Finding' },
+  datatype: { name: 'Coded' },
+  answers: [
+    { uuid: 'first', name: { name: 'First answer' } },
+    { uuid: 'second', name: { name: 'Second answer' } },
+  ],
+};
+
+it('stores multi-select answers as separate leaves, retains saved IDs and restores deselections without duplicates', () => {
+  const blank = makeFulfillmentObservation(multiAnswer);
+  let selected = toggleFulfillmentAnswer(multiAnswer, [blank], 'first');
+  selected = toggleFulfillmentAnswer(multiAnswer, selected, 'second');
+  expect(selected.filter((obs) => obs.value)).toHaveLength(2);
+  const saved = {
+    ...selected[1],
+    uuid: 'saved-first',
+    comment: 'Keep history',
+  };
+  selected[1] = saved;
+  selected = toggleFulfillmentAnswer(multiAnswer, selected, 'first');
+  expect(selected[1]).toMatchObject({
+    uuid: 'saved-first',
+    voided: true,
+    comment: 'Keep history',
+  });
+  expect(saved.voided).toBeUndefined();
+  selected = toggleFulfillmentAnswer(multiAnswer, selected, 'first');
+  expect(selected[1]).toMatchObject({
+    uuid: 'saved-first',
+    voided: false,
+    comment: 'Keep history',
+  });
+  expect(selected.filter((obs) => obs.value)).toHaveLength(2);
+  selected = toggleFulfillmentAnswer(multiAnswer, selected, 'second');
+  expect(selected).toHaveLength(2);
+  expect(
+    fulfillmentPayload(
+      { ...makeFulfillmentObservation(form), groupMembers: selected },
+      'order',
+    )!.groupMembers,
+  ).toEqual([
+    expect.objectContaining({
+      uuid: 'saved-first',
+      voided: false,
+      orderUuid: 'order',
+    }),
+  ]);
+  const unsaved = toggleFulfillmentAnswer(multiAnswer, [], 'first');
+  expect(toggleFulfillmentAnswer(multiAnswer, unsaved, 'first')).toEqual([
+    blank,
+  ]);
+  expect(() => toggleFulfillmentAnswer(multiAnswer, [], 'unknown')).toThrow(
+    'configured answer',
+  );
+  expect(() => toggleFulfillmentAnswer(notes, [], 'first')).toThrow(
+    'configured answer',
+  );
+});
+
+it('validates required multi-selects across all leaves, including blank and voided placeholders', () => {
+  const multiForm = { ...form, setMembers: [notes, multiAnswer] };
+  const config = { Finding: { multiSelect: true, required: true } };
+  const draft = makeFulfillmentObservation(multiForm);
+  draft.groupMembers[0].value = 'Unrelated result';
+  expect(validateFulfillmentObservation(multiForm, draft, config)).toBe(
+    'Finding is required.',
+  );
+  draft.groupMembers = [
+    draft.groupMembers[0],
+    ...toggleFulfillmentAnswer(multiAnswer, [draft.groupMembers[1]], 'first'),
+  ];
+  expect(
+    validateFulfillmentObservation(multiForm, draft, config),
+  ).toBeUndefined();
+  const saved = { ...draft.groupMembers[2], uuid: 'first' };
+  draft.groupMembers = [
+    draft.groupMembers[0],
+    ...toggleFulfillmentAnswer(
+      multiAnswer,
+      [draft.groupMembers[1], saved],
+      'first',
+    ),
+  ];
+  expect(validateFulfillmentObservation(multiForm, draft, config)).toBe(
+    'Finding is required.',
+  );
+  draft.groupMembers[0].value = undefined;
+  expect(
+    validateFulfillmentObservation(multiForm, draft, config),
+  ).toBeUndefined();
+  draft.groupMembers = [
+    { ...makeFulfillmentObservation(notes), value: 'Unrelated result' },
+  ];
+  expect(validateFulfillmentObservation(multiForm, draft, config)).toBe(
+    'Finding is required.',
+  );
+  draft.groupMembers.push({
+    ...makeFulfillmentObservation(multiAnswer),
+    value: { uuid: 'unknown' },
+  });
+  expect(validateFulfillmentObservation(multiForm, draft, config)).toContain(
+    'configured answer',
+  );
+  draft.groupMembers.push({
+    ...makeFulfillmentObservation(notes),
+    concept: { uuid: 'unexpected', name: 'Unknown', dataType: 'Text' },
+  });
+  expect(validateFulfillmentObservation(multiForm, draft, config)).toContain(
+    'no longer configured',
+  );
+  expect(supportsFulfillmentForm(multiForm, config)).toBe(true);
+  expect(
+    supportsFulfillmentForm(multiForm, { Finding: { multiSelect: false } }),
+  ).toBe(true);
+  expect(
+    supportsFulfillmentForm(multiForm, { Finding: { multiSelect: 'true' } }),
+  ).toBe(false);
+  expect(
+    supportsFulfillmentForm(multiForm, {
+      Finding: { multiSelect: true, autocomplete: true },
+    }),
+  ).toBe(false);
+  expect(
+    supportsFulfillmentForm(multiForm, {
+      'Radiology Notes': { multiSelect: true },
+    }),
+  ).toBe(false);
 });
 
 it('validates calendar dates, local times and future-date permission before serializing results', () => {

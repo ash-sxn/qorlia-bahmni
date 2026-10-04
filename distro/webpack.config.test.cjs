@@ -26,3 +26,22 @@ test("local API authentication stays enforced without a browser login dialog", (
     'Basic realm="Other service"',
   );
 });
+
+test("local backend configuration is not kept in the browser's HTTP cache", () => {
+  const { onProxyRes } = createConfig(
+    {},
+    { mode: "development" },
+  ).devServer.proxy.at(-1);
+  const response = {
+    statusCode: 200,
+    headers: { "cache-control": "max-age=3600" },
+  };
+  onProxyRes(response, { url: "/bahmni_config/openmrs/apps/orders/app.json" });
+  assert.equal(response.headers["cache-control"], "no-store");
+  const other = {
+    statusCode: 200,
+    headers: { "cache-control": "max-age=3600" },
+  };
+  onProxyRes(other, { url: "/openmrs/ws/rest/v1/concept" });
+  assert.equal(other.headers["cache-control"], "max-age=3600");
+});

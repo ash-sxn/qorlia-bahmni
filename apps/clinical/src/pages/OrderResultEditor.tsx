@@ -17,6 +17,7 @@ import {
   observationsForOrder,
   saveFulfillment,
   supportsFulfillmentForm,
+  toggleFulfillmentAnswer,
   validateFulfillmentObservation,
   type FulfillmentConcept,
   type FulfillmentEncounter,
@@ -89,6 +90,7 @@ const matchesForm = (
 
 interface FieldProps {
   observation: OrderObservation;
+  multiObservations?: OrderObservation[];
   concept: FulfillmentConcept;
   uiConfig: Record<string, Record<string, unknown>>;
   id: string;
@@ -101,6 +103,7 @@ interface FieldProps {
 
 const ResultField = ({
   observation: obs,
+  multiObservations,
   concept,
   uiConfig,
   id,
@@ -111,6 +114,8 @@ const ResultField = ({
   onError,
 }: FieldProps) => {
   const label = obs.concept.name;
+  const multiple =
+    obs.concept.dataType === 'Coded' && uiConfig[label]?.multiSelect === true;
   const upload = async (files: File[]) => {
     if (!files.length) return;
     if (maxSize === undefined || maxSize <= 0) {
@@ -155,7 +160,7 @@ const ResultField = ({
       onUploading(false);
     }
   };
-  if (obs.voided)
+  if (obs.voided && !multiple)
     return (
       <div>
         <p>{label} is marked for removal.</p>
@@ -171,35 +176,62 @@ const ResultField = ({
     return (
       <fieldset>
         <legend>{label}</legend>
-        {obs.groupMembers.map((member, index) => (
-          <ResultField
-            key={member.uuid ?? `${member.concept.uuid}:${index}`}
-            observation={member}
-            concept={
-              concept.setMembers.find(
-                (field) => field.uuid === member.concept.uuid,
-              )!
-            }
-            uiConfig={uiConfig}
-            id={`${id}-${index}`}
-            patientUuid={patientUuid}
-            maxSize={maxSize}
-            onError={onError}
-            onUploading={onUploading}
-            onChange={(replacement) =>
-              onChange([
-                {
-                  ...obs,
-                  groupMembers: [
-                    ...obs.groupMembers.slice(0, index),
-                    ...replacement,
-                    ...obs.groupMembers.slice(index + 1),
-                  ],
-                },
-              ])
-            }
-          />
-        ))}
+        {obs.groupMembers.map((member, index) => {
+          const multiselect =
+            member.concept.dataType === 'Coded' &&
+            uiConfig[member.concept.name]?.multiSelect === true;
+          if (
+            multiselect &&
+            obs.groupMembers.findIndex(
+              (entry) => entry.concept.uuid === member.concept.uuid,
+            ) !== index
+          )
+            return null;
+          return (
+            <ResultField
+              key={member.uuid ?? `${member.concept.uuid}:${index}`}
+              observation={member}
+              multiObservations={
+                multiselect
+                  ? obs.groupMembers.filter(
+                      (entry) => entry.concept.uuid === member.concept.uuid,
+                    )
+                  : undefined
+              }
+              concept={
+                concept.setMembers.find(
+                  (field) => field.uuid === member.concept.uuid,
+                )!
+              }
+              uiConfig={uiConfig}
+              id={`${id}-${index}`}
+              patientUuid={patientUuid}
+              maxSize={maxSize}
+              onError={onError}
+              onUploading={onUploading}
+              onChange={(replacement) =>
+                onChange([
+                  {
+                    ...obs,
+                    groupMembers: multiselect
+                      ? obs.groupMembers.flatMap((entry, i) =>
+                          entry.concept.uuid === member.concept.uuid
+                            ? i === index
+                              ? replacement
+                              : []
+                            : [entry],
+                        )
+                      : [
+                          ...obs.groupMembers.slice(0, index),
+                          ...replacement,
+                          ...obs.groupMembers.slice(index + 1),
+                        ],
+                  },
+                ])
+              }
+            />
+          );
+        })}
       </fieldset>
     );
   if (
@@ -208,7 +240,7 @@ const ResultField = ({
     )
   ) {
     const note =
-      uiConfig[label]?.disableAddNotes === true ? null : (
+      multiple || uiConfig[label]?.disableAddNotes === true ? null : (
         <label className={styles.resultText} htmlFor={`${id}-notes`}>
           Notes for {label}
           <textarea
@@ -316,16 +348,33 @@ const ResultField = ({
           {answers.map((answer) => {
             const selected = boolean
               ? obs.value === answer.value
-              : codedResultUuid(obs.value) === answer.key;
+              : multiple
+                ? multiObservations!.some(
+                    (entry) =>
+                      !entry.voided &&
+                      codedResultUuid(entry.value) === answer.key,
+                  )
+                : codedResultUuid(obs.value) === answer.key;
             return (
               <button
                 type="button"
                 key={answer.key}
                 aria-pressed={selected}
                 onClick={() =>
-                  onChange([
-                    { ...obs, value: selected ? undefined : answer.value },
-                  ])
+                  onChange(
+                    multiple
+                      ? toggleFulfillmentAnswer(
+                          concept,
+                          multiObservations!,
+                          answer.key,
+                        )
+                      : [
+                          {
+                            ...obs,
+                            value: selected ? undefined : answer.value,
+                          },
+                        ],
+                  )
                 }
               >
                 {answer.label}
@@ -440,6 +489,11 @@ const OrderResultEditor = ({
     (!existing || hasPrivilege(userPrivileges, 'Edit Observations'));
   const supported =
     supportsFulfillmentForm(form, uiConfig) &&
+    // A fulfillment template is a concept set; multi-selects are its members.
+    !(
+      form.datatype.name === 'Coded' &&
+      uiConfig[form.name.name]?.multiSelect === true
+    ) &&
     current.length <= 1 &&
     (!current.length || (!!existing && matchesForm(existing, form)));
   useEffect(() => {

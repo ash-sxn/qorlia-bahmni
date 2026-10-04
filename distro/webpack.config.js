@@ -107,6 +107,9 @@ module.exports = (env, argv) => {
           cookieDomainRewrite: { '*': '' },
           logLevel: 'debug',
           onProxyRes: (proxyResponse, request) => {
+            if (request.url.startsWith('/bahmni_config/')) {
+              proxyResponse.headers['cache-control'] = 'no-store';
+            }
             // Keep API authentication failures in the React login flow,
             // instead of opening a second, browser-owned Basic auth dialog.
             if (

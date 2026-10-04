@@ -201,6 +201,41 @@ export const makeFulfillmentObservation = (
     : [],
 });
 
+export const toggleFulfillmentAnswer = (
+  concept: FulfillmentConcept,
+  observations: OrderObservation[],
+  answerUuid: string,
+): OrderObservation[] => {
+  const answer = concept.answers?.find((item) => item.uuid === answerUuid);
+  if (concept.datatype.name !== 'Coded' || !answer)
+    throw new Error('Choose a configured answer.');
+  const matching = (obs: OrderObservation) =>
+    codedResultUuid(obs.value) === answerUuid;
+  const selected = observations.some((obs) => matching(obs) && !obs.voided);
+  if (selected) {
+    const remaining = observations.flatMap((obs) =>
+      matching(obs) ? (obs.uuid ? [{ ...obs, voided: true }] : []) : [obs],
+    );
+    return remaining.length ? remaining : [makeFulfillmentObservation(concept)];
+  }
+  const previous = observations.find(matching);
+  return previous
+    ? observations.map((obs) =>
+        obs === previous ? { ...obs, voided: false } : obs,
+      )
+    : [
+        ...observations,
+        {
+          ...makeFulfillmentObservation(concept),
+          value: {
+            uuid: answer.uuid,
+            name: answer.name.name,
+            shortName: fulfillmentAnswerLabel(answer),
+          },
+        },
+      ];
+};
+
 // ponytail: conditional, repeated, computed and specialized controls stay
 // read-only until their rules have equivalent React implementations.
 export const supportsFulfillmentForm = (
@@ -216,7 +251,10 @@ export const supportsFulfillmentForm = (
         !(
           ['required', 'disableAddNotes'].includes(key) ||
           (key === 'allowFutureDates' &&
-            ['Date', 'Datetime'].includes(concept.datatype.name))
+            ['Date', 'Datetime'].includes(concept.datatype.name)) ||
+          (key === 'multiSelect' &&
+            concept.datatype.name === 'Coded' &&
+            !concept.set)
         ) || typeof value !== 'boolean',
     )
   )
@@ -252,19 +290,37 @@ export const validateFulfillmentObservation = (
   if (observation.concept.uuid !== form.uuid)
     return 'The result does not match its configured form.';
   if (form.set) {
-    for (const member of observation.groupMembers) {
-      const child = form.setMembers.find(
-        (field) => field.uuid === member.concept.uuid,
+    if (
+      observation.groupMembers.some(
+        (member) =>
+          !form.setMembers.some((field) => field.uuid === member.concept.uuid),
+      )
+    )
+      return 'The result contains a field that is no longer configured.';
+    for (const child of form.setMembers) {
+      const members = observation.groupMembers.filter(
+        (member) => member.concept.uuid === child.uuid,
       );
-      if (!child)
-        return 'The result contains a field that is no longer configured.';
-      const error = validateFulfillmentObservation(
-        child,
-        member,
-        uiConfig,
-        checkRequired,
-      );
-      if (error) return error;
+      const multiple =
+        child.datatype.name === 'Coded' &&
+        uiConfig[child.name.name]?.multiSelect === true;
+      if (
+        checkRequired &&
+        !child.set &&
+        (multiple || !members.length) &&
+        uiConfig[child.name.name]?.required === true &&
+        !members.some(hasResultValue)
+      )
+        return `${child.name.name} is required.`;
+      for (const member of members) {
+        const error = validateFulfillmentObservation(
+          child,
+          member,
+          uiConfig,
+          multiple ? false : checkRequired,
+        );
+        if (error) return error;
+      }
     }
     return;
   }
