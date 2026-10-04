@@ -1,5 +1,16 @@
 # Bahmni workflow parity ledger
 
+## 5 October 2026 direct Reports checkpoint
+
+This supersedes the missing direct Run now browser proof below for the populated Visit Report, not custom XLS, other report definitions or authorization parity.
+
+- Actual React Run now requests opened populated HTML in a separate tab and downloaded CSV, PDF, Excel and OpenDocument while retaining the original catalogue. HTML visibly contains the configured date range and synthetic QST910001 visit. CSV contains the synthetic row; the other three downloaded files have their expected native file signatures. Their direct-path document contents/layout have not been independently re-imported or reviewed in this checkpoint. Direct filenames have one extension; the duplicate-extension defect is specific to queued downloads.
+- Independent native SQL retained the original five scheduled records and showed exactly five additional RUN_REPORT audit events, with the configured report name/module and no patient ID. Direct execution does not add a scheduled record. The CSV observation initially timed out because the download belongs to the newly opened browsing context; the actual file and audit were checked without replaying the request.
+- Local login/home return HTTP 200 with a browser HTML Accept header. A default command-line `*/*` request is intentionally not rewritten to React by the development history fallback, so its 404 was not an application outage. A native middleware regression covers HTML routes and non-HTML/JSON boundaries; no service was restarted.
+- Read-only inspection of the exact pinned Reports runtime's compiled controller and registered interceptor confirms general reporting-session/privilege enforcement, but the controller has no explicit authenticated-owner check for queue usernames or download/deletion IDs, and no report-specific check on schedule. Its queue predicate returns true on an authorization exception. Direct report privilege denial also continues into generation instead of returning immediately. The corresponding current [upstream controller](https://github.com/Bahmni/bahmni-reports/blob/cf594793dd2b4369ff4580e6516f0305723e55dd/src/main/java/org/bahmni/reports/web/MainReportController.java) is reference material, not a substitute for this pinned-image inspection. These are code-level release concerns; cross-user/limited-role exploit behavior has not been exercised or claimed.
+
+Next priority: server-side Reports authorization and fail-closed boundaries in isolated staging, then custom XLS, deletion/recovery and output styling. No production/shared-demo change, access expansion or public exposure occurred.
+
 ## 5 October 2026 native report format checkpoint
 
 This supersedes the PDF/Excel/ODS generation gap below for the populated Visit Report only, not the other report types or full Reports parity.

@@ -4,6 +4,32 @@ process.chdir(__dirname);
 process.env.NX_TASK_TARGET_PROJECT = "@bahmni/distro";
 process.env.NX_TASK_TARGET_TARGET = "serve";
 const createConfig = require("./webpack.config");
+const historyApiFallback = require("connect-history-api-fallback");
+
+test("review routes serve the React entry only for HTML navigation", () => {
+  const middleware = historyApiFallback(
+    createConfig({}, { mode: "development" }).devServer.historyApiFallback,
+  );
+  for (const path of ["/bahmni-v2/login", "/bahmni-v2/home/"]) {
+    const browserRequest = {
+      method: "GET",
+      url: path,
+      headers: { accept: "text/html" },
+    };
+    middleware(browserRequest, {}, () => {});
+    assert.equal(browserRequest.url, "/bahmni-v2/index.html");
+    const probe = { method: "GET", url: path, headers: { accept: "*/*" } };
+    middleware(probe, {}, () => {});
+    assert.equal(probe.url, path);
+  }
+  const apiRequest = {
+    method: "GET",
+    url: "/openmrs/ws/rest/v1/session",
+    headers: { accept: "application/json" },
+  };
+  middleware(apiRequest, {}, () => {});
+  assert.equal(apiRequest.url, "/openmrs/ws/rest/v1/session");
+});
 
 test("local API authentication stays enforced without a browser login dialog", () => {
   const config = createConfig({}, { mode: "development" });

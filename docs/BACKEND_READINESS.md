@@ -2,6 +2,14 @@
 
 Updated 5 October 2026. The local review at `http://localhost:3002/bahmni-v2/login` uses the isolated synthetic staging backend. The earlier port 3000 review uses the existing synthetic demo backend at `demo-bahmni.qorlia.com`. No redesigned frontend or backend upgrade has been deployed there. This is development evidence, not a production release gate.
 
+## 5 October direct Reports and authorization checkpoint
+
+The populated Visit Report now has actual React Run now proof for HTML and native CSV/PDF/Excel/OpenDocument downloads. HTML and CSV retain the synthetic visit; the other files' native signatures were checked, not their complete direct-path document layout. Independent SQL shows five new audit attempts and no new scheduled records. Direct filenames have a single extension. The detailed [parity ledger](FEATURE_PARITY.md) records the evidence and its limits.
+
+Inspection of the pinned Reports application's compiled controller and interceptor identified missing explicit owner checks in queue/download/deletion methods, no per-report schedule check, a fail-open queue predicate on authorization exceptions, and generation continuing after direct privilege denial. Session/global reporting privilege checks remain intact, but are insufficient proof of those narrower boundaries. Cross-user/limited-role runtime probes and server-side corrections are the next priority; do not release Reports on the strength of its UI filters.
+
+The local app was not down: login/home HTML navigation returns 200. Non-HTML probes are deliberately not rewritten by the development history fallback. A regression now covers this distinction; no restart or authentication relaxation was needed.
+
 ## 5 October native export-format readiness checkpoint
 
 The actual React Visit Report queue now generated PDF, Excel and OpenDocument in addition to HTML/CSV. Browser downloads retained the app route; native SQL confirmed Completed state and filenames. Read-only PDF extraction/rendering, Excel workbook import and ODS MIME/XML checks retained the expected synthetic visit. All three downloads matched native storage hashes. Native audit records contain all five request attempts. The separate HTML tab displays its populated output.
