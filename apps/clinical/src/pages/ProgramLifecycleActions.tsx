@@ -6,6 +6,7 @@ import {
   type ProgramEnrollment,
   useTranslation,
 } from '@bahmni/services';
+import { ConfirmationModal } from '@bahmni/widgets';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import styles from './BedManagement.module.scss';
@@ -26,7 +27,8 @@ export const ProgramLifecycleActions = ({
   const [outcomeUuid, setOutcomeUuid] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-  const isActive = !enrollment.dateCompleted;
+  const [confirmingRemoval, setConfirmingRemoval] = useState(false);
+  const isActive = !enrollment.voided && !enrollment.dateCompleted;
   const programs = useQuery({
     queryKey: ['program-catalog'],
     queryFn: getAllPrograms,
@@ -85,18 +87,7 @@ export const ProgramLifecycleActions = ({
   };
 
   const remove = async () => {
-    if (
-      !canDelete ||
-      saving ||
-      !window.confirm(
-        t('PROGRAMS_REMOVE_CONFIRM').replace(
-          '{program}',
-          enrollment.program.name,
-        ),
-      )
-    ) {
-      return;
-    }
+    if (!canDelete || saving) return;
     setSaving(true);
     setMessage('');
     try {
@@ -107,6 +98,7 @@ export const ProgramLifecycleActions = ({
       setMessage(t('PROGRAMS_REMOVE_ERROR'));
     } finally {
       setSaving(false);
+      setConfirmingRemoval(false);
     }
   };
 
@@ -144,11 +136,31 @@ export const ProgramLifecycleActions = ({
           </form>
         ) : null)}
       {canDelete && (
-        <button type="button" onClick={remove} disabled={saving}>
+        <button
+          type="button"
+          onClick={() => setConfirmingRemoval(true)}
+          disabled={saving}
+        >
           {t('PROGRAMS_REMOVE')}
         </button>
       )}
       {message && <p role="status">{message}</p>}
+      {confirmingRemoval && (
+        <ConfirmationModal
+          open
+          danger
+          heading={t('PROGRAMS_REMOVE')}
+          body={t('PROGRAMS_REMOVE_CONFIRM').replace(
+            '{program}',
+            enrollment.program.name,
+          )}
+          confirmLabel={t('PROGRAMS_REMOVE')}
+          cancelLabel={t('PROGRAMS_CANCEL')}
+          isSubmitting={saving || !canDelete}
+          onConfirm={() => void remove()}
+          onCancel={() => !saving && setConfirmingRemoval(false)}
+        />
+      )}
     </div>
   );
 };

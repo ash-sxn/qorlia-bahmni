@@ -12,7 +12,11 @@ import {
   type ProgramEnrollment,
   useTranslation,
 } from '@bahmni/services';
-import { useUserPrivilege, UserGlobalAction } from '@bahmni/widgets';
+import {
+  ConfirmationModal,
+  useUserPrivilege,
+  UserGlobalAction,
+} from '@bahmni/widgets';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -108,9 +112,10 @@ const RemoveProgramStateButton = ({
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const remove = async () => {
-    if (saving || !window.confirm(t('PROGRAMS_REMOVE_STATE_CONFIRM'))) return;
+    if (saving) return;
     setSaving(true);
     setError(false);
     try {
@@ -127,15 +132,33 @@ const RemoveProgramStateButton = ({
       setError(true);
     } finally {
       setSaving(false);
+      setConfirming(false);
     }
   };
 
   return (
     <>
-      <button type="button" onClick={remove} disabled={saving}>
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        disabled={saving}
+      >
         {t('PROGRAMS_REMOVE_STATE')}
       </button>
       {error && <span role="alert">{t('PROGRAMS_REMOVE_STATE_ERROR')}</span>}
+      {confirming && (
+        <ConfirmationModal
+          open
+          danger
+          heading={t('PROGRAMS_REMOVE_STATE')}
+          body={t('PROGRAMS_REMOVE_STATE_CONFIRM')}
+          confirmLabel={t('PROGRAMS_REMOVE_STATE')}
+          cancelLabel={t('PROGRAMS_CANCEL')}
+          isSubmitting={saving}
+          onConfirm={() => void remove()}
+          onCancel={() => !saving && setConfirming(false)}
+        />
+      )}
     </>
   );
 };

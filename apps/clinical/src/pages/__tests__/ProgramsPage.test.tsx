@@ -1,7 +1,13 @@
 import * as services from '@bahmni/services';
 import { useUserPrivilege } from '@bahmni/widgets';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import ProgramsPage from '../ProgramsPage';
 
@@ -320,20 +326,49 @@ describe('ProgramsPage', () => {
         },
       ],
     });
-    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
-    removeState.mockResolvedValue(undefined);
+    removeState
+      .mockRejectedValueOnce(new Error('Network unavailable'))
+      .mockResolvedValue(undefined);
     renderPage('/clinical/programs/patient-1');
 
     fireEvent.click(await screen.findByText('Maternal health'));
     fireEvent.click(
       screen.getByRole('button', { name: 'PROGRAMS_REMOVE_STATE' }),
     );
+    expect(removeState).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'PROGRAMS_CANCEL',
+      }),
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(removeState).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'PROGRAMS_REMOVE_STATE' }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: /PROGRAMS_REMOVE_STATE$/,
+      }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'PROGRAMS_REMOVE_STATE_ERROR',
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(getPrograms).toHaveBeenCalledTimes(1);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'PROGRAMS_REMOVE_STATE' }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: /PROGRAMS_REMOVE_STATE$/,
+      }),
+    );
 
     await waitFor(() =>
       expect(removeState).toHaveBeenCalledWith('enrollment-1', 'state-2'),
     );
     expect(getPrograms).toHaveBeenCalledTimes(2);
-    confirm.mockRestore();
   });
 
   it('edits an active enrollment date and configured attribute', async () => {
@@ -615,20 +650,28 @@ describe('ProgramsPage', () => {
         },
       ],
     });
-    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false);
     voidEnrollment.mockResolvedValue(undefined);
     renderPage('/clinical/programs/patient-1');
 
     fireEvent.click(await screen.findByText('Maternal health'));
     fireEvent.click(screen.getByRole('button', { name: 'PROGRAMS_REMOVE' }));
     expect(voidEnrollment).not.toHaveBeenCalled();
-
-    confirm.mockReturnValue(true);
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'PROGRAMS_CANCEL',
+      }),
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(voidEnrollment).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'PROGRAMS_REMOVE' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: /PROGRAMS_REMOVE$/,
+      }),
+    );
     await waitFor(() =>
       expect(voidEnrollment).toHaveBeenCalledWith('enrollment-1'),
     );
-    confirm.mockRestore();
   });
 
   it('does not request patient data without clinical access', () => {

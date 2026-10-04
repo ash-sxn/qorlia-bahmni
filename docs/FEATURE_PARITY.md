@@ -1,5 +1,17 @@
 # Bahmni workflow parity ledger
 
+## 4 October 2026 Programs lifecycle checkpoint
+
+This supersedes the missing isolated-program state metadata and enrollment/state-save evidence below, not full Programs parity.
+
+- Actual React browser enrollment in TB Program and a change from initial phase to Continued Treatment both returned HTTP 200. Full reloads and independent native REST reads retained the enrollment date, configured attributes, initial state and later state history for a clearly labelled synthetic staging patient. Isolated staging supplies authoritative `allowedStates`; the older shared-demo response does not.
+- Direct API current-state removal returned HTTP 204, restoring the previous state's open end date and retaining the removed state's UUID/value in voided history. Direct API completion returned HTTP 200 with the configured Cured outcome. A browser reload moved the enrollment to Past programs. Independent native REST reads confirmed the completion date, closed previous state, unchanged attribute IDs/values and correct patient. These removal/completion writes are API proofs, not browser-save proofs.
+- Both removal actions now reuse the existing Qorlia confirmation modal instead of native blocking popups. Cancel submits nothing; failed state removal closes the modal, exposes the error and allows retry. The shared service re-reads before state changes/removal and rejects completed/voided enrollments, unavailable/retired next states and stale/non-current state removal. It does not manufacture transitions or bypass backend permissions.
+- Programs page checks passed (11), shared program-service checks passed (46) and sibling ProgramDetails checks passed (26). The page/service checks also passed in US Pacific time. Clinical type checking and the clinical/service library builds passed; existing form-renderer eval and bundle-size warnings remain.
+- Behavior was traced against the pinned [legacy program controller](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/common/uicontrols/programmanagement/controllers/manageProgramController.js) and [program service](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/common/domain/services/programService.js). The separate numeric Program ID metadata remains unchanged.
+
+Remaining: browser removal/completion/void save proof, retrospective state/completion date controls, configured multi-workflow behavior, concurrent-write/failure and limited-role backend checks. A stale native popup blocked browser input during this checkpoint; the new in-page modal still needs populated browser verification. No production or shared-demo changes occurred.
+
 ## 4 October 2026 attachment-format checkpoint
 
 This supersedes the PDF/JPEG/GIF verification gap in the protected attachment checkpoint below, not all upload formats or result workflows.

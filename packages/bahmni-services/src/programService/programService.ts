@@ -85,6 +85,13 @@ export const updateProgramState = async (
   if (current.voided || current.dateCompleted) {
     throw new Error('Only active program enrollments can change state');
   }
+  if (
+    !current.allowedStates?.some(
+      (state) => state.uuid === workflowStateUUID && !state.retired,
+    )
+  ) {
+    throw new Error('The selected program state is no longer allowed');
+  }
   const body = {
     uuid: programEnrollmentUUID,
     dateEnrolled: current.dateEnrolled,
@@ -127,10 +134,23 @@ export const voidProgramEnrollment = async (
 export const removeProgramState = async (
   enrollmentUUID: string,
   stateUUID: string,
-): Promise<void> =>
-  del<void>(
+): Promise<void> => {
+  const current = await getProgramByUUID(enrollmentUUID);
+  if (
+    current.voided ||
+    current.dateCompleted ||
+    !current.states?.some(
+      (state) => state.uuid === stateUUID && !state.voided && !state.endDate,
+    )
+  ) {
+    throw new Error(
+      'Only the current state of an active program can be removed',
+    );
+  }
+  return del<void>(
     `${PROGRAM_STATE_URL(enrollmentUUID, stateUUID)}?${new URLSearchParams({ reason: 'User removed the current state' })}`,
   );
+};
 
 export const updateProgramEnrollmentDetails = async (
   enrollmentUUID: string,

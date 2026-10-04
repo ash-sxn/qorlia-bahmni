@@ -197,7 +197,7 @@ describe('programService', () => {
   describe('updateProgramState', () => {
     it('should successfully update program state', async () => {
       const programEnrollmentUUID = 'enrollment-1';
-      const stateConceptUUID = 'concept-state-1';
+      const stateConceptUUID = 'allowed-state-1';
       const mockUpdatedEnrollment: ProgramEnrollment = {
         ...mockEnrollments[0],
         uuid: programEnrollmentUUID,
@@ -228,7 +228,7 @@ describe('programService', () => {
 
     it('should call post with correct URL and body structure', async () => {
       const programEnrollmentUUID = 'enrollment-2';
-      const stateConceptUUID = 'workflow-state-2';
+      const stateConceptUUID = 'allowed-state-3';
 
       (post as jest.Mock).mockResolvedValue(mockEnrollments[1]);
       (get as jest.Mock).mockResolvedValue(mockEnrollments[1]);
@@ -252,7 +252,7 @@ describe('programService', () => {
 
     it('should handle API errors correctly', async () => {
       const programEnrollmentUUID = 'enrollment-1';
-      const stateConceptUUID = 'invalid-state-uuid';
+      const stateConceptUUID = 'allowed-state-1';
       const mockError = new Error('Failed to update program state');
 
       (post as jest.Mock).mockRejectedValue(mockError);
@@ -261,6 +261,22 @@ describe('programService', () => {
       await expect(
         updateProgramState(programEnrollmentUUID, stateConceptUUID),
       ).rejects.toThrow('Failed to update program state');
+    });
+
+    it.each([
+      { allowedStates: undefined },
+      { allowedStates: [] },
+      { allowedStates: [{ uuid: 'allowed-state-1', retired: true }] },
+    ])('rejects stale or unavailable allowed states: %j', async (changes) => {
+      (get as jest.Mock).mockResolvedValue({
+        ...mockEnrollments[0],
+        ...changes,
+      });
+
+      await expect(
+        updateProgramState('enrollment-1', 'allowed-state-1'),
+      ).rejects.toThrow('The selected program state is no longer allowed');
+      expect(post).not.toHaveBeenCalled();
     });
   });
 
@@ -294,11 +310,27 @@ describe('programService', () => {
   });
 
   it('voids the current state through the legacy programenrollment endpoint', async () => {
-    await removeProgramState('enrollment-1', 'state-1');
+    (get as jest.Mock).mockResolvedValue(mockEnrollments[1]);
+    await removeProgramState('enrollment-2', 'state-2');
 
     expect(del).toHaveBeenCalledWith(
-      '/openmrs/ws/rest/v1/programenrollment/enrollment-1/state/state-1?reason=User+removed+the+current+state',
+      '/openmrs/ws/rest/v1/programenrollment/enrollment-2/state/state-2?reason=User+removed+the+current+state',
     );
+  });
+
+  it.each([
+    { voided: true },
+    { dateCompleted: '2026-10-04' },
+    { states: [] },
+    { states: [{ uuid: 'state-2', voided: true, endDate: null }] },
+    { states: [{ uuid: 'state-2', voided: false, endDate: '2026-10-03' }] },
+  ])('refuses to remove a stale current state: %j', async (changes) => {
+    (get as jest.Mock).mockResolvedValue({ ...mockEnrollments[1], ...changes });
+
+    await expect(removeProgramState('enrollment-2', 'state-2')).rejects.toThrow(
+      'Only the current state of an active program can be removed',
+    );
+    expect(del).not.toHaveBeenCalled();
   });
 
   it('updates changed attributes and voids a cleared value without replacing the rest', async () => {
