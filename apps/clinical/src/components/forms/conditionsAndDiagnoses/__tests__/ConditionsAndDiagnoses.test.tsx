@@ -2,6 +2,7 @@ import {
   type ConditionInputEntry,
   type DiagnosisInputEntry,
   getConditions,
+  hasPrivilege,
 } from '@bahmni/services';
 import {
   useNotification,
@@ -1020,6 +1021,65 @@ describe('ConditionsAndDiagnoses', () => {
   });
 
   describe('Privilege Guard', () => {
+    it.each(['Add Diagnoses', 'Edit Diagnoses'])(
+      'allows diagnosis entry with native %s authorization',
+      async (name) => {
+        mockedUseUserPrivilege.mockImplementation((required) =>
+          hasPrivilege([{ name, uuid: name }], required),
+        );
+        renderComponent([], [], mockConcepts);
+        await userEvent.type(screen.getByRole('combobox'), 'hyper');
+        await userEvent.click(
+          screen.getByRole('option', { name: 'Hypertension' }),
+        );
+        expect(addDiagnosisMock).toHaveBeenCalledWith(
+          expect.objectContaining(mockConcepts[0]),
+        );
+      },
+    );
+
+    it('does not convert a diagnosis without native Edit Conditions authorization', () => {
+      mockedUseUserPrivilege.mockImplementation((required) =>
+        hasPrivilege(
+          [{ name: 'Add Diagnoses', uuid: 'add-diagnoses' }],
+          required,
+        ),
+      );
+      renderComponent(mockDiagnosisEntries);
+      const link = screen.getByTestId('add-as-condition-link');
+      expect(link).toHaveAttribute('aria-disabled', 'true');
+      fireEvent.click(link);
+      expect(markAsConditionMock).not.toHaveBeenCalled();
+      expect(screen.getByText('Hypertension')).toBeInTheDocument();
+      expect(
+        screen.getByRole('combobox', { name: 'Diagnoses Certainty' }),
+      ).not.toBeDisabled();
+    });
+
+    it('blocks conversion when condition authorization is revoked with a draft open', () => {
+      const privileges = [
+        { name: 'Add Diagnoses', uuid: 'add-diagnoses' },
+        { name: 'Edit Conditions', uuid: 'edit-conditions' },
+      ];
+      mockedUseUserPrivilege.mockImplementation((required) =>
+        hasPrivilege(privileges, required),
+      );
+      const { rerender } = renderComponent(mockDiagnosisEntries);
+      expect(screen.getByTestId('add-as-condition-link')).toHaveAttribute(
+        'aria-disabled',
+        'false',
+      );
+      privileges.pop();
+      rerender(<ConditionsAndDiagnoses />);
+      expect(screen.getByTestId('add-as-condition-link')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+      fireEvent.click(screen.getByTestId('add-as-condition-link'));
+      expect(markAsConditionMock).not.toHaveBeenCalled();
+      expect(removeDiagnosisMock).not.toHaveBeenCalled();
+    });
+
     it('renders null when user lacks Add Diagnoses privilege', () => {
       mockedUseUserPrivilege.mockReturnValue(mockUserPrivilegesEmpty);
       const { container } = renderComponent();

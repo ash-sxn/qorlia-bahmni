@@ -1,5 +1,31 @@
 # Qorlia React frontend backend readiness
 
+## Latest diagnosis and condition creation verification
+
+The isolated pinned backend now has source-serializer and actual React creation
+proof. Native tests establish Add Diagnoses or Edit Diagnoses for diagnosis
+creation, and the separate Edit Conditions requirement for condition creation.
+Denied transactions roll back the encounter and clinical entries; transient test
+accounts are retired and original seed/staff roles remain unchanged.
+
+The component reflects those distinct gates, but preserves the explicit
+input-control configuration policy. Isolated staging alone now permits either
+diagnosis privilege in that control after a configuration backup. This does not
+override an Add-only hospital policy or alias privileges globally.
+
+Missing certainty/duration blocked browser saves and native reads confirmed no
+clinical records. One valid React save created a confirmed diagnosis and active
+condition in exactly one encounter. Full reload and independent exact FHIR/native
+REST reads retain concept, onset, patient and visit associations. The verifier's
+native Condition shape was corrected without replaying the successful write.
+Six focused suites pass 232 tests and nine snapshots in India/US Pacific time,
+plus clinical type checking, source lint and the native integration check.
+
+Condition-only roles, diagnosis editing, duration/serializer boundaries,
+concurrency and remaining clinical/separate-product acceptance are still open.
+See the latest feature-ledger checkpoint. No shared-demo/production deployment
+or existing user permission change occurred.
+
 ## Latest clinical patient-transition and confirmation verification
 
 Conditions, diagnoses and program summary tables no longer retain another

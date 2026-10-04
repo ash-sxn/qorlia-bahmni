@@ -39,6 +39,9 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
   const canAddDiagnoses = useHasPrivilege(
     CONSULTATION_PAD_PRIVILEGES.CONDITIONS_AND_DIAGNOSES,
   );
+  const canAddConditions = useHasPrivilege(
+    CONSULTATION_PAD_PRIVILEGES.CONDITIONS,
+  );
   const [searchDiagnosesTerm, setSearchDiagnosesTerm] = useState('');
   const [selectedDiagnosisItem, setSelectedDiagnosisItem] =
     useState<ConceptSearch | null>(null);
@@ -309,9 +312,20 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
               <SelectedDiagnosisItem
                 diagnosis={diagnosis}
                 updateCertainty={updateCertainty}
-                onMarkAsCondition={() => markAsCondition(diagnosis.id)}
+                onMarkAsCondition={() => {
+                  if (
+                    canAddConditions &&
+                    existingConditions &&
+                    !existingConditionsLoading &&
+                    !existingConditionsError &&
+                    !isConditionDuplicate(diagnosis.id)
+                  ) {
+                    markAsCondition(diagnosis.id);
+                  }
+                }}
                 doesConditionExist={isConditionDuplicate(diagnosis.id)}
                 canMarkAsCondition={
+                  canAddConditions &&
                   !!existingConditions &&
                   !existingConditionsLoading &&
                   !existingConditionsError

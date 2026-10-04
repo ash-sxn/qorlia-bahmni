@@ -1,5 +1,46 @@
 # Bahmni workflow parity ledger
 
+## 5 October diagnosis/condition creation and exact permission checkpoint
+
+This supersedes the tested creation/seed-permission gaps below, not complete
+diagnosis editing, all roles or the whole clinical module.
+
+- Native isolated checks using the actual frontend serializers establish that
+  the pinned diagnosis DAO accepts Add Diagnoses or Edit Diagnoses, while the
+  condition DAO requires Edit Conditions. Add-only and edit-only diagnosis
+  creation and condition creation retained the expected coding, certainty and
+  patient/visit links. Denied diagnosis/condition transactions left no new
+  encounter or changed records. Three temporary test accounts were retired;
+  existing seed/staff permissions were not expanded.
+- The component now follows that diagnosis OR gate and separately gates condition
+  conversion on Edit Conditions, available history and duplicate checks. The
+  submission handler repeats the conversion guard. Edit-only visibility,
+  add-only conversion denial and revoked-condition-permission regressions failed
+  before correction. The configured input-control privilege gate remains intact:
+  a hospital's explicit Add Diagnoses restriction is not silently overridden.
+- Only isolated staging's diagnosis input-control configuration was changed from
+  Add Diagnoses to Add Diagnoses or Edit Diagnoses after a recoverable configuration
+  backup. The ordinary seed already has the latter native permission. Its empty
+  synthetic visit fixture was corrected to the configured parent visit location.
+  No public config, existing user role or shared-demo setting changed.
+- Actual React missing-certainty and missing-duration submissions retained the
+  drafts; independent native reads found zero encounters/diagnoses/conditions.
+  One subsequent valid browser save created a confirmed type-2 diabetes diagnosis
+  and active hypertension condition with a two-day duration. Full reload rendered
+  both. Exact FHIR resources, native REST condition and encounter reads retain the
+  expected concept UUIDs, certainty, onset, patient/visit links and exactly one
+  encounter shared by both records. Successful writes were not replayed for an
+  observation delay or verifier-shape correction.
+- Six focused clinical/configuration suites pass 232 tests and nine snapshots in
+  India and US Pacific time. Clinical type checking and changed-source lint pass.
+  The native isolated integration check passes again without replaying saved
+  creations. Dependency builds retain the upstream form-renderer eval and existing
+  import/large-bundle warnings; this is not a full application test run.
+
+Remaining: condition-only roles without diagnosis access, diagnosis edit/removal,
+duration/serializer boundary hardening, concurrent saves and other clinical and
+separate-product workflows. No public deployment or release acceptance occurred.
+
 ## 5 October clinical patient-transition and confirmation checkpoint
 
 This closes the tested placeholder-data and open-confirmation eligibility gaps,
