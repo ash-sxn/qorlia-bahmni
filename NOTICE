@@ -29,3 +29,15 @@ package/docker/njs.js, revision dc20e7d2c161e26e10339b7e125bf48b0f31755b.
 Upstream notice: Copyright 2026. Source generated at Thoughtworks.
 Licensed under MPL 2.0, included in LICENSE. Qorlia's modifications validate
 paths, encode internal redirects and fail closed on invalid session responses.
+
+## Reports staging adapter
+
+runtime/reports/start-staging.sh adapts startup and migration commands from
+the upstream Bahmni Reports image, pinned to digest
+sha256:3af8e248ae7603126fecb1efacb583e8b6b2bd4e9df0254fc198e8e4a2d63877.
+That directory is licensed under AGPL 3.0, included in runtime/reports/LICENSE,
+not the MPL license applying to the frontend. The adapter retains the bundled
+upstream migrations and application. Its changes remove password-bearing
+shell tracing, restrict generated configuration permissions, override the
+private configuration URL and start without a debugger. No upstream notices
+or licenses in the original image are removed.

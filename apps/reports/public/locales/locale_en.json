@@ -57,6 +57,7 @@
   "REPORTS_STATUS": "Status",
   "REPORTS_ACTIONS": "Actions",
   "REPORTS_DOWNLOAD": "Download",
+  "REPORTS_VIEW": "View report (new tab)",
   "REPORTS_DELETE": "Delete",
   "REPORTS_DELETE_CONFIRM": "Delete this queued report?",
   "REPORTS_DELETE_ERROR": "Could not delete this report.",

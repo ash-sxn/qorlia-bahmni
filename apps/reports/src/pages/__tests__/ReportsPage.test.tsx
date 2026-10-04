@@ -415,6 +415,41 @@ describe('ReportsPage', () => {
     get.mockRestore();
   });
 
+  it('opens HTML reports in a new tab while retaining file download labels', () => {
+    mockUseQuery.mockImplementation(({ queryKey }) => ({
+      data:
+        queryKey[0] === 'currentUser'
+          ? { username: 'qorlia-demo' }
+          : queryKey[1] === 'queue'
+            ? [
+                {
+                  id: 'html',
+                  name: 'HTML report',
+                  status: 'Completed',
+                  format: 'text/html',
+                },
+                {
+                  id: 'csv',
+                  name: 'CSV report',
+                  status: 'Completed',
+                  format: 'text/csv',
+                },
+              ]
+            : {},
+      isPending: false,
+      isError: false,
+      refetch: jest.fn(),
+    }));
+    renderPage('/reports/my-reports');
+    const view = screen.getByRole('link', { name: 'REPORTS_VIEW' });
+    expect(view).toHaveAttribute('href', '/bahmnireports/download/html');
+    expect(view).toHaveAttribute('target', '_blank');
+    expect(view).toHaveAttribute('rel', 'noopener noreferrer');
+    const download = screen.getByRole('link', { name: 'REPORTS_DOWNLOAD' });
+    expect(download).toHaveAttribute('href', '/bahmnireports/download/csv');
+    expect(download).not.toHaveAttribute('target');
+  });
+
   describe('Accessibility', () => {
     it('has no accessibility violations', async () => {
       const { container } = renderPage();

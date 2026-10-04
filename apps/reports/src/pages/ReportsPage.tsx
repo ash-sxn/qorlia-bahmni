@@ -508,8 +508,22 @@ const MyReportsPanel = () => {
                           {row.status.toLowerCase() === 'completed' && (
                             <a
                               href={`/bahmnireports/download/${encodeURIComponent(row.id)}`}
+                              target={
+                                row.format === 'text/html'
+                                  ? '_blank'
+                                  : undefined
+                              }
+                              rel={
+                                row.format === 'text/html'
+                                  ? 'noopener noreferrer'
+                                  : undefined
+                              }
                             >
-                              {t('REPORTS_DOWNLOAD')}
+                              {t(
+                                row.format === 'text/html'
+                                  ? 'REPORTS_VIEW'
+                                  : 'REPORTS_DOWNLOAD',
+                              )}
                             </a>
                           )}
                           {row.status.toLowerCase() !== 'processing' && (

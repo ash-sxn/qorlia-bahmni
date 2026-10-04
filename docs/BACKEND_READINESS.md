@@ -2,6 +2,20 @@
 
 Updated 5 October 2026. The local review at `http://localhost:3002/bahmni-v2/login` uses the isolated synthetic staging backend. The earlier port 3000 review uses the existing synthetic demo backend at `demo-bahmni.qorlia.com`. No redesigned frontend or backend upgrade has been deployed there. This is development evidence, not a production release gate.
 
+## 5 October native export-format readiness checkpoint
+
+The actual React Visit Report queue now generated PDF, Excel and OpenDocument in addition to HTML/CSV. Browser downloads retained the app route; native SQL confirmed Completed state and filenames. Read-only PDF extraction/rendering, Excel workbook import and ODS MIME/XML checks retained the expected synthetic visit. All three downloads matched native storage hashes. Native audit records contain all five request attempts. The separate HTML tab displays its populated output.
+
+This proves those formats for this synthetic report, not every report definition, custom templates or role-specific download ownership. Native templates remain unbranded, some labels wrap poorly and download filenames repeat the extension. Direct Run now, custom XLS, deletion, failed-job/restart behavior and separate OpenELIS/Odoo datasets remain pending. Reports tests passed again (50) in India/US Pacific and its type check passed. No production/shared-demo changes occurred.
+
+## 5 October native Reports readiness checkpoint
+
+Native Reports is now running privately in the existing isolated staging network. The clinical backup `openmrs-before-reports-20261004T191744Z.sql` was saved before the image's two migrations; its SHA-256 is `de0cdcfae55ef590c169a478af94e3355fb247076f5894c7ff835e04269adebf`. The separate `bahmni_reports` schema and persistent generated-output volume belong only to staging. The existing proxy was reloaded after its syntax check, preserving its private review address. No production or shared-demo container was changed.
+
+The public AGPL-covered startup adapter disables shell tracing/debugging and uses the original bundled changelogs and application. The reporting-session bridge preserves session validation and HttpOnly/Secure/same-site cookies. Anonymous and invalid-session queue requests redirect to login. These checks do not establish limited-role or report-owner authorization.
+
+Authenticated React scheduling produced Completed HTML/CSV Visit Reports with the expected synthetic QA visit. Independent database records, native audit entries and the downloaded CSV/storage hash match passed. Both test reports remain after browser cancellation of removal. Frontend checks passed (50 tests in India/US Pacific, type check and build). Native PDF/Excel/ODS/templates/deletion, direct Run now, failure/restart recovery and server-side ownership are still open. OpenELIS and Odoo report sources are deliberately unavailable in this staging backend. This supersedes the missing-service gap below, not complete reporting or clinical readiness.
+
 ## 5 October Reports readiness checkpoint
 
 Report-name requests, configured formats/date ranges, multipart XLS-template controls, timestamp/date grouping, stale/processing deletion guards and shared report-run audit logging now have frontend regression coverage. The full Reports suite passed 49 tests in India and US Pacific; shared audit-service checks passed 8. Reports/service type checks and dependency-first builds passed. Native browser review loaded the real 13-report catalogue and selected the correct previous-month dates. This is not generation or queue-write proof.

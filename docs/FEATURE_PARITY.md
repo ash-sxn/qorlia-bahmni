@@ -1,5 +1,28 @@
 # Bahmni workflow parity ledger
 
+## 5 October 2026 native report format checkpoint
+
+This supersedes the PDF/Excel/ODS generation gap below for the populated Visit Report only, not the other report types or full Reports parity.
+
+- Actual React requests for 28 September through 5 October generated PDF, Excel and OpenDocument Visit Reports. The browser queue showed Processing and then Completed, withheld deletion while processing, and downloaded each completed file without navigating away. Independent SQL confirmed the three recorded IDs, formats and output filenames. Five total native RUN_REPORT events now match the HTML, CSV and three new requests, with the proper module/report name and no patient ID.
+- Read-only extraction verified the configured title and synthetic patient's identifier/visit. Excel imported as a real workbook (one Visit Report sheet, eight used rows and 22 columns), not HTML with a spreadsheet extension. OpenDocument contains the proper spreadsheet MIME entry and populated content XML. PDF text extraction and rendered-page review verified the visit. Each browser download's SHA-256 matched the independently hashed stored file. The private verifier is repeatable and does not submit or modify records.
+- The separate HTML tab now visibly contains the populated report while the original React queue remains available. Reports tests passed again (50) in India and US Pacific time; the Reports type check, adapter shell syntax and diff checks passed.
+- Native outputs are not yet Qorlia-styled. PDF labels wrap awkwardly; the spreadsheet preview also needs template/layout review in the target office application. The native download names duplicate extensions. These are recorded defects, not successful design acceptance.
+
+Remaining: direct Run now, custom XLS upload/generation, actual report deletion, limited-role/server-side ownership boundaries, failed jobs/concurrent actions/restart recovery, other populated report definitions and report output branding/layout. No production/shared-demo change, privilege change or public exposure occurred.
+
+## 5 October 2026 native Reports checkpoint
+
+This supersedes the missing native staging service and HTML/CSV generation gaps below, not full Reports or React parity.
+
+- The pinned upstream Reports service now runs only on isolated staging's internal network with no published ports, a separate Reports schema and persistent output storage. A recoverable clinical SQL backup was taken before the bundled migrations; both clinical and Reports migrations completed. The startup adapter runs them without password-bearing shell tracing, writes private configuration and starts without the image's debugger. It has a 1 GiB container limit and 512 MiB heap; measured use during review was about 371 MiB. No existing application container was recreated.
+- The staging proxy now issues an HttpOnly, Secure, same-site reporting session from the existing OpenMRS session and routes Reports privately. Actual browser queue reads work. Anonymous and invalid-reporting-session requests return a login redirect, not report data. This is not complete role or ownership enforcement proof.
+- React browser scheduling generated populated Visit Reports in HTML and CSV for 28 September through 5 October. Independent SQL confirmed both Completed records with their configured name, dates and formats. The native HTML opened with the synthetic QA patient's visit. CSV downloaded without leaving the app; its 516 bytes matched the stored output SHA-256 `86fe20ad8beca06bd748e6901f69e760d35b233466965546af26c1b568b34906`. Native audit records contain both RUN_REPORT attempts, the proper module and report name, with no patient ID.
+- HTML reports are inline pages, not browser downloads. Their queue action now says View report (new tab) and uses a safe new-tab link; other formats retain Download. The new control regression, full Reports suite (50 tests) in India/US Pacific, Reports type check and library build passed. The previous 49-test checkpoint is superseded only for this additional control.
+- The populated removal dialog initially focused Cancel. Cancel closed it, restored focus to its opening Delete button and retained both records. Actual report deletion was not performed. The queue screenshot is saved privately as `reports-native-queue-20261005.jpg`.
+
+Remaining: direct Run now, PDF/Excel/ODS/custom XLS templates, actual deletion, limited-role and server-side ownership boundaries, failures/concurrent actions/restart recovery, and branding of native report outputs. Separate OpenELIS and Odoo databases are unavailable here; their report types are not verified. The adapter and its source/license are public under `runtime/reports`; no production/shared-demo deployment or public exposure occurred.
+
 ## 5 October 2026 Reports controls and audit checkpoint
 
 This supersedes the Reports control gaps in the older catalogue preview, not native report generation or full React parity.
