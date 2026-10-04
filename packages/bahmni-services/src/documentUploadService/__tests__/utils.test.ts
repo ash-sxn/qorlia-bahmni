@@ -48,6 +48,16 @@ describe('processFileForUpload', () => {
     (globalThis as any).FileReader = jest.fn(() => mockFileReaderInstance);
   });
 
+  it.each([
+    ['scan.webp', 'image/webp'],
+    ['scan.WEBP', 'image/png'],
+  ])('rejects unsupported WebP before reading %s', async (name, type) => {
+    await expect(
+      processFileForUpload(new File(['image'], name, { type })),
+    ).rejects.toThrow('WebP is not supported');
+    expect(mockFileReaderInstance.readAsDataURL).not.toHaveBeenCalled();
+  });
+
   it('should process image file and return base64 content with metadata', async () => {
     const mockFile = new File(
       ['test'],

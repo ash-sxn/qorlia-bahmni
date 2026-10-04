@@ -66,7 +66,7 @@ export const DocumentUpload = forwardRef<
   // set there is no client-side size limit (the backend remains the authority).
   const { data: maxFileSizeMb } = useQuery({
     queryKey: ['documentUploadMaxSizeMb'],
-    queryFn: getDocumentUploadMaxSizeMb,
+    queryFn: async () => (await getDocumentUploadMaxSizeMb()) ?? null,
   });
 
   const [pendingDocuments, setPendingDocuments] = useState<PendingDocument[]>(
@@ -146,10 +146,7 @@ export const DocumentUpload = forwardRef<
         unsupported.push(file.name);
         return;
       }
-      if (
-        maxFileSizeMb !== undefined &&
-        file.size > maxFileSizeMb * 1000 * 1000
-      ) {
+      if (maxFileSizeMb != null && file.size > maxFileSizeMb * 1000 * 1000) {
         tooLarge.push(file.name);
         return;
       }
@@ -386,7 +383,7 @@ export const DocumentUpload = forwardRef<
       <div className={styles.uploader}>
         <p className={styles.uploaderTitle}>{t('DOCUMENT_UPLOAD_TITLE')}</p>
         <p className={styles.uploaderHelp}>
-          {maxFileSizeMb !== undefined
+          {maxFileSizeMb != null
             ? t('DOCUMENT_UPLOAD_HELP', { size: maxFileSizeMb })
             : t('DOCUMENT_UPLOAD_SUPPORTED_TYPES')}
         </p>

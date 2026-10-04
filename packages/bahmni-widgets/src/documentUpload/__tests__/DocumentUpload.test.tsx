@@ -204,14 +204,20 @@ describe('DocumentUpload', () => {
     expect(saveDocuments).not.toHaveBeenCalled();
   });
 
-  it('rejects unsupported file types without uploading', () => {
-    renderWidget();
-    selectFile('text/plain');
-    expect(uploadDocument).not.toHaveBeenCalled();
-    expect(mockAddNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error' }),
-    );
-  });
+  it.each(['text/plain', 'image/webp'])(
+    'rejects %s without uploading',
+    (mimeType) => {
+      renderWidget();
+      selectFile(mimeType);
+      expect(uploadDocument).not.toHaveBeenCalled();
+      expect(
+        screen.queryByTestId('pending-document-row'),
+      ).not.toBeInTheDocument();
+      expect(mockAddNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' }),
+      );
+    },
+  );
 
   it('saves the document with the upload url and calls onSaved', async () => {
     const onSaved = jest.fn();

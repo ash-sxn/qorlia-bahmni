@@ -217,6 +217,36 @@ it('uploads an order attachment without changing its encounter type and includes
   );
 });
 
+it.each([
+  ['scan.webp', 'image/webp', 4, 'Choose a JPEG, PNG, GIF image or PDF.'],
+  [
+    'large.pdf',
+    'application/pdf',
+    2000001,
+    'Each file must be no larger than 2 MB.',
+  ],
+])(
+  'keeps notes and blocks invalid upload %s before requesting the API',
+  async (name, type, size, message) => {
+    renderEditor();
+    fireEvent.change(screen.getByLabelText('Radiology Notes'), {
+      target: { value: 'QorliaQA retained draft' },
+    });
+    await waitFor(() =>
+      expect(screen.getByLabelText('Add Diagnostic Images')).toBeEnabled(),
+    );
+    fireEvent.change(screen.getByLabelText('Add Diagnostic Images'), {
+      target: { files: [new File([new Uint8Array(size)], name, { type })] },
+    });
+    expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    expect(uploadDocument).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Radiology Notes')).toHaveValue(
+      'QorliaQA retained draft',
+    );
+    expect(screen.getByRole('button', { name: 'Save result' })).toBeEnabled();
+  },
+);
+
 it('keeps successful uploads after a partial failure and voids only the removed saved attachment', async () => {
   jest.mocked(useUserPrivilege).mockReturnValue({
     userPrivileges: [
@@ -295,6 +325,32 @@ it('keeps successful uploads after a partial failure and voids only the removed 
       }),
     ]),
   );
+});
+
+it('allows uploads with an unset size limit and offers a native PDF download', async () => {
+  jest.mocked(getDocumentUploadMaxSizeMb).mockResolvedValueOnce(undefined);
+  jest
+    .mocked(uploadDocument)
+    .mockResolvedValueOnce({ url: 'patient/scan__report.pdf' });
+  renderEditor();
+  await waitFor(() =>
+    expect(screen.getByLabelText('Add Diagnostic Images')).toBeEnabled(),
+  );
+  fireEvent.change(screen.getByLabelText('Add Diagnostic Images'), {
+    target: {
+      files: [
+        new File(['%PDF-fixture'], 'report.pdf', { type: 'application/pdf' }),
+      ],
+    },
+  });
+  expect(
+    await screen.findByRole('link', { name: 'Download PDF' }),
+  ).toHaveAttribute('download', 'report.pdf');
+  expect(screen.getByRole('link', { name: 'Download PDF' })).toHaveAttribute(
+    'href',
+    '/openmrs/auth?requested_document=/document_images/patient/scan__report.pdf',
+  );
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
 
 it('keeps its draft and original snapshot when another order refreshes the page', async () => {
@@ -618,7 +674,7 @@ it('does not enable multi-select answers for a role without result-write privile
   expect(saveFulfillment).not.toHaveBeenCalled();
 });
 
-it('shows readable saved coded results, zero values and notes', () => {
+it('shows readable saved coded results, zero values, notes and protected PDF downloads', () => {
   render(
     <OrderResultValues
       observations={[
@@ -641,12 +697,25 @@ it('shows readable saved coded results, zero values and notes', () => {
           value: 0,
           groupMembers: [],
         },
+        {
+          concept: { uuid: 'pdf', name: 'Report', dataType: 'Complex' },
+          value: 'patient/scan__report.pdf',
+          groupMembers: [],
+        },
       ]}
     />,
   );
   expect(screen.getByText('Negative')).toBeInTheDocument();
   expect(screen.getByText('Synthetic note')).toBeInTheDocument();
   expect(screen.getByText('0')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Download PDF' })).toHaveAttribute(
+    'download',
+    'report.pdf',
+  );
+  expect(screen.getByRole('link', { name: 'Download PDF' })).toHaveAttribute(
+    'href',
+    '/openmrs/auth?requested_document=/document_images/patient/scan__report.pdf',
+  );
 });
 
 const datedForm: FulfillmentConcept = {

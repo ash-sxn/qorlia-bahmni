@@ -64,9 +64,27 @@ export const OrderResultValues = ({
           {obs.groupMembers?.length ? (
             <OrderResultValues observations={obs.groupMembers} />
           ) : obs.concept.dataType === 'Complex' && documentLink(obs.value) ? (
-            <a href={documentLink(obs.value)} target="_blank" rel="noreferrer">
-              Open attachment
-            </a>
+            <>
+              <a
+                href={documentLink(obs.value)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open attachment
+              </a>
+              {typeof obs.value === 'string' && /\.pdf$/i.test(obs.value) && (
+                <>
+                  {' '}
+                  ·{' '}
+                  <a
+                    href={documentLink(obs.value)}
+                    download={obs.value.split('__').pop()}
+                  >
+                    Download PDF
+                  </a>
+                </>
+              )}
+            </>
           ) : (
             resultValueLabel(obs.value, obs.concept.dataType)
           )}
@@ -125,11 +143,11 @@ const ResultField = ({
     if (
       files.some(
         (file) =>
-          !/^image\/(jpeg|png|gif|webp)$/.test(file.type) &&
+          !/^image\/(jpeg|png|gif)$/.test(file.type) &&
           file.type !== 'application/pdf',
       )
     ) {
-      onError('Choose a JPEG, PNG, GIF, WebP image or PDF.');
+      onError('Choose a JPEG, PNG, GIF image or PDF.');
       return;
     }
     if (files.some((file) => file.size > maxSize * 1000 * 1000)) {
@@ -408,6 +426,16 @@ const ResultField = ({
             <a href={documentLink(obs.value)} target="_blank" rel="noreferrer">
               Open {label}
             </a>{' '}
+            {typeof obs.value === 'string' && /\.pdf$/i.test(obs.value) && (
+              <>
+                <a
+                  href={documentLink(obs.value)}
+                  download={obs.value.split('__').pop()}
+                >
+                  Download PDF
+                </a>{' '}
+              </>
+            )}
             <button
               type="button"
               onClick={() =>
@@ -427,7 +455,7 @@ const ResultField = ({
           id={id}
           type="file"
           disabled={maxSize === undefined}
-          accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
+          accept="image/jpeg,image/png,image/gif,application/pdf"
           multiple
           onChange={(event) => {
             const files = Array.from(event.target.files ?? []);
@@ -481,7 +509,7 @@ const OrderResultEditor = ({
   const [error, setError] = useState('');
   const maxSize = useQuery({
     queryKey: ['documentUploadMaxSizeMb'],
-    queryFn: getDocumentUploadMaxSizeMb,
+    queryFn: async () => (await getDocumentUploadMaxSizeMb()) ?? null,
   });
   const canWrite =
     hasPrivilege(userPrivileges, 'Add Encounters') &&

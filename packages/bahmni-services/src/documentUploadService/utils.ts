@@ -36,6 +36,12 @@ export const getAuthenticatedDocumentUrl = (
 export async function processFileForUpload(
   file: File,
 ): Promise<ProcessedFileData> {
+  // Bahmni's ImageIO upload processor cannot read or write WebP. Do not
+  // silently convert a clinical image and change its original representation.
+  if (file.type === 'image/webp' || /\.webp$/i.test(file.name))
+    throw new Error(
+      'WebP is not supported. Choose a JPEG, PNG, GIF image or PDF.',
+    );
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {

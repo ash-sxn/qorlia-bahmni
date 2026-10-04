@@ -1,5 +1,17 @@
 # Bahmni workflow parity ledger
 
+## 4 October 2026 attachment-format checkpoint
+
+This supersedes the PDF/JPEG/GIF verification gap in the protected attachment checkpoint below, not all upload formats or result workflows.
+
+- The Radiology Order editor uploaded synthetic PDF, JPEG and GIF files, saved them with HTTP 200 and retained all three alongside the existing PNG and original note after a full reload. Independent native REST reads confirmed the patient/order association and active attachment observation IDs. The previously removed PNG remains voided; retained Procedure fields and coded-answer history still pass their read-only checks.
+- Authenticated file reads returned the correct MIME types, private/no-store and nosniff headers, with bytes matching independently measured staging storage hashes. Anonymous reads returned 403. JPEG/GIF rendered in the browser. Bahmni re-encodes images; the PDF retained its original bytes exactly. The in-app browser's native PDF viewer remained blank, so the editor and read-only result view now offer a native Download PDF fallback. Its actual browser download matched the original PDF hash.
+- WebP is no longer advertised by the result editor. The shared upload processor rejects WebP MIME/filenames before reading or submitting them, and Patient Documents rejects WebP selection. The isolated backend also rejected the probe with HTTP 400. This follows the existing [Bahmni ImageIO upload processor](https://github.com/Bahmni/bahmni-core/blob/master/bahmnicore-api/src/main/java/org/bahmni/module/bahmnicore/service/impl/PatientDocumentServiceImpl.java), rather than silently converting clinical originals.
+- Both upload query consumers normalize an unset size setting to null, avoiding TanStack's undefined-data error while preserving the backend's authority. An unset limit is not interpreted as zero MB. Editor checks cover rejected format/oversize selections, retained notes, unset limits and protected PDF links. Editor/API/Orders tests passed (60), service upload tests passed (11), and Patient Documents widget tests passed (37), without the previous unset-limit query error.
+- Clinical/widget type checking and clinical/service/widget library builds passed. The existing form-renderer eval warning, dynamic/static import warnings and large bundles remain release concerns. Rebuilding a watched dependency briefly removed generated CSS; the local build recovered after dependency-first rebuilding, and a fresh login/location/home check had no console errors.
+
+Remaining: real size-limit/error boundaries, other media formats and saved Patient Documents edits/removals, populated limited-role checks, specialized form rules and the other React workflows below. No production/shared-demo deployment or public exposure occurred.
+
 ## 4 October 2026 protected radiology attachment checkpoint
 
 This supersedes the pending radiology text/image browser checks in the earlier checkpoints below. It does not declare all attachment formats, result forms or clinical workflows complete.

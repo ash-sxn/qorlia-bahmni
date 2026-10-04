@@ -2,6 +2,14 @@
 
 Updated 4 October 2026. The local review at `http://localhost:3002/bahmni-v2/login` uses the isolated synthetic staging backend. The earlier port 3000 review uses the existing synthetic demo backend at `demo-bahmni.qorlia.com`. No redesigned frontend or backend upgrade has been deployed there. This is development evidence, not a production release gate.
 
+## 4 October attachment-format checkpoint
+
+Synthetic PDF/JPEG/GIF uploads and a Radiology Order result save returned HTTP 200. Full reload and independent native REST reads retained those files, the existing PNG and original note with correct patient/order links. Authenticated responses matched storage hashes and MIME types; anonymous reads returned 403. JPEG/GIF rendered, and the PDF's original bytes were preserved. The in-app browser's native PDF viewer is blank, so a Download PDF link now provides a verified byte-identical native download. This supersedes the pending PDF/JPEG/GIF checks below, not all media or workflows.
+
+WebP is rejected before upload in the shared processor and is no longer offered by the result editor. The isolated backend probe returned 400; Bahmni's [ImageIO implementation](https://github.com/Bahmni/bahmni-core/blob/master/bahmnicore-api/src/main/java/org/bahmni/module/bahmnicore/service/impl/PatientDocumentServiceImpl.java) names PNG/JPEG/GIF as supported images. No silent clinical-image conversion was added. Both upload screens now accept an unset size setting without returning undefined query data or treating the missing limit as zero. Focused editor/API/page tests passed (60), upload-service tests passed (11) and document-widget tests passed (37). Real backend size limits, populated limited-role checks, specialized forms and broader workflow parity remain pending.
+
+Clinical/widget type checks and clinical/service/widget library builds passed, with existing eval/import/bundle warnings still outstanding. A watched dependency rebuild briefly removed generated CSS; dependency-first rebuilding restored it. A fresh local login entry reached location selection and React home with no console errors. The private backend still responds normally.
+
 ## 4 October protected attachment checkpoint
 
 Radiology text/PNG browser create, a second attachment save and removal of one saved attachment now pass real HTTP 200 saves plus reload/native REST checks. The note and retained image keep their observation IDs; the removed image retains voided history. This supersedes the radiology text/image gaps recorded in the earlier checkpoints, not the remaining forms/formats or workflows.
@@ -70,6 +78,6 @@ The production frontend build and local login tests pass. Bundles and service-wo
 
 `/bahmni-v2/login` and `/bahmni-v2/home/` are the local review entry points. The local legacy home URL redirects there. Implemented module tiles stay within React; full legacy tools remain available where parity is incomplete. Check the detailed [feature parity ledger](FEATURE_PARITY.md) before switching production defaults.
 
-Still needed: the remaining consultation transaction components on staging, populated browser order-result saves and attachments, program lifecycle/state writes, reports generation/download/deletion, administrative imports and order-set writes, remaining advanced OT/IPD/appointment actions, and role-specific permission/error checks.
+Still needed: the remaining consultation transaction components on staging, specialized order-result forms and upload boundaries, program lifecycle/state writes, reports generation/download/deletion, administrative imports and order-set writes, remaining advanced OT/IPD/appointment actions, and role-specific permission/error checks.
 
 OpenELIS laboratory, Odoo billing, DCM4CHEE radiology and the external analytics/outreach applications remain separate products. Reskinning this React repository does not redesign them. They are the next phase after React workflow parity.
