@@ -1,5 +1,23 @@
 # Qorlia React frontend backend readiness
 
+## Latest native condition transaction verification
+
+The actual source service now has isolated native proof for new-encounter and
+matched-encounter condition inactivation, saved patient/visit/encounter references
+and rejected-update rollback. Exact-ID REST read-back avoids the collection's
+active-only default; successful writes were not replayed to repair that verifier.
+
+A temporary synthetic role with encounter writes and required native reads, but
+no Add/Edit Conditions, reached the real condition update gate: direct PUT was
+403 and the bundle was 400 explicitly requiring Edit Conditions at its Condition
+entry. Anonymous PUT was 401. Native records and the two encounter IDs remained
+unchanged after denial. Earlier read-prerequisite denials are not counted as that
+proof. Test accounts were retired and existing staff roles were unchanged.
+
+This supersedes only the candidate's native update/reference/rollback gap below.
+Browser lifecycle, condition-create/diagnosis authorization semantics and broader
+clinical acceptance remain open. No public/shared-demo deployment occurred.
+
 ## Latest condition-inactivation candidate
 
 New encounter creation and condition inactivation now share one EncounterBundle

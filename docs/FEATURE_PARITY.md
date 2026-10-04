@@ -1,5 +1,21 @@
 # Bahmni workflow parity ledger
 
+## 5 October native condition transaction and permission checkpoint
+
+This supersedes the native condition-inactivation persistence/rollback gap in
+the candidate below, not populated browser lifecycle, diagnosis saves or all
+clinical permissions.
+
+- The private verifier imports the actual condition/encounter/bundle source services and replaces only browser transport/location context with real isolated HTTP and the synthetic login location. A new-encounter inactivation sent one POST Encounter plus PUT Condition transaction. A second condition reused that encounter in one PUT/PUT transaction. Independent FHIR and native REST reads retained inactive status, the same saved encounter, patient and visit associations. A rejected nonexistent-condition update rolled back its new encounter and preserved both native condition records.
+- The initial verification incorrectly used the native REST condition collection, which defaults to active records. Both inactivations had already succeeded. Reading their exact saved IDs corrected the verifier without replaying successful writes. The repeat check resumes saved results and passed one native integration test, including the deliberately rejected transaction.
+- A synthetic limited role contains encounter write privileges and the native read prerequisites, but neither Add Conditions nor Edit Conditions. Initial denials for Get Concept Sources, Get Users and Get Encounter Roles were prerequisite failures, not condition-write authorization proof. With those legitimate read prerequisites present, direct PUT returned 403 for Edit Conditions; EncounterBundle returned 400 identifying the Condition entry and the same missing privilege. Anonymous PUT returned 401. Independent native reads retained both complete condition records and exactly the original two encounters, proving rollback for this denied update path.
+- All temporary permission-check accounts were retired with native read-back; audit history and the explicitly synthetic test roles remain. No existing user/role, shared demo, production service, public route or backend clinical metadata was changed. These fixture roles are not a proposed production staff role. The seed's absent Add Conditions/Add Diagnoses privileges were not aliased or expanded.
+
+Remaining: populated React condition lifecycle and acknowledgement/error checks,
+native condition-create/diagnosis privilege semantics, diagnosis create/edit,
+other roles and concurrency. Service/API proof is not browser acceptance or a
+claim that the whole clinical module is finished.
+
 ## 5 October atomic condition-inactivation candidate
 
 The new-encounter path now sends POST Encounter and PUT Condition in one
