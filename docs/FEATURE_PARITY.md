@@ -1,5 +1,29 @@
 # Bahmni workflow parity ledger
 
+## 5 October 2026 Programs browser checkpoint
+
+This supersedes the browser attribute/date/removal/completion/void gaps in the earlier Programs checkpoints, not complete Programs or React parity.
+
+- Real browser editing saved concept and Boolean changes, saved a retrospective Treatment Date, and cleared only that date. Full reloads and independent native REST retained the four unrelated attribute UUIDs/values and both cleared-date values in voided history. Native date controls require committed input; incomplete date segments block submission rather than producing a partial write.
+- A retrospective state change returned HTTP 200. Cancel sent no DELETE; Escape dismissed the existing in-page dialog; confirmed current-state removal returned 204. Reload and native REST showed the previous state reopened and the removed state retained as voided history.
+- A separate synthetic browser enrollment returned 201. Completion with a configured outcome and retrospective date returned 200; full reload moved it to Past programs. Independent REST retained the enrollment date, outcome, closed state and all three original attribute IDs/values. A completion date before enrollment disabled submission and sent no write.
+- Enrollment removal Cancel sent no DELETE. Confirmed removal returned 204; reload excluded it from normal lists. Direct native REST retained the completed enrollment, its dates/outcome, original attributes and state as voided history, with the removal reason. The synthetic patient remained active. The native search endpoint omits voided enrollments even with `includeAll`; the private read-back verifier uses the recorded UUID directly and did not replay successful writes.
+- Enrollment defaults now follow `defaultProgram` and its first active workflow state, while preserving manual selections and explicit clearing during configuration refresh. This matches the pinned legacy controller. Automated configuration variants passed, but staging has no configured default, so that variant still needs a populated native fixture.
+- Programs page/service checks passed (108) in Asia/Kolkata and America/Los_Angeles. Sibling Programs widget checks passed (60, two snapshots), three type checks passed, and service/widget/clinical dependency-first builds passed. Existing form-renderer eval, import/mock and large-bundle warnings remain.
+
+Remaining: other configured datatypes, configured-default and multi-workflow behavior, concurrent-write/failure and limited-role backend checks, keyboard focus restoration after dialog dismissal, plus the broader React workflows below. Browser input works again. Tests used only isolated synthetic staging; no production/shared-demo deployment, public exposure or privilege change occurred.
+
+## 4 October 2026 Programs attribute checkpoint
+
+This supersedes the concept/scalar edit gaps below, not full Programs datatype or workflow parity.
+
+- Enrollment editing now preserves concept selections returned as a UUID, display label, name label or object across the three supported concept datatypes. Missing answer metadata blocks editing instead of silently clearing a saved answer. Shared validation rejects unconfigured selections before writing. Serialization retains the [legacy formatter's](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/common/domain/mappers/attributeFormatter.js) display-plus-hydrated-UUID contract for `org.openmrs.Concept`, and UUID values for modern concept datatypes.
+- Real staging returns Boolean enrollment attributes as primitive booleans. The model, edit prefill, page display and shared summary reader now retain true, false and numeric zero instead of treating them as concept objects. Unchanged scalars are not rewritten. Summaries exclude voided attributes.
+- Actual shared-service staging edits changed a synthetic concept selection, Boolean and date, then cleared only the date. Independent native REST read-back preserved the other four attribute UUIDs/values and retained the cleared date in voided history. Bahmni's full response omits voided attributes; the native enrollment response with `includeAll=true` provides that history. The guarded private verifier re-read completed writes without replaying them. Invalid answers caused no POST.
+- Programs page/service tests passed (100) in Asia/Kolkata and America/Los_Angeles. Sibling ProgramDetails/PatientProgramsTable tests passed (60, two snapshots). Clinical/service/widget type checks and dependency-first library builds passed. Existing form-renderer eval, dynamic/static import, duplicate-mock and large-bundle warnings remain.
+
+Remaining: populated browser attribute/date/modal save proofs, other configured datatypes, multi-workflow behavior, concurrent-write/failure and limited-role backend checks. Browser focus commands still time out. The exact local session API authenticates the isolated seed account, and the review connection responds normally. No production/shared-demo changes occurred.
+
 ## 4 October 2026 retrospective Programs date checkpoint
 
 This supersedes the missing state/completion date controls below, not full Programs parity.

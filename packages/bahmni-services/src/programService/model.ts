@@ -123,7 +123,7 @@ interface ProgramAttributeType extends BaseResource {
 
 interface ProgramEnrollmentAttribute extends BaseResource {
   attributeType: ProgramAttributeType;
-  value: string | Concept;
+  value: string | boolean | number | Concept;
   voided: boolean;
   links: Link[];
   resourceVersion: string;

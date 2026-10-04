@@ -16,6 +16,7 @@ import styles from './BedManagement.module.scss';
 export interface ProgramConfig {
   config?: {
     program?: Record<string, { required?: boolean; excludeFrom?: string[] }>;
+    defaultProgram?: { programName: string; stateName?: string } | null;
   };
 }
 
@@ -41,8 +42,8 @@ export const ProgramEnrollmentForm = ({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const today = localToday();
-  const [programUuid, setProgramUuid] = useState('');
-  const [stateUuid, setStateUuid] = useState('');
+  const [selectedProgramUuid, setProgramUuid] = useState<string>();
+  const [selectedStateUuid, setStateUuid] = useState<string>();
   const [date, setDate] = useState(today);
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -60,11 +61,29 @@ export const ProgramEnrollmentForm = ({
     queryFn: () =>
       get<ProgramConfig>('/bahmni_config/openmrs/apps/clinical/app.json'),
   });
+  const defaultProgram = config.data?.config?.defaultProgram;
+  const programUuid =
+    selectedProgramUuid ??
+    programs.data?.find(
+      (item) =>
+        item.name === defaultProgram?.programName &&
+        !item.retired &&
+        !activeProgramUuids.includes(item.uuid),
+    )?.uuid ??
+    '';
   const program = programs.data?.find((item) => item.uuid === programUuid);
   const states =
     program?.allWorkflows
       ?.find((workflow) => !workflow.retired)
       ?.states.filter((state) => !state.retired) ?? [];
+  const stateUuid =
+    selectedStateUuid ??
+    (program?.name === defaultProgram?.programName
+      ? states.find(
+          (state) => state.concept.display === defaultProgram?.stateName,
+        )?.uuid
+      : undefined) ??
+    '';
   const visibleAttributes = (attributes.data ?? []).filter(
     (attribute) =>
       !config.data?.config?.program?.[attribute.name]?.excludeFrom?.includes(
@@ -126,8 +145,8 @@ export const ProgramEnrollmentForm = ({
           queryKey: ['program-enrollments', patientUuid],
         }),
       ]);
-      setProgramUuid('');
-      setStateUuid('');
+      setProgramUuid(undefined);
+      setStateUuid(undefined);
       setValues({});
       setDate(today);
       setMessage(t('PROGRAMS_ENROLLED_SUCCESS'));

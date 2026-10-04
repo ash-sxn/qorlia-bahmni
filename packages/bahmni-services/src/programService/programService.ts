@@ -1,7 +1,11 @@
 import { del, get, post } from '../api';
 import { getDisplayNameForConcept } from '../conceptService';
 import { formatDateTime, isDate } from '../date/date';
-import { AttributeFormat } from '../patientService/attributeFormatMapper';
+import {
+  AttributeFormat,
+  isConceptFormat,
+  isDateFormat,
+} from '../patientService/attributeFormatMapper';
 import {
   PATIENT_PROGRAMS_URL,
   PATIENT_PROGRAMS_PAGE_URL,
@@ -234,24 +238,21 @@ export const updateProgramEnrollmentDetails = async (
         !attribute.voided && attribute.attributeType.uuid === definition.uuid,
     );
     const value = values[definition.uuid] ?? '';
-    const currentValue = existing?.value;
-    const original =
-      typeof currentValue === 'string'
-        ? definition.datatypeClassname === AttributeFormat.CONCEPT
-          ? (definition.concept?.answers?.find(
-              (answer) =>
-                answer.display === currentValue ||
-                answer.name?.display === currentValue,
-            )?.uuid ?? currentValue)
-          : currentValue.slice(
-              0,
-              definition.datatypeClassname ===
-                AttributeFormat.ATTRIBUTABLE_DATE ||
-                definition.datatypeClassname === AttributeFormat.DATE_DATATYPE
-                ? 10
-                : undefined,
-            )
-        : (currentValue?.uuid ?? '');
+    const currentValue =
+      typeof existing?.value === 'object'
+        ? existing.value.uuid
+        : String(existing?.value ?? '');
+    const original = isConceptFormat(definition.datatypeClassname)
+      ? (definition.concept?.answers?.find(
+          (answer) =>
+            answer.uuid === currentValue ||
+            answer.display === currentValue ||
+            answer.name?.display === currentValue,
+        )?.uuid ?? currentValue)
+      : currentValue.slice(
+          0,
+          isDateFormat(definition.datatypeClassname) ? 10 : undefined,
+        );
     if (value === original) return [];
     if (!value) {
       return existing
@@ -267,7 +268,7 @@ export const updateProgramEnrollmentDetails = async (
     const answer = definition.concept?.answers?.find(
       (item) => item.uuid === value,
     );
-    if (definition.datatypeClassname === AttributeFormat.CONCEPT && !answer) {
+    if (isConceptFormat(definition.datatypeClassname) && !answer) {
       throw new Error(`Invalid concept answer for ${definition.name}`);
     }
     return [
@@ -346,7 +347,7 @@ export function extractAttributes(
 
   for (const attributeName of programAttributes) {
     const foundAttribute = enrollment.attributes.find(
-      (attr) => attr.attributeType.display === attributeName,
+      (attr) => !attr.voided && attr.attributeType.display === attributeName,
     );
     if (foundAttribute) {
       if (typeof foundAttribute.value === 'string') {
@@ -355,8 +356,11 @@ export function extractAttributes(
         } else {
           attributesMap[attributeName] = foundAttribute.value;
         }
+      } else if (typeof foundAttribute.value === 'object') {
+        attributesMap[attributeName] =
+          foundAttribute.value.name?.name ?? foundAttribute.value.display;
       } else {
-        attributesMap[attributeName] = foundAttribute.value.name!.name;
+        attributesMap[attributeName] = String(foundAttribute.value);
       }
     } else {
       attributesMap[attributeName] = null;

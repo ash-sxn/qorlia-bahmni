@@ -2,6 +2,22 @@
 
 Updated 4 October 2026. The local review at `http://localhost:3002/bahmni-v2/login` uses the isolated synthetic staging backend. The earlier port 3000 review uses the existing synthetic demo backend at `demo-bahmni.qorlia.com`. No redesigned frontend or backend upgrade has been deployed there. This is development evidence, not a production release gate.
 
+## 5 October Programs browser checkpoint
+
+Browser attribute saves now have full reload and independent native REST proof: concept changes, Boolean false/true, retrospective date creation and clearing retained unrelated attribute IDs/values and voided-date history. A backdated state save returned 200; confirmed current-state removal returned 204, reopened the prior state and retained removed-state history. Cancel sent no DELETE and Escape dismissed the in-page dialog.
+
+A separate synthetic browser enrollment returned 201, completion returned 200, and full reload showed the configured outcome and retrospective completion in Past programs. A too-early date disabled submission without a write. Confirmed enrollment removal returned 204; direct native REST retained original attribute/state IDs and values as voided history with dates, outcome and reason, while leaving the patient active. Native search omits voided enrollments, so the verifier reads the independently recorded UUID without repeating writes. Enrollment defaults also respect the legacy `defaultProgram` configuration without clobbering explicit choices; this configuration variant has automated, not native staging-fixture, evidence.
+
+Page/service tests passed (108) in India and US Pacific time, sibling widget tests passed (60, two snapshots), all three type checks passed, and service/widget/clinical builds passed. Existing eval/import/mock/bundle warnings remain. Remaining gates include other datatypes, configured defaults/multi-workflow, concurrent edits and limited-role backend enforcement. Browser dialog dismissal currently loses focus instead of restoring its trigger; this accessibility correction is still pending. No production/shared-demo changes occurred.
+
+## 4 October Programs attribute checkpoint
+
+Concept prefill and unchanged-value detection now cover all three supported concept datatypes and their UUID/label/object response forms. Missing configured answers block the edit rather than clearing existing data; invalid selections cause no POST. The legacy hydrated-object serializer and modern UUID serializer remain distinct.
+
+Isolated staging returns primitive Boolean attributes. The model, editor and both shared summary consumers now retain booleans and numeric zero, exclude voided values and avoid rewriting unchanged scalars. Actual shared-service edits saved a new concept selection, true and a date, then cleared only the date. Independent native REST with `includeAll=true` retained the date's voided history and all four other attribute UUIDs/values. The corrected private read-back assertion did not replay successful writes.
+
+Page/service checks passed in India and US Pacific time (100), sibling Programs widget checks passed (60, two snapshots), and clinical/service/widget type checks and library builds passed. Existing eval/import/mock/bundle warnings remain. The exact local login API returns 200 and authenticates the staging seed, but browser focus commands still time out. Populated browser edits, remaining datatypes, multi-workflow, concurrency and limited-role enforcement are still release gates. No production/shared-demo changes occurred.
+
 ## 4 October retrospective Programs date checkpoint
 
 The state and completion controls now accept local calendar dates between the latest non-voided state and today. Shared preflight re-reads the enrollment and rejects invalid or out-of-range dates before posting; existing sibling state actions retain their today default.

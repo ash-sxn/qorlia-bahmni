@@ -272,9 +272,9 @@ export const ProgramsPage = () => {
                                     attribute.display}
                                 </dt>
                                 <dd>
-                                  {typeof attribute.value === 'string'
-                                    ? attribute.value
-                                    : attribute.value?.display}
+                                  {typeof attribute.value === 'object'
+                                    ? attribute.value?.display
+                                    : String(attribute.value)}
                                 </dd>
                               </Fragment>
                             ))}

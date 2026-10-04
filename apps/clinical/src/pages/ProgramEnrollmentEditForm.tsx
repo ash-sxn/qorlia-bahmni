@@ -1,7 +1,8 @@
 import {
-  AttributeFormat,
   get,
   getProgramAttributeTypes,
+  isConceptFormat,
+  isDateFormat,
   type ProgramAttributeDefinition,
   type ProgramEnrollment,
   updateProgramEnrollmentDetails,
@@ -47,29 +48,31 @@ export const ProgramEnrollmentEditForm = ({
       ),
   );
   const existingValue = (definition: ProgramAttributeDefinition) => {
-    const value = (enrollment.attributes ?? []).find(
+    const stored = (enrollment.attributes ?? []).find(
       (attribute) =>
         !attribute.voided && attribute.attributeType.uuid === definition.uuid,
     )?.value;
-    if (!value) return '';
-    if (typeof value !== 'string') return value.uuid;
-    if (definition.datatypeClassname === AttributeFormat.CONCEPT) {
+    if (stored == null) return '';
+    if (typeof stored === 'object') return stored.uuid;
+    const value = String(stored);
+    if (isConceptFormat(definition.datatypeClassname)) {
       return (
         definition.concept?.answers?.find(
           (answer) =>
-            answer.display === value || answer.name?.display === value,
-        )?.uuid ?? ''
+            answer.uuid === value ||
+            answer.display === value ||
+            answer.name?.display === value,
+        )?.uuid ?? value
       );
     }
-    return definition.datatypeClassname === AttributeFormat.ATTRIBUTABLE_DATE ||
-      definition.datatypeClassname === AttributeFormat.DATE_DATATYPE
+    return isDateFormat(definition.datatypeClassname)
       ? value.slice(0, 10)
       : value;
   };
   const unsupported = visibleAttributes.some(
     (attribute) =>
       !supportedProgramAttributeFormats.has(attribute.datatypeClassname) ||
-      (attribute.datatypeClassname === AttributeFormat.CONCEPT &&
+      (isConceptFormat(attribute.datatypeClassname) &&
         (enrollment.attributes ?? []).some(
           (existing) =>
             !existing.voided &&
@@ -171,7 +174,7 @@ export const ProgramEnrollmentEditForm = ({
               }
             />
           ))}
-          <button type="submit" disabled={saving}>
+          <button type="submit" disabled={saving || unsupported}>
             {saving ? t('PROGRAMS_SAVING') : t('PROGRAMS_SAVE_CHANGES')}
           </button>
           <button

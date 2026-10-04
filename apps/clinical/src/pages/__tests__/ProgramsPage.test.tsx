@@ -3,6 +3,7 @@ import { useUserPrivilege } from '@bahmni/widgets';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   fireEvent,
+  act,
   render,
   screen,
   waitFor,
@@ -399,76 +400,199 @@ describe('ProgramsPage', () => {
     expect(getPrograms).toHaveBeenCalledTimes(2);
   });
 
-  it('edits an active enrollment date and configured attribute', async () => {
-    (useUserPrivilege as jest.Mock).mockReturnValue({
-      userPrivileges: [
-        { uuid: 'priv-1', name: 'app:clinical' },
-        { uuid: 'priv-2', name: 'Edit Patient Programs' },
-      ],
-      isLoading: false,
-    });
-    getPatient.mockResolvedValue({
-      fullName: 'Meera Demo',
-      identifier: 'ABC123',
-    });
-    getAttributes.mockResolvedValue([
-      {
-        uuid: 'attr-type-1',
-        name: 'ID_Number',
-        description: 'ID number',
-        datatypeClassname: 'java.lang.String',
-        retired: false,
-      },
-    ]);
-    getPrograms.mockResolvedValue({
-      results: [
-        {
-          uuid: 'enrollment-1',
-          program: { uuid: 'program-1', name: 'Maternal health' },
-          dateEnrolled: '2023-01-01',
-          dateCompleted: null,
-          states: [],
-          allowedStates: [],
-          attributes: [
-            {
-              uuid: 'attr-1',
-              attributeType: { uuid: 'attr-type-1', display: 'ID_Number' },
-              value: '123',
-              voided: false,
-            },
-          ],
-          voided: false,
-        },
-      ],
-    });
-    updateEnrollment.mockResolvedValue({ uuid: 'enrollment-1' });
-    renderPage('/clinical/programs/patient-1');
-
-    fireEvent.click(await screen.findByText('Maternal health'));
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'PROGRAMS_EDIT' }),
-    );
-    fireEvent.change(screen.getByLabelText('PROGRAMS_ENROLLED'), {
-      target: { value: '2022-12-01' },
-    });
-    fireEvent.change(screen.getByLabelText('ID number'), {
-      target: { value: '456' },
-    });
-    fireEvent.click(
-      screen.getByRole('button', { name: 'PROGRAMS_SAVE_CHANGES' }),
-    );
-
-    await waitFor(() =>
-      expect(updateEnrollment).toHaveBeenCalledWith(
-        'enrollment-1',
-        '2022-12-01',
-        expect.arrayContaining([
-          expect.objectContaining({ uuid: 'attr-type-1' }),
-        ]),
-        { 'attr-type-1': '456' },
+  it.each(
+    [
+      services.AttributeFormat.CONCEPT,
+      services.AttributeFormat.CODED_CONCEPT,
+      services.AttributeFormat.CONCEPT_DATATYPE,
+    ].flatMap((datatypeClassname) =>
+      ['answer-1', 'Standard', 'Standard care', { uuid: 'answer-1' }].map(
+        (value) => ({ datatypeClassname, value }),
       ),
-    );
-  });
+    ),
+  )(
+    'edits other fields without losing a concept selection: %j',
+    async ({ datatypeClassname, value }) => {
+      (useUserPrivilege as jest.Mock).mockReturnValue({
+        userPrivileges: [
+          { uuid: 'priv-1', name: 'app:clinical' },
+          { uuid: 'priv-2', name: 'Edit Patient Programs' },
+        ],
+        isLoading: false,
+      });
+      getPatient.mockResolvedValue({
+        fullName: 'Meera Demo',
+        identifier: 'ABC123',
+      });
+      getAttributes.mockResolvedValue([
+        {
+          uuid: 'attr-type-1',
+          name: 'ID_Number',
+          description: 'ID number',
+          datatypeClassname: 'java.lang.String',
+          retired: false,
+        },
+        {
+          uuid: 'care-type',
+          name: 'Care plan',
+          datatypeClassname,
+          retired: false,
+          concept: {
+            answers: [
+              {
+                uuid: 'answer-1',
+                display: 'Standard',
+                name: { display: 'Standard care' },
+              },
+            ],
+          },
+        },
+        {
+          uuid: 'boolean-type',
+          name: 'Co-morbidities',
+          datatypeClassname: services.AttributeFormat.BOOLEAN_DATATYPE,
+          retired: false,
+        },
+        {
+          uuid: 'number-type',
+          name: 'Follow-up count',
+          datatypeClassname: services.AttributeFormat.INTEGER,
+          retired: false,
+        },
+      ]);
+      getPrograms.mockResolvedValue({
+        results: [
+          {
+            uuid: 'enrollment-1',
+            program: { uuid: 'program-1', name: 'Maternal health' },
+            dateEnrolled: '2023-01-01',
+            dateCompleted: null,
+            states: [],
+            allowedStates: [],
+            attributes: [
+              {
+                uuid: 'attr-1',
+                attributeType: { uuid: 'attr-type-1', display: 'ID_Number' },
+                value: '123',
+                voided: false,
+              },
+              {
+                uuid: 'care-attribute',
+                attributeType: { uuid: 'care-type', display: 'Care plan' },
+                value,
+                voided: false,
+              },
+              {
+                uuid: 'boolean-attribute',
+                attributeType: { uuid: 'boolean-type' },
+                value: true,
+                voided: false,
+              },
+              {
+                uuid: 'number-attribute',
+                attributeType: { uuid: 'number-type' },
+                value: 0,
+                voided: false,
+              },
+            ],
+            voided: false,
+          },
+        ],
+      });
+      updateEnrollment.mockResolvedValue({ uuid: 'enrollment-1' });
+      renderPage('/clinical/programs/patient-1');
+
+      fireEvent.click(await screen.findByText('Maternal health'));
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'PROGRAMS_EDIT' }),
+      );
+      expect(screen.getByLabelText('Care plan')).toHaveValue('answer-1');
+      expect(screen.getByLabelText('Co-morbidities')).toBeChecked();
+      expect(screen.getByLabelText('Follow-up count')).toHaveValue(0);
+      fireEvent.change(screen.getByLabelText('PROGRAMS_ENROLLED'), {
+        target: { value: '2022-12-01' },
+      });
+      fireEvent.change(screen.getByLabelText('ID number'), {
+        target: { value: '456' },
+      });
+      fireEvent.click(
+        screen.getByRole('button', { name: 'PROGRAMS_SAVE_CHANGES' }),
+      );
+
+      await waitFor(() =>
+        expect(updateEnrollment).toHaveBeenCalledWith(
+          'enrollment-1',
+          '2022-12-01',
+          expect.arrayContaining([
+            expect.objectContaining({ uuid: 'attr-type-1' }),
+          ]),
+          {
+            'attr-type-1': '456',
+            'care-type': 'answer-1',
+            'boolean-type': 'true',
+            'number-type': '0',
+          },
+        ),
+      );
+    },
+  );
+
+  it.each([
+    services.AttributeFormat.CONCEPT,
+    services.AttributeFormat.CODED_CONCEPT,
+    services.AttributeFormat.CONCEPT_DATATYPE,
+  ])(
+    'does not clear a saved concept whose configured answers are missing: %s',
+    async (datatypeClassname) => {
+      (useUserPrivilege as jest.Mock).mockReturnValue({
+        userPrivileges: [
+          { name: 'app:clinical' },
+          { name: 'Edit Patient Programs' },
+        ],
+        isLoading: false,
+      });
+      getPatient.mockResolvedValue({ fullName: 'Meera Demo' });
+      getAttributes.mockResolvedValue([
+        {
+          uuid: 'care-type',
+          name: 'Care plan',
+          datatypeClassname,
+          retired: false,
+        },
+      ]);
+      getPrograms.mockResolvedValue({
+        results: [
+          {
+            uuid: 'enrollment-1',
+            program: { uuid: 'program-1', name: 'Maternal health' },
+            dateEnrolled: '2023-01-01',
+            dateCompleted: null,
+            states: [],
+            voided: false,
+            attributes: [
+              {
+                uuid: 'care-attribute',
+                attributeType: { uuid: 'care-type' },
+                value: {
+                  uuid: 'unconfigured-answer',
+                  display: 'Previous care plan',
+                },
+                voided: false,
+              },
+            ],
+          },
+        ],
+      });
+      renderPage('/clinical/programs/patient-1');
+
+      fireEvent.click(await screen.findByText('Maternal health'));
+      expect(
+        await screen.findByRole('button', { name: 'PROGRAMS_EDIT' }),
+      ).toBeDisabled();
+      expect(screen.getByText('PROGRAMS_UNSUPPORTED_ATTRIBUTE')).toBeVisible();
+      expect(updateEnrollment).not.toHaveBeenCalled();
+    },
+  );
 
   it('enrolls a patient with required and concept attributes through Bahmni', async () => {
     (useUserPrivilege as jest.Mock).mockReturnValue({
@@ -602,6 +726,199 @@ describe('ProgramsPage', () => {
 
     expect(await screen.findByText('PROGRAMS_ALREADY_ENROLLED')).toBeVisible();
     expect(createEnrollment).not.toHaveBeenCalled();
+  });
+
+  describe('configured enrollment defaults', () => {
+    const catalog = [
+      {
+        uuid: 'program-default',
+        name: 'TB Program',
+        retired: false,
+        allWorkflows: [
+          { retired: true, states: [] },
+          {
+            retired: false,
+            states: [
+              {
+                uuid: 'state-retired',
+                retired: true,
+                concept: { display: 'Old' },
+              },
+              {
+                uuid: 'state-default',
+                retired: false,
+                concept: { display: 'Started' },
+              },
+            ],
+          },
+          {
+            retired: false,
+            states: [
+              {
+                uuid: 'other-state',
+                retired: false,
+                concept: { display: 'Other workflow' },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        uuid: 'program-other',
+        name: 'Other program',
+        retired: false,
+        allWorkflows: [],
+      },
+    ];
+
+    beforeEach(() => {
+      (useUserPrivilege as jest.Mock).mockReturnValue({
+        userPrivileges: [
+          { name: 'app:clinical' },
+          { name: 'Add Patient Programs' },
+        ],
+        isLoading: false,
+      });
+      getPatient.mockResolvedValue({ fullName: 'Meera Demo' });
+      getPrograms.mockResolvedValue({ results: [] });
+      getAllPrograms.mockResolvedValue(catalog);
+      getConfig.mockResolvedValue({
+        config: {
+          defaultProgram: { programName: 'TB Program', stateName: 'Started' },
+        },
+      });
+    });
+
+    it('uses the configured program and first active workflow state, then resets after save', async () => {
+      createEnrollment.mockResolvedValue({ uuid: 'default-enrollment' });
+      renderPage('/clinical/programs/patient-1');
+      expect(await screen.findByLabelText('PROGRAMS_NAME')).toHaveValue(
+        'program-default',
+      );
+      expect(screen.getByLabelText('PROGRAMS_STATE')).toHaveValue(
+        'state-default',
+      );
+      expect(
+        screen.queryByRole('option', { name: 'Old' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('option', { name: 'Other workflow' }),
+      ).not.toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText('PROGRAMS_ENROLLED'), {
+        target: { value: '2020-09-20' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'PROGRAMS_ENROLL' }));
+      await waitFor(() =>
+        expect(createEnrollment).toHaveBeenCalledWith({
+          patient: 'patient-1',
+          program: 'program-default',
+          dateEnrolled: new Date('2020-09-20T00:00:00').toISOString(),
+          states: [
+            {
+              state: 'state-default',
+              startDate: new Date('2020-09-20T00:00:00').toISOString(),
+            },
+          ],
+          attributes: [],
+        }),
+      );
+      expect(
+        await screen.findByText('PROGRAMS_ENROLLED_SUCCESS'),
+      ).toBeVisible();
+      expect(screen.getByLabelText('PROGRAMS_NAME')).toHaveValue(
+        'program-default',
+      );
+      expect(screen.getByLabelText('PROGRAMS_STATE')).toHaveValue(
+        'state-default',
+      );
+    });
+
+    it('does not overwrite an explicit choice or restore a cleared state on config refresh', async () => {
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      renderPage('/clinical/programs/patient-1', client);
+      const selection = await screen.findByLabelText('PROGRAMS_NAME');
+      expect(selection).toHaveValue('program-default');
+      fireEvent.change(selection, { target: { value: 'program-other' } });
+      act(() =>
+        client.setQueryData(['clinical-program-config'], {
+          config: {
+            defaultProgram: { programName: 'TB Program', stateName: 'Started' },
+          },
+        }),
+      );
+      expect(selection).toHaveValue('program-other');
+      fireEvent.change(selection, { target: { value: 'program-default' } });
+      expect(screen.getByLabelText('PROGRAMS_STATE')).toHaveValue('');
+      fireEvent.change(selection, { target: { value: '' } });
+      act(() => client.setQueryData(['program-catalog'], [...catalog]));
+      expect(selection).toHaveValue('');
+      expect(createEnrollment).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      'missing program',
+      'retired program',
+      'already active',
+      'missing state',
+      'retired state',
+      'second workflow state',
+    ])(
+      'does not invent or submit an unavailable default: %s',
+      async (scenario) => {
+        const unavailableProgram = [
+          'missing program',
+          'retired program',
+          'already active',
+        ].includes(scenario);
+        if (scenario === 'missing program') {
+          getConfig.mockResolvedValue({
+            config: { defaultProgram: { programName: 'Missing' } },
+          });
+        } else if (scenario === 'retired program') {
+          getAllPrograms.mockResolvedValue([
+            { ...catalog[0], retired: true },
+            catalog[1],
+          ]);
+        } else if (scenario === 'already active') {
+          getPrograms.mockResolvedValue({
+            results: [
+              {
+                uuid: 'existing',
+                program: catalog[0],
+                dateEnrolled: '2020-01-01',
+                dateCompleted: null,
+                states: [],
+                attributes: [],
+                voided: false,
+              },
+            ],
+          });
+        } else {
+          getConfig.mockResolvedValue({
+            config: {
+              defaultProgram: {
+                programName: 'TB Program',
+                stateName:
+                  scenario === 'retired state'
+                    ? 'Old'
+                    : scenario === 'second workflow state'
+                      ? 'Other workflow'
+                      : 'Missing',
+              },
+            },
+          });
+        }
+        renderPage('/clinical/programs/patient-1');
+        expect(await screen.findByLabelText('PROGRAMS_NAME')).toHaveValue(
+          unavailableProgram ? '' : 'program-default',
+        );
+        if (!unavailableProgram)
+          expect(screen.getByLabelText('PROGRAMS_STATE')).toHaveValue('');
+        expect(createEnrollment).not.toHaveBeenCalled();
+      },
+    );
   });
 
   it('completes an active program with a configured outcome', async () => {

@@ -1,4 +1,5 @@
 import { del, get, post } from '../../api';
+import { AttributeFormat } from '../../patientService/attributeFormatMapper';
 import { mockEnrollments, patientUUID, mockPrograms } from '../__mocks__/mocks';
 import {
   PROGRAM_DETAILS_URL,
@@ -140,6 +141,23 @@ describe('programService', () => {
 
       expect(result['ID_Number']).toBe('123145');
     });
+
+    it.each([true, false, 0, 12.5])(
+      'preserves a scalar attribute in program summaries: %s',
+      (value) => {
+        const enrollment = {
+          ...mockEnrollments[0],
+          attributes: [{ ...mockEnrollments[0].attributes[0], value }],
+        } as ProgramEnrollment;
+        expect(extractAttributes(enrollment, ['ID_Number'])).toEqual({
+          ID_Number: String(value),
+        });
+        enrollment.attributes[0].voided = true;
+        expect(extractAttributes(enrollment, ['ID_Number'])).toEqual({
+          ID_Number: null,
+        });
+      },
+    );
   });
 
   describe('getCurrentStateName', () => {
@@ -465,49 +483,157 @@ describe('programService', () => {
     expect(post).not.toHaveBeenCalled();
   });
 
-  it('sends a concept answer with its hydrated UUID', async () => {
-    const current = mockEnrollments[0];
-    const attribute = current.attributes[2];
-    (get as jest.Mock).mockResolvedValue(current);
-    (post as jest.Mock).mockResolvedValue(current);
+  it.each([
+    AttributeFormat.CONCEPT,
+    AttributeFormat.CODED_CONCEPT,
+    AttributeFormat.CONCEPT_DATATYPE,
+  ])(
+    'serializes a changed concept using its datatype contract: %s',
+    async (datatypeClassname) => {
+      const current = mockEnrollments[0];
+      const attribute = current.attributes[2];
+      (get as jest.Mock).mockResolvedValue(current);
+      (post as jest.Mock).mockResolvedValue(current);
 
-    await updateProgramEnrollmentDetails(
-      current.uuid,
-      '2023-01-01',
-      [
-        {
-          uuid: attribute.attributeType.uuid,
-          name: 'Patient Stage',
-          datatypeClassname: 'org.openmrs.Concept',
-          retired: false,
-          concept: {
-            answers: [
-              {
-                uuid: 'answer-2',
-                display: 'Follow-up',
-                name: { display: 'Follow-up care' },
-              },
-            ],
-          } as ProgramEnrollment['program']['concept'],
-        },
-      ],
-      { [attribute.attributeType.uuid]: 'answer-2' },
-    );
-
-    expect(post).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        attributes: [
+      await updateProgramEnrollmentDetails(
+        current.uuid,
+        '2023-01-01',
+        [
           {
-            uuid: attribute.uuid,
-            attributeType: { uuid: attribute.attributeType.uuid },
-            value: 'Follow-up care',
-            hydratedObject: 'answer-2',
+            uuid: attribute.attributeType.uuid,
+            name: 'Patient Stage',
+            datatypeClassname,
+            retired: false,
+            concept: {
+              answers: [
+                {
+                  uuid: 'answer-2',
+                  display: 'Follow-up',
+                  name: { display: 'Follow-up care' },
+                },
+              ],
+            } as ProgramEnrollment['program']['concept'],
           },
         ],
-      }),
-    );
-  });
+        { [attribute.attributeType.uuid]: 'answer-2' },
+      );
+
+      expect(post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          attributes: [
+            {
+              uuid: attribute.uuid,
+              attributeType: { uuid: attribute.attributeType.uuid },
+              ...(datatypeClassname === AttributeFormat.CONCEPT
+                ? { value: 'Follow-up care', hydratedObject: 'answer-2' }
+                : { value: 'answer-2' }),
+            },
+          ],
+        }),
+      );
+    },
+  );
+
+  it.each(
+    [
+      AttributeFormat.CONCEPT,
+      AttributeFormat.CODED_CONCEPT,
+      AttributeFormat.CONCEPT_DATATYPE,
+    ].flatMap((datatypeClassname) =>
+      ['answer-1', 'Standard', 'Standard care'].map((value) => ({
+        datatypeClassname,
+        value,
+      })),
+    ),
+  )(
+    'preserves an unchanged concept returned as a UUID or label: %j',
+    async ({ datatypeClassname, value }) => {
+      const attribute = { ...mockEnrollments[0].attributes[2], value };
+      const current = { ...mockEnrollments[0], attributes: [attribute] };
+      (get as jest.Mock).mockResolvedValue(current);
+      const definition = {
+        uuid: attribute.attributeType.uuid,
+        name: 'Care plan',
+        datatypeClassname,
+        retired: false,
+        concept: {
+          answers: [
+            {
+              uuid: 'answer-1',
+              display: 'Standard',
+              name: { display: 'Standard care' },
+            },
+          ],
+        } as ProgramEnrollment['program']['concept'],
+      };
+      await updateProgramEnrollmentDetails(
+        current.uuid,
+        '2023-01-01',
+        [definition],
+        { [definition.uuid]: 'answer-1' },
+      );
+      expect(post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ attributes: [] }),
+      );
+    },
+  );
+
+  it.each([
+    AttributeFormat.CONCEPT,
+    AttributeFormat.CODED_CONCEPT,
+    AttributeFormat.CONCEPT_DATATYPE,
+  ])(
+    'rejects an unconfigured concept answer before writing: %s',
+    async (datatypeClassname) => {
+      (get as jest.Mock).mockResolvedValue(mockEnrollments[0]);
+      await expect(
+        updateProgramEnrollmentDetails(
+          'enrollment-1',
+          '2023-01-01',
+          [
+            {
+              uuid: 'care-type',
+              name: 'Care plan',
+              datatypeClassname,
+              retired: false,
+            },
+          ],
+          { 'care-type': 'unconfigured-answer' },
+        ),
+      ).rejects.toThrow('Invalid concept answer');
+      expect(post).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([true, false, 0, 12.5])(
+    'does not rewrite an unchanged scalar attribute: %s',
+    async (value) => {
+      const attribute = { ...mockEnrollments[0].attributes[0], value };
+      const current = { ...mockEnrollments[0], attributes: [attribute] };
+      (get as jest.Mock).mockResolvedValue(current);
+      const definition = {
+        uuid: attribute.attributeType.uuid,
+        name: 'Scalar',
+        datatypeClassname:
+          typeof value === 'boolean'
+            ? AttributeFormat.BOOLEAN_DATATYPE
+            : AttributeFormat.FLOAT,
+        retired: false,
+      };
+      await updateProgramEnrollmentDetails(
+        current.uuid,
+        '2023-01-01',
+        [definition],
+        { [definition.uuid]: String(value) },
+      );
+      expect(post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ attributes: [] }),
+      );
+    },
+  );
 
   describe('getPatientProgramsPage', () => {
     it('should fetch page 1 with default count', async () => {
