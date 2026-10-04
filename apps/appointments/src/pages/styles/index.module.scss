@@ -1,0 +1,514 @@
+.page {
+  --brand: var(--qorlia-primary, #1f5238);
+  --ink: var(--qorlia-ink, #202b29);
+  --muted: var(--qorlia-muted, #5a6865);
+  --line: var(--qorlia-border, #dbe5e1);
+  min-height: calc(100vh - 48px);
+  padding: 36px clamp(18px, 4vw, 56px) 56px;
+  color: var(--ink);
+  background: var(--qorlia-canvas, #f8faf9);
+}
+
+.intro {
+  margin-bottom: 28px;
+}
+.viewTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.viewTabs a {
+  padding: 10px 14px;
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  font-weight: 700;
+  text-decoration: none;
+}
+.viewTabs a[aria-current="page"] {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+.listFilters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.listFilters label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.listFilters select,
+.listFilters input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid #cddbd4;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: -8px 0 20px;
+}
+.primaryButton,
+.secondaryButton {
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 1px solid var(--brand);
+  border-radius: 7px;
+  background: var(--brand);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.secondaryButton {
+  background: #fff;
+  color: var(--brand);
+}
+.primaryButton:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.successMessage {
+  padding: 12px 16px;
+  border: 1px solid #a8c8b5;
+  border-radius: 7px;
+  background: #e8f4ed;
+  color: var(--brand);
+}
+.bookingForm {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  padding: 24px;
+}
+.bookingForm label,
+.patientSearch {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.bookingForm input,
+.bookingForm select,
+.bookingForm textarea {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid #cddbd4;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 400;
+}
+.bookingForm textarea {
+  resize: vertical;
+}
+.bookingForm .fullWidth {
+  grid-column: 1 / -1;
+}
+.selectedPatient {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+}
+.selectedPatient button,
+.patientResults button {
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  cursor: pointer;
+}
+.patientResults {
+  max-height: 180px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  list-style: none;
+}
+.patientResults li + li {
+  border-top: 1px solid var(--line);
+}
+.patientResults button {
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+}
+.patientResults button:hover {
+  background: #e8f4ed;
+}
+.eyebrow {
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+.intro h1 {
+  margin: 9px 0 5px;
+  color: #17382d;
+  font-size: clamp(28px, 2.4vw, 38px);
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+}
+.intro p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.panel {
+  margin-bottom: 22px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--qorlia-surface, #fff);
+}
+.adminTable {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--qorlia-surface, #fff);
+}
+.adminTable > div:first-of-type {
+  padding: 17px 22px;
+}
+.adminTable h2 {
+  color: var(--ink);
+  font-size: 20px;
+}
+.adminTable table {
+  min-width: 700px;
+}
+.adminTable th {
+  color: var(--muted);
+  background: var(--qorlia-canvas, #f8faf9);
+}
+.adminTable th,
+.adminTable td {
+  border-color: #edf1ef;
+}
+.panelHeading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.panelHeading h2 {
+  margin: 5px 0 0;
+  font-size: 21px;
+  line-height: 1.2;
+}
+.weekControls {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.weekControls label,
+.serviceFilter {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.weekControls button,
+.weekControls input,
+.serviceFilter select {
+  min-height: 39px;
+  padding: 7px 11px;
+  border: 1px solid #cddbd4;
+  border-radius: 7px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
+}
+.weekControls button {
+  cursor: pointer;
+}
+.calendarToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 15px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.calendarViewSwitch {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--qorlia-canvas, #f8faf9);
+}
+.calendarViewSwitch button {
+  min-width: 64px;
+  padding: 7px 13px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.calendarViewSwitch button[aria-pressed="true"] {
+  background: var(--brand);
+  color: #fff;
+}
+.calendarGrid {
+  display: flex;
+  gap: 14px;
+  padding: 22px 24px;
+  overflow-x: auto;
+}
+.calendarColumn {
+  flex: 1 0 220px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--qorlia-canvas, #f8faf9);
+}
+.calendarColumn h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+.calendarColumn ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.calendarAppointment {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--qorlia-surface, #fff);
+}
+.calendarAppointment summary {
+  display: grid;
+  gap: 3px;
+  color: var(--brand);
+  cursor: pointer;
+}
+.calendarAppointment summary small {
+  color: var(--muted);
+}
+.calendarDetails {
+  padding-top: 9px;
+  font-size: 13px;
+}
+.calendarDetails p {
+  margin: 4px 0;
+}
+.calendarDetails a {
+  color: var(--brand);
+  font-weight: 700;
+}
+.checkInForm {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 20px 24px;
+  border-top: 1px solid var(--line);
+}
+.checkInForm h3,
+.checkInForm p {
+  width: 100%;
+  margin: 0;
+}
+.checkInForm label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.checkInForm input {
+  min-height: 40px;
+  padding: 7px 11px;
+  border: 1px solid #cddbd4;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+.tableScroll {
+  overflow-x: auto;
+}
+.tableScroll table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.tableScroll caption {
+  padding: 13px 24px;
+  color: var(--muted);
+  text-align: left;
+  font-size: 13px;
+}
+.tableScroll th,
+.tableScroll td {
+  padding: 14px 17px;
+  border-bottom: 1px solid #edf1ef;
+  text-align: left;
+  white-space: nowrap;
+}
+.tableScroll thead th {
+  color: #546560;
+  background: #f8faf9;
+  font-size: 12px;
+}
+.tableScroll tbody tr:last-child th,
+.tableScroll tbody tr:last-child td {
+  border-bottom: 0;
+}
+.tableScroll tbody th {
+  min-width: 220px;
+  font-weight: 650;
+}
+.tableScroll td small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+}
+.tableScroll td a {
+  color: var(--brand);
+  font-weight: 700;
+}
+.count,
+.selectedCount {
+  min-width: 35px;
+  min-height: 35px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--brand);
+  background: #e8f4ed;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.selectedCount {
+  color: #fff;
+  background: var(--brand);
+}
+.status {
+  display: inline-block;
+  padding: 4px 9px;
+  border-radius: 20px;
+  color: var(--brand);
+  background: #e8f4ed;
+  font-size: 12px;
+  font-weight: 700;
+}
+.textButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.appointmentDetails {
+  padding: 22px 24px;
+  border-top: 1px solid var(--line);
+}
+.detailsHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.detailsHeading h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.appointmentDetails dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin: 20px 0 0;
+}
+.appointmentDetails dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.appointmentDetails dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+.appointmentDetails .fullWidth {
+  grid-column: 1 / -1;
+}
+.message {
+  margin: 0;
+  padding: 26px 24px;
+  color: var(--muted);
+}
+.adminLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.adminLinks a {
+  color: var(--brand);
+  font-weight: 700;
+}
+.page button:focus-visible,
+.page input:focus-visible,
+.page select:focus-visible,
+.page a:focus-visible {
+  outline: 3px solid #82bca0;
+  outline-offset: 2px;
+}
+.page textarea:focus-visible {
+  outline: 3px solid #82bca0;
+  outline-offset: 2px;
+}
+@media (max-width: 760px) {
+  .bookingForm,
+  .appointmentDetails dl {
+    grid-template-columns: 1fr;
+  }
+  .panelHeading {
+    align-items: start;
+    flex-direction: column;
+  }
+  .tableScroll th,
+  .tableScroll td {
+    padding: 12px;
+  }
+}

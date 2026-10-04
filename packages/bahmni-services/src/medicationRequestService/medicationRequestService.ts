@@ -4,6 +4,7 @@ import {
   MedicationRequest as FhirMedicationRequest,
 } from 'fhir/r4';
 import { get } from '../api';
+import { OPENMRS_REST_V1 } from '../constants/app';
 import {
   MEDICATION_ORDERS_METADATA_URL,
   MEDICATIONS_SEARCH_URL,
@@ -387,6 +388,118 @@ const isSTAT = (medication: FhirMedicationRequest): boolean => {
   return medication.priority === 'stat';
 };
 
+type LegacyLabel = string | { name?: string; display?: string } | null;
+type LegacyDrugOrder = {
+  uuid: string;
+  drug?: { uuid?: string; name?: string; form?: LegacyLabel };
+  drugNonCoded?: string;
+  concept?: { uuid?: string; name?: LegacyLabel };
+  dosingInstructions?: {
+    dose?: number;
+    doseUnits?: LegacyLabel;
+    frequency?: LegacyLabel;
+    route?: LegacyLabel;
+    quantity?: number;
+    quantityUnits?: LegacyLabel;
+    asNeeded?: boolean;
+    administrationInstructions?: string;
+  };
+  duration?: number;
+  durationUnits?: LegacyLabel;
+  effectiveStartDate?: string;
+  effectiveStopDate?: string;
+  scheduledDate?: string;
+  dateActivated?: string;
+  dateStopped?: string;
+  provider?: { name?: string; display?: string };
+  creatorName?: string;
+  instructions?: string;
+  commentToFulfiller?: string;
+  action?: string;
+  encounterUuid?: string;
+  orderReasonText?: string;
+};
+
+const legacyLabel = (value?: LegacyLabel): string =>
+  typeof value === 'string' ? value : (value?.name ?? value?.display ?? '');
+
+const legacyMedicationStatus = (order: LegacyDrugOrder): MedicationStatus => {
+  if (order.dateStopped || order.action?.toLowerCase() === 'discontinue') {
+    return MedicationStatus.Stopped;
+  }
+  const now = Date.now();
+  if (order.scheduledDate && new Date(order.scheduledDate).getTime() > now) {
+    return MedicationStatus.OnHold;
+  }
+  if (
+    order.effectiveStopDate &&
+    new Date(order.effectiveStopDate).getTime() < now
+  ) {
+    return MedicationStatus.Completed;
+  }
+  return MedicationStatus.Active;
+};
+
+const toReadOnlyMedication = (order: LegacyDrugOrder): MedicationRequest => {
+  const dosing = order.dosingInstructions;
+  const name =
+    order.drug?.name ||
+    order.drugNonCoded ||
+    legacyLabel(order.concept?.name) ||
+    'Medication';
+  const status = legacyMedicationStatus(order);
+  const startDate = order.effectiveStartDate || order.scheduledDate || '';
+  const orderDate = order.dateActivated || startDate;
+  return {
+    id: order.uuid,
+    name,
+    dose:
+      typeof dosing?.dose === 'number'
+        ? { value: dosing.dose, unit: legacyLabel(dosing.doseUnits) }
+        : undefined,
+    frequency: legacyLabel(dosing?.frequency),
+    route: legacyLabel(dosing?.route),
+    duration:
+      typeof order.duration === 'number'
+        ? {
+            duration: order.duration,
+            durationUnit: legacyLabel(order.durationUnits),
+          }
+        : undefined,
+    quantity: {
+      value: dosing?.quantity ?? 0,
+      unit: legacyLabel(dosing?.quantityUnits),
+    },
+    status,
+    priority: 'routine',
+    startDate,
+    orderDate,
+    orderedBy:
+      order.provider?.name ||
+      order.provider?.display ||
+      order.creatorName ||
+      'Unknown',
+    instructions:
+      order.instructions || dosing?.administrationInstructions || '',
+    asNeeded: dosing?.asNeeded ?? false,
+    isImmediate: false,
+    note: order.commentToFulfiller,
+    doseForm: legacyLabel(order.drug?.form),
+    statusReason: order.orderReasonText,
+    dateStopped: order.dateStopped,
+    readOnly: true,
+    // Legacy orders are displayed only. The synthesized resource must never be written back.
+    fhirResource: {
+      resourceType: 'MedicationRequest',
+      id: order.uuid,
+      status,
+      intent: 'order',
+      medicationCodeableConcept: { text: name },
+      subject: {},
+    },
+  };
+};
+
 /**
  * Fetches and formats medications for a given patient UUID
  * @param patientUUID - The UUID of the patient
@@ -404,14 +517,32 @@ export async function getPatientMedications(
   encounterUuids?: string[],
   includeRelated: boolean = false,
 ): Promise<MedicationRequest[]> {
-  const bundle = await getPatientMedicationBundle(
-    patientUUID,
-    code,
-    encounterUuids,
-    includeRelated,
-  );
-  // TODO : Move formatting logic to widgets package
-  return formatMedications(bundle);
+  try {
+    const bundle = await getPatientMedicationBundle(
+      patientUUID,
+      code,
+      encounterUuids,
+      includeRelated,
+    );
+    // TODO : Move formatting logic to widgets package
+    return formatMedications(bundle);
+  } catch (error) {
+    if ((error as { status?: number }).status !== 500) throw error;
+    const orders = await get<LegacyDrugOrder[]>(
+      `${OPENMRS_REST_V1}/bahmnicore/drugOrders?patientUuid=${encodeURIComponent(patientUUID)}`,
+    );
+    return orders
+      .filter(
+        (order) =>
+          (!encounterUuids?.length ||
+            (!!order.encounterUuid &&
+              encounterUuids.includes(order.encounterUuid))) &&
+          (!code?.length ||
+            code.includes(order.drug?.uuid ?? '') ||
+            code.includes(order.concept?.uuid ?? '')),
+      )
+      .map(toReadOnlyMedication);
+  }
 }
 
 /**

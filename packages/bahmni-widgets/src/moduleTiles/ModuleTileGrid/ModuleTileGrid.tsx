@@ -23,6 +23,8 @@ interface ModuleTileGridProps {
   /** Lets the host control outer spacing (e.g. offsetting a fixed header). */
   className?: string;
   testId?: string;
+  /** Review builds can replace legacy targets and leave unfinished modules unlinked. */
+  reviewUrls?: Record<string, string>;
 }
 
 /**
@@ -41,6 +43,7 @@ export const ModuleTileGrid: React.FC<ModuleTileGridProps> = ({
   emptyMessageKey,
   className,
   testId = 'module-tile-grid',
+  reviewUrls,
 }) => {
   const { t } = useTranslation();
   const {
@@ -134,7 +137,7 @@ export const ModuleTileGrid: React.FC<ModuleTileGridProps> = ({
             id={module.id}
             label={module.translationKey ?? module.label}
             icon={module.icon}
-            url={module.url}
+            url={reviewUrls ? (reviewUrls[module.id] ?? '') : module.url}
           />
         ))}
       </div>

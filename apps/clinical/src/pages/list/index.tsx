@@ -1,6 +1,7 @@
 import { BaseLayout, CodeSnippetSkeleton, Header } from '@bahmni/design-system';
 import {
   BAHMNI_HOME_PATH,
+  hasPrivilege,
   useTranslation,
   filterExtensionsByPrivileges,
   groupExtensionsByPoint,
@@ -9,13 +10,18 @@ import {
 import { useUserPrivilege } from '@bahmni/widgets';
 import { Suspense, useMemo } from 'react';
 import { useClinicalConfig } from '../../providers/clinicalConfig';
+import ClinicalWorkspace from './ClinicalWorkspace';
 import { EXTENSION_HANDLERS } from './constants';
 import styles from './styles/index.module.scss';
 
 const ClinicalList = () => {
   const { t } = useTranslation();
-  const { clinicalConfig } = useClinicalConfig();
-  const { userPrivileges } = useUserPrivilege();
+  const {
+    clinicalConfig,
+    isLoading: configLoading,
+    error: configError,
+  } = useClinicalConfig();
+  const { userPrivileges, isLoading: privilegesLoading } = useUserPrivilege();
 
   const breadcrumbItems = useMemo(
     () => [
@@ -47,6 +53,13 @@ const ClinicalList = () => {
         .filter(({ Handler, filtered }) => !!Handler && filtered.length > 0),
     [extensionsByPoint, userPrivileges],
   );
+  const showWorkspace =
+    !!clinicalConfig &&
+    !configLoading &&
+    !configError &&
+    !clinicalConfig?.extensions &&
+    !privilegesLoading &&
+    hasPrivilege(userPrivileges, 'app:clinical');
 
   return (
     <BaseLayout
@@ -56,7 +69,7 @@ const ClinicalList = () => {
           id="clinical-list-page"
           data-testid="clinical-list-page-test-id"
           aria-label="Clinical List Page"
-          className={styles.page}
+          className={showWorkspace ? styles.workspacePage : styles.page}
         >
           {visibleHandlers.length > 0 ? (
             visibleHandlers.map(({ pointId, Handler, filtered }) => (
@@ -77,6 +90,8 @@ const ClinicalList = () => {
                 </Suspense>
               </div>
             ))
+          ) : showWorkspace ? (
+            <ClinicalWorkspace userPrivileges={userPrivileges} />
           ) : (
             <p
               id="no-extensions-configured"

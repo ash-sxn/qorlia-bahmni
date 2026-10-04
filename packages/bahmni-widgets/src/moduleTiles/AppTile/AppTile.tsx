@@ -19,6 +19,18 @@ export const AppTile: React.FC<AppTileProps> = ({ id, label, icon, url }) => {
   const { t } = useTranslation();
   const translatedLabel = t(label);
 
+  if (!url) {
+    return (
+      <div
+        className={`${styles.tile} ${styles.unavailable}`}
+        data-testid={`app-tile-${id}`}
+      >
+        <h2 className={styles.label}>{translatedLabel}</h2>
+        <span className={styles.pending}>In progress</span>
+      </div>
+    );
+  }
+
   return (
     <ClickableTile
       href={url}

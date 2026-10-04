@@ -945,7 +945,7 @@ describe('GenericServiceRequestTable', () => {
       });
     });
 
-    it('handles empty encounter arrays', async () => {
+    it('does not fetch patient-wide orders for an empty encounter scope', async () => {
       render(
         <GenericServiceRequestTable
           config={{ orderType: 'Lab Order' }}
@@ -957,12 +957,11 @@ describe('GenericServiceRequestTable', () => {
       );
 
       await waitFor(() => {
-        expect(mockGetServiceRequests).toHaveBeenCalledWith(
-          'lab-uuid',
-          'patient-123',
-          [],
+        expect(mockGetCategoryUuidFromOrderTypes).toHaveBeenCalledWith(
+          'Lab Order',
         );
       });
+      expect(mockGetServiceRequests).not.toHaveBeenCalled();
     });
 
     it('works without encounter UUIDs', async () => {

@@ -1,3 +1,4 @@
+import type { CodeableConcept } from 'fhir/r4';
 import { FHIRCode, extractCodesFromConcept } from './codeUtilities';
 
 export const makeEndDateExclusive = (endDate: Date): Date => {
@@ -110,15 +111,12 @@ export const extractMedicationRefId = (
 };
 
 export const extractDoseForm = (
-  medication: Record<string, unknown>,
+  medication: { form?: CodeableConcept },
   displayName: string,
 ): string | undefined => {
-  const form = medication?.form as Record<string, unknown>;
-  const coding = form?.coding as Array<Record<string, unknown>>;
-  let doseForm =
-    (form?.text as string | undefined) ??
-    (coding?.[0]?.display as string | undefined) ??
-    undefined;
+  const form = medication?.form;
+  const coding = form?.coding;
+  let doseForm = form?.text ?? coding?.[0]?.display ?? undefined;
 
   if (!doseForm && displayName) {
     const formMatch = displayName.match(/\(([^)]+)\)/);

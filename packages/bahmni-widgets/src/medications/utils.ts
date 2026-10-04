@@ -134,6 +134,7 @@ export function formatMedicationRequest(
     statusReason,
     dateStopped,
     fhirResource,
+    readOnly,
   } = medication;
 
   const dosageParts: string[] = [];
@@ -161,7 +162,10 @@ export function formatMedicationRequest(
     instructionParts.push(additionalInstructions);
   }
   const instruction = instructionParts.join(' | ');
-  const quantity = `${medication.quantity.value} ${medication.quantity.unit}`;
+  const quantity =
+    readOnly && !medication.quantity.value
+      ? ''
+      : `${medication.quantity.value} ${medication.quantity.unit}`;
 
   return {
     id,
@@ -183,6 +187,7 @@ export function formatMedicationRequest(
     stopReason: statusReason,
     dateStopped,
     fhirResource,
+    readOnly,
   };
 }
 

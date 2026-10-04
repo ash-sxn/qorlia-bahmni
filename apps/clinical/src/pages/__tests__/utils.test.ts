@@ -1,4 +1,4 @@
-import { useHasPrivilege } from '@bahmni/widgets';
+import type { UserPrivilege } from '@bahmni/services';
 import {
   validFullClinicalConfig,
   validDashboardConfig,
@@ -13,14 +13,9 @@ import {
   isPatientNotFoundError,
 } from '../util';
 
-jest.mock('@bahmni/widgets', () => ({
-  useHasPrivilege: jest.fn(),
-}));
-
-const mockedUseHasPrivilege = useHasPrivilege as jest.MockedFunction<
-  typeof useHasPrivilege
->;
 const mockTranslation = jest.fn((key: string) => key);
+const privileges = (...names: string[]): UserPrivilege[] =>
+  names.map((name) => ({ uuid: name, name }));
 
 describe('ConsultationPageService', () => {
   beforeEach(() => {
@@ -79,7 +74,6 @@ describe('ConsultationPageService', () => {
 
   describe('filterControlsByPrivileges', () => {
     it('includes control when user has the required privilege', () => {
-      mockedUseHasPrivilege.mockReturnValue(true);
       const controls = [
         {
           type: 'widget',
@@ -87,12 +81,14 @@ describe('ConsultationPageService', () => {
           requiredPrivileges: ['Add Allergies'],
         },
       ];
-      const result = filterControlsByPrivileges(controls);
+      const result = filterControlsByPrivileges(
+        controls,
+        privileges('Add Allergies'),
+      );
       expect(result).toHaveLength(1);
     });
 
     it('excludes control when user lacks the required privilege', () => {
-      mockedUseHasPrivilege.mockReturnValue(false);
       const controls = [
         {
           type: 'widget',
@@ -100,19 +96,20 @@ describe('ConsultationPageService', () => {
           requiredPrivileges: ['Add Orders'],
         },
       ];
-      const result = filterControlsByPrivileges(controls);
+      const result = filterControlsByPrivileges(
+        controls,
+        privileges('View Orders'),
+      );
       expect(result).toHaveLength(0);
     });
 
     it('includes control when no required privileges are defined', () => {
-      mockedUseHasPrivilege.mockReturnValue(true);
       const controls = [{ type: 'widget', name: 'vitals' }];
-      const result = filterControlsByPrivileges(controls);
+      const result = filterControlsByPrivileges(controls, []);
       expect(result).toHaveLength(1);
     });
 
-    it('calls useHasPrivilege with the correct requiredPrivileges value', () => {
-      mockedUseHasPrivilege.mockReturnValue(true);
+    it('checks the configured required privilege', () => {
       const controls = [
         {
           type: 'widget',
@@ -120,12 +117,12 @@ describe('ConsultationPageService', () => {
           requiredPrivileges: ['Add Allergies'],
         },
       ];
-      filterControlsByPrivileges(controls);
-      expect(mockedUseHasPrivilege).toHaveBeenCalledWith(['Add Allergies']);
+      expect(
+        filterControlsByPrivileges(controls, privileges('View Allergies')),
+      ).toHaveLength(0);
     });
 
-    it('passes multiple requiredPrivileges to useHasPrivilege (OR semantics)', () => {
-      mockedUseHasPrivilege.mockReturnValue(true);
+    it('accepts any of multiple required privileges', () => {
       const controls = [
         {
           type: 'widget',
@@ -133,11 +130,9 @@ describe('ConsultationPageService', () => {
           requiredPrivileges: ['Add Allergies', 'View Allergies'],
         },
       ];
-      filterControlsByPrivileges(controls);
-      expect(mockedUseHasPrivilege).toHaveBeenCalledWith([
-        'Add Allergies',
-        'View Allergies',
-      ]);
+      expect(
+        filterControlsByPrivileges(controls, privileges('View Allergies')),
+      ).toHaveLength(1);
     });
   });
 
@@ -176,43 +171,38 @@ describe('ConsultationPageService', () => {
     ];
 
     it('keeps section when user has privilege for at least one control', () => {
-      mockedUseHasPrivilege
-        .mockReturnValueOnce(true) // section-1 control
-        .mockReturnValueOnce(false) // section-2 control
-        .mockReturnValueOnce(true); // section-3 control
-      const result = filterSectionsByPrivileges(sections);
+      const result = filterSectionsByPrivileges(
+        sections,
+        privileges('Add Allergies'),
+      );
       const ids = result.map((s) => s.id);
       expect(ids).toContain('section-1');
     });
 
     it('removes section when user lacks privilege for all its controls', () => {
-      mockedUseHasPrivilege
-        .mockReturnValueOnce(true) // section-1 control
-        .mockReturnValueOnce(false) // section-2 control
-        .mockReturnValueOnce(true); // section-3 control
-      const result = filterSectionsByPrivileges(sections);
+      const result = filterSectionsByPrivileges(
+        sections,
+        privileges('Add Allergies'),
+      );
       const ids = result.map((s) => s.id);
       expect(ids).not.toContain('section-2');
     });
 
     it('keeps section with no required privileges regardless of user privileges', () => {
-      mockedUseHasPrivilege
-        .mockReturnValueOnce(true) // section-1 control
-        .mockReturnValueOnce(false) // section-2 control
-        .mockReturnValueOnce(true); // section-3 control
-      const result = filterSectionsByPrivileges(sections);
+      const result = filterSectionsByPrivileges(
+        sections,
+        privileges('View Patients'),
+      );
       const ids = result.map((s) => s.id);
       expect(ids).toContain('section-3');
     });
 
     it('removes all sections when user has no privileges and all controls require privileges', () => {
-      mockedUseHasPrivilege.mockReturnValue(false);
-      const result = filterSectionsByPrivileges([sections[0], sections[1]]);
+      const result = filterSectionsByPrivileges([sections[0], sections[1]], []);
       expect(result).toHaveLength(0);
     });
 
     it('removes sections that originally had empty controls array', () => {
-      mockedUseHasPrivilege.mockReturnValue(true);
       const sectionsWithEmpty: DashboardSectionConfig[] = [
         {
           id: 'section-empty',
@@ -227,7 +217,10 @@ describe('ConsultationPageService', () => {
           controls: [{ type: 'widget', name: 'widget1' }],
         },
       ];
-      const result = filterSectionsByPrivileges(sectionsWithEmpty);
+      const result = filterSectionsByPrivileges(
+        sectionsWithEmpty,
+        privileges('View Patients'),
+      );
       const ids = result.map((s) => s.id);
       expect(ids).toContain('section-with-controls');
       expect(ids).not.toContain('section-empty');

@@ -37,7 +37,7 @@ import {
 } from './utils';
 
 export const genericServiceRequestQueryKeys = (
-  categoryUuid: string,
+  categoryUuid: string | null | undefined,
   patientUUID: string,
   encounterUuids?: string[],
 ) =>
@@ -64,7 +64,6 @@ const GenericServiceRequestTable: React.FC<WidgetProps> = ({
   config,
   episodeOfCareUuids,
   encounterUuids,
-  visitUuids,
 }) => {
   const { t } = useTranslation();
   const patientUUID = usePatientUUID();
@@ -103,9 +102,9 @@ const GenericServiceRequestTable: React.FC<WidgetProps> = ({
       patientUUID!,
       encounterUuids,
     ),
-    enabled: !!patientUUID && !!categoryUuid,
+    enabled: !!patientUUID && !!categoryUuid && !emptyEncounterFilter,
     queryFn: () =>
-      fetchServiceRequests(categoryUuid, patientUUID!, encounterUuids),
+      fetchServiceRequests(categoryUuid!, patientUUID!, encounterUuids),
   });
 
   useSubscribeConsultationSaved(
@@ -147,7 +146,7 @@ const GenericServiceRequestTable: React.FC<WidgetProps> = ({
     t,
   ]);
 
-  const serviceRequests = data ?? [];
+  const serviceRequests = useMemo(() => data ?? [], [data]);
   const isLoading = isLoadingOrderTypes || isLoadingServiceRequests;
   const isError = isOrderTypesError || isServiceRequestsError;
   const error = orderTypesError ?? serviceRequestsError;

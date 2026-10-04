@@ -24,10 +24,9 @@ export function extractDiagnosticReportsFromBundle(
  * @returns Enriched array of tests with reportId and attachments populated
  */
 
-export function updateInvestigationsWithReportInfo(
-  tests: FormattedLabInvestigations[] | RadiologyInvestigationViewModel[],
-  diagnosticReports: DiagnosticReport[] | undefined,
-): FormattedLabInvestigations[] | RadiologyInvestigationViewModel[] {
+export function updateInvestigationsWithReportInfo<
+  T extends FormattedLabInvestigations | RadiologyInvestigationViewModel,
+>(tests: T[], diagnosticReports: DiagnosticReport[] | undefined): T[] {
   if (!diagnosticReports || diagnosticReports.length === 0) {
     return tests;
   }

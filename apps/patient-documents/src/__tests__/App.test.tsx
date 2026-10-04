@@ -10,6 +10,7 @@ import App from '../App';
 jest.mock('@bahmni/services', () => ({
   initAppI18n: jest.fn().mockResolvedValue(undefined),
   initializeAuditListener: jest.fn(),
+  hasPrivilege: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('@bahmni/design-system', () => ({
@@ -28,6 +29,10 @@ jest.mock('@bahmni/widgets', () => ({
     children,
   ActivePractitionerProvider: ({ children }: { children: React.ReactNode }) =>
     children,
+  UserActionProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="user-action-provider">{children}</div>
+  ),
+  useUserPrivilege: () => ({ userPrivileges: [], isLoading: false }),
 }));
 
 jest.mock('../providers/patientDocumentsConfig', () => ({
@@ -64,6 +69,7 @@ describe('App', () => {
     );
     await waitForElementToBeRemoved(() => screen.queryByTestId('loading'));
     expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+    expect(screen.getByTestId('user-action-provider')).toBeInTheDocument();
   });
 
   it('renders the app even when initialization fails', async () => {

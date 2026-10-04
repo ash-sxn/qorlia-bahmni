@@ -9,6 +9,7 @@ import {
 } from '@bahmni/services';
 import React, { useMemo } from 'react';
 import { usePatientUUID } from '../hooks/usePatientUUID';
+import { WidgetProps } from '../registry/model';
 import styles from './styles/VitalFlowSheet.module.scss';
 import { useVitalFlowSheet } from './useVitalFlowSheet';
 import {
@@ -221,7 +222,7 @@ const VitalFlowSheet: React.FC<VitalFlowSheetProps> = ({
       } | null;
 
       if (!obsValue) {
-        return '\u2014'; // Em dash for no data
+        return '-';
       }
 
       const isLatest = cellId === 'obs_0'; // First column is latest
@@ -305,4 +306,27 @@ const VitalFlowSheet: React.FC<VitalFlowSheetProps> = ({
   );
 };
 
-export default VitalFlowSheet;
+const VitalFlowSheetWidget = ({ config }: WidgetProps) => {
+  if (
+    !config ||
+    typeof config.latestCount !== 'number' ||
+    !Number.isInteger(config.latestCount) ||
+    config.latestCount < 1 ||
+    !Array.isArray(config.obsConcepts) ||
+    !config.obsConcepts.every((concept) => typeof concept === 'string') ||
+    (config.groupBy !== undefined && typeof config.groupBy !== 'string')
+  ) {
+    return <p role="alert">Vital flow sheet configuration is invalid.</p>;
+  }
+  return (
+    <VitalFlowSheet
+      config={{
+        latestCount: config.latestCount,
+        obsConcepts: config.obsConcepts,
+        groupBy: config.groupBy,
+      }}
+    />
+  );
+};
+
+export default VitalFlowSheetWidget;

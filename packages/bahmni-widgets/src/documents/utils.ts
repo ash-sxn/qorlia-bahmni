@@ -1,3 +1,5 @@
+import { getAuthenticatedDocumentUrl } from '@bahmni/services';
+
 const DOCUMENT_FIELD_I18N_KEYS: Record<string, string> = {
   documentIdentifier: 'DOCUMENTS_DOCUMENT_IDENTIFIER',
   documentType: 'DOCUMENTS_TYPE',
@@ -27,9 +29,7 @@ export function getFileTypeCategory(
 }
 
 export function buildDocumentUrl(documentUrl: string): string {
-  if (!documentUrl || documentUrl.includes(':')) return '#';
-
-  return `/openmrs/auth?requested_document=/document_images/${documentUrl}`;
+  return getAuthenticatedDocumentUrl(documentUrl) ?? '#';
 }
 
 export function createDocumentHeaders(

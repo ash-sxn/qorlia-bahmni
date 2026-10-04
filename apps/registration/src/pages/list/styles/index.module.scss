@@ -16,12 +16,18 @@
   }
 }
 
+@include breakpoint-down(md) {
+  .page {
+    padding-inline: $spacing-05;
+  }
+}
+
 .loading {
   max-inline-size: 100% !important;
 }
 
 .message {
-  @include type-style('body-compact-01');
+  @include type-style("body-compact-01");
   color: $support-error;
   font-style: italic;
   text-align: center;

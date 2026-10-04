@@ -9,12 +9,81 @@
   padding-block: $spacing-06 calc($spacing-06 + $spacing-11);
 
   // Patient banner side gutter (matches the Figma ~112px banner gutter).
-  padding-inline: calc($spacing-12 + $spacing-05);
+  padding-inline: clamp(18px, 4vw, 56px);
+  background: var(--qorlia-canvas);
+  min-height: calc(100vh - 48px);
 }
 
 .patientBanner {
   background: $layer-02;
-  box-shadow: 0 2px 6px $shadow;
+  border: 1px solid var(--qorlia-border);
+  border-radius: 12px;
   padding: $spacing-05;
   padding-inline: $spacing-06;
+}
+
+.intro h1 {
+  font-size: clamp(28px, 2.4vw, 38px);
+  margin-bottom: 12px;
+}
+.intro p {
+  color: var(--qorlia-muted);
+}
+.searchCard {
+  padding: 24px;
+  background: var(--qorlia-surface);
+  border: 1px solid var(--qorlia-border);
+  border-radius: 12px;
+}
+.searchForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.searchForm label {
+  font-weight: 700;
+}
+.searchForm input {
+  flex: 1 1 240px;
+  padding: 10px 12px;
+  min-height: 44px;
+  font: inherit;
+  border: 1px solid var(--qorlia-border);
+  border-radius: 8px;
+}
+.searchForm button {
+  padding: 10px 16px;
+  min-height: 44px;
+  font: inherit;
+  color: #fff;
+  background: var(--qorlia-primary);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.searchForm button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.tableScroll {
+  overflow-x: auto;
+}
+.tableScroll table {
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+}
+.tableScroll th,
+.tableScroll td {
+  padding: 14px;
+  border-bottom: 1px solid var(--qorlia-border);
+}
+.tableScroll th {
+  background: var(--qorlia-sage);
+}
+.tableScroll a {
+  color: var(--qorlia-primary);
+  font-weight: 700;
 }

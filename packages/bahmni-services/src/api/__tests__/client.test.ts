@@ -201,7 +201,7 @@ describe('Axios Client', () => {
         await expect(() =>
           responseInterceptor.rejected(mockError),
         ).rejects.toBe(mockError);
-        expect(globalThis.location.href).toBe('/bahmni/home/index.html#/login');
+        expect(globalThis.location.href).toBe('/bahmni-v2/login');
       });
 
       it('should parse blob error response body and pass parsed data to getFormattedError', async () => {
@@ -264,7 +264,10 @@ describe('Axios Client', () => {
 
         await expect(() =>
           responseInterceptor.rejected(mockError),
-        ).rejects.toThrow('Test error message');
+        ).rejects.toMatchObject({
+          message: 'Test error message',
+          status: 500,
+        });
         expect(getFormattedError).toHaveBeenCalledWith(mockError);
       });
 

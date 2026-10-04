@@ -27,14 +27,27 @@ describe('HomePageGrid', () => {
     expect(props.emptyMessageKey).toBe('HOME_NO_MODULES');
   });
 
-  it('offsets the grid below the fixed home header', () => {
+  it('opens available React screens in the review build', () => {
     render(<HomePageGrid />);
 
     const props = JSON.parse(
       screen.getByTestId('module-tile-grid-mock').dataset.props!,
     );
 
-    expect(props.className).toBeTruthy();
+    expect(props.reviewUrls['bahmni.clinical']).toBe('/bahmni-v2/clinical/');
+    expect(props.reviewUrls['bahmni.orders']).toBe(
+      '/bahmni-v2/clinical/orders',
+    );
+    expect(props.reviewUrls['bahmni.ot']).toBe(
+      '/bahmni-v2/clinical/operation-theatre',
+    );
+    expect(screen.getByText(/Qorlia review build/)).toBeInTheDocument();
+    expect(props.reviewUrls['bahmni.patient.document.upload']).toContain(
+      '/bahmni-v2/patient-documents/search?encounterType=Patient%20Document',
+    );
+    expect(props.reviewUrls['bahmni.radiology.document.upload']).toContain(
+      '/bahmni-v2/patient-documents/search?encounterType=RADIOLOGY',
+    );
   });
 
   it('does not pass an appName, so home reads its own config by default', () => {

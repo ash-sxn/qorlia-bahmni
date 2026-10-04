@@ -15,6 +15,9 @@
   "exclude": [
     "out-tsc",
     "dist",
+    "**/__tests__/**",
+    "**/__mocks__/**",
+    "**/setupTests.*",
     "**/*.spec.ts",
     "**/*.test.ts",
     "**/*.spec.tsx",
