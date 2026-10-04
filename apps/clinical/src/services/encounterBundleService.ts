@@ -10,6 +10,7 @@ import {
 } from '@bahmni/services';
 import { BundleEntry, CodeableConcept, Encounter, Reference } from 'fhir/r4';
 import { ALLERGY_INTOLERANCE_RESOURCE_TYPE } from '../constants/allergy';
+import { DURATION_UNITS } from '../constants/conditions';
 import { CONSULTATION_ERROR_MESSAGES } from '../constants/errors';
 import { AllergyInputEntry } from '../models/allergy';
 import { ServiceRequestInputEntry } from '../models/serviceRequest';
@@ -87,6 +88,13 @@ export function createDiagnosisBundleEntries({
     throw new Error(CONSULTATION_ERROR_MESSAGES.INVALID_DIAGNOSIS_PARAMS);
   }
 
+  if (
+    !(consultationDate instanceof Date) ||
+    !Number.isFinite(consultationDate.getTime())
+  ) {
+    throw new Error(CONSULTATION_ERROR_MESSAGES.INVALID_DIAGNOSIS_PARAMS);
+  }
+
   if (!encounterSubject?.reference) {
     throw new Error(CONSULTATION_ERROR_MESSAGES.INVALID_ENCOUNTER_SUBJECT);
   }
@@ -102,15 +110,18 @@ export function createDiagnosisBundleEntries({
   const diagnosisEntries: BundleEntry[] = [];
 
   for (const diagnosis of selectedDiagnoses) {
-    if (!diagnosis?.selectedCertainty?.code) {
+    const certainty = diagnosis?.selectedCertainty?.code;
+    if (
+      typeof diagnosis?.id !== 'string' ||
+      !diagnosis.id.trim() ||
+      (certainty !== 'confirmed' && certainty !== 'provisional')
+    ) {
       throw new Error(CONSULTATION_ERROR_MESSAGES.INVALID_DIAGNOSIS_PARAMS);
     }
     const diagnosisResourceURL = `urn:uuid:${crypto.randomUUID()}`;
     const diagnosisResource = createEncounterDiagnosisResource(
       diagnosis.id,
-      diagnosis.selectedCertainty.code === 'confirmed'
-        ? 'confirmed'
-        : 'provisional',
+      certainty,
       encounterSubject,
       createEncounterReferenceFromString(encounterReference),
       createPractitionerReference(practitionerUUID),
@@ -366,6 +377,13 @@ export function createConditionsBundleEntries({
     throw new Error(CONSULTATION_ERROR_MESSAGES.INVALID_CONDITION_PARAMS);
   }
 
+  if (
+    !(consultationDate instanceof Date) ||
+    !Number.isFinite(consultationDate.getTime())
+  ) {
+    throw new Error(CONSULTATION_ERROR_MESSAGES.INVALID_CONDITION_PARAMS);
+  }
+
   if (!encounterSubject?.reference) {
     throw new Error(CONSULTATION_ERROR_MESSAGES.INVALID_ENCOUNTER_SUBJECT);
   }
@@ -387,10 +405,12 @@ export function createConditionsBundleEntries({
   for (const condition of selectedConditions) {
     if (
       !condition ||
+      typeof condition.id !== 'string' ||
+      !condition.id.trim() ||
       typeof condition.durationValue !== 'number' ||
-      !condition.durationUnit ||
-      condition.durationValue === null ||
-      condition.durationUnit === null
+      !Number.isSafeInteger(condition.durationValue) ||
+      condition.durationValue < 0 ||
+      !DURATION_UNITS.some((unit) => unit.id === condition.durationUnit)
     ) {
       throw new Error(CONSULTATION_ERROR_MESSAGES.INVALID_CONDITION_PARAMS);
     }
@@ -401,6 +421,10 @@ export function createConditionsBundleEntries({
       condition.durationUnit,
     );
 
+    if (!onsetDate || !Number.isFinite(onsetDate.getTime())) {
+      throw new Error(CONSULTATION_ERROR_MESSAGES.INVALID_CONDITION_PARAMS);
+    }
+
     const conditionResourceURL = `urn:uuid:${crypto.randomUUID()}`;
     const conditionResource = createEncounterConditionResource(
       condition.id,
@@ -408,7 +432,7 @@ export function createConditionsBundleEntries({
       createEncounterReferenceFromString(encounterReference),
       createPractitionerReference(practitionerUUID),
       consultationDate,
-      onsetDate!,
+      onsetDate,
       'active',
       condition.conceptSystem,
     );

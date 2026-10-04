@@ -281,6 +281,81 @@ describe('useConditionsAndDiagnosesStore', () => {
 
   // VALIDATE TESTS
   describe('validate', () => {
+    test.each(['unknown', 'refuted', undefined])(
+      'rejects stale unsupported certainty %s',
+      (code) => {
+        const store = useConditionsAndDiagnosesStore.getState();
+        act(() => {
+          store.addDiagnosis(mockConcept);
+          store.updateCertainty(mockConcept.conceptUuid, { code });
+        });
+        let valid = true;
+        act(() => {
+          valid = store.validate();
+        });
+        expect(valid).toBe(false);
+        expect(
+          useConditionsAndDiagnosesStore.getState().selectedDiagnoses[0].errors
+            .certainty,
+        ).toBe('DROPDOWN_VALUE_REQUIRED');
+      },
+    );
+
+    test.each([-1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+      'rejects stale invalid duration %s during validation',
+      (durationValue) => {
+        act(() => {
+          useConditionsAndDiagnosesStore.setState({
+            selectedConditions: [
+              {
+                id: mockConcept.conceptUuid,
+                display: mockConcept.conceptName,
+                durationValue,
+                durationUnit: 'days',
+                errors: {},
+                hasBeenValidated: false,
+              },
+            ],
+          });
+        });
+        let valid = true;
+        act(() => {
+          valid = useConditionsAndDiagnosesStore.getState().validate();
+        });
+        expect(valid).toBe(false);
+        expect(
+          useConditionsAndDiagnosesStore.getState().selectedConditions[0].errors
+            .durationValue,
+        ).toBe('CONDITIONS_DURATION_VALUE_REQUIRED');
+      },
+    );
+
+    test('rejects a stale unsupported duration unit during validation', () => {
+      act(() => {
+        useConditionsAndDiagnosesStore.setState({
+          selectedConditions: [
+            {
+              id: mockConcept.conceptUuid,
+              display: mockConcept.conceptName,
+              durationValue: 2,
+              durationUnit: 'weeks' as any,
+              errors: {},
+              hasBeenValidated: false,
+            },
+          ],
+        });
+      });
+      let valid = true;
+      act(() => {
+        valid = useConditionsAndDiagnosesStore.getState().validate();
+      });
+      expect(valid).toBe(false);
+      expect(
+        useConditionsAndDiagnosesStore.getState().selectedConditions[0].errors
+          .durationUnit,
+      ).toBe('CONDITIONS_DURATION_UNIT_REQUIRED');
+    });
+
     test('should return false and set errors when certainty is missing', () => {
       const { result } = renderHook(() => useConditionsAndDiagnosesStore());
 

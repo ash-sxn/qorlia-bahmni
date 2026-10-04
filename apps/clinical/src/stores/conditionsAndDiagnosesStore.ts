@@ -5,6 +5,8 @@ import {
 } from '@bahmni/services';
 import { Coding } from 'fhir/r4';
 import { create } from 'zustand';
+import { DURATION_UNITS } from '../constants/conditions';
+import { CERTAINITY_CONCEPTS } from '../constants/diagnosis';
 
 /**
  * Interface defining the state and actions for managing conditions and diagnoses
@@ -152,7 +154,10 @@ export const useConditionsAndDiagnosesStore =
             selectedCertainty: certainty,
           };
 
-          if (diagnosis.hasBeenValidated && certainty) {
+          if (
+            diagnosis.hasBeenValidated &&
+            CERTAINITY_CONCEPTS.some((item) => item.code === certainty?.code)
+          ) {
             updatedDiagnosis.errors = { ...diagnosis.errors };
             delete updatedDiagnosis.errors.certainty;
           }
@@ -170,7 +175,11 @@ export const useConditionsAndDiagnosesStore =
         selectedDiagnoses: state.selectedDiagnoses.map((diagnosis) => {
           const errors = { ...diagnosis.errors };
 
-          if (!diagnosis.selectedCertainty) {
+          if (
+            !CERTAINITY_CONCEPTS.some(
+              (item) => item.code === diagnosis.selectedCertainty?.code,
+            )
+          ) {
             errors.certainty = 'DROPDOWN_VALUE_REQUIRED';
             diagnosesValid = false;
           } else {
@@ -189,14 +198,20 @@ export const useConditionsAndDiagnosesStore =
         selectedConditions: state.selectedConditions.map((condition) => {
           const errors = { ...condition.errors };
 
-          if (!condition.durationValue) {
+          if (
+            !Number.isSafeInteger(condition.durationValue) ||
+            condition.durationValue === null ||
+            condition.durationValue <= 0
+          ) {
             errors.durationValue = 'CONDITIONS_DURATION_VALUE_REQUIRED';
             conditionsValid = false;
           } else {
             delete errors.durationValue;
           }
 
-          if (!condition.durationUnit) {
+          if (
+            !DURATION_UNITS.some((unit) => unit.id === condition.durationUnit)
+          ) {
             errors.durationUnit = 'CONDITIONS_DURATION_UNIT_REQUIRED';
             conditionsValid = false;
           } else {
@@ -279,13 +294,14 @@ export const useConditionsAndDiagnosesStore =
 
       if (
         value !== null &&
-        (typeof value !== 'number' || value <= 0 || !Number.isInteger(value))
+        (typeof value !== 'number' ||
+          value <= 0 ||
+          !Number.isSafeInteger(value))
       ) {
         return;
       }
 
-      const validUnits = ['days', 'months', 'years'];
-      if (unit !== null && !validUnits.includes(unit)) {
+      if (unit !== null && !DURATION_UNITS.some((item) => item.id === unit)) {
         return;
       }
 

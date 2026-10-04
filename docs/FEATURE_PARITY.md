@@ -1,5 +1,43 @@
 # Bahmni workflow parity ledger
 
+## 5 October diagnosis and condition input-boundary checkpoint
+
+This closes the tested certainty/duration serialization gaps, not all diagnosis
+editing, condition-only roles or clinical parity.
+
+- Condition duration uses exact numeric parsing and safe-integer validation,
+  rather than truncating fractional input. The form retains its existing 1 to 99
+  range and now exposes native minimum, maximum and step attributes. Store
+  validation also rejects invalid retained duration/unit and certainty values.
+- Diagnosis serialization rejects unsupported certainty codes instead of silently
+  assigning provisional, missing concept identifiers and invalid consultation
+  dates. Condition serialization rejects negative, fractional, non-finite or
+  unsafe durations, unsupported units and unrepresentable onset dates before
+  resource construction. The existing shared serializer's zero-duration case
+  remains supported; the form's positive-duration policy is not imposed on every
+  native caller. Existing date helpers and translation keys are reused.
+- An actual rebuilt browser draft rejected a fractional duration without creating
+  a truncated value, accepted an integer, and retained that integer after an
+  invalid fractional edit. Missing duration/unit blocked Done with field errors.
+  Cancel discarded the temporary draft. Independent native verification retained
+  the fixture's original one encounter, one confirmed diagnosis and one active
+  condition. No valid consultation save was replayed.
+- Seven focused suites pass 379 tests and nine snapshots in India and US Pacific
+  time. Two reviewed snapshots changed only for the native numeric attributes.
+  The Pacific run exposed an existing UTC-hour assumption in the calendar-month
+  test; it now uses explicit local input/expected dates, preserving the existing
+  local-calendar subtraction across offset changes. Application date behavior
+  was not changed to satisfy the test.
+- Clinical type checking, changed-source lint and build pass. The isolated native
+  serializer/permission integration check passes without replaying successful
+  creations; denied transactions remain unchanged and temporary accounts are
+  retired. No new dependency, mirrored validation state or additional data fetch
+  was added. Existing upstream eval and bundle-size warnings remain.
+
+Remaining: condition-only roles, diagnosis edit/removal, concurrent saves and
+the other clinical and separate-product release gates. No production/shared-demo
+deployment or release acceptance occurred.
+
 ## 5 October diagnosis/condition creation and exact permission checkpoint
 
 This supersedes the tested creation/seed-permission gaps below, not complete

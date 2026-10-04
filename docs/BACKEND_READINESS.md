@@ -1,5 +1,25 @@
 # Qorlia React frontend backend readiness
 
+## Latest diagnosis and condition input-boundary verification
+
+Exact duration parsing no longer truncates fractions. The existing positive
+form range is exposed through native numeric attributes; draft validation and
+resource serialization reject unsupported certainty, units, invalid dates and
+unsafe/unrepresentable durations. Shared zero-duration serialization remains
+compatible. The existing local-calendar onset helper was not changed.
+
+The rebuilt synthetic browser draft exercised fractional rejection, retained
+valid integer input and missing-field Done rejection, then Cancel discarded it.
+Independent native reads still find exactly the original encounter, diagnosis
+and condition. This is invalid-input/cancellation proof, not another valid save.
+Seven focused suites pass 379 tests and nine snapshots in India/US Pacific time,
+with clinical type checking, source lint and build. A pre-existing timezone test
+assumption was corrected to explicit local calendar dates. Native isolated
+permission/rollback verification also passes without replaying saved creations;
+temporary accounts are retired. Existing build warnings and wider workflow,
+role, concurrency and separate-product gates remain. See the newest parity
+checkpoint. No production/shared-demo deployment occurred.
+
 ## Latest diagnosis and condition creation verification
 
 The isolated pinned backend now has source-serializer and actual React creation
