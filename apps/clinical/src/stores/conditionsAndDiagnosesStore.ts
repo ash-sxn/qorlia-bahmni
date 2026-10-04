@@ -21,6 +21,9 @@ export interface ConditionsAndDiagnosesState {
    */
   addDiagnosis: (diagnosis: ConceptSearch) => void;
 
+  /** Adds a condition draft without creating a diagnosis draft. */
+  addCondition: (condition: ConceptSearch) => void;
+
   /**
    * Removes a diagnosis from the selected diagnoses list
    * @param diagnosisId - The ID of the diagnosis to remove
@@ -97,6 +100,33 @@ export const useConditionsAndDiagnosesStore =
   create<ConditionsAndDiagnosesState>((set, get) => ({
     selectedDiagnoses: [],
     selectedConditions: [],
+
+    addCondition: (condition: ConceptSearch) => {
+      if (!validateConcept(condition)) return;
+      set((state) => {
+        if (
+          state.selectedConditions.some(
+            (item) => item.id === condition.conceptUuid,
+          )
+        ) {
+          return state;
+        }
+        return {
+          selectedConditions: [
+            {
+              id: condition.conceptUuid,
+              display: condition.conceptName,
+              conceptSystem: condition.conceptSystem,
+              durationValue: null,
+              durationUnit: null,
+              errors: {},
+              hasBeenValidated: false,
+            },
+            ...state.selectedConditions,
+          ],
+        };
+      });
+    },
 
     addDiagnosis: (diagnosis: ConceptSearch) => {
       // Input validation

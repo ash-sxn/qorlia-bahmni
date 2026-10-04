@@ -189,6 +189,7 @@ const mockExistingConditions = [
 describe('ConditionsAndDiagnoses', () => {
   // Mock store actions
   let addDiagnosisMock: jest.Mock;
+  let addConditionMock: jest.Mock;
   let removeDiagnosisMock: jest.Mock;
   let updateCertaintyMock: jest.Mock;
   let markAsConditionMock: jest.Mock;
@@ -267,6 +268,7 @@ describe('ConditionsAndDiagnoses', () => {
     }
 
     addDiagnosisMock = jest.fn();
+    addConditionMock = jest.fn();
     removeDiagnosisMock = jest.fn();
     updateCertaintyMock = jest.fn();
     markAsConditionMock = jest.fn();
@@ -280,6 +282,7 @@ describe('ConditionsAndDiagnoses', () => {
       selectedDiagnoses,
       selectedConditions,
       addDiagnosis: addDiagnosisMock,
+      addCondition: addConditionMock,
       removeDiagnosis: removeDiagnosisMock,
       updateCertainty: updateCertaintyMock,
       validate: validateMock,
@@ -1021,6 +1024,95 @@ describe('ConditionsAndDiagnoses', () => {
   });
 
   describe('Privilege Guard', () => {
+    it('adds a condition without diagnosis write authorization or diagnosis history', async () => {
+      mockedUseUserPrivilege.mockImplementation((required) =>
+        hasPrivilege(
+          [{ name: 'Edit Conditions', uuid: 'edit-conditions' }],
+          required,
+        ),
+      );
+      renderComponent(
+        [],
+        [],
+        mockConcepts,
+        false,
+        null,
+        [],
+        false,
+        null,
+        new Error('Diagnosis history unavailable'),
+      );
+      expect(mockedUseQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryKey: ['conditions', 'test-patient-uuid'],
+          enabled: true,
+        }),
+      );
+      expect(mockedUseQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryKey: ['diagnoses', 'test-patient-uuid'],
+          enabled: false,
+        }),
+      );
+      await userEvent.type(screen.getByRole('combobox'), 'hyper');
+      await userEvent.click(
+        screen.getByRole('option', { name: 'Hypertension' }),
+      );
+      expect(addConditionMock).toHaveBeenCalledWith(
+        expect.objectContaining(mockConcepts[0]),
+      );
+      expect(addDiagnosisMock).not.toHaveBeenCalled();
+    });
+
+    it('blocks direct condition selection when condition history is unavailable', async () => {
+      mockedUseUserPrivilege.mockImplementation((required) =>
+        hasPrivilege(
+          [{ name: 'Edit Conditions', uuid: 'edit-conditions' }],
+          required,
+        ),
+      );
+      renderComponent(
+        [],
+        [],
+        mockConcepts,
+        false,
+        null,
+        [],
+        false,
+        new Error('Condition history unavailable'),
+      );
+      await userEvent.type(screen.getByRole('combobox'), 'hyper');
+      expect(
+        screen.queryByRole('option', { name: 'Hypertension' }),
+      ).not.toBeInTheDocument();
+      expect(addConditionMock).not.toHaveBeenCalled();
+    });
+
+    it('does not offer an already selected condition to a condition-only user', async () => {
+      mockedUseUserPrivilege.mockImplementation((required) =>
+        hasPrivilege(
+          [{ name: 'Edit Conditions', uuid: 'edit-conditions' }],
+          required,
+        ),
+      );
+      renderComponent(
+        [],
+        [createMockConditionEntry({ id: 'uuid-1' })],
+        mockConcepts,
+      );
+      await userEvent.type(
+        screen.getByRole('combobox', { name: 'Search conditions' }),
+        'hyper',
+      );
+      const option = screen.getByRole('option', {
+        name: /Hypertension.*already added/i,
+      });
+      expect(option.closest('li')).toHaveAttribute('disabled');
+      fireEvent.click(option);
+      expect(addConditionMock).not.toHaveBeenCalled();
+      expect(addDiagnosisMock).not.toHaveBeenCalled();
+    });
+
     it.each(['Add Diagnoses', 'Edit Diagnoses'])(
       'allows diagnosis entry with native %s authorization',
       async (name) => {

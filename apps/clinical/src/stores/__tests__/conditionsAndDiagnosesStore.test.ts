@@ -56,6 +56,32 @@ describe('useConditionsAndDiagnosesStore', () => {
   });
 
   // ADD DIAGNOSIS TESTS
+  describe('addCondition', () => {
+    test('adds a condition directly without a temporary diagnosis', () => {
+      const store = useConditionsAndDiagnosesStore.getState();
+      act(() => {
+        store.addDiagnosis(mockConcept2);
+        store.addCondition(mockConcept);
+        store.addCondition(mockConcept);
+        store.addCondition({ ...mockConcept3, conceptUuid: '' });
+      });
+      const state = useConditionsAndDiagnosesStore.getState();
+      expect(state.selectedDiagnoses.map((item) => item.id)).toEqual([
+        mockConcept2.conceptUuid,
+      ]);
+      expect(state.selectedConditions).toEqual([
+        {
+          id: mockConcept.conceptUuid,
+          display: mockConcept.conceptName,
+          durationValue: null,
+          durationUnit: null,
+          errors: {},
+          hasBeenValidated: false,
+        },
+      ]);
+    });
+  });
+
   describe('addDiagnosis', () => {
     test('should add a new diagnosis to the store', () => {
       const { result } = renderHook(() => useConditionsAndDiagnosesStore());

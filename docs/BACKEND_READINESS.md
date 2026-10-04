@@ -1,5 +1,30 @@
 # Qorlia React frontend backend readiness
 
+## Latest condition-only restricted-role verification
+
+Direct coded-condition entry now works independently of diagnosis access. The
+actual isolated browser account had Edit Conditions and encounter writes, but no
+Get/Add/Edit Diagnoses. Native condition reads were 200 and diagnosis reads 403.
+The editor avoids diagnosis queries in that mode, requires condition history and
+disables saved/draft duplicates while preserving the hospital's explicit input-
+control configuration policy.
+
+Missing duration/unit blocked React submission; independent native reads retained
+zero conditions, diagnoses and encounters. One valid save and full reload retained
+an active Essential hypertension condition with two-day onset, the correct patient,
+visit and temporary provider, and exactly one encounter with zero diagnoses.
+Reopening search disabled the saved condition; Cancel left native counts unchanged.
+The temporary account/provider were retired and the isolated input-control config
+restored to its exact pre-test hash. Existing staff roles were not expanded.
+
+Seven focused suites pass 383 tests and nine snapshots in India/US Pacific time,
+plus clinical type checking, lint and build. Native serializer/permission checks
+also pass without replaying successful writes. Existing upstream build warnings
+remain. Unrelated chart widgets still show denied/error states for this limited
+role; full role-specific layout, retained-draft permission transitions, other
+condition/diagnosis workflows and concurrency are not accepted. No public or
+shared-demo change occurred. See the newest parity checkpoint.
+
 ## Latest diagnosis and condition input-boundary verification
 
 Exact duration parsing no longer truncates fractions. The existing positive

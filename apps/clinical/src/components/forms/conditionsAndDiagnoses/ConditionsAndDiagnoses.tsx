@@ -42,6 +42,7 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
   const canAddConditions = useHasPrivilege(
     CONSULTATION_PAD_PRIVILEGES.CONDITIONS,
   );
+  const canEnter = canAddDiagnoses || canAddConditions;
   const [searchDiagnosesTerm, setSearchDiagnosesTerm] = useState('');
   const [selectedDiagnosisItem, setSelectedDiagnosisItem] =
     useState<ConceptSearch | null>(null);
@@ -53,6 +54,7 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
     selectedDiagnoses,
     selectedConditions,
     addDiagnosis,
+    addCondition,
     removeDiagnosis,
     updateCertainty,
     markAsCondition,
@@ -74,7 +76,7 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
     refetch: refetchConditions,
   } = useQuery({
     queryKey: ['conditions', patientUUID!],
-    enabled: !!patientUUID && canAddDiagnoses,
+    enabled: !!patientUUID && canEnter,
     queryFn: () => getConditions(patientUUID!),
   });
 
@@ -98,11 +100,17 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
         payload.patientUUID === patientUUID &&
         payload.updatedResources.conditions
       ) {
-        refetchDiagnoses();
-        refetchConditions();
+        if (canAddDiagnoses) refetchDiagnoses();
+        if (canEnter) refetchConditions();
       }
     },
-    [patientUUID, refetchDiagnoses, refetchConditions],
+    [
+      patientUUID,
+      canAddDiagnoses,
+      canEnter,
+      refetchDiagnoses,
+      refetchConditions,
+    ],
   );
 
   useEffect(() => {
@@ -116,14 +124,20 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
   }, [existingConditionsLoading, existingConditionsError, addNotification, t]);
 
   useEffect(() => {
-    if (existingDiagnosesError) {
+    if (canAddDiagnoses && existingDiagnosesError) {
       addNotification({
         title: t('ERROR_DEFAULT_TITLE'),
         message: existingDiagnosesError.message,
         type: 'error',
       });
     }
-  }, [existingDiagnosesLoading, existingDiagnosesError, addNotification, t]);
+  }, [
+    canAddDiagnoses,
+    existingDiagnosesLoading,
+    existingDiagnosesError,
+    addNotification,
+    t,
+  ]);
 
   const handleSearch = (searchTerm: string) => {
     setSearchDiagnosesTerm(searchTerm);
@@ -154,38 +168,44 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
   const handleOnChange = (selectedItem: ConceptSearch | null) => {
     setShowDuplicateNotification(false);
     if (
-      !canAddDiagnoses ||
+      !canEnter ||
       selectedItem?.disabled ||
       !selectedItem?.conceptUuid ||
       !selectedItem.conceptName ||
       existingConditionsLoading ||
-      existingDiagnosesLoading ||
+      (canAddDiagnoses && existingDiagnosesLoading) ||
       existingConditionsError ||
-      existingDiagnosesError ||
+      (canAddDiagnoses && existingDiagnosesError) ||
       !existingConditions ||
-      !existingDiagnoses
+      (canAddDiagnoses && !existingDiagnoses)
     ) {
       return;
     }
 
     // Check for duplicate BEFORE adding
     if (
-      isDuplicateDiagnosis(selectedItem.conceptUuid, selectedItem.conceptName)
+      canAddDiagnoses
+        ? isDuplicateDiagnosis(
+            selectedItem.conceptUuid,
+            selectedItem.conceptName,
+          )
+        : isConditionDuplicate(selectedItem.conceptUuid)
     ) {
       setShowDuplicateNotification(true);
       return; // Don't add duplicate!
     }
 
     // Successfully added, clear any previous duplicate notification
-    addDiagnosis(selectedItem);
+    if (canAddDiagnoses) addDiagnosis(selectedItem);
+    else addCondition(selectedItem);
     setSearchDiagnosesTerm('');
     setSelectedDiagnosisItem(selectedItem);
   };
 
   const isConditionDuplicate = (diagnosisId: string): boolean => {
     const isExistingCondition =
-      existingConditions?.some(
-        (d) => d.code?.coding?.[0]?.code === diagnosisId,
+      existingConditions?.some((d) =>
+        d.code?.coding?.some((coding) => coding.code === diagnosisId),
       ) ?? false;
     const isSelectedConditions =
       selectedConditions?.some((condition) => condition.id === diagnosisId) ||
@@ -195,7 +215,11 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
 
   const filteredSearchResults: ConceptSearch[] = useMemo(() => {
     if (searchDiagnosesTerm.length === 0) return [];
-    if (searchError || existingConditionsError || existingDiagnosesError) {
+    if (
+      searchError ||
+      existingConditionsError ||
+      (canAddDiagnoses && existingDiagnosesError)
+    ) {
       return [
         {
           conceptName: t('ERROR_FETCHING_CONCEPTS'),
@@ -208,9 +232,9 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
     if (
       isSearchLoading ||
       existingConditionsLoading ||
-      existingDiagnosesLoading ||
+      (canAddDiagnoses && existingDiagnosesLoading) ||
       !existingConditions ||
-      !existingDiagnoses
+      (canAddDiagnoses && !existingDiagnoses)
     ) {
       return [
         {
@@ -225,7 +249,11 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
     if (searchResults.length === 0) {
       return [
         {
-          conceptName: t('NO_MATCHING_DIAGNOSIS_FOUND'),
+          conceptName: t(
+            canAddDiagnoses
+              ? 'NO_MATCHING_DIAGNOSIS_FOUND'
+              : 'NO_MATCHING_CONDITION_FOUND',
+          ),
           conceptUuid: '',
           matchedName: '',
           disabled: true,
@@ -234,13 +262,16 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
     }
 
     return searchResults.map((item) => {
-      const isAlreadySelected = selectedDiagnoses.some(
-        (d) => d.id === item.conceptUuid,
-      );
+      const isAlreadySelected = canAddDiagnoses
+        ? selectedDiagnoses.some((d) => d.id === item.conceptUuid)
+        : selectedConditions.some((d) => d.id === item.conceptUuid) ||
+          existingConditions.some((d) =>
+            d.code?.coding?.some((coding) => coding.code === item.conceptUuid),
+          );
       return {
         ...item,
         conceptName: isAlreadySelected
-          ? `${item.conceptName} (${t('DIAGNOSIS_ALREADY_ADDED')})`
+          ? `${item.conceptName} (${t(canAddDiagnoses ? 'DIAGNOSIS_ALREADY_ADDED' : 'CONDITION_ALREADY_ADDED')})`
           : item.conceptName,
         disabled: isAlreadySelected,
       };
@@ -257,10 +288,12 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
     existingConditions,
     existingDiagnoses,
     selectedDiagnoses,
+    selectedConditions,
+    canAddDiagnoses,
     t,
   ]);
 
-  if (!canAddDiagnoses) return null;
+  if (!canEnter) return null;
 
   return (
     <Tile
@@ -271,12 +304,20 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
         className={styles.conditionsAndDiagnosesTitle}
         data-testid="conditions-and-diagnoses-title"
       >
-        {t('CONDITIONS_AND_DIAGNOSES_FORM_TITLE')}
+        {t(
+          canAddDiagnoses
+            ? 'CONDITIONS_AND_DIAGNOSES_FORM_TITLE'
+            : 'CONDITION_LIST_DISPLAY_CONTROL_TITLE',
+        )}
       </div>
       <ComboBox
         id="diagnoses-search"
         data-testid="diagnoses-search-combobox"
-        placeholder={t('DIAGNOSES_SEARCH_PLACEHOLDER')}
+        placeholder={t(
+          canAddDiagnoses
+            ? 'DIAGNOSES_SEARCH_PLACEHOLDER'
+            : 'CONDITIONS_SEARCH_PLACEHOLDER',
+        )}
         items={filteredSearchResults}
         itemToString={(item) => item?.conceptName ?? ''}
         onChange={(data) => handleOnChange(data.selectedItem ?? null)}
@@ -286,13 +327,21 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
         allowCustomValue
         size="md"
         autoAlign
-        aria-label={t('DIAGNOSES_SEARCH_ARIA_LABEL')}
+        aria-label={t(
+          canAddDiagnoses
+            ? 'DIAGNOSES_SEARCH_ARIA_LABEL'
+            : 'CONDITIONS_SEARCH_ARIA_LABEL',
+        )}
       />
       {showDuplicateNotification && (
         <InlineNotification
           kind="error"
           lowContrast
-          subtitle={t('DIAGNOSIS_ALREADY_ADDED')}
+          subtitle={t(
+            canAddDiagnoses
+              ? 'DIAGNOSIS_ALREADY_ADDED'
+              : 'CONDITION_ALREADY_ADDED',
+          )}
           onClose={() => setShowDuplicateNotification(false)}
           hideCloseButton={false}
           className={styles.duplicateNotification}

@@ -1,5 +1,45 @@
 # Bahmni workflow parity ledger
 
+## 5 October condition-only input and restricted-browser checkpoint
+
+This closes direct coded-condition creation for the tested condition-only role,
+not all condition editing, role changes or clinical workflow parity.
+
+- The shared conditions/diagnoses input now allows Edit Conditions independently
+  of Add/Edit Diagnoses. A condition-only user searches and adds a condition
+  directly, without creating a diagnosis draft or querying diagnosis history.
+  Diagnosis-capable users retain the existing diagnosis/conversion flow.
+- Existing condition history is still required before adding. Failed or missing
+  history blocks entry; saved and draft coding duplicates are disabled. The store
+  validates concepts and preserves unrelated drafts. English/Spanish labels
+  distinguish condition search from diagnosis search. Explicit hospital input-
+  control privilege configuration remains authoritative.
+- An isolated temporary account had Edit Conditions and encounter writes, but no
+  Get/Add/Edit Diagnoses. Native condition reads succeeded and diagnosis reads
+  returned 403. Only isolated staging's input-control configuration temporarily
+  included Edit Conditions; its exact previous file was restored after testing.
+  Existing seed/staff roles and public/shared-demo settings were not changed.
+- Actual React Done with missing duration/unit preserved the draft. Independent
+  reads found zero clinical entries. A subsequent valid save created one active
+  Essential hypertension condition with a two-day onset duration, zero diagnoses,
+  and exactly one encounter with the correct patient, visit and provider. Full
+  reload rendered the condition. Reopening search disabled the existing coded
+  condition; Cancel and independent read-back retained the same record counts.
+  The temporary account/provider were retired, not existing staff accounts.
+- Seven focused suites pass 383 tests and nine snapshots in India and US Pacific
+  time, with clinical type checking, changed-source lint and build. The native
+  serializer/permission check also passes with four temporary accounts retired.
+  These are focused checks, not a full application acceptance run. Existing
+  upstream eval and large-bundle warnings remain. The implementation reuses the
+  existing store, queries, Carbon controls and serializer without a new dependency
+  or mirrored permission state.
+
+Remaining: limited-role chart widgets still render unrelated authorization/error
+states; retained drafts across permission changes, diagnosis editing/removal,
+condition onset/status/notes/noncoded workflows and concurrency need further work.
+Separate-product reskins and broader release gates remain open. No production or
+shared-demo deployment occurred.
+
 ## 5 October diagnosis and condition input-boundary checkpoint
 
 This closes the tested certainty/duration serialization gaps, not all diagnosis
