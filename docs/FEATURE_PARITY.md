@@ -1,5 +1,15 @@
 # Bahmni workflow parity ledger
 
+## 5 October 2026 shared confirmation focus checkpoint
+
+This supersedes the dialog focus-restoration gap below, not complete accessibility or workflow parity.
+
+- The shared confirmation modal now restores focus to its opening button or link whether its caller closes it or unmounts it. It preserves Carbon's safe secondary-action initial focus and focus trap, including React StrictMode effect replay. The first attempted cleanup exposed a real StrictMode focus-wrap regression; the final lifecycle guard and regression tests cover it without replacing Carbon or adding a dependency.
+- Populated Programs browser checks retained initial focus on Cancel and returned focus to the opening button after Cancel, Escape and Close, including keyboard reopening. Patient Documents' persistent unsaved-change dialog retained initial focus on Stay and returned focus to its opening navigation link after Stay, Escape and Close. Network observation recorded no write requests. Only a local pending synthetic file was selected and discarded; no document or program record was saved or removed.
+- The actual shared/Carbon modal integration tests cover eight combinations of conditional/persistent mounting, StrictMode and button/link launchers. All 24 open/dismiss/reopen cases passed. Focused widget/conditions checks passed (57), Programs/result-editor checks passed (56), and document-section checks passed (30). Widget, clinical and document type checks and dependency-first library builds passed. Existing upstream eval, import/mock and large-bundle warnings remain.
+
+Remaining: other accessibility controls and zoom/layout review, configured Programs datatypes/defaults/multiple workflows, concurrency and limited-role backend checks, plus the broader React and separate-product workflows below. No production/shared-demo deployment or access change occurred.
+
 ## 5 October 2026 Programs browser checkpoint
 
 This supersedes the browser attribute/date/removal/completion/void gaps in the earlier Programs checkpoints, not complete Programs or React parity.

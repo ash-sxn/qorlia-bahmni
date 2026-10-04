@@ -1,6 +1,12 @@
 # Qorlia React frontend backend readiness
 
-Updated 4 October 2026. The local review at `http://localhost:3002/bahmni-v2/login` uses the isolated synthetic staging backend. The earlier port 3000 review uses the existing synthetic demo backend at `demo-bahmni.qorlia.com`. No redesigned frontend or backend upgrade has been deployed there. This is development evidence, not a production release gate.
+Updated 5 October 2026. The local review at `http://localhost:3002/bahmni-v2/login` uses the isolated synthetic staging backend. The earlier port 3000 review uses the existing synthetic demo backend at `demo-bahmni.qorlia.com`. No redesigned frontend or backend upgrade has been deployed there. This is development evidence, not a production release gate.
+
+## 5 October confirmation focus checkpoint
+
+The shared modal preserves Carbon's safe initial focus and restores its opening button or link on dismissal, including callers that unmount it and StrictMode replay. Populated Programs and Patient Documents browser checks verified Cancel/Stay, Escape, Close and keyboard reopening. No write requests occurred; the synthetic document remained a local pending file and was discarded without saving. Regression coverage uses the real shared/Carbon dialog, not a component mock.
+
+Focused widget/conditions tests passed (57), Programs/result-editor tests passed (56), and document-section tests passed (30). Widget, clinical and document type checks and dependency-first builds passed. This supersedes the focus gap below, not full accessibility, Programs parity or release readiness. Other configured workflows, role/error checks and separate products remain unfinished. Production and the shared demo are unchanged.
 
 ## 5 October Programs browser checkpoint
 
