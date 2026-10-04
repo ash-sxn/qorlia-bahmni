@@ -17,6 +17,7 @@ const TRANSLATIONS: Record<string, string> = {
   VIEWED_CLINICAL_DASHBOARD_MESSAGE: 'Viewed clinical dashboard',
   EDIT_ENCOUNTER_MESSAGE: 'Edited encounter',
   VIEWED_RADIOLOGY_RESULTS_MESSAGE: 'Viewed radiology results',
+  RUN_REPORT_MESSAGE: 'Ran report',
 };
 
 jest.mock('i18next', () => ({
@@ -29,6 +30,25 @@ describe('auditLogService', () => {
   });
 
   describe('logAuditEvent', () => {
+    it('records report actions without a patient using the legacy report module', async () => {
+      mockIsAuditLogEnabled.mockResolvedValue(true);
+      mockPost.mockResolvedValue({});
+
+      expect(
+        await logAuditEvent(
+          undefined,
+          'RUN_REPORT',
+          { reportName: 'OPD report' },
+          MODULE_LABELS.REPORTS,
+        ),
+      ).toEqual({ logged: true });
+      expect(mockPost).toHaveBeenCalledWith(AUDIT_LOG_URL, {
+        patientUuid: undefined,
+        eventType: 'RUN_REPORT',
+        message: 'Ran report~{"reportName":"OPD report"}',
+        module: 'MODULE_LABEL_REPORTS_KEY',
+      });
+    });
     it('should return logged false without logging when audit logging is disabled', async () => {
       mockIsAuditLogEnabled.mockResolvedValue(false);
 

@@ -1,5 +1,17 @@
 # Bahmni workflow parity ledger
 
+## 5 October 2026 Reports controls and audit checkpoint
+
+This supersedes the Reports control gaps in the older catalogue preview, not native report generation or full React parity.
+
+- Report requests now use the configured report name rather than its JSON key. The Qorlia controls honor configured formats and date presets, omit dates for reports that require none, reject concatenated CSV, and accept configured or uploaded XLS macro templates. Upload uses multipart `file`, validates its acknowledgement, and never treats a login page or arbitrary path as a template filename.
+- My Reports handles numeric and ISO timestamps, sorts newest first, groups by request date and displays start/end dates and format. Literal search does not interpret regular expressions. Processing entries have no delete action. Deletion re-reads the queue, rejects stale/processing entries, and uses the existing confirmation modal; Cancel sends no request. This frontend check does not establish server-side ownership enforcement.
+- Direct run and scheduling requests use the shared `RUN_REPORT` audit event with `{ reportName }` and `MODULE_LABEL_REPORTS_KEY`, matching the pinned [legacy Reports controller](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/reports/controllers/reportsController.js). The event records the attempt, including rejected queue requests, not completion of report generation. Scheduling is not retried automatically. Audit logging is independent of submission: logging failure displays a separate warning, preserves accepted queue status and does not replay the report request. Queue rejection still shows failure, not success. Direct run opens synchronously before the asynchronous audit request to preserve browser popup behaviour.
+- The full Reports suite passed (49 tests) in Asia/Kolkata and America/Los_Angeles. Shared audit-service checks passed (8). Reports/service type checks and dependency-first builds passed. The Reports App unit fixture now supplies its API reads instead of making accidental network requests. Existing shared-service duplicate mock warnings and large bundles remain.
+- Browser review loaded the actual 13 configured reports under the isolated authenticated session. Previous month selected 1 September through 30 September. My Reports explicitly shows unavailable, not an invented empty or successful queue. No report generation, upload, scheduling, deletion or audit write was performed in this browser checkpoint.
+
+Remaining: add and verify the native Reports service privately in isolated staging, including its server-issued reporting session bridge, generation, queue, downloads, real XLS upload, deletion, limited-role/ownership boundaries and failures. The inspected official image runs migrations against both the OpenMRS and Reports schemas; take a recoverable staging backup and review those changes before startup. No production or shared-demo deployment occurred.
+
 ## 5 October 2026 shared confirmation focus checkpoint
 
 This supersedes the dialog focus-restoration gap below, not complete accessibility or workflow parity.

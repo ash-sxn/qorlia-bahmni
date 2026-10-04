@@ -4,10 +4,15 @@ import { OPENMRS_REST_V1 } from '../constants/app';
 export const MODULE_LABELS = {
   CLINICAL: 'MODULE_LABEL_CLINICAL_KEY',
   REGISTRATION: 'MODULE_LABEL_REGISTRATION_KEY',
+  REPORTS: 'MODULE_LABEL_REPORTS_KEY',
 } as const;
 
 // Audit log event details mapping
 export const AUDIT_LOG_EVENT_DETAILS = {
+  RUN_REPORT: {
+    eventType: 'RUN_REPORT',
+    message: 'RUN_REPORT_MESSAGE',
+  },
   VIEWED_CLINICAL_DASHBOARD: {
     eventType: 'VIEWED_CLINICAL_DASHBOARD',
     message: 'VIEWED_CLINICAL_DASHBOARD_MESSAGE',

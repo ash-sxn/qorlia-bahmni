@@ -2,6 +2,17 @@
 
 Updated 5 October 2026. The local review at `http://localhost:3002/bahmni-v2/login` uses the isolated synthetic staging backend. The earlier port 3000 review uses the existing synthetic demo backend at `demo-bahmni.qorlia.com`. No redesigned frontend or backend upgrade has been deployed there. This is development evidence, not a production release gate.
 
+## 5 October Reports readiness checkpoint
+
+Report-name requests, configured formats/date ranges, multipart XLS-template controls, timestamp/date grouping, stale/processing deletion guards and shared report-run audit logging now have frontend regression coverage. The full Reports suite passed 49 tests in India and US Pacific; shared audit-service checks passed 8. Reports/service type checks and dependency-first builds passed. Native browser review loaded the real 13-report catalogue and selected the correct previous-month dates. This is not generation or queue-write proof.
+
+The private staging Compose project still has no Reports service. Its native queue is unavailable and the React page reports that failure explicitly. Inspection of cached official `bahmni/reports:1.1.0`, digest `sha256:3af8e248ae7603126fecb1efacb583e8b6b2bd4e9df0254fc198e8e4a2d63877`, confirmed two requirements before startup:
+
+- The image runs Liquibase migrations on both clinical and report schemas. Back up isolated staging and review migration/schema permissions first. The upstream migration script uses shell tracing with database arguments; do not expose its credential-bearing logs in review output.
+- Its registered authentication interceptor requires `reporting_session`, verifies that session through OpenMRS and checks reporting privilege. The [official proxy](https://github.com/Bahmni/bahmni-proxy/blob/main/resources/bahmni-proxy.conf) issues that HttpOnly cookie from the OpenMRS session. The private staging proxy has not yet implemented this bridge. Do not copy session tokens through frontend JavaScript or disable the interceptor.
+
+Next native checks: private service startup, anonymous and limited-role denial, report privilege/queue ownership enforcement, synthetic generation, scheduling/read-back, completed-file contents, XLS upload and deletion. Other-schema OpenELIS/Odoo reports cannot be claimed working against OpenMRS-only staging. No Reports runtime, database or public route was changed during this checkpoint.
+
 ## 5 October confirmation focus checkpoint
 
 The shared modal preserves Carbon's safe initial focus and restores its opening button or link on dismissal, including callers that unmount it and StrictMode replay. Populated Programs and Patient Documents browser checks verified Cancel/Stay, Escape, Close and keyboard reopening. No write requests occurred; the synthetic document remained a local pending file and was discarded without saving. Regression coverage uses the real shared/Carbon dialog, not a component mock.

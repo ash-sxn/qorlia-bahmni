@@ -7,6 +7,8 @@ jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   initAppI18n: jest.fn().mockResolvedValue(undefined),
   initializeAuditListener: jest.fn(),
+  getCurrentUser: jest.fn().mockResolvedValue({ username: 'qorlia-demo' }),
+  get: jest.fn(async (url: string) => (url.includes('/getReports?') ? [] : {})),
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 

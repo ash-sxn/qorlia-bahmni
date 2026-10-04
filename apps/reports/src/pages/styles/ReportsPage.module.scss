@@ -61,7 +61,7 @@
 .field input,
 .field select {
   width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   padding: 8px 11px;
   border: 1px solid #cddbd4;
   border-radius: 7px;
@@ -106,6 +106,9 @@
 .fields .field:last-child {
   grid-column: 1 / -1;
 }
+.fullWidth {
+  grid-column: 1 / -1;
+}
 .actions,
 .rowActions,
 .queueHeading {
@@ -119,7 +122,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
+  min-height: 44px;
   padding: 9px 15px;
   border: 1px solid var(--brand);
   border-radius: 7px;
@@ -148,6 +151,7 @@
 }
 .tableScroll {
   overflow-x: auto;
+  margin-top: 16px;
 }
 .tableScroll table {
   width: 100%;
@@ -165,11 +169,17 @@
   text-transform: uppercase;
 }
 .rowActions button {
+  min-height: 44px;
   border: 0;
   background: none;
   color: var(--brand);
   font: inherit;
   cursor: pointer;
+}
+.dateGroup th {
+  background: var(--qorlia-sage, #edf3ee);
+  color: var(--ink);
+  text-transform: none;
 }
 .rowActions a {
   color: var(--brand);

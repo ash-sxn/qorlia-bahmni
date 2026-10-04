@@ -20,4 +20,5 @@ export type AuditEventType =
   | 'VIEWED_RADIOLOGY_RESULTS'
   | 'STOP_MEDICATION'
   | 'UPLOAD_PATIENT_DOCUMENT'
+  | 'RUN_REPORT'
   | 'START_VISIT';
