@@ -1,5 +1,21 @@
 # Qorlia React frontend backend readiness
 
+## Latest condition-inactivation candidate
+
+New encounter creation and condition inactivation now share one EncounterBundle
+transaction, matching the additional FHIR extension's bundle-local Condition
+reference handling and returned-resource contract. The existing matched encounter
+path remains one transaction. Missing condition IDs are rejected before writing;
+unexpected acknowledgements never trigger a standalone create or automatic retry.
+Service/bundle tests passed 46 checks in India and US Pacific time, plus lint,
+service TypeScript checking and library build. Native condition create/inactivate,
+permission boundaries and rollback remain unverified; this is not full clinical
+save parity. See the latest feature-ledger checkpoint.
+
+Local HTML navigation to login/home returns 200. A generic Accept-header HTTP
+probe receives 404 intentionally and must not be treated as browser failure.
+The signed-in React home was also verified in the actual review browser.
+
 ## Latest diagnosis-history failure verification
 
 The diagnosis editor now distinguishes failed history reads from no matching

@@ -13,12 +13,12 @@ import {
 } from '../encounterBundle';
 import {
   buildEncounterResource,
-  createFhirEncounter,
   getActiveVisit,
   getEncounterTypeByName,
 } from '../encounterService';
 import { getCompatiblePatientBundle } from '../fhirSearchCompatibility';
 import { getUserLoginLocation } from '../userService';
+import { generateUUID } from '../utils/utils';
 import {
   CONDITION_RESOURCE_URL,
   PATIENT_CONDITION_RESOURCE_URL,
@@ -119,8 +119,8 @@ function buildConditionEncounter(
 /**
  * Marks a condition as inactive, bundled with a FHIR encounter.
  * Reuses an existing encounter when matched, otherwise creates one.
- * Create paths are non-atomic: if the bundle POST fails after the encounter POST,
- * the encounter is left orphaned (urn:uuid refs are unsupported by OpenMRS).
+ * The additional FHIR extension resolves bundle-local encounter references and
+ * returns saved resources. Creation and inactivation share one transaction.
  * @returns The encounter bundled with the condition update.
  */
 export async function markConditionAsInactive(
@@ -131,6 +131,9 @@ export async function markConditionAsInactive(
   patientUuid?: string,
   practitionerUUID?: string,
 ): Promise<Encounter> {
+  if (!condition.id) {
+    throw new Error('A saved condition is required before marking it inactive');
+  }
   // Category is intentionally always set to problem-list-item. Conditions managed via
   // this widget are problem-list conditions by definition, regardless of their original
   // stored category (e.g. encounter-diagnosis).
@@ -246,21 +249,13 @@ export async function markConditionAsInactive(
       newEncounterSubject,
       practitionerUUID,
     );
-    // Create the encounter first so we have its server-assigned UUID before
-    // building the bundle. OpenMRS does not reliably return entry.response.location
-    // in transaction-response bundles, so a standalone POST is used to obtain the UUID.
-    const createdEncounter = await createFhirEncounter(newEncounter);
+    const encounterReference = `urn:uuid:${generateUUID()}`;
     const conditionWithEncounter: Condition = {
       ...updatedCondition,
-      encounter: { reference: `Encounter/${createdEncounter.id}` },
+      encounter: { reference: encounterReference },
     };
     const entries = [
-      createBundleEntry(
-        `Encounter/${createdEncounter.id}`,
-        createdEncounter,
-        'PUT',
-        `Encounter/${createdEncounter.id}`,
-      ),
+      createBundleEntry(encounterReference, newEncounter, 'POST', 'Encounter'),
       createBundleEntry(
         `Condition/${condition.id}`,
         conditionWithEncounter,
@@ -268,8 +263,19 @@ export async function markConditionAsInactive(
         `Condition/${condition.id}`,
       ),
     ];
-    await post<Bundle>(ENCOUNTER_BUNDLE_URL, createEncounterBundle(entries));
-    return createdEncounter;
+    const response = await post<Bundle>(
+      ENCOUNTER_BUNDLE_URL,
+      createEncounterBundle(entries),
+    );
+    // The extension returns resources in request order, not response locations.
+    // Never issue a second write to recover an unexpected acknowledgement.
+    const savedEncounter = response.entry?.[0]?.resource;
+    if (savedEncounter?.resourceType !== 'Encounter' || !savedEncounter.id) {
+      throw new Error(
+        'Condition save response is incomplete. Refresh before trying again.',
+      );
+    }
+    return savedEncounter;
   }
 
   throw new Error(

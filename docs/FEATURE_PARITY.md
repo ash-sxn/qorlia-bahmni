@@ -1,5 +1,34 @@
 # Bahmni workflow parity ledger
 
+## 5 October atomic condition-inactivation candidate
+
+The new-encounter path now sends POST Encounter and PUT Condition in one
+EncounterBundle, using a bundle-local encounter reference instead of creating
+an encounter in a separate request. The matched path retains its existing
+PUT/PUT transaction. Saved encounter identity comes from the returned resource,
+not a response-location header or an additional write. Unsaved conditions are
+rejected before submission; incomplete acknowledgements do not trigger retries.
+
+The contract was traced against the official additional FHIR extension's
+[1.0.0 transaction service](https://github.com/Bahmni/bahmni-module-fhir2-addl-extension/blob/1.0.0/api/src/main/java/org/bahmni/module/fhir2addlextension/api/service/impl/EncounterBundleServiceImpl.java)
+and Condition reference resolution in its entries helper. Service/bundle checks
+passed 46 tests in Asia/Kolkata and America/Los_Angeles, including missing/wrong
+saved resources, failure without standalone writes, context resolution and
+matched-encounter reuse. Source/test lint, service TypeScript checking and the
+service library build passed. The sibling condition-table suites passed 36 tests,
+and the clinical library build passed. Existing duplicate-mock, React act and
+upstream form-renderer eval/large-bundle warnings remain.
+
+These are automated service checks, not populated native condition lifecycle or
+browser save proof. Matching condition permissions, native persisted encounter
+references and rejected-condition rollback still require isolated verification.
+No privileges, backend metadata, clinical records or public deployment changed.
+
+The earlier status report's local-home 404 was a non-HTML probe, not a broken
+review route. HTML Accept requests return 200 for both login and home; all three
+development proxy/routing checks pass. Actual signed-in browser navigation loaded
+React home and its module links. No restart or routing change was needed.
+
 ## 5 October diagnosis-history failure checkpoint
 
 This improves the existing diagnosis editor's failure behavior, not diagnosis
