@@ -38,8 +38,8 @@ migrate() {
 migrate liquibase.xml "$OPENMRS_DB_HOST" "$OPENMRS_DB_NAME" "$OPENMRS_DB_USERNAME" "$OPENMRS_DB_PASSWORD"
 migrate liquibase_bahmni_reports.xml "$REPORTS_DB_SERVER" "$REPORTS_DB_NAME" "$REPORTS_DB_USERNAME" "$REPORTS_DB_PASSWORD"
 
-# Compile the reviewed controllers and converter header fix against this image.
-# Report generation and template conversion remain the native implementation.
+# Compile reviewed controllers and converter design/header changes against this image.
+# Data generation and workbook template conversion remain the native implementation.
 classpath="$WAR_DIRECTORY/WEB-INF/classes:$WAR_DIRECTORY/WEB-INF/lib/*:/opt/bahmni-reports/lib/bahmni-embedded-tomcat.jar"
 javac --release 11 -cp "$classpath" -d "$WAR_DIRECTORY/WEB-INF/classes" \
   /staging/reports-source/MainReportController.java \

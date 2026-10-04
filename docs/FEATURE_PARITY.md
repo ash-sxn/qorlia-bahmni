@@ -1,5 +1,22 @@
 # Bahmni workflow parity ledger
 
+## 5 October native report design checkpoint
+
+This adds native output branding, not completed report layout acceptance or all
+report-definition parity. Earlier stored outputs remain unchanged.
+
+- The existing AGPL converter derives per-report styles through DynamicReports' public API without copying or mutating the upstream LGPL-covered `Templates` class. Generated headers use the Qorlia primary and white text, alternating rows use sage, and HTML/PDF retain native titles/dates/page numbering with a readable product and Built on Bahmni header. Data queries, calculations, locale/currency and XLS template generation remain native.
+- An optional operator-mounted copy of the frontend `branding.json` supplies name and primary only. The converter reads it once, validates string types, a non-empty 60-character name, control characters, six-digit hex and 4.5:1 white contrast. Missing, malformed or oversized files fall back atomically to Qorlia. No logo/network/asset fetching or arbitrary CSS is supported in Reports yet; the available SansSerif font is retained instead of claiming that web fonts are installed.
+- Native checks passed again: 46 controller assertions, 49 upload assertions and all six formats. Two-row checks verify green headers and alternating sage/white rows, native spreadsheet visit value/type, byte-identical native CSV, retained hospital XLS sheet styling/formula/name/original bytes/OLE marker, alternate hospital tokens, invalid/missing fallback and literal HTML escaping. Bahmni starts its even-row highlight with the first data row; the initial test incorrectly assumed the second and was corrected after inspecting both actual colors. No runtime row behavior was changed to satisfy that assumption.
+- After a recoverable Reports-only snapshot, only private staging Reports restarted. Startup native checks passed and the service retained no published ports. Actual React Run now produced a branded populated HTML Visit Report using the Last 7 days preset. Browser DOM confirmed primary `rgb(31,82,56)`, white heading text and sage data-row background, with the synthetic patient/visit and native date range retained. An initial automation date fill did not commit into React state and ran Today only; that observed request was not replayed blindly.
+- One React PDF queue request completed and downloaded. Its SHA-256 matched native stored bytes (`24505f9458fe472698bc94b8080af852ea9e2594ae34dd4320ef8b54ef23b47e`). Poppler extraction/rendering retained the brand credit, synthetic visit, dates and page numbering. The wide native table still splits several header words and has tight body-cell spacing, so PDF typography/column layout is not accepted as finished. HTML is also still a fixed report page, not a responsive application table.
+- Independent SQL retained the previous seven reports plus the new Completed PDF, with fourteen RUN_REPORT audits (two direct HTML requests and one queued PDF beyond the previous eleven). No report was deleted, no clinical records changed and no public/shared-demo deployment occurred. Shell syntax and repository diff checks passed; no React source changed in this checkpoint.
+
+Next: refine actual wide-table PDF/HTML layout, additional definitions/crosstabs,
+Unicode/font embedding and hospital-specific output assets. Confirmed React deletion,
+real VBA/configured templates, concurrency/failure/restart recovery and the broader
+React/separate-product scope remain open.
+
 ## 5 October compatible exporter and browser Custom Excel checkpoint
 
 This supersedes the custom XLS generation and queued download MIME gaps below,

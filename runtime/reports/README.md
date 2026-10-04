@@ -9,8 +9,8 @@ The adapter uses `bahmni/reports` at digest
 `start-staging.sh` replaces its startup script and compiles the reviewed
 `MainReportController.java`, `TemplateUploadController.java` and
 `JasperResponseConverter.java` over their matching native classes. The converter
-change supplies the correct custom XLS MIME type; its workbook generation remains
-native. SQL, report definitions and generation classes remain upstream.
+changes supply the correct custom XLS MIME type and per-report Qorlia styles;
+workbook generation remains native. SQL, report definitions and generation classes remain upstream.
 It validates environment inputs, writes private configuration, uses the bundled
 clinical and Reports Liquibase changelogs without shell tracing, then starts
 the bundled embedded Tomcat without a debugger. Database arguments remain
@@ -18,6 +18,31 @@ visible inside that container's process namespace, so do not grant untrusted
 container/host access. This is not a production credential-management design.
 
 ## Compatible native exporter candidate
+
+### Report design tokens
+
+The converter derives styles from the native template through DynamicReports'
+public API. It never modifies or copies the shared `Templates.java` class, whose
+existing LGPL header and notices remain upstream. HTML/PDF add a readable
+product name and Built on Bahmni page header. Generated spreadsheet headers use
+the brand color, with readable white text and sage alternating rows. Existing
+report titles, data queries, calculations, locale and currency rules are retained.
+CSV receives no design changes. Supplied XLS template sheets are not restyled.
+
+Optionally mount the same `branding.json` used by the frontend read-only and set
+`QORLIA_BRANDING_FILE` to its absolute container path. Reports currently consumes
+only `name` and `primary`; logo, background and hover tokens remain frontend-only.
+The name must be a non-empty string up to 60 characters without control characters
+or em dashes. The primary must be a six-digit hex color with 4.5:1 white contrast.
+Invalid, missing or larger-than-16-KiB files fall back to Qorlia defaults. Values
+are read once at startup. No external assets, scripts or CSS are loaded.
+
+Native fixtures verify HTML/PDF credit, generated XLSX header color, alternative
+hospital name/color, invalid/missing token fallback, unchanged native shared
+styles, byte-identical CSV and retained hospital XLS sheet styling/formula/name
+and non-executable OLE marker. These checks do not establish every report's
+layout, Unicode font embedding or real VBA compatibility. The runtime currently
+uses its available SansSerif font; the brand web fonts are not installed in it.
 
 The exact pinned image's DynamicReports 4.0.0 / JasperReports 6.0.0 exporter calls
 an HSSF colour class absent from its POI 5.2.1. The candidate instead uses
@@ -54,7 +79,7 @@ an isolated synthetic Visit Report. All six queued formats have correct MIME,
 stored-file hashes and 206 ranges. Cancel kept the seven reports unchanged,
 including the five original reports; native audit count is eleven. Confirmed
 React deletion, configured templates/real macro workbooks, other definitions,
-concurrency/failure/restart recovery, output branding and CSRF/method migration
+concurrency/failure/restart recovery, further output layout/branding and CSRF/method migration
 remain open. The dated observations below are historical checkpoints.
 
 The React confirmation identifies the requested time, format and filename and

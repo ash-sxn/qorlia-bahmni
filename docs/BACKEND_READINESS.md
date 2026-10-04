@@ -1,5 +1,26 @@
 # Qorlia React frontend backend readiness
 
+## Latest native report design verification
+
+The isolated Reports converter now derives Qorlia header/table styles without
+mutating native shared templates or changing SQL, calculations, CSV data structure
+or supplied XLS sheets. It can read the same operator-mounted branding JSON as
+the frontend (name/primary only), with validation and safe defaults. Native checks
+passed 46 controller and 49 upload assertions plus all six formats, including
+two-row colors, literal HTML escaping and retained spreadsheet values/types and
+template styling. Only private Reports restarted after a rollback snapshot.
+
+Actual React populated HTML generation visibly retained synthetic visit data and
+the configured date range with green/white headings and sage row styling. One
+queued PDF completed and downloaded with a native-storage SHA-256 match. Independent
+SQL retained all seven earlier reports plus this PDF and fourteen RUN_REPORT audits.
+PDF extraction/rendering retained data and credit, but several wide-table header
+words still split and body cells remain tightly spaced. Layout acceptance,
+crosstabs, other definitions and Unicode/font embedding are not complete. No
+clinical/shared-demo/production deployment or report deletion occurred. See the
+newest checkpoint in FEATURE_PARITY.md; older output-branding gaps are superseded
+only for the styles verified here.
+
 Updated 5 October 2026. The local review at `http://localhost:3002/bahmni-v2/login` uses the isolated synthetic staging backend. The earlier port 3000 review uses the existing synthetic demo backend at `demo-bahmni.qorlia.com`. No redesigned frontend or backend upgrade has been deployed there. This is development evidence, not a production release gate.
 
 ## Latest native exporter and browser Custom Excel verification
