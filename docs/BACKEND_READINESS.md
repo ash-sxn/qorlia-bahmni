@@ -4,6 +4,28 @@ Updated 5 October 2026. The local review at `http://localhost:3002/bahmni-v2/log
 
 ## 5 October direct Reports and authorization checkpoint
 
+### Later native lifecycle and XLS upload verification
+
+Native limited-role/per-report verification passed 27 checks, including
+revocation, fail-closed invalid configuration, permission restoration and actual
+synthetic row/file deletion. Independent SQL retained the five original reports
+and ten audit events; the test user was retired and the original catalogue was
+restored exactly. These checks supersede the native lifecycle gaps below, not
+React browser deletion proof.
+
+The reviewed native upload controller now validates XLS content, safe filenames
+and confined unique writes, preserves original bytes and returns UTF-8 filenames.
+It passed 49 native checks alongside the 33 existing authorization checks. Six
+actual HTTP upload assertions passed, including Hindi and invalid-file/session
+boundaries. The upload fix runs only in isolated staging after a Reports-only
+backup/restart. Existing multipart limits and global authentication remain.
+
+Actual direct Custom Excel generation returned 500 because JasperReports 6.0.0
+requires HSSFColor$WHITE, absent from the pinned POI 5.2.1 library. No scheduled
+record was added. This runtime compatibility issue, native template/formula and
+macro preservation, browser template upload/deletion, and scheduled Custom Excel
+remain open. Do not label this format working on the strength of upload tests.
+
 ### Later native authorization correction
 
 The Reports controller correction is now running only in isolated staging.

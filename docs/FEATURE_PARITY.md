@@ -1,5 +1,23 @@
 # Bahmni workflow parity ledger
 
+## 5 October native permission lifecycle and XLS upload checkpoint
+
+This supersedes the missing native per-report restricted-definition and real
+deletion proofs below, not React browser deletion, custom XLS generation or
+complete Reports parity.
+
+- A Reports-only synthetic user generated one named synthetic CSV. A temporary catalogue change required a privilege it did not possess: its queue hid that row and direct generation, scheduling, known-ID download and deletion returned 403. An invalid catalogue type made all five paths return 503. After restoring the valid definition/privilege, the same row and identical file bytes remained. Deletion returned 200; queue/read/repeated deletion then confirmed absence. All 27 native HTTP checks passed.
+- Independent SQL and file checks confirmed deletion of the one synthetic report, retention of the five original reports and ten RUN_REPORT audit events, and retirement of the test account. The report catalogue was restored to its original SHA-256 `a8269122ac1e4fb3b1f9f705430d61c42843ff217728f80269d6f158d7dac0ff`. No existing user privileges were changed and no successful write was blindly replayed.
+- The public AGPL-covered TemplateUploadController validates BIFF XLS content using installed POI, constrains filenames/storage writes, retains Unicode names and original bytes, and removes partial copies. An explicit UTF-8 response fixes a live Hindi upload acknowledgement that previously replaced characters with question marks. The native check passed 49 assertions in the pinned image; the existing 33 authorization checks still passed. Live uploads passed anonymous denial and wrong-extension/empty/HTML/truncated rejection, plus a valid Hindi-named XLS. The upstream multipart size limit remains authoritative.
+- A Reports-only backup preceded restarting only private staging Reports. No production/shared-demo change, clinical service recreation or public route occurred. The native source changes leave SQL, report generation and workbook conversion unchanged.
+- Frontend Reports regression checks passed (50) in Asia/Kolkata and America/Los_Angeles. Reports type checking, adapter/check shell syntax and diff checks passed. No frontend source or installed dependency was changed for this native correction.
+- Custom XLS generation remains broken by the pinned runtime: JasperReports 6.0.0 refers to `HSSFColor$WHITE`, removed from POI 5.2.1. An actual direct custom export returned 500. No scheduled row was added. The upload success and ordinary Excel export do not establish Custom Excel parity.
+
+Next: compatible native XLS exporter/runtime, actual template/formula and
+macro preservation, configured templates, scheduled custom exports and React
+browser upload/deletion. Other report definitions, concurrent/failure/restart
+recovery, output branding/layout and legacy mutating GET/CSRF remain unfinished.
+
 ## 5 October native Reports authorization checkpoint
 
 This supersedes the missing explicit controller ownership enforcement below,

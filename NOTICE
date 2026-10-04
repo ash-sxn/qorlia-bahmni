@@ -44,5 +44,9 @@ is derived from Bahmni/bahmni-reports 1.1.0, revision
 8f9d4bbdfec3aacba680a60d7fe47584eb679559. Its changes enforce authenticated
 report ownership and per-report privileges, fail closed on verification errors,
 stop denied direct generation and prevent duplicate download extensions.
-The native check harness and controller are also AGPL 3.0. No upstream notices
-or licenses in the original image are removed.
+TemplateUploadController.java is derived from the same revision. Its changes
+validate XLS content and safe filenames, preserve original workbook bytes,
+confine unique file writes to the configured directory, clean partial writes
+and return UTF-8 upload acknowledgements. The native check harnesses and
+controllers are also AGPL 3.0. No upstream notices or licenses in the original
+image are removed.

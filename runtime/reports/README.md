@@ -7,8 +7,9 @@ changelogs and notices remain in the pinned upstream image. See the root NOTICE.
 The adapter uses `bahmni/reports` at digest
 `sha256:3af8e248ae7603126fecb1efacb583e8b6b2bd4e9df0254fc198e8e4a2d63877`.
 `start-staging.sh` replaces its startup script and compiles the reviewed
-`MainReportController.java` over the matching native controller. Other Java
-classes, SQL, report generation and template handling remain upstream.
+`MainReportController.java` and `TemplateUploadController.java` over their matching
+native controllers. Other Java classes, SQL, generation and workbook conversion
+remain upstream.
 It validates environment inputs, writes private configuration, uses the bundled
 clinical and Reports Liquibase changelogs without shell tracing, then starts
 the bundled embedded Tomcat without a debugger. Database arguments remain
@@ -95,3 +96,37 @@ legacy client contract; CSRF and method migration require a separate compatible
 review. Original template-path validation remains in ReportGenerator. The
 initial ASCII-only filename guard was removed before deployment because it
 would reject legitimate configured subdirectories or non-English filenames.
+
+## 5 October limited-role lifecycle and template upload checkpoint
+
+A subsequent native HTTP check passed 27 assertions using one temporary
+synthetic report definition and a Reports-only test user. Revoking the report's
+privilege hid its queue row and denied direct generation, scheduling, download
+and deletion. An unparseable catalogue returned 503 on all five paths. Restoring
+permission retained the original row/file; confirmed deletion removed both.
+Independent SQL/storage checks retained the original five reports and ten audit
+events. The test account was retired and the catalogue restored byte-for-byte.
+These are native API checks, not React browser deletion proof.
+
+The upload controller now validates real BIFF XLS workbooks with the image's
+existing POI library before writing, rejects unsafe paths/control characters,
+retains valid Unicode names and original bytes, uses unique CREATE_NEW writes,
+and cleans partial copies. Its acknowledgement explicitly uses UTF-8; live
+testing found and corrected the original converter's lossy Hindi response.
+The existing configured multipart limit remains unchanged. Global Reports
+authentication still guards uploads. No macros are executed during validation.
+
+The pinned image passed 49 upload/controller checks plus the 33 existing
+authorization checks. Live native HTTP upload checks passed six assertions:
+anonymous denial, wrong extension, empty/HTML/truncated rejection and a valid
+Hindi-named XLS. Storage SHA-256 matched the 4096-byte native test fixture.
+Only private Reports restarted, after a Reports-only rollback backup.
+
+Custom XLS generation is NOT passed: the pinned image's JasperReports 6.0.0
+exporter requires `org.apache.poi.hssf.util.HSSFColor$WHITE`, absent from its
+POI 5.2.1. The actual direct generation returned 500 with that class-loading
+failure; no scheduled report was created. Dependency compatibility must be
+corrected before verifying template/formula preservation, configured templates,
+scheduled custom exports or macro-bearing workbooks. The ordinary five export
+formats are not proof of this sixth format. The official workflow is described
+in [Reporting Overview](https://bahmni.atlassian.net/wiki/spaces/BAH/pages/2270265367).

@@ -36,11 +36,12 @@ migrate() {
 migrate liquibase.xml "$OPENMRS_DB_HOST" "$OPENMRS_DB_NAME" "$OPENMRS_DB_USERNAME" "$OPENMRS_DB_PASSWORD"
 migrate liquibase_bahmni_reports.xml "$REPORTS_DB_SERVER" "$REPORTS_DB_NAME" "$REPORTS_DB_USERNAME" "$REPORTS_DB_PASSWORD"
 
-# Compile the reviewed controller against this exact image. Keep every other
-# upstream class, including report generation and template handling, unchanged.
+# Compile the reviewed controllers against this exact image. Keep upstream
+# report generation, workbook conversion and every other class unchanged.
 classpath="$WAR_DIRECTORY/WEB-INF/classes:$WAR_DIRECTORY/WEB-INF/lib/*:/opt/bahmni-reports/lib/bahmni-embedded-tomcat.jar"
 javac --release 11 -cp "$classpath" -d "$WAR_DIRECTORY/WEB-INF/classes" \
-  /staging/reports-source/MainReportController.java
+  /staging/reports-source/MainReportController.java \
+  /staging/reports-source/TemplateUploadController.java
 
 # SERVER_OPTS is operator-controlled JVM arguments, not user input. No debugger.
 exec java ${SERVER_OPTS:--Xms128m -Xmx512m} -jar /opt/bahmni-reports/lib/bahmni-embedded-tomcat.jar
