@@ -1,5 +1,16 @@
 # Bahmni workflow parity ledger
 
+## 4 October 2026 protected radiology attachment checkpoint
+
+This supersedes the pending radiology text/image browser checks in the earlier checkpoints below. It does not declare all attachment formats, result forms or clinical workflows complete.
+
+- The redesigned Radiology Order page saved an explicitly synthetic text result and PNG attachment through the real legacy encounter API (HTTP 200), then retained both after a full reload. Adding a second PNG also returned HTTP 200 and preserved the original note and attachment observation IDs. Removing only the first attachment returned HTTP 200; a reload retained the note and second image, while native REST retained the removed image's original path in voided history. Only the isolated synthetic patient was edited.
+- Opening the saved attachment initially returned 404 because isolated staging omitted the separate protected-file service. The repair uses Bahmni's existing patient-documents image with read-only staging file volumes, following its [official proxy route](https://github.com/Bahmni/bahmni-proxy/blob/main/resources/bahmni-proxy.conf). The local `/openmrs/auth` route now verifies the OpenMRS session and the upstream clinical/document application privileges. Raw file paths and the internal fetch route remain closed; no public ports, DNS routes or production services changed.
+- The public MPL-covered authentication adapter validates directory boundaries, rejects encoded traversal/control characters, safely encodes internal redirects and fails closed on invalid session responses. Its native check and the actual pinned image's Nginx syntax check passed. Live authenticated reads returned image/png with private/no-store and nosniff headers; anonymous access returned 403, direct routes 404 and invalid paths 400. Served bytes matched independently measured staging file hashes. Bahmni's ImageIO PNG re-encoding means those bytes are not expected to match the original PNG encoding; image dimensions and browser rendering were verified.
+- Editor/API/Orders page tests passed in Asia/Kolkata and America/Los_Angeles (57 tests), including partial multi-file upload failure, retained successful uploads, unsaved restoration and saved attachment voiding. The existing Procedure multi-select fields/IDs still passed independent checks after the radiology writes. Clinical type checking/build passed in the preceding checkpoint; no application code changed in this attachment-runtime repair.
+
+Remaining: PDF/other supported image formats, upload-size/error boundaries with the real backend, populated limited-role checks, specialized result-form rules and the other React workflows listed below. The separate-product redesign remains the next phase.
+
 ## 4 October 2026 isolated clinical checkpoint
 
 The isolated review at `http://localhost:3002/bahmni-v2/login` now has verified browser sign-in, location selection and React home navigation. A private development connection failure was repaired; its reconnect loop also passed a forced-disconnect recovery check. Production and the shared public demo are unchanged.

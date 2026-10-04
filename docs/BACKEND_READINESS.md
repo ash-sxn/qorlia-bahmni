@@ -2,6 +2,14 @@
 
 Updated 4 October 2026. The local review at `http://localhost:3002/bahmni-v2/login` uses the isolated synthetic staging backend. The earlier port 3000 review uses the existing synthetic demo backend at `demo-bahmni.qorlia.com`. No redesigned frontend or backend upgrade has been deployed there. This is development evidence, not a production release gate.
 
+## 4 October protected attachment checkpoint
+
+Radiology text/PNG browser create, a second attachment save and removal of one saved attachment now pass real HTTP 200 saves plus reload/native REST checks. The note and retained image keep their observation IDs; the removed image retains voided history. This supersedes the radiology text/image gaps recorded in the earlier checkpoints, not the remaining forms/formats or workflows.
+
+Isolated staging was missing the separate patient-documents service. Its existing pinned upstream image is now used privately with read-only staging document volumes. The `/openmrs/auth` route follows the [official Bahmni proxy](https://github.com/Bahmni/bahmni-proxy/blob/main/resources/bahmni-proxy.conf), retaining session and clinical/document-app privilege checks. The MPL adapter in `runtime/patient-documents/njs.js` adds path validation and closed failure handling. Native checks, the actual image's Nginx check, authenticated file hash/dimension reads, anonymous denial (403), blocked direct/internal paths (404) and traversal rejection (400) passed. File responses are private/no-store and nosniff. No public exposure, shared-demo change or production deployment occurred.
+
+The 57 focused Orders/editor/API tests passed in India and US Pacific time zones. Partial upload failure preserves successful uploads; attachment removal and restoration preserve unrelated values/history. PDF/other formats, real size-limit/error responses, limited-role verification and specialized forms remain pending. Full React workflow parity is still unfinished.
+
 ## 4 October isolated browser checkpoint
 
 - Actual browser sign-in, login-location selection and React home navigation passed. A dropped private development connection caused the reported sign-in availability failure; restoring that connection restored authentication. The private review connection now retries after a disconnect, with a forced-disconnect recovery check passing. Staging remains internal-only.

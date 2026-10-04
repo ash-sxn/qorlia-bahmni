@@ -217,6 +217,86 @@ it('uploads an order attachment without changing its encounter type and includes
   );
 });
 
+it('keeps successful uploads after a partial failure and voids only the removed saved attachment', async () => {
+  jest.mocked(useUserPrivilege).mockReturnValue({
+    userPrivileges: [
+      'Add Encounters',
+      'Add Observations',
+      'Edit Observations',
+    ].map((name) => ({ name, uuid: name })),
+    isLoading: false,
+  });
+  const saved = makeFulfillmentObservation(form);
+  saved.uuid = 'saved-group';
+  saved.orderUuid = 'order';
+  Object.assign(saved.groupMembers[0], {
+    uuid: 'saved-note',
+    value: 'QorliaQA note',
+  });
+  Object.assign(saved.groupMembers[1], {
+    uuid: 'saved-image',
+    value: 'patient/first.png',
+  });
+  jest
+    .mocked(uploadDocument)
+    .mockResolvedValueOnce({ url: 'patient/second.png' })
+    .mockRejectedValueOnce(new Error('Upload interrupted'));
+  jest.mocked(saveFulfillment).mockResolvedValueOnce({});
+  onSaved.mockResolvedValueOnce({ observations: [] });
+  renderEditor({ observations: [saved] });
+  await waitFor(() =>
+    expect(screen.getByLabelText('Add Diagnostic Images')).toBeEnabled(),
+  );
+  fireEvent.change(screen.getByLabelText('Add Diagnostic Images'), {
+    target: {
+      files: ['second', 'third', 'fourth'].map(
+        (name) => new File(['image'], `${name}.png`, { type: 'image/png' }),
+      ),
+    },
+  });
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Upload interrupted',
+  );
+  expect(uploadDocument).toHaveBeenCalledTimes(2);
+  expect(
+    screen.getAllByRole('link', { name: 'Open Diagnostic Images' }),
+  ).toHaveLength(2);
+  await userEvent.click(
+    screen.getAllByRole('button', { name: 'Remove attachment' })[0],
+  );
+  await userEvent.click(screen.getByRole('button', { name: 'Restore' }));
+  expect(
+    screen.getAllByRole('link', { name: 'Open Diagnostic Images' }),
+  ).toHaveLength(2);
+  await userEvent.click(
+    screen.getAllByRole('button', { name: 'Remove attachment' })[0],
+  );
+  await confirmSave();
+  await waitFor(() => expect(onSaved).toHaveBeenCalled());
+  const payload = fulfillmentPayload(
+    jest.mocked(saveFulfillment).mock.calls[0][5],
+    'order',
+  );
+  expect(payload.groupMembers).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        uuid: 'saved-note',
+        value: 'QorliaQA note',
+        voided: false,
+      }),
+      expect.objectContaining({
+        uuid: 'saved-image',
+        value: 'patient/first.png',
+        voided: true,
+      }),
+      expect.objectContaining({
+        value: 'patient/second.png',
+        orderUuid: 'order',
+      }),
+    ]),
+  );
+});
+
 it('keeps its draft and original snapshot when another order refreshes the page', async () => {
   const original = { encounterUuid: 'original', observations: [] };
   const { refresh } = renderEditor(original);

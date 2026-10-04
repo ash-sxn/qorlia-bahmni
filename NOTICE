@@ -20,4 +20,12 @@ third-party open source projects.
                                                                     
 For a list of third-party dependencies and their licenses, refer to the                                        
 package.json files within each application module and the node_modules                                      
-directory.                                                      
+directory.
+
+## Patient Documents authentication
+
+runtime/patient-documents/njs.js is derived from Bahmni/patient-documents
+package/docker/njs.js, revision dc20e7d2c161e26e10339b7e125bf48b0f31755b.
+Upstream notice: Copyright 2026. Source generated at Thoughtworks.
+Licensed under MPL 2.0, included in LICENSE. Qorlia's modifications validate
+paths, encode internal redirects and fail closed on invalid session responses.
