@@ -23,6 +23,8 @@ sh /etc/wait-for --timeout=180 "${OPENMRS_DB_HOST}:3306"
 envsubst < /etc/bahmni-reports/bahmni-reports.properties.template > "$HOME/.bahmni-reports/bahmni-reports.properties"
 printf '\nreports.config.url=%s\n' "$REPORTS_CONFIG_URL" >> "$HOME/.bahmni-reports/bahmni-reports.properties"
 
+sh /staging/reports-source/install-exporter-libraries.sh
+
 migrate() {
   (cd "$WAR_DIRECTORY/WEB-INF/classes" && java \
     -Dliquibase.databaseChangeLogTableName=liquibasechangelog \
@@ -36,12 +38,16 @@ migrate() {
 migrate liquibase.xml "$OPENMRS_DB_HOST" "$OPENMRS_DB_NAME" "$OPENMRS_DB_USERNAME" "$OPENMRS_DB_PASSWORD"
 migrate liquibase_bahmni_reports.xml "$REPORTS_DB_SERVER" "$REPORTS_DB_NAME" "$REPORTS_DB_USERNAME" "$REPORTS_DB_PASSWORD"
 
-# Compile the reviewed controllers against this exact image. Keep upstream
-# report generation, workbook conversion and every other class unchanged.
+# Compile the reviewed controllers and converter header fix against this image.
+# Report generation and template conversion remain the native implementation.
 classpath="$WAR_DIRECTORY/WEB-INF/classes:$WAR_DIRECTORY/WEB-INF/lib/*:/opt/bahmni-reports/lib/bahmni-embedded-tomcat.jar"
 javac --release 11 -cp "$classpath" -d "$WAR_DIRECTORY/WEB-INF/classes" \
   /staging/reports-source/MainReportController.java \
-  /staging/reports-source/TemplateUploadController.java
+  /staging/reports-source/TemplateUploadController.java \
+  /staging/reports-source/JasperResponseConverter.java
+
+# Fail before HTTP startup if native formats or template preservation regress.
+sh /staging/reports-source/check-controller.sh
 
 # SERVER_OPTS is operator-controlled JVM arguments, not user input. No debugger.
 exec java ${SERVER_OPTS:--Xms128m -Xmx512m} -jar /opt/bahmni-reports/lib/bahmni-embedded-tomcat.jar

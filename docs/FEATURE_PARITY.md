@@ -1,5 +1,23 @@
 # Bahmni workflow parity ledger
 
+## 5 October compatible exporter and browser Custom Excel checkpoint
+
+This supersedes the custom XLS generation and queued download MIME gaps below,
+not complete Reports parity, real VBA preservation or output design acceptance.
+
+- Private staging now uses checksum-pinned DynamicReports 6.12.1, JasperReports 6.21.5 and POI 5.4.1 with their matching dependency set. The public manifest contains 30 exact Maven Central paths and SHA-256 values, not JAR binaries. Operator-side downloads are validated before installation; startup does not fetch dependencies. Original libraries are retained in a recoverable directory. This is a Java 11 compatibility candidate, not a completed production dependency/security audit.
+- The native converter keeps its existing workbook-template generation. Its custom XLS response now uses the real XLS MIME type. The queue remains explicitly JSON, and downloads carry their native content type through Spring's Resource response rather than allowing XML content negotiation. All six existing queued formats returned their correct MIME type and bytes, including valid 206 byte-range responses. Independent hashes matched native stored files. Anonymous, invalid-session, missing-ID and foreign-owner denial checks passed without submitting reports.
+- Actual direct custom generation and scheduled custom generation retained the synthetic template sheet, formula and populated Visit Report data. Native converter checks also retained a named range, original input bytes and a non-executable OLE marker. That marker is not a real VBA project and does not establish macro compatibility. Ordinary HTML, CSV, PDF, XLSX and ODS converter checks passed with populated synthetic data.
+- The React browser uploaded the synthetic XLS template and submitted one Custom Excel queue request. The completed row was downloaded from My Reports; its bytes matched the independent native storage SHA-256. Read-only POI inspection retained Sheet1's label/formula and the Report sheet's title, patient identifier and synthetic visit. Independent SQL showed the five original reports plus one API custom report and one browser custom report, with eleven RUN_REPORT audit events. No successful request was replayed after observation delays.
+- Native checks passed again: 46 controller assertions, 49 upload assertions and all six converter formats. Only private Reports restarted after its rollback backup; clinical services were not recreated, and no public/shared-demo deployment or port was added.
+- The existing confirmation modal now identifies the selected report's request time, format and stored filename. A regression distinguishes same-named reports. Browser checks retained initial focus on Cancel, returned focus to the opening Delete button and kept the dialog readable at narrow and desktop sizes. Cancel preserved all seven rows and eleven audit events; confirmed React deletion remains pending.
+- The full Reports suite passed 56 tests in Asia/Kolkata and America/Los_Angeles, including explicit control-character upload/acknowledgement rejection. Translation/client checks passed 49 tests. An absent optional hospital translation override now uses bundled labels without logging an error; missing required files and HTTP 401/403/500 still log, and the API client's authentication behavior is unchanged. The actual Reports browser reload retained translated labels and all seven rows without captured console errors. Source lint, service/Reports type checks and dependency-first library builds passed; existing duplicate-mock and large-bundle warnings remain.
+
+Remaining: React confirmed deletion, configured templates and real macro workbooks,
+other report definitions, failure/concurrent/restart recovery, output branding and
+layout, limited-role variants and the legacy mutating GET/CSRF review. The broader
+React and separate-product scope remains open.
+
 ## 5 October native permission lifecycle and XLS upload checkpoint
 
 This supersedes the missing native per-report restricted-definition and real

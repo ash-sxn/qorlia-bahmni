@@ -2,6 +2,45 @@
 
 Updated 5 October 2026. The local review at `http://localhost:3002/bahmni-v2/login` uses the isolated synthetic staging backend. The earlier port 3000 review uses the existing synthetic demo backend at `demo-bahmni.qorlia.com`. No redesigned frontend or backend upgrade has been deployed there. This is development evidence, not a production release gate.
 
+## Latest native exporter and browser Custom Excel verification
+
+The previously broken custom XLS exporter now passes with a checksum-pinned
+DynamicReports 6.12.1 / JasperReports 6.21.5 / POI 5.4.1 dependency set in private
+Java 11 staging. The source manifest and install/fetch scripts are public; JARs,
+private configuration and report fixtures are not committed. Original libraries
+remain recoverable. This compatibility result does not establish production
+dependency security or every hospital template's compatibility.
+
+Native checks passed 46 authorization/controller assertions, 49 upload assertions
+and all six export formats. Actual direct and queued custom XLS retain the test
+template sheet, formula and populated synthetic visit. A native check also retains
+a named range and a non-executable OLE marker, not a verified real VBA project.
+All six queued formats have correct MIME/bytes and 206 range responses. The queue
+remains JSON after XML template libraries are added. Served files match native
+storage hashes; session/ownership denials still pass.
+
+Actual React template upload, one Custom Excel schedule and its My Reports
+download passed. Independent POI inspection confirms the downloaded template
+label/formula, generated Report sheet and synthetic patient identifier. SQL
+retains the five original reports and two custom test reports, with eleven audit
+events. Only private Reports restarted after its rollback backup. No clinical
+service recreation, shared-demo change or public exposure occurred.
+
+Reports confirmations identify request time, format and filename so identical
+report names are distinguishable. Cancel retained seven rows and eleven audit
+events and restored focus; narrow and desktop rendering passed. Confirmed React
+deletion is still pending. Reports checks passed 56 tests in both India and US
+Pacific time. Translation/client checks passed 49 tests: only a missing optional
+override is quiet, not required-file/authentication/server failures. The actual
+browser reload kept bundled labels and the queue without captured console errors.
+Changed-source lint, both type checks and dependency-first builds passed.
+Existing duplicate-mock and large-bundle warnings remain release work.
+
+React confirmed deletion, configured templates/real macros, other definitions,
+failure/concurrency/restart recovery, output design and CSRF/method migration
+remain open. See the newest feature-ledger checkpoint rather than treating the
+older broken-exporter observations below as current.
+
 ## 5 October direct Reports and authorization checkpoint
 
 ### Later native lifecycle and XLS upload verification

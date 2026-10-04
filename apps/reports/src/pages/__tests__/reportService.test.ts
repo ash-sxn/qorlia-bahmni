@@ -93,25 +93,31 @@ it('uploads a workbook as multipart file and accepts only an acknowledged filena
   expect(options.headers).toEqual({ 'Content-Type': undefined });
 });
 
-it.each(['template.xlsx', '../template.xls', 'bad\n.xls'])(
-  'rejects invalid workbook filename %s before uploading',
-  async (name) => {
-    await expect(
-      uploadReportTemplate(new File(['QA'], name)),
-    ).rejects.toThrow();
-    expect(mockPost).not.toHaveBeenCalled();
-  },
-);
+it.each([
+  'template.xlsx',
+  '../template.xls',
+  'bad\n.xls',
+  'bad\0.xls',
+  'bad\x7f.xls',
+])('rejects invalid workbook filename %s before uploading', async (name) => {
+  await expect(uploadReportTemplate(new File(['QA'], name))).rejects.toThrow();
+  expect(mockPost).not.toHaveBeenCalled();
+});
 
-it.each(['<html>login</html>', '../template.xls', '/tmp/template.xls', null])(
-  'rejects an invalid upload acknowledgement',
-  async (response) => {
-    mockPost.mockResolvedValue(response);
-    await expect(
-      uploadReportTemplate(new File(['QA'], 'QA.xls')),
-    ).rejects.toThrow('not acknowledged');
-  },
-);
+it.each([
+  '<html>login</html>',
+  '../template.xls',
+  '/tmp/template.xls',
+  'bad\n.xls',
+  'bad\0.xls',
+  'bad\x7f.xls',
+  null,
+])('rejects an invalid upload acknowledgement', async (response) => {
+  mockPost.mockResolvedValue(response);
+  await expect(
+    uploadReportTemplate(new File(['QA'], 'QA.xls')),
+  ).rejects.toThrow('not acknowledged');
+});
 
 it.each([{ queue: [] }, { queue: [{ id: 'qa', status: 'Processing' }] }])(
   'rechecks the queue and prevents stale or processing deletion',

@@ -43,6 +43,8 @@ public class MainReportControllerCheck {
                     switch (method.getName()) {
                         case "sendError": case "setStatus": status = (int) args[0]; break;
                         case "setHeader": headers.put((String) args[0], (String) args[1]); break;
+                        case "setContentType": headers.put("Content-Type", (String) args[0]); break;
+                        case "getContentType": return headers.get("Content-Type");
                         case "isCommitted": return false;
                         default: break;
                     }
@@ -87,6 +89,10 @@ public class MainReportControllerCheck {
         return params;
     }
     public static void main(String[] args) throws Exception {
+        check(Arrays.equals(new String[] { "application/json" }, MainReportController.class
+                .getMethod("getReports", String.class, HttpServletRequest.class)
+                .getAnnotation(org.springframework.web.bind.annotation.RequestMapping.class).produces()),
+                "Queue must retain its JSON contract when XML libraries are present");
         Scheduler scheduler = new Scheduler();
         Converter converter = new Converter();
         Controller controller = new Controller(scheduler, converter);
@@ -119,17 +125,29 @@ public class MainReportControllerCheck {
         reply = new Reply(); controller.getScheduledReport("own", reply.response, request);
         check("attachment; filename=Visit_Report.csv".equals(reply.headers.get("Content-Disposition")), "Duplicate extension remains");
         check(scheduler.fileReads == 1, "Own file was not selected");
+        for (String format : Arrays.asList("text/html", "text/csv", "application/pdf", "application/vnd.ms-excel",
+                "application/vnd.ms-excel-custom", "application/vnd.oasis.opendocument.spreadsheet")) {
+            scheduler.current = new ScheduledReport("own", "Visit Report", "alice", "Visit_Report"
+                    + JasperResponseConverter.getFileExtension(format), new Date(), new Date(), "Completed", format, new Date());
+            reply = new Reply();
+            org.springframework.http.ResponseEntity<org.springframework.core.io.FileSystemResource> download =
+                    controller.getScheduledReport("own", reply.response, request);
+            String expected = format.equals("application/vnd.ms-excel-custom") ? "application/vnd.ms-excel" : format;
+            check(expected.equals(download.getHeaders().getContentType().toString()), "Download MIME was negotiated instead of explicit");
+            check(download.getBody() != null, "Download lost the native resource body");
+        }
+        int successfulFileReads = scheduler.fileReads;
         controller.allow = false;
         Reply noAccess = new Reply();
         denied(HttpStatus.FORBIDDEN, () -> controller.getScheduledReport("own", noAccess.response, request));
-        check(noAccess.headers.isEmpty() && scheduler.fileReads == 1, "Denied download reached file headers");
+        check(noAccess.headers.isEmpty() && scheduler.fileReads == successfulFileReads, "Denied download reached file headers");
         reply = new Reply(); controller.delete("own", reply.response, request);
         check(reply.status == 403 && scheduler.deletes == 0, "Restricted deletion was accepted");
         controller.allow = true;
         scheduler.current = report("foreign", "bob", "Visit Report", "Completed");
         Reply foreign = new Reply();
         denied(HttpStatus.NOT_FOUND, () -> controller.getScheduledReport("foreign", foreign.response, request));
-        check(scheduler.fileReads == 1, "Foreign file was selected");
+        check(scheduler.fileReads == successfulFileReads, "Foreign file was selected");
         reply = new Reply(); controller.delete("foreign", reply.response, request);
         check(reply.status == 404 && scheduler.deletes == 0, "Foreign deletion was accepted");
         Reply missing = new Reply();

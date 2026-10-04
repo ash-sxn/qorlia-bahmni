@@ -16,6 +16,7 @@ export interface QueuedReport {
   startDate?: string | number;
   endDate?: string | number;
   format?: string;
+  fileName?: string;
   status: string;
   errorMessage?: string;
 }
@@ -95,6 +96,7 @@ export function reportDateRange(
 }
 
 export async function uploadReportTemplate(file: File) {
+  // eslint-disable-next-line no-control-regex -- Reject control characters in filenames at the upload boundary.
   if (!/\.xls$/i.test(file.name) || /[\\/\x00-\x1f\x7f]/.test(file.name))
     throw new Error('Choose an XLS workbook template.');
   const body = new FormData();
@@ -109,6 +111,7 @@ export async function uploadReportTemplate(file: File) {
   );
   if (
     typeof location !== 'string' ||
+    // eslint-disable-next-line no-control-regex -- Reject control characters in server-issued filenames too.
     !/^[^<>\\/\x00-\x1f\x7f]+\.xls$/i.test(location) ||
     location.includes('..')
   )

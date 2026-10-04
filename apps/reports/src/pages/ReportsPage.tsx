@@ -552,7 +552,16 @@ const MyReportsPanel = () => {
           <ConfirmationModal
             open
             heading={t('REPORTS_DELETE_TITLE')}
-            body={`${t('REPORTS_DELETE_CONFIRM')} ${pendingRemoval.name}`}
+            body={[
+              `${t('REPORTS_DELETE_CONFIRM')} ${pendingRemoval.name}.`,
+              `${t('REPORTS_REQUESTED')}: ${dateLabel(pendingRemoval.requestDatetime, true)}.`,
+              `${t('REPORTS_FORMAT')}: ${reportFormats.find((format) => format.value === pendingRemoval.format)?.label ?? pendingRemoval.format ?? '...'}.`,
+              pendingRemoval.fileName
+                ? `${t('REPORTS_FILE')}: ${pendingRemoval.fileName}`
+                : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
             confirmLabel={t('REPORTS_DELETE')}
             cancelLabel={t('REPORTS_CANCEL')}
             danger

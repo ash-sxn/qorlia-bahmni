@@ -50,3 +50,14 @@ confine unique file writes to the configured directory, clean partial writes
 and return UTF-8 upload acknowledgements. The native check harnesses and
 controllers are also AGPL 3.0. No upstream notices or licenses in the original
 image are removed.
+
+JasperResponseConverter.java derives from the same Reports revision under
+AGPL 3.0. Its native generation/template code is retained; Qorlia supplies the
+correct XLS MIME type. MainReportController carries native file content types
+explicitly and preserves the JSON queue contract. ReportsExporterCheck.java,
+the dependency fetch/install scripts and compatibility manifest are AGPL 3.0.
+The manifest pins a Java 11 staging candidate using DynamicReports 6.12.1,
+JasperReports 6.21.5, Apache POI 5.4.1 and matching dependencies. Downloaded JARs
+retain their own upstream licenses/notices and are not committed here. Original
+libraries remain recoverable; this compatibility check is not a completed
+production dependency or legal audit.

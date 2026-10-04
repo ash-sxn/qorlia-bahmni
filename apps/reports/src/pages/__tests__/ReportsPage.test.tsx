@@ -415,6 +415,61 @@ describe('ReportsPage', () => {
     get.mockRestore();
   });
 
+  it('identifies the selected request when two completed reports share a name', () => {
+    mockUseQuery.mockImplementation(({ queryKey }) => ({
+      data:
+        queryKey[0] === 'currentUser'
+          ? { username: 'qorlia-demo' }
+          : queryKey[1] === 'queue'
+            ? [
+                {
+                  id: 'first',
+                  name: 'Visit Report',
+                  status: 'Completed',
+                  requestDatetime: '2026-10-05T01:58:00+05:30',
+                  format: 'application/vnd.ms-excel-custom',
+                  fileName: 'Visit_Report_first.xls',
+                },
+                {
+                  id: 'second',
+                  name: 'Visit Report',
+                  status: 'Completed',
+                  requestDatetime: '2026-10-05T02:07:00+05:30',
+                  format: 'text/csv',
+                  fileName: 'Visit_Report_second.csv',
+                },
+              ]
+            : {},
+      isPending: false,
+      isError: false,
+      refetch: jest.fn(),
+    }));
+    renderPage('/reports/my-reports');
+    const row = screen
+      .getAllByRole('row')
+      .find(
+        (element) =>
+          element.querySelector('a')?.getAttribute('href') ===
+          '/bahmnireports/download/first',
+      )!;
+    fireEvent.click(
+      within(row).getByRole('button', { name: 'REPORTS_DELETE' }),
+    );
+    const dialog = screen.getByRole('dialog', { name: 'REPORTS_DELETE_TITLE' });
+    expect(dialog).toHaveTextContent('Visit Report');
+    expect(dialog).toHaveTextContent(
+      'REPORTS_REQUESTED: ' +
+        services.formatDateTime(
+          '2026-10-05T01:58:00+05:30',
+          (key: string) => key,
+          true,
+        ).formattedResult,
+    );
+    expect(dialog).toHaveTextContent('REPORTS_FORMAT: Custom Excel');
+    expect(dialog).toHaveTextContent('REPORTS_FILE: Visit_Report_first.xls');
+    expect(dialog).not.toHaveTextContent('Visit_Report_second.csv');
+  });
+
   it('opens HTML reports in a new tab while retaining file download labels', () => {
     mockUseQuery.mockImplementation(({ queryKey }) => ({
       data:

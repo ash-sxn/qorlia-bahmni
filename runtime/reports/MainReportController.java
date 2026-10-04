@@ -133,7 +133,7 @@ public class MainReportController {
         }
     }
 
-    @RequestMapping(value = "/getReports", method = RequestMethod.GET)
+    @RequestMapping(value = "/getReports", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     public List<ScheduledReport> getReports(@RequestParam(name = "user") String user, HttpServletRequest request) {
         String owner = authenticatedUser(request);
         if (!owner.equals(user)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only your own reports can be listed.");
@@ -150,7 +150,7 @@ public class MainReportController {
 
     @RequestMapping(value = "/download/{id}", method = RequestMethod.GET)
     @ResponseBody
-    public FileSystemResource getScheduledReport(@PathVariable("id") String id, HttpServletResponse response,
+    public ResponseEntity<FileSystemResource> getScheduledReport(@PathVariable("id") String id, HttpServletResponse response,
                                                  HttpServletRequest request) {
         ScheduledReport report = ownedReport(id, request);
         if (!"Completed".equalsIgnoreCase(report.getStatus()) || report.getFileName() == null)
@@ -159,7 +159,10 @@ public class MainReportController {
         String extension = JasperResponseConverter.getFileExtension(report.getFormat());
         if (!extension.isEmpty() && name.endsWith(extension)) name = name.substring(0, name.length() - extension.length());
         converter.applyHttpHeaders(report.getFormat(), response, name);
-        return new FileSystemResource(scheduler.getFilePath(report));
+        // Carry the native format explicitly through Spring's resource response.
+        // XML report-template dependencies must not negotiate a file as XML.
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(response.getContentType()))
+                .body(new FileSystemResource(scheduler.getFilePath(report)));
     }
 
     @RequestMapping(value = "/delete/{id}", method = RequestMethod.GET)
