@@ -1,5 +1,27 @@
 # Qorlia React frontend backend readiness
 
+## Latest wide report layout verification
+
+The native converter now applies derived padding/font styles to explicit native
+columns as well as default columns. Automatic static-title widths follow heading
+word metrics; configured widths, character counts, dynamic headings, value
+formatting and explicit report/template split policies remain unchanged. Default
+printable bands prevent ordinary row splits. Native checks passed 46 controller
+and 49 upload assertions plus six formats, byte-identical CSV and retained XLS
+template contents. A 65-row, three-page fixture was inspected on every page after
+a failing row-boundary regression exposed and corrected a split patient row.
+
+The React direct HTML result appeared after the earlier browser observation,
+with updated padding/9-point dense-table typography, full headings and the
+synthetic visit/date range. No duplicate request or Run now control change was
+made. One new queued PDF was downloaded and rendered; its SHA-256 matched native
+stored bytes. Independent SQL retains nine Completed reports and sixteen audit
+attempts. No report deletion, clinical write or public deployment occurred.
+
+This proves the observed wide Visit Report and native fixture, not every report,
+font, crosstab, paper size or recovery case. Confirmed React deletion and broader
+workflow parity remain open. See the newest feature-ledger checkpoint.
+
 ## Latest native report design verification
 
 The isolated Reports converter now derives Qorlia header/table styles without

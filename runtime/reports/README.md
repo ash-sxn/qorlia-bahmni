@@ -21,6 +21,18 @@ container/host access. This is not a production credential-management design.
 
 ### Report design tokens
 
+Wide printable tables now receive derived per-column title/value styles so
+explicit native column styles cannot bypass padding. Tables over twelve columns
+use 9-point type; other generated tables retain 10-point type. Automatic
+static-title text columns use heading-word metrics for width, while configured
+widths/character counts, dynamic headings and value formatting remain native.
+Default printable detail/header bands prevent ordinary row splits without
+overriding explicit report/template split policies. Native checks retain all
+65 full identifiers/birthdates in a multi-page fixture; all three rendered pages
+and a real React queued Visit Report PDF were inspected. The late-arriving direct
+HTML result also shows the updated spacing. Other definitions, long body values,
+paper sizes, crosstabs and Unicode/font embedding are not accepted as complete.
+
 The converter derives styles from the native template through DynamicReports'
 public API. It never modifies or copies the shared `Templates.java` class, whose
 existing LGPL header and notices remain upstream. HTML/PDF add a readable

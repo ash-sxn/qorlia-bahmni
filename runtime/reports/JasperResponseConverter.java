@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Based on Bahmni/bahmni-reports 1.1.0, commit 8f9d4bbdfec3aacba680a60d7fe47584eb679559.
-// Qorlia changes: native XLS MIME and per-report design tokens, preserving data/templates.
+// Qorlia changes: native XLS MIME, design tokens and column spacing, preserving data/templates.
 package org.bahmni.reports.filter;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -10,6 +10,9 @@ import net.sf.dynamicreports.jasper.builder.JasperReportBuilder;
 import net.sf.dynamicreports.jasper.builder.export.Exporters;
 import net.sf.dynamicreports.jasper.builder.export.JasperXlsExporterBuilder;
 import net.sf.dynamicreports.report.exception.DRException;
+import net.sf.dynamicreports.report.base.component.DRTextField;
+import net.sf.dynamicreports.report.builder.expression.ValueExpression;
+import net.sf.dynamicreports.report.constant.SplitType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bahmni.reports.template.Templates;
@@ -20,6 +23,8 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.OutputStream;
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.font.FontRenderContext;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -80,13 +85,48 @@ public class JasperResponseConverter {
 
     private void applyDesign(JasperReportBuilder report, boolean printable) {
         // Derive styles without mutating Templates' shared LGPL-covered objects.
+        int fontSize = printable && report.getReport().getColumns().size() > 12 ? 9 : 10;
+        int padding = printable ? 3 : 4;
         report.setDefaultFont(stl.font().setFontName("SansSerif").setFontSize(10))
                 .setColumnTitleStyle(stl.style(Templates.columnTitleStyle)
-                        .setBackgroundColor(primary).setForegroundColor(Color.WHITE).setPadding(4))
+                        .setBackgroundColor(primary).setForegroundColor(Color.WHITE).setPadding(padding).setFontSize(fontSize))
                 .setColumnStyle(stl.style(Templates.columnStyle)
-                        .setForegroundColor(Color.decode("#202321")).setPadding(4))
+                        .setForegroundColor(Color.decode("#202321")).setPadding(padding).setFontSize(fontSize))
                 .setDetailEvenRowStyle(stl.simpleStyle().setBackgroundColor(Color.decode("#EDF3EE")));
+        Font headingFont = new Font("SansSerif", Font.BOLD, fontSize);
+        FontRenderContext metrics = new FontRenderContext(null, true, true);
+        for (var column : report.getReport().getColumns()) {
+            var titleStyle = stl.style().setFontName("SansSerif").setFontSize(fontSize).bold()
+                    .setBackgroundColor(primary).setForegroundColor(Color.WHITE).setPadding(padding).build();
+            titleStyle.setParentStyle(column.getTitleStyle() == null
+                    ? Templates.columnTitleStyle.getStyle() : column.getTitleStyle());
+            column.setTitleStyle(titleStyle);
+            if (!(column.getComponent() instanceof DRTextField)) continue;
+            var text = (DRTextField<?>) column.getComponent();
+            var valueStyle = stl.style().setFontSize(fontSize).setPadding(padding).build();
+            valueStyle.setParentStyle(text.getStyle() == null ? Templates.columnStyle.getStyle() : text.getStyle());
+            text.setStyle(valueStyle);
+            // Only size automatic static-title text columns. Preserve configured widths,
+            // character counts, dynamic expressions, field formatting and value formatters.
+            if (printable && text.getWidth() == null && text.getColumns() == null
+                    && column.getTitleExpression() instanceof ValueExpression) {
+                Object title = ((ValueExpression<?>) column.getTitleExpression()).evaluate(null);
+                if (!(title instanceof String)) continue;
+                double longest = 0;
+                for (String word : ((String) title).split("\\s+"))
+                    longest = Math.max(longest, headingFont.getStringBounds(word, metrics).getWidth());
+                int minimum = ((String) title).length() <= 6 ? 32 : 64;
+                text.setWidth(Math.max(minimum, (int) Math.ceil(longest) + padding * 2 + 2));
+            }
+        }
         if (printable) {
+            var template = report.getReport().getTemplate();
+            if (report.getReport().getDetailBand().getSplitType() == null
+                    && (template == null || template.getDetailSplitType() == null))
+                report.setDetailSplitType(SplitType.PREVENT);
+            if (report.getReport().getColumnHeaderBand().getSplitType() == null
+                    && (template == null || template.getColumnHeaderSplitType() == null))
+                report.setColumnHeaderSplitType(SplitType.PREVENT);
             report.pageHeader(cmp.text(brandName + " | Built on Bahmni")
                     .setStyle(stl.style().bold().setFontSize(11).setForegroundColor(primary)
                             .setBottomPadding(8)));

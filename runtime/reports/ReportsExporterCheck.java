@@ -13,6 +13,12 @@ import net.sf.dynamicreports.jasper.builder.JasperReportBuilder;
 import net.sf.dynamicreports.report.builder.DynamicReports;
 import net.sf.dynamicreports.report.builder.datatype.DataTypes;
 import net.sf.dynamicreports.report.datasource.DRDataSource;
+import net.sf.dynamicreports.report.constant.PageOrientation;
+import net.sf.dynamicreports.report.constant.PageType;
+import net.sf.dynamicreports.report.constant.HorizontalTextAlignment;
+import net.sf.dynamicreports.report.constant.SplitType;
+import net.sf.dynamicreports.report.base.component.DRTextField;
+import net.sf.dynamicreports.report.base.style.DRStyle;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.poifs.filesystem.DirectoryNode;
@@ -46,8 +52,12 @@ public final class ReportsExporterCheck {
     }
 
     private static byte[] convert(String format, Path directory, String template, Path branding) throws Exception {
+        return convert(report(), format, directory, template, branding);
+    }
+
+    private static byte[] convert(JasperReportBuilder report, String format, Path directory,
+                                  String template, Path branding) throws Exception {
         JasperResponseConverter converter = new JasperResponseConverter(branding);
-        JasperReportBuilder report = report();
         converter.applyReportTemplates(Collections.singletonList(report), format);
         JasperConcatenatedReportBuilder combined = DynamicReports.concatenatedReport().concatenate(report);
         ReportParams params = new ReportParams();
@@ -70,7 +80,85 @@ public final class ReportsExporterCheck {
         return output.toByteArray();
     }
 
+    private static JasperReportBuilder wideReport() {
+        return wideReport(1);
+    }
+
+    private static JasperReportBuilder wideReport(int rows) {
+        String[] headings = { "Patient Identifier", "Patient Name", "Age", "Birthdate", "Gender",
+                "Patient Created Date", "Visit Type", "Date started", "Date stopped", "Date Of Admission",
+                "Date Of Discharge", "New patient visit", "phoneNumber", "county_district", "city_village",
+                "state_province", "Visit Status", "Admission Status", "Patient Id", "Visit Id" };
+        DRDataSource data = new DRDataSource(headings);
+        for (int row = 0; row < rows; row++)
+            data.add("QST910001", "QorliaQA Synthetic", "30", "01-Jan-1996", "M", "01-Oct-2026", "OPD",
+                    "04-Oct-2026", "04-Oct-2026", "", "", "No", "", "", "", "", "OPD", "", "9", "2");
+        JasperReportBuilder report = DynamicReports.report().setTemplate(Templates.reportTemplate)
+                .setPageFormat(PageType.A3, PageOrientation.LANDSCAPE)
+                .title(DynamicReports.cmp.text("QorliaQA Wide Visit Report"));
+        for (String heading : headings)
+            report.addColumn(DynamicReports.col.column(heading, heading, DataTypes.stringType())
+                    .setStyle(Templates.minimalColumnStyle));
+        return report.setDataSource(data);
+    }
+
+    private static void checkConfiguredColumns() {
+        var nativeStyle = Templates.minimalColumnStyle.getStyle();
+        var nativePadding = nativeStyle.getPadding();
+        var nativeFont = nativeStyle.getFont();
+        Integer nativeLeft = nativePadding == null ? null : nativePadding.getLeft();
+        Integer nativeFontSize = nativeFont == null ? null : nativeFont.getFontSize();
+        var fixed = DynamicReports.col.column("Patient", "patient", DataTypes.stringType())
+                .setFixedWidth(137).setStyle(Templates.minimalColumnStyle);
+        var characters = DynamicReports.col.column("Visits", "visits", DataTypes.integerType()).setFixedColumns(5);
+        var amount = DynamicReports.col.column("Amount", "amount", DataTypes.doubleType())
+                .setWidth(80).setPattern("#,##0.00").setHorizontalTextAlignment(HorizontalTextAlignment.RIGHT);
+        var minimum = DynamicReports.col.column("Date", "date", DataTypes.dateType()).setMinWidth(100);
+        var report = DynamicReports.report().columns(fixed, characters, amount, minimum)
+                .setDetailSplitType(SplitType.IMMEDIATE).setColumnHeaderSplitType(SplitType.STRETCH);
+        var fixedType = fixed.getColumn().getComponent().getWidthType();
+        var minimumType = minimum.getColumn().getComponent().getWidthType();
+        new JasperResponseConverter((Path) null).applyReportTemplates(Collections.singletonList(report), "application/pdf");
+        require(fixed.getColumn().getComponent().getWidth() == 137
+                && fixed.getColumn().getComponent().getWidthType() == fixedType, "Fixed width changed");
+        require(characters.getColumn().getComponent().getColumns() == 5, "Character width changed");
+        require(amount.getColumn().getComponent().getWidth() == 80
+                && "#,##0.00".equals(amount.getColumn().getComponent().getPattern())
+                && amount.getColumn().getComponent().getHorizontalTextAlignment() == HorizontalTextAlignment.RIGHT,
+                "Configured value width, pattern or alignment changed");
+        require(minimum.getColumn().getComponent().getWidth() == 100
+                && minimum.getColumn().getComponent().getWidthType() == minimumType, "Minimum width changed");
+        require(report.getReport().getDetailBand().getSplitType() == SplitType.IMMEDIATE
+                && report.getReport().getColumnHeaderBand().getSplitType() == SplitType.STRETCH,
+                "Configured pagination changed");
+        var styled = (DRStyle) fixed.getColumn().getComponent().getStyle();
+        require(styled.getParentStyle() == Templates.minimalColumnStyle.getStyle()
+                && styled.getPadding().getLeft() == 3 && styled.getPadding().getRight() == 3,
+                "Explicit native column style did not receive derived cell spacing");
+        require(nativeStyle.getPadding() == nativePadding && nativeStyle.getFont() == nativeFont
+                && java.util.Objects.equals(nativeLeft, nativePadding == null ? null : nativePadding.getLeft())
+                && java.util.Objects.equals(nativeFontSize, nativeFont == null ? null : nativeFont.getFontSize()),
+                "Shared column style was mutated");
+        var dynamic = DynamicReports.col.column("patient", DataTypes.stringType())
+                .setTitle(new net.sf.dynamicreports.report.base.expression.AbstractSimpleExpression<String>() {
+            public String evaluate(net.sf.dynamicreports.report.definition.ReportParameters parameters) {
+                throw new AssertionError("Layout must not evaluate dynamic headings");
+            }
+        });
+        new JasperResponseConverter((Path) null).applyReportTemplates(Collections.singletonList(
+                DynamicReports.report().columns(dynamic)), "application/pdf");
+        require(((DRTextField<?>) dynamic.getColumn().getComponent()).getWidth() == null,
+                "Dynamic heading width changed");
+        var paginatedTemplate = DynamicReports.report().setTemplate(DynamicReports.template()
+                .setDetailSplitType(SplitType.STRETCH).setColumnHeaderSplitType(SplitType.IMMEDIATE));
+        new JasperResponseConverter((Path) null).applyReportTemplates(Collections.singletonList(paginatedTemplate), "application/pdf");
+        require(paginatedTemplate.getReport().getDetailBand().getSplitType() == null
+                && paginatedTemplate.getReport().getColumnHeaderBand().getSplitType() == null,
+                "Template pagination was overridden");
+    }
+
     public static void main(String[] args) throws Exception {
+        checkConfiguredColumns();
         Path directory = Files.createTempDirectory("qorlia-exporter-check-");
         String template = "QorliaQA रिपोर्ट.xls";
         Path path = directory.resolve(template);
@@ -210,6 +298,39 @@ public final class ReportsExporterCheck {
         require(missing.contains("Qorlia | Built on Bahmni"), "Missing branding did not fall back");
         require(Templates.columnTitleStyle.getStyle().getBackgroundColor().equals(java.awt.Color.LIGHT_GRAY),
                 "Shared native template was mutated");
+        byte[] wide = convert(wideReport(), "application/pdf", directory, template, null);
+        Files.write(directory.resolve("QorliaQA-wide-report.pdf"), wide);
+        System.out.println("Wide report fixture: " + directory);
+        var wideReader = new com.itextpdf.text.pdf.PdfReader(wide);
+        try {
+            String text = com.itextpdf.text.pdf.parser.PdfTextExtractor.getTextFromPage(wideReader, 1);
+            for (String heading : new String[] { "phoneNumber", "county_district", "city_village", "state_province", "Admission" })
+                require(text.contains(heading), "Wide report splits header word: " + heading);
+            require(text.contains("QST910001") && text.contains("QorliaQA") && text.contains("Synthetic"),
+                    "Wide report lost patient values: " + text);
+        } finally { wideReader.close(); }
+        Files.write(directory.resolve("QorliaQA-wide-report.html"),
+                convert(wideReport(), "text/html", directory, template, null));
+        ByteArrayOutputStream wideBaseline = new ByteArrayOutputStream();
+        wideReport().setTemplate(Templates.excelReportTemplate).toCsv(wideBaseline);
+        require(Arrays.equals(wideBaseline.toByteArray(), convert(wideReport(), "text/csv", directory, template, null)),
+                "Wide CSV columns or values changed");
+        byte[] multiPage = convert(wideReport(65), "application/pdf", directory, template, null);
+        var pages = new com.itextpdf.text.pdf.PdfReader(multiPage);
+        try {
+            require(pages.getNumberOfPages() > 1, "Wide fixture did not test pagination");
+            int identifiers = 0;
+            int birthdates = 0;
+            for (int page = 1; page <= pages.getNumberOfPages(); page++) {
+                String text = com.itextpdf.text.pdf.parser.PdfTextExtractor.getTextFromPage(pages, page);
+                require(text.contains("Qorlia | Built on Bahmni") && text.contains("county_district")
+                        && text.contains("QST910001"), "Repeated page lost heading or patient values");
+                identifiers += text.split("QST910001", -1).length - 1;
+                birthdates += text.split("01-Jan-1996", -1).length - 1;
+            }
+            require(identifiers == 65 && birthdates == 65, "Patient row split across pages");
+        } finally { pages.close(); }
+        Files.write(directory.resolve("QorliaQA-wide-multipage.pdf"), multiPage);
         Files.write(directory.resolve("custom.xls"), custom);
         System.out.println("Native converter passed all six formats and XLS template preservation: " + directory);
     }

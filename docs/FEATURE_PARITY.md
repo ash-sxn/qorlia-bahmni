@@ -1,5 +1,22 @@
 # Bahmni workflow parity ledger
 
+## 5 October wide report layout checkpoint
+
+This supersedes the wide Visit Report header/row-spacing gap below, not all
+report layouts, definitions, Unicode fonts or complete Reports parity.
+
+- The native converter derives title/value styles per column, including columns with explicit native styles. HTML/PDF use padded cells and a 9-point font for tables over twelve columns. Automatic static-title text columns are sized from heading-word metrics; explicit widths/character counts, dynamic expressions, patterns, alignment and value formatters remain unchanged. Native shared templates are not mutated. CSV is byte-identical to the native baseline; supplied XLS template sheets are retained.
+- Printable detail/header bands default to PREVENT only when neither the report nor its template specifies a split policy. A first multi-page rendering exposed a row split that the original one-page assertions missed. A failing regression now requires all 65 full identifiers and birthdates across pages. The final three-page fixture was visually inspected on every page: intact rows, repeated headings/credit and correct page numbers, without clipping or overlap.
+- Fresh native checks passed 46 controller assertions, 49 upload assertions and all six converter formats. Explicit report/template pagination and configured column styles/widths are covered. The checks compile into a disposable directory, not the running WAR.
+- The existing React HTML Run now request completed in a late-arriving tab. Its native generation timestamp is 03:01:35 IST, with the expected Last 7 days range, synthetic visit and updated 9-pixel spans/3-pixel cell padding. Earlier observation had not yet seen that tab; no duplicate request or navigation rewrite was needed. HTML remains a fixed printable report, not a responsive application table.
+- One queued PDF completed at 03:02:18 IST and downloaded through React. Independent storage and download SHA-256 match (`8ac22f32152b2596d09392141742786b81cefa16d48cc28a94f66bc41107e84e`); Poppler rendering retained complete heading words, synthetic values, date range and page number. Independent SQL confirms nine Completed rows and sixteen RUN_REPORT audit attempts, retaining the previous eight reports. No report was deleted and no clinical records changed.
+- The layout candidate was applied only to private staging Reports after a recoverable Reports-only snapshot. No frontend source, public/shared-demo deployment, clinical service recreation, privilege change or published port was added.
+
+Remaining: other definitions/crosstabs, paper sizes, long body values and Unicode
+font embedding, real VBA/configured templates, confirmed React deletion,
+concurrency/failure/restart recovery and legacy mutating GET/CSRF. The broader
+React and separate-product scope remains open.
+
 ## 5 October native report design checkpoint
 
 This adds native output branding, not completed report layout acceptance or all
