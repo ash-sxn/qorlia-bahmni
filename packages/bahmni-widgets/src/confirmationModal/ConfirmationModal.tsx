@@ -63,6 +63,8 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       danger={danger}
       testId={testId}
       modalHeading={heading}
+      // Safe initial focus must not depend on danger styling.
+      selectorPrimaryFocus=".cds--btn--secondary"
       primaryButtonText={confirmLabel}
       secondaryButtonText={cancelLabel}
       primaryButtonDisabled={isSubmitting}

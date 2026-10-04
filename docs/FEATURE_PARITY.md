@@ -1,5 +1,18 @@
 # Bahmni workflow parity ledger
 
+## 5 October React condition inactivation and ordinary-confirmation focus
+
+This adds populated browser proof for condition inactivation, not diagnosis
+entry, condition creation or complete clinical/accessibility parity.
+
+- On a separate isolated synthetic fixture, No and Escape preserved both active conditions and the original single encounter. The React dashboard then inactivated one condition; independent native REST/FHIR reads confirmed inactive status and one new encounter with the correct patient/visit links. The second browser inactivation reused that encounter. Exactly two encounters remain, both conditions reference the new encounter, and a full reload displays both under Inactive Conditions. Successful writes were not replayed for observation delays.
+- The first browser confirmation exposed primary Yes focus. Carbon's existing Cancel default only applies to danger styling; previous shared focus tests covered only that variant. The shared confirmation component now uses Carbon's supported initial-focus selector to choose the secondary action for ordinary and danger dialogs alike, without changing colors or adding focus hooks. The expanded real-Carbon regression failed in eight ordinary-dialog cases before the fix and passes all 48 dismissal/reopening combinations afterward (button/link, conditional/persistent, StrictMode, danger/ordinary). Browser No focus and Escape focus restoration passed.
+- Four focused widget/condition suites passed 95 tests in Asia/Kolkata. The 48 real-modal cases also passed in America/Los_Angeles. Widget type checking and build passed; lint has no errors and retains the existing lifecycle-ref warning. Duplicate manual-mock, React act and dynamic/static-import/large-bundle warnings remain. The React review retained native component behavior and added no dependency, request, effect or mirrored state.
+- The narrow browser screenshot retains both inactive names/statuses but splits long condition words. That typography is not accepted as final responsive design. Broader layout, patient-specific confirmation copy, concurrency and permission-loss-during-dialog checks remain, alongside the create/diagnosis and other workflow gates.
+
+Only local source and isolated synthetic records changed. No existing staff
+permissions, production/shared-demo deployment or public service exposure changed.
+
 ## 5 October native condition transaction and permission checkpoint
 
 This supersedes the native condition-inactivation persistence/rollback gap in

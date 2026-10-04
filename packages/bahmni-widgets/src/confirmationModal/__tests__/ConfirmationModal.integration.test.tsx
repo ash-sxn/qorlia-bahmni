@@ -7,15 +7,17 @@ import ConfirmationModal from '../ConfirmationModal';
 const Harness = ({
   conditional,
   link = false,
+  danger = true,
 }: {
   conditional: boolean;
   link?: boolean;
+  danger?: boolean;
 }) => {
   const [open, setOpen] = useState(false);
   const dialog = (
     <ConfirmationModal
       open={open}
-      danger
+      danger={danger}
       heading="Remove test record"
       body="This synthetic test record will be marked void."
       confirmLabel="Remove"
@@ -44,18 +46,20 @@ const Harness = ({
   );
 };
 
-describe.each([
-  { conditional: true, strict: false },
-  { conditional: false, strict: false },
-  { conditional: true, strict: true },
-  { conditional: false, strict: true },
-  { conditional: true, strict: false, link: true },
-  { conditional: false, strict: false, link: true },
-  { conditional: true, strict: true, link: true },
-  { conditional: false, strict: true, link: true },
-])(
-  'confirmation focus (conditional=$conditional, strict=$strict, link=$link)',
-  ({ conditional, strict, link }) => {
+describe.each(
+  [
+    { conditional: true, strict: false },
+    { conditional: false, strict: false },
+    { conditional: true, strict: true },
+    { conditional: false, strict: true },
+    { conditional: true, strict: false, link: true },
+    { conditional: false, strict: false, link: true },
+    { conditional: true, strict: true, link: true },
+    { conditional: false, strict: true, link: true },
+  ].flatMap((config) => [true, false].map((danger) => ({ ...config, danger }))),
+)(
+  'confirmation focus (conditional=$conditional, strict=$strict, link=$link, danger=$danger)',
+  ({ conditional, strict, link, danger }) => {
     beforeEach(() => {
       // JSDOM has no layout. Give Carbon's real focus-wrap code the same visible
       // modal geometry it sees in a browser, rather than mocking the component.
@@ -72,7 +76,9 @@ describe.each([
       'returns focus after %s',
       async (dismiss) => {
         const user = userEvent.setup();
-        const content = <Harness conditional={conditional} link={link} />;
+        const content = (
+          <Harness conditional={conditional} link={link} danger={danger} />
+        );
         render(strict ? <StrictMode>{content}</StrictMode> : content);
         const trigger = screen.getByRole(link ? 'link' : 'button', {
           name: 'Review removal',

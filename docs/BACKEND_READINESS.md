@@ -1,5 +1,21 @@
 # Qorlia React frontend backend readiness
 
+## Latest React condition inactivation verification
+
+Actual dashboard inactivation now has browser save, full-reload and independent
+native REST/FHIR proof for a dedicated isolated synthetic fixture. No/Escape
+preserved its two active conditions and single encounter; the first confirmed
+action created one new encounter and the second reused it. Both inactive records
+retain that encounter and the correct patient/visit links. Exactly two encounters
+remain. This is not condition-create or diagnosis-save proof.
+
+The shared confirmation now explicitly starts on its secondary action regardless
+of danger styling, using Carbon's native selector. Ordinary-dialog initial focus
+failed before the fix; all 48 real-modal cases pass after it, plus 95 focused
+widget/condition tests, widget type checking and build. Existing lint/test/build
+warnings remain. Narrow condition-name wrapping still needs design refinement.
+Other condition/diagnosis, permission and clinical release gates remain open.
+
 ## Latest native condition transaction verification
 
 The actual source service now has isolated native proof for new-encounter and
