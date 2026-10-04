@@ -150,7 +150,18 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
 
   const handleOnChange = (selectedItem: ConceptSearch | null) => {
     setShowDuplicateNotification(false);
-    if (!selectedItem?.conceptUuid || !selectedItem.conceptName) {
+    if (
+      !canAddDiagnoses ||
+      selectedItem?.disabled ||
+      !selectedItem?.conceptUuid ||
+      !selectedItem.conceptName ||
+      existingConditionsLoading ||
+      existingDiagnosesLoading ||
+      existingConditionsError ||
+      existingDiagnosesError ||
+      !existingConditions ||
+      !existingDiagnoses
+    ) {
       return;
     }
 
@@ -169,9 +180,10 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
   };
 
   const isConditionDuplicate = (diagnosisId: string): boolean => {
-    const isExistingCondition = existingConditions!.some(
-      (d) => d.code?.coding?.[0]?.code === diagnosisId,
-    );
+    const isExistingCondition =
+      existingConditions?.some(
+        (d) => d.code?.coding?.[0]?.code === diagnosisId,
+      ) ?? false;
     const isSelectedConditions =
       selectedConditions?.some((condition) => condition.id === diagnosisId) ||
       false;
@@ -180,10 +192,22 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
 
   const filteredSearchResults: ConceptSearch[] = useMemo(() => {
     if (searchDiagnosesTerm.length === 0) return [];
+    if (searchError || existingConditionsError || existingDiagnosesError) {
+      return [
+        {
+          conceptName: t('ERROR_FETCHING_CONCEPTS'),
+          conceptUuid: '',
+          matchedName: '',
+          disabled: true,
+        },
+      ];
+    }
     if (
       isSearchLoading ||
       existingConditionsLoading ||
-      existingDiagnosesLoading
+      existingDiagnosesLoading ||
+      !existingConditions ||
+      !existingDiagnoses
     ) {
       return [
         {
@@ -194,23 +218,11 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
         },
       ];
     }
-    const isSearchEmpty = searchResults.length === 0 && !searchError;
 
-    if (isSearchEmpty) {
+    if (searchResults.length === 0) {
       return [
         {
           conceptName: t('NO_MATCHING_DIAGNOSIS_FOUND'),
-          conceptUuid: '',
-          matchedName: '',
-          disabled: true,
-        },
-      ];
-    }
-
-    if (searchError || existingConditionsError) {
-      return [
-        {
-          conceptName: t('ERROR_FETCHING_CONCEPTS'),
           conceptUuid: '',
           matchedName: '',
           disabled: true,
@@ -238,6 +250,9 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
     searchDiagnosesTerm,
     searchError,
     existingConditionsError,
+    existingDiagnosesError,
+    existingConditions,
+    existingDiagnoses,
     selectedDiagnoses,
     t,
   ]);
@@ -296,6 +311,11 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
                 updateCertainty={updateCertainty}
                 onMarkAsCondition={() => markAsCondition(diagnosis.id)}
                 doesConditionExist={isConditionDuplicate(diagnosis.id)}
+                canMarkAsCondition={
+                  !!existingConditions &&
+                  !existingConditionsLoading &&
+                  !existingConditionsError
+                }
               />
             </SelectedItem>
           ))}

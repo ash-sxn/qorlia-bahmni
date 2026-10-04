@@ -352,4 +352,21 @@ describe('SelectedDiagnosisItem', () => {
       expect(container).toMatchSnapshot();
     });
   });
+
+  test('unavailable history disables conversion without claiming the condition already exists', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <SelectedDiagnosisItem {...defaultProps} canMarkAsCondition={false} />,
+    );
+    const link = screen.getByText('Add as Condition');
+    expect(link).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.queryByText('Added as a Condition')).not.toBeInTheDocument();
+    await user.click(link);
+    expect(defaultProps.onMarkAsCondition).not.toHaveBeenCalled();
+    rerender(<SelectedDiagnosisItem {...defaultProps} canMarkAsCondition />);
+    await user.click(screen.getByRole('link', { name: 'Add as Condition' }));
+    expect(defaultProps.onMarkAsCondition).toHaveBeenCalledWith(
+      'test-diagnosis-1',
+    );
+  });
 });

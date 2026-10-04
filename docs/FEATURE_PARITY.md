@@ -1,5 +1,15 @@
 # Bahmni workflow parity ledger
 
+## 5 October diagnosis-history failure checkpoint
+
+This improves the existing diagnosis editor's failure behavior, not diagnosis
+save parity or the isolated seed account's permissions.
+
+- Conditions and diagnosis history failures now produce an unavailable search result before an empty-match result. Both histories must be available before selection; disabled results and lost add permission cannot add a draft.
+- A retained diagnosis no longer crashes while condition history is undefined. Conversion to a condition is disabled while its history loads or fails, without falsely labelling the diagnosis as already added. Certainty editing and draft removal remain available. Conversion becomes available when valid history returns.
+- The existing regression suites passed 71 tests and nine unchanged snapshots in Asia/Kolkata and America/Los_Angeles. Source/test lint, clinical TypeScript checking, the clinical library build and diff checks passed. Existing upstream form-renderer eval and large-bundle warnings remain.
+- The React review retained derived eligibility rather than adding mirrored state/effects, new requests or dependencies. No backend privilege, existing user, clinical record or production deployment changed. Populated browser diagnosis create and condition lifecycle testing remain open.
+
 ## 5 October wide report layout checkpoint
 
 This supersedes the wide Visit Report header/row-spacing gap below, not all

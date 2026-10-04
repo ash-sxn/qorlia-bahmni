@@ -1,5 +1,17 @@
 # Qorlia React frontend backend readiness
 
+## Latest diagnosis-history failure verification
+
+The diagnosis editor now distinguishes failed history reads from no matching
+concepts, blocks additions until both histories are available, and preserves
+retained drafts without crashing on missing condition data. Condition conversion
+is disabled while that history is unavailable without claiming a known duplicate.
+The existing component suites passed 71 tests and nine snapshots in India and US
+Pacific time, plus lint, clinical type checking and the clinical library build.
+The build retains existing upstream eval/large-bundle warnings. These are
+component checks, not a native diagnosis-save or condition-lifecycle proof.
+The isolated seed's missing V2 add privileges were not aliased or expanded.
+
 ## Latest wide report layout verification
 
 The native converter now applies derived padding/font styles to explicit native

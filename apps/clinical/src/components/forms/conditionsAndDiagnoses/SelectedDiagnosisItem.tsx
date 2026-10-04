@@ -10,6 +10,7 @@ export interface SelectedDiagnosisItemProps {
   updateCertainty: (diagnosisId: string, certainty: Coding | null) => void;
   onMarkAsCondition: (diagnosisId: string) => void;
   doesConditionExist?: boolean;
+  canMarkAsCondition?: boolean;
 }
 
 /**
@@ -23,6 +24,7 @@ const SelectedDiagnosisItem: React.FC<SelectedDiagnosisItemProps> = React.memo(
     updateCertainty,
     onMarkAsCondition,
     doesConditionExist = false,
+    canMarkAsCondition = true,
   }) => {
     const { t } = useTranslation();
 
@@ -45,13 +47,13 @@ const SelectedDiagnosisItem: React.FC<SelectedDiagnosisItemProps> = React.memo(
             href="#"
             onClick={(e) => {
               e.preventDefault();
-              if (doesConditionExist) {
+              if (doesConditionExist || !canMarkAsCondition) {
                 return;
               }
               onMarkAsCondition(id);
             }}
-            disabled={doesConditionExist}
-            aria-disabled={doesConditionExist}
+            disabled={doesConditionExist || !canMarkAsCondition}
+            aria-disabled={doesConditionExist || !canMarkAsCondition}
             className={styles.addAsConditionLink}
           >
             {doesConditionExist

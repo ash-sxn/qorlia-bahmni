@@ -203,9 +203,10 @@ describe('ConditionsAndDiagnoses', () => {
     conceptSearchResults: ConceptSearch[] = [],
     conceptSearchLoading = false,
     conceptSearchError: Error | null = null,
-    existingConditions: Condition[] = [],
+    existingConditions: Condition[] | null = [],
     existingConditionsLoading = false,
     existingConditionsError: Error | null = null,
+    diagnosesError: Error | null = null,
   ) => {
     mockedUseConceptSearch.mockReturnValue({
       searchResults: conceptSearchResults,
@@ -226,8 +227,8 @@ describe('ConditionsAndDiagnoses', () => {
     ]);
 
     // Mock useQuery to return the appropriate structure
-    mockedUseQuery.mockReturnValue({
-      data: existingConditions,
+    const queryResult = {
+      data: existingConditions ?? undefined,
       isLoading: existingConditionsLoading,
       error: existingConditionsError,
       isError: !!existingConditionsError,
@@ -242,12 +243,26 @@ describe('ConditionsAndDiagnoses', () => {
           ? 'pending'
           : 'success',
       fetchStatus: 'idle',
-    } as any);
+    };
+    mockedUseQuery.mockImplementation(
+      (options: any) =>
+        ({
+          ...queryResult,
+          ...(options.queryKey[0] === 'diagnoses' && diagnosesError
+            ? {
+                data: undefined,
+                error: diagnosesError,
+                isError: true,
+                isSuccess: false,
+              }
+            : {}),
+        }) as any,
+    );
 
     if (existingConditionsError) {
       mockedGetConditions.mockRejectedValue(existingConditionsError);
     } else {
-      mockedGetConditions.mockResolvedValue(existingConditions);
+      mockedGetConditions.mockResolvedValue(existingConditions ?? []);
     }
 
     addDiagnosisMock = jest.fn();
@@ -663,9 +678,18 @@ describe('ConditionsAndDiagnoses', () => {
 
     test('should handle undefined/null existingConditions array in isConditionDuplicate', () => {
       const diagnosis = createMockDiagnosisEntry();
-      renderComponent([diagnosis], [], [], false, null, []); // Empty existingConditions
+      renderComponent([diagnosis], [], [], false, null, null, true);
 
       expect(screen.getByText('Hypertension')).toBeInTheDocument();
+      expect(screen.getByTestId('add-as-condition-link')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+      expect(
+        screen.queryByText('Already added as condition'),
+      ).not.toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('add-as-condition-link'));
+      expect(markAsConditionMock).not.toHaveBeenCalled();
     });
   });
 
@@ -700,8 +724,13 @@ describe('ConditionsAndDiagnoses', () => {
       );
       await user.type(searchInput, 'test');
       expect(
-        screen.getByText('No matching Diagnosis recorded'),
+        screen.getByText(
+          'An unexpected error occurred. Please try again later.',
+        ),
       ).toBeInTheDocument();
+      expect(
+        screen.queryByText('No matching Diagnosis recorded'),
+      ).not.toBeInTheDocument();
     });
 
     test('should prioritize search error over conditions error for display', async () => {
@@ -1002,6 +1031,58 @@ describe('ConditionsAndDiagnoses', () => {
       expect(
         screen.getByTestId('conditions-and-diagnoses-tile'),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('Independent history failures', () => {
+    test('does not offer concepts when diagnosis history fails independently', async () => {
+      const user = userEvent.setup();
+      renderComponent(
+        [],
+        [],
+        mockConcepts,
+        false,
+        null,
+        [],
+        false,
+        null,
+        new Error('Diagnosis history unavailable'),
+      );
+      await user.type(
+        screen.getByPlaceholderText('Search to add new Diagnosis'),
+        'hyper',
+      );
+      expect(
+        screen.getByText(
+          'An unexpected error occurred. Please try again later.',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('option', { name: 'Hypertension' }),
+      ).not.toBeInTheDocument();
+      expect(addDiagnosisMock).not.toHaveBeenCalled();
+    });
+
+    test('keeps a retained diagnosis editable but prevents conversion on a condition read error', () => {
+      renderComponent(
+        mockDiagnosisEntries,
+        [],
+        [],
+        false,
+        null,
+        [],
+        false,
+        new Error('Conditions unavailable'),
+      );
+      expect(screen.getByText('Hypertension')).toBeInTheDocument();
+      expect(screen.getByTestId('add-as-condition-link')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+      fireEvent.click(screen.getByTestId('add-as-condition-link'));
+      expect(markAsConditionMock).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+      expect(removeDiagnosisMock).toHaveBeenCalledWith('uuid-1');
     });
   });
 });
