@@ -4,6 +4,24 @@ Updated 5 October 2026. The local review at `http://localhost:3002/bahmni-v2/log
 
 ## 5 October direct Reports and authorization checkpoint
 
+### Later native authorization correction
+
+The Reports controller correction is now running only in isolated staging.
+Authenticated owner checks cover queue, schedule, download and deletion;
+configured report privilege checks cover schedule/direct/download/deletion;
+authorization errors fail closed. The direct-denial continuation and queued
+duplicate-extension defects are corrected. Global session validation remains
+enabled. Native controller checks passed (33); actual HTTP checks passed (16),
+including a Reports-only synthetic user's denied cross-user access. The check
+account was retired, not left active. Independent SQL retained the original
+five Completed report rows and ten report-run audits. A Reports-only rollback
+backup preceded recreation; no clinical container, public route or production
+service changed. Source and reproduction notes are in `runtime/reports`.
+
+This supersedes the explicit ownership implementation gap below. Live restricted
+report definitions, actual deletion, templates, concurrency/recovery and output
+design remain unverified. Controller tests do not establish those live paths.
+
 The populated Visit Report now has actual React Run now proof for HTML and native CSV/PDF/Excel/OpenDocument downloads. HTML and CSV retain the synthetic visit; the other files' native signatures were checked, not their complete direct-path document layout. Independent SQL shows five new audit attempts and no new scheduled records. Direct filenames have a single extension. The detailed [parity ledger](FEATURE_PARITY.md) records the evidence and its limits.
 
 Inspection of the pinned Reports application's compiled controller and interceptor identified missing explicit owner checks in queue/download/deletion methods, no per-report schedule check, a fail-open queue predicate on authorization exceptions, and generation continuing after direct privilege denial. Session/global reporting privilege checks remain intact, but are insufficient proof of those narrower boundaries. Cross-user/limited-role runtime probes and server-side corrections are the next priority; do not release Reports on the strength of its UI filters.

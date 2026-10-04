@@ -1,5 +1,21 @@
 # Bahmni workflow parity ledger
 
+## 5 October native Reports authorization checkpoint
+
+This supersedes the missing explicit controller ownership enforcement below,
+not full Reports parity or live per-report restricted-definition verification.
+
+- The AGPL-covered native controller derives the owner from OpenMRS's session API, rejects a foreign queue/schedule username, and returns 404 for foreign download/deletion IDs. It checks configured report privileges before schedule, direct generation, download and deletion. Verification failures deny access; direct denial cannot proceed into generation. Processing download/deletion is rejected. Queued download names no longer repeat their extension. Global authentication remains enabled.
+- The pinned native runtime passed 33 controller checks, with actual Spring/servlet/Reports classes and a private synthetic identity HTTP stub. The source is compiled at startup into only isolated staging's Reports controller; all other native Java and report/template generation remain unchanged. No new dependencies were introduced. An over-restrictive ASCII filename guard was removed before deployment to preserve configured template paths and non-English names.
+- After a recoverable Reports-only backup and container recreation, actual HTTP checks passed 16 assertions. The owner could read its five-row queue and populated CSV with a single extension. Anonymous/invalid sessions redirected to login, foreign usernames returned 403 and missing IDs returned 404. A newly created synthetic user with only app:reports could read its own empty queue but not the admin's queue, download/deletion IDs or scheduling identity. The check user was retired afterward; independent SQL retained five Completed rows and ten RUN_REPORT audits. No report was generated or deleted by these checks.
+- Only Reports was recreated; the proxy was syntax-checked/reloaded to resolve its new internal address. The 1 GiB cap, internal-only network and no-published-port boundary remain. No production/shared-demo deployment, existing-user privilege change or clinical container recreation occurred.
+- Frontend Reports checks passed (50 in both Asia/Kolkata and America/Los_Angeles), along with its type check, adapter/check shell syntax and diff checks. Direct Jest TypeScript-config loading failed on inherited compiler options; loading the same configuration through installed @swc-node/register passed without changing repository configuration. An Nx invocation lacked yarn on its shell path; no dependency rebuild or test-runner source change was made.
+
+Remaining: actual restricted-report-definition checks with limited roles, real
+deletion and file removal, custom XLS upload/generation, failure/concurrent
+action/restart recovery, other populated definitions and output branding/layout.
+Legacy mutating GET/CSRF behaviour needs a compatible server/client review.
+
 ## 5 October 2026 direct Reports checkpoint
 
 This supersedes the missing direct Run now browser proof below for the populated Visit Report, not custom XLS, other report definitions or authorization parity.

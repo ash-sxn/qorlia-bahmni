@@ -6,7 +6,9 @@ changelogs and notices remain in the pinned upstream image. See the root NOTICE.
 
 The adapter uses `bahmni/reports` at digest
 `sha256:3af8e248ae7603126fecb1efacb583e8b6b2bd4e9df0254fc198e8e4a2d63877`.
-`start-staging.sh` replaces its startup script, not its Java application or SQL.
+`start-staging.sh` replaces its startup script and compiles the reviewed
+`MainReportController.java` over the matching native controller. Other Java
+classes, SQL, report generation and template handling remain upstream.
 It validates environment inputs, writes private configuration, uses the bundled
 clinical and Reports Liquibase changelogs without shell tracing, then starts
 the bundled embedded Tomcat without a debugger. Database arguments remain
@@ -51,3 +53,45 @@ duplicate extensions. Actual deletion, custom XLS upload, direct Run now,
 server-side limited-role/ownership checks, restart recovery and other report
 definitions remain unverified. OpenELIS and Odoo report datasets are not
 available in this isolated staging backend.
+
+## 5 October native authorization correction
+
+This supersedes the explicit ownership gap above, not full Reports readiness.
+Mount this directory read-only at `/staging/reports-source` in the Reports
+container. Startup requires the pinned image's Java 11 compiler and native
+classpath; compilation failure stops startup. Only the controller is compiled
+into the application. The test harness is never included in the running WAR.
+
+The controller obtains the username from the authenticated OpenMRS session,
+not a queue query parameter. It rejects another user's queue or schedule,
+returns 404 for another user's download/deletion ID, and checks the report's
+configured privilege before scheduling, downloading, deleting or direct
+generation. Permission verification failures deny access rather than returning
+queue records. A direct denial returns before generation. Processing reports
+cannot be downloaded or deleted; queued downloads have a single extension.
+The existing global authentication interceptor remains enabled.
+
+Frontend Reports checks passed (50) in India and US Pacific time, and its type
+check passed. Adapter/check shell syntax and repository diff checks passed.
+
+Run `sh /staging/reports-source/check-controller.sh` inside the pinned container
+after its private configuration exists. All 33 checks passed against the actual
+Spring, servlet and Reports classes, including a synthetic local session HTTP
+stub. These are controller-level checks, not live limited-role proof by themselves.
+
+After a Reports-only rollback backup and recreation, native HTTP verification
+passed 16 checks: the owner's populated queue and CSV download, foreign queue
+and schedule denial, missing IDs, invalid/anonymous sessions, and a synthetic
+Reports-only user's denied access to the admin's queue/download/deletion IDs.
+The synthetic account was retired afterward. Independent SQL retained five
+Completed reports and ten RUN_REPORT audits, unchanged by these read/denial
+checks. The separate source mount, 1 GiB cap and no-published-port boundary
+remain intact; no clinical application container was recreated.
+
+Live per-report restricted definitions, actual deletion, custom XLS upload and
+generation, concurrent actions, failed-job/restart recovery, output styling and
+other report definitions remain. Mutating GET endpoints are retained for the
+legacy client contract; CSRF and method migration require a separate compatible
+review. Original template-path validation remains in ReportGenerator. The
+initial ASCII-only filename guard was removed before deployment because it
+would reject legitimate configured subdirectories or non-English filenames.

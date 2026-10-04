@@ -39,5 +39,10 @@ That directory is licensed under AGPL 3.0, included in runtime/reports/LICENSE,
 not the MPL license applying to the frontend. The adapter retains the bundled
 upstream migrations and application. Its changes remove password-bearing
 shell tracing, restrict generated configuration permissions, override the
-private configuration URL and start without a debugger. No upstream notices
+private configuration URL and start without a debugger. MainReportController.java
+is derived from Bahmni/bahmni-reports 1.1.0, revision
+8f9d4bbdfec3aacba680a60d7fe47584eb679559. Its changes enforce authenticated
+report ownership and per-report privileges, fail closed on verification errors,
+stop denied direct generation and prevent duplicate download extensions.
+The native check harness and controller are also AGPL 3.0. No upstream notices
 or licenses in the original image are removed.
