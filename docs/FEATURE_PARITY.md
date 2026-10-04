@@ -1,5 +1,44 @@
 # Bahmni workflow parity ledger
 
+## 5 October clinical patient-transition and confirmation checkpoint
+
+This closes the tested placeholder-data and open-confirmation eligibility gaps,
+not complete condition/diagnosis or clinical parity.
+
+- Conditions, diagnoses and program summary queries retain prior pagination data
+  only when its query belongs to the current patient. Pending requests for a new
+  patient show loading rather than the previous patient's records. All three
+  populated regressions failed before the fix. Existing pagination checks pass.
+- Condition confirmation captures the selected patient's identity and derives
+  eligibility from current permissions, disabled state, active condition and
+  native resource ID. Both the native modal button and submission handler reject
+  an ineligible selection. Permission-loss, disabled-action and changed-patient
+  regressions failed before the fix; no write, save event or audit is emitted in
+  those tests. This is client-side eligibility proof, not a replacement for
+  backend authorization or proof against concurrent record edits.
+- English/Spanish confirmation copy identifies the selected condition and gives
+  an unavailable-action message when eligibility changes. Actual browser dialogs
+  named each of two isolated synthetic conditions, initially focused No, and
+  returned focus after No/Escape. Full reload and independent exact-ID native
+  reads retained two active conditions with the original single encounter. No
+  condition inactivation was submitted in these checks.
+- The condition table replaces compressed equal-width cells with automatic column
+  sizing and a 40rem minimum table width inside a named keyboard-focusable viewport.
+  Carbon's inner scroll wrapper is overridden only here so the focusable region
+  owns scrolling. The region accessibility regression failed before the fix.
+  Browser inspection retained a 640px table inside a 425px viewport without page
+  overflow; ArrowRight moved the focused region by 40px. At 1440px desktop width,
+  its 1136px region had no horizontal overflow. This is the populated condition
+  table check, not complete responsive acceptance for every widget.
+- Eight focused widget suites passed 166 tests and one snapshot in Asia/Kolkata
+  and America/Los_Angeles. Widget type checking, changed-source lint and library
+  build pass. Four existing lint warnings, duplicate manual mocks, React act
+  warnings and import/bundle warnings remain. The React review used derived
+  eligibility and existing query/Carbon APIs, without a new dependency or mirrored
+  eligibility effect. Other table layouts, complete clinical saves and
+  the separate-product reskins remain open. No shared-demo or production deployment
+  occurred.
+
 ## 5 October React condition inactivation and ordinary-confirmation focus
 
 This adds populated browser proof for condition inactivation, not diagnosis

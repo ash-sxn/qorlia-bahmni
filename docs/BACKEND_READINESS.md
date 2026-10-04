@@ -1,5 +1,30 @@
 # Qorlia React frontend backend readiness
 
+## Latest clinical patient-transition and confirmation verification
+
+Conditions, diagnoses and program summary tables no longer retain another
+patient's placeholder rows while the next chart loads. Same-patient pagination
+still uses the existing query placeholder mechanism. Three populated pending-read
+regressions failed before this correction and pass afterward.
+
+Condition confirmations now identify the selected condition. Confirmation and
+submission are disabled when action permission is lost, actions are disabled or
+the current patient differs from the captured selection. All three eligibility
+regressions failed before the guard. This does not establish concurrent-edit or
+mid-request permission-loss acceptance; native backend authorization remains
+required.
+
+Actual narrow/desktop browser checks named both synthetic conditions and focused
+No initially. No/Escape returned focus to the opening action; full reload and
+independent native reads retained both active conditions and the single encounter.
+These are cancellation checks, not another condition save. The condition table
+also now uses automatic column sizing and a named, keyboard-focusable horizontal
+viewport instead of breaking clinical names into compressed fixed-width cells.
+Eight focused suites passed 166 tests and one snapshot in India and US Pacific time. Widget type
+checking, changed-source lint (zero errors, four existing warnings) and library
+build passed. Existing mock/act and import/bundle warnings remain. No public demo
+or production change occurred. Broader clinical and separate-product gates remain.
+
 ## Latest React condition inactivation verification
 
 Actual dashboard inactivation now has browser save, full-reload and independent

@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EpisodeOfCare } from 'fhir/r4';
+import { usePatientUUID } from '../../hooks/usePatientUUID';
 import { useNotification } from '../../notification';
 import PatientProgramsTable from '../PatientProgramsTable';
 
@@ -460,6 +461,7 @@ describe('PatientProgramsTable Integration', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (usePatientUUID as jest.Mock).mockReturnValue('test-patient-uuid');
     mockedGetEpisodeOfCare.mockResolvedValue({} as EpisodeOfCare);
     (useNotification as jest.Mock).mockReturnValue({
       addNotification: mockAddNotification,
@@ -639,6 +641,39 @@ describe('PatientProgramsTable Integration', () => {
     });
 
     expect(mockedGetPatientProgramsPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not display the previous patient programs while the new patient loads', async () => {
+    mockedGetPatientProgramsPage.mockResolvedValueOnce(
+      wrapPage(mockPatientProgramsResponse.results),
+    );
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <PatientProgramsTable config={{ fields: basicFields }} />
+      </QueryClientProvider>,
+    );
+    await screen.findByText('HIV Program');
+    mockedGetPatientProgramsPage.mockImplementation(
+      () => new Promise(() => {}),
+    );
+    (usePatientUUID as jest.Mock).mockReturnValue('new-patient');
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <PatientProgramsTable config={{ fields: basicFields }} />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => {
+      expect(mockedGetPatientProgramsPage).toHaveBeenCalledWith(
+        'new-patient',
+        5,
+        1,
+      );
+    });
+    expect(screen.queryByText('HIV Program')).not.toBeInTheDocument();
+    expect(screen.queryByText('TB Program')).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('patient-programs-table-skeleton'),
+    ).toBeInTheDocument();
   });
 
   describe('Pagination', () => {

@@ -30,7 +30,9 @@ const DiagnosesTable: React.FC<WidgetProps> = ({ config }) => {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['diagnoses', patientUUID!, currentPage, selectedPageSize],
     enabled: !!patientUUID,
-    placeholderData: (prev) => prev,
+    // Retain pagination rows only within the same patient's chart.
+    placeholderData: (prev, previousQuery) =>
+      previousQuery?.queryKey[1] === patientUUID ? prev : undefined,
     queryFn: () =>
       getDiagnosesPage(patientUUID!, selectedPageSize, currentPage),
   });

@@ -8,6 +8,7 @@ export interface ConfirmationModalProps {
   confirmLabel: string;
   cancelLabel: string;
   isSubmitting?: boolean;
+  isConfirmDisabled?: boolean;
   danger?: boolean;
   testId?: string;
   onConfirm: () => void;
@@ -21,6 +22,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   confirmLabel,
   cancelLabel,
   isSubmitting = false,
+  isConfirmDisabled = false,
   danger = false,
   testId = 'confirmation-modal',
   onConfirm,
@@ -67,7 +69,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       selectorPrimaryFocus=".cds--btn--secondary"
       primaryButtonText={confirmLabel}
       secondaryButtonText={cancelLabel}
-      primaryButtonDisabled={isSubmitting}
+      primaryButtonDisabled={isSubmitting || isConfirmDisabled}
       onRequestClose={onCancel}
       onRequestSubmit={onConfirm}
     >
