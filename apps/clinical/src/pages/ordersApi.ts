@@ -1,9 +1,11 @@
 import {
+  formatDateTime,
   get,
   getDisplayNameForConcept,
   getOrderTypes,
   post,
 } from '@bahmni/services';
+import { isValid, parseISO } from 'date-fns';
 
 const core = '/openmrs/ws/rest/v1/bahmnicore';
 
@@ -42,6 +44,50 @@ export const codedResultUuid = (value: unknown): string | undefined =>
         typeof value.uuid === 'string'
       ? value.uuid
       : undefined;
+
+const parseFulfillmentDate = (value: unknown): Date | undefined => {
+  if (
+    typeof value !== 'number' &&
+    (typeof value !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}(?:[ T](?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,3})?)?(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)?)?$/.test(
+        value,
+      ))
+  )
+    return;
+  const date = typeof value === 'number' ? new Date(value) : parseISO(value);
+  if (!isValid(date) || date.getFullYear() < 1 || date.getFullYear() > 9999)
+    return;
+  // A nonexistent local time at a daylight-saving transition must not shift silently.
+  if (
+    typeof value === 'string' &&
+    /[ T]/.test(value) &&
+    !/(Z|[+-]\d{2}:?\d{2})$/.test(value)
+  ) {
+    const local = formatDateTime(
+      date,
+      undefined,
+      false,
+      "yyyy-MM-dd'T'HH:mm:ss",
+    ).formattedResult;
+    if (!local.startsWith(value.replace(' ', 'T').split('.')[0])) return;
+  }
+  return date;
+};
+
+export const fulfillmentDateForControl = (
+  value: unknown,
+  includeTime = false,
+): string => {
+  const date = parseFulfillmentDate(value);
+  return date
+    ? formatDateTime(
+        date,
+        undefined,
+        false,
+        includeTime ? "yyyy-MM-dd'T'HH:mm" : 'yyyy-MM-dd',
+      ).formattedResult
+    : '';
+};
 
 export interface OrderObservation {
   uuid?: string;
@@ -167,8 +213,11 @@ export const supportsFulfillmentForm = (
     ) ||
     Object.entries(uiConfig[concept.name.name] ?? {}).some(
       ([key, value]) =>
-        !['required', 'disableAddNotes'].includes(key) ||
-        typeof value !== 'boolean',
+        !(
+          ['required', 'disableAddNotes'].includes(key) ||
+          (key === 'allowFutureDates' &&
+            ['Date', 'Datetime'].includes(concept.datatype.name))
+        ) || typeof value !== 'boolean',
     )
   )
     return false;
@@ -177,7 +226,9 @@ export const supportsFulfillmentForm = (
         concept.setMembers.every((member) =>
           supportsFulfillmentForm(member, uiConfig),
         )
-    : ['Text', 'Numeric'].includes(concept.datatype.name) ||
+    : ['Text', 'Numeric', 'Date', 'Datetime', 'Boolean'].includes(
+        concept.datatype.name,
+      ) ||
         (concept.datatype.name === 'Coded' && !!concept.answers?.length) ||
         (concept.datatype.name === 'Complex' &&
           concept.handler === 'ImageUrlHandler');
@@ -218,6 +269,8 @@ export const validateFulfillmentObservation = (
     return;
   }
   const label = form.name.name;
+  if ((observation.comment?.length ?? 0) > 255)
+    return `Notes for ${label} must be no longer than 255 characters.`;
   if (!hasResultValue(observation)) {
     if (checkRequired && uiConfig[label]?.required === true)
       return `${label} is required.`;
@@ -242,6 +295,30 @@ export const validateFulfillmentObservation = (
     )
   )
     return `Choose a configured answer for ${label}.`;
+  if (
+    form.datatype.name === 'Boolean' &&
+    typeof observation.value !== 'boolean'
+  )
+    return `Choose Yes or No for ${label}.`;
+  if (['Date', 'Datetime'].includes(form.datatype.name)) {
+    const date = parseFulfillmentDate(observation.value);
+    const includeTime = form.datatype.name === 'Datetime';
+    if (
+      !date ||
+      (includeTime &&
+        typeof observation.value === 'string' &&
+        !/[ T]/.test(observation.value))
+    )
+      return `Enter a valid ${includeTime ? 'date and time' : 'date'} for ${label}.`;
+    if (
+      uiConfig[label]?.allowFutureDates !== true &&
+      (includeTime
+        ? date.getTime() > Date.now()
+        : fulfillmentDateForControl(observation.value) >
+          fulfillmentDateForControl(Date.now()))
+    )
+      return `${label} cannot be in the future.`;
+  }
   return undefined;
 };
 
@@ -263,8 +340,29 @@ export const fulfillmentPayload = (
     observation.value !== null &&
     observation.value !== '';
   if (!observation.uuid && !hasValue && groupMembers.length === 0) return null;
+  let value = observation.value;
+  if (
+    !observation.voided &&
+    hasValue &&
+    ['Date', 'Datetime'].includes(observation.concept.dataType)
+  ) {
+    const date = parseFulfillmentDate(value);
+    if (!date)
+      throw new Error(`Enter a valid date for ${observation.concept.name}.`);
+    // The legacy encounter API parses calendar dates and minute-precision local
+    // date-times, not ISO instants. Sending ISO can shift dates or fail entirely.
+    value = formatDateTime(
+      date,
+      undefined,
+      false,
+      observation.concept.dataType === 'Datetime'
+        ? 'yyyy-MM-dd HH:mm'
+        : 'yyyy-MM-dd',
+    ).formattedResult;
+  }
   return {
     ...observation,
+    value,
     orderUuid,
     groupMembers,
     voided:

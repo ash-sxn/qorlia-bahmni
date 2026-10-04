@@ -1,6 +1,7 @@
-import { get, getOrderTypes, post } from '@bahmni/services';
+import { formatDateTime, get, getOrderTypes, post } from '@bahmni/services';
 import {
   fulfillmentPayload,
+  fulfillmentDateForControl,
   getFulfillmentForm,
   getFulfillmentOrders,
   makeFulfillmentObservation,
@@ -310,4 +311,175 @@ it('checks required results only when some result remains, so existing results c
   expect(
     supportsFulfillmentForm({ ...notes, conceptClass: { name: 'Computed' } }),
   ).toBe(false);
+});
+
+it('supports ordinary date and datetime fields without ignoring specialized calendar configuration', () => {
+  for (const name of ['Date', 'Datetime']) {
+    const field = { ...notes, datatype: { name } };
+    expect(supportsFulfillmentForm(field)).toBe(true);
+    expect(
+      supportsFulfillmentForm(field, {
+        'Radiology Notes': { allowFutureDates: true, required: true },
+      }),
+    ).toBe(true);
+    expect(
+      supportsFulfillmentForm(field, {
+        'Radiology Notes': { displayMonthAndYear: true },
+      }),
+    ).toBe(false);
+  }
+});
+
+it('validates calendar dates, local times and future-date permission before serializing results', () => {
+  jest.useFakeTimers().setSystemTime(new Date('2026-10-04T10:30:00Z'));
+  try {
+    const date = { ...notes, datatype: { name: 'Date' } };
+    const datetime = { ...notes, datatype: { name: 'Datetime' } };
+    for (const value of [
+      '2025-02-29',
+      '2026-02-30',
+      'invalid',
+      '0000-01-01',
+      '+010000-01-01',
+      false,
+      Infinity,
+    ]) {
+      expect(
+        validateFulfillmentObservation(
+          date,
+          { ...makeFulfillmentObservation(date), value },
+          {},
+        ),
+      ).toContain('valid date');
+    }
+    for (const value of ['2024-02-29', '2026-10-03']) {
+      const draft = { ...makeFulfillmentObservation(date), value };
+      expect(validateFulfillmentObservation(date, draft, {})).toBeUndefined();
+      expect(fulfillmentPayload(draft, 'order')).toMatchObject({
+        value,
+      });
+    }
+    const future = { ...makeFulfillmentObservation(date), value: '2999-10-04' };
+    expect(validateFulfillmentObservation(date, future, {})).toContain(
+      'cannot be in the future',
+    );
+    expect(
+      validateFulfillmentObservation(date, future, {
+        'Radiology Notes': { allowFutureDates: true },
+      }),
+    ).toBeUndefined();
+    for (const value of [
+      '2026-10-03T13:25',
+      '2026-10-03 13:25:17',
+      '2026-10-03T13:25:17+05:30',
+      1791019517000,
+    ]) {
+      const draft = { ...makeFulfillmentObservation(datetime), value };
+      expect(
+        validateFulfillmentObservation(datetime, draft, {}),
+      ).toBeUndefined();
+      expect(fulfillmentPayload(draft, 'order')).toMatchObject({
+        value: formatDateTime(
+          new Date(value),
+          undefined,
+          false,
+          'yyyy-MM-dd HH:mm',
+        ).formattedResult,
+      });
+    }
+    for (const value of [
+      '2026-10-04T10:31:00Z',
+      'Invalid Datetime',
+      '2026-10-04T25:00',
+    ]) {
+      expect(
+        validateFulfillmentObservation(
+          datetime,
+          { ...makeFulfillmentObservation(datetime), value },
+          {},
+        ),
+      ).toBeDefined();
+    }
+    expect(
+      validateFulfillmentObservation(
+        datetime,
+        {
+          ...makeFulfillmentObservation(datetime),
+          value: '2026-10-04T10:30:00Z',
+        },
+        {},
+      ),
+    ).toBeUndefined();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+it('preserves a Boolean No result and rejects strings in place of Boolean answers', () => {
+  const field = { ...notes, datatype: { name: 'Boolean' } };
+  expect(supportsFulfillmentForm(field)).toBe(true);
+  for (const value of [false, true]) {
+    const draft = {
+      ...makeFulfillmentObservation(field),
+      value,
+      comment: 'QorliaQA synthetic note',
+    };
+    expect(validateFulfillmentObservation(field, draft, {})).toBeUndefined();
+    expect(fulfillmentPayload(draft, 'order')).toMatchObject({
+      value,
+      voided: false,
+    });
+  }
+  expect(
+    validateFulfillmentObservation(
+      field,
+      { ...makeFulfillmentObservation(field), value: 'false' },
+      {},
+    ),
+  ).toContain('Yes or No');
+});
+
+it('uses the legacy local minute-precision contract and rejects nonexistent local times', () => {
+  const field = { ...notes, datatype: { name: 'Datetime' } };
+  const persisted = '2026-10-03T13:25:17+05:30';
+  const local = fulfillmentDateForControl(persisted, true);
+  expect(local).toMatch(/^2026-10-03T\d{2}:\d{2}$/);
+  expect(
+    fulfillmentPayload(
+      { ...makeFulfillmentObservation(field), value: local },
+      'order',
+    ),
+  ).toMatchObject({ value: local.replace('T', ' ') });
+  const date = { ...notes, datatype: { name: 'Date' } };
+  expect(
+    fulfillmentPayload(
+      { ...makeFulfillmentObservation(date), value: '2026-10-03' },
+      'order',
+    ),
+  ).toMatchObject({ value: '2026-10-03' });
+  expect(
+    fulfillmentPayload(
+      { ...makeFulfillmentObservation(field), value: '2026-10-03T13:25' },
+      'order',
+    ),
+  ).toMatchObject({ value: '2026-10-03 13:25' });
+  expect(fulfillmentDateForControl('2026-02-30')).toBe('');
+  expect(fulfillmentDateForControl('0001-01-01')).toBe('0001-01-01');
+  const skipped = '2026-03-08T02:30:00';
+  const rollsForward = new Date(skipped).getHours() !== 2;
+  const result = validateFulfillmentObservation(
+    field,
+    { ...makeFulfillmentObservation(field), value: skipped },
+    {},
+  );
+  if (rollsForward) {
+    expect(result).toContain('valid date and time');
+    expect(fulfillmentDateForControl(skipped, true)).toBe('');
+  } else expect(result).toBeUndefined();
+  const cleared = {
+    ...makeFulfillmentObservation(field),
+    uuid: 'saved-date',
+    value: '',
+  };
+  expect(fulfillmentPayload(cleared, 'order')).toMatchObject({ voided: true });
 });

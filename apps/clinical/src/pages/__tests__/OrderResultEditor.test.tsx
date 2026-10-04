@@ -1,4 +1,8 @@
-import { getDocumentUploadMaxSizeMb, uploadDocument } from '@bahmni/services';
+import {
+  formatDateTime,
+  getDocumentUploadMaxSizeMb,
+  uploadDocument,
+} from '@bahmni/services';
 import { useUserPrivilege } from '@bahmni/widgets';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -6,6 +10,7 @@ import userEvent from '@testing-library/user-event';
 import OrderResultEditor, { OrderResultValues } from '../OrderResultEditor';
 import {
   saveFulfillment,
+  makeFulfillmentObservation,
   type FulfillmentConcept,
   type FulfillmentEncounter,
 } from '../ordersApi';
@@ -387,4 +392,178 @@ it('shows readable saved coded results, zero values and notes', () => {
   expect(screen.getByText('Negative')).toBeInTheDocument();
   expect(screen.getByText('Synthetic note')).toBeInTheDocument();
   expect(screen.getByText('0')).toBeInTheDocument();
+});
+
+const datedForm: FulfillmentConcept = {
+  ...form,
+  setMembers: [
+    {
+      uuid: 'date',
+      name: { name: 'Procedure date' },
+      datatype: { name: 'Date' },
+      set: false,
+      setMembers: [],
+    },
+    {
+      uuid: 'time',
+      name: { name: 'Procedure time' },
+      datatype: { name: 'Datetime' },
+      set: false,
+      setMembers: [],
+    },
+    {
+      uuid: 'performed',
+      name: { name: 'Performed' },
+      datatype: { name: 'Boolean' },
+      set: false,
+      setMembers: [],
+    },
+  ],
+};
+
+it('renders native local date/time controls and preserves a No answer with its notes', async () => {
+  jest.mocked(saveFulfillment).mockResolvedValueOnce({});
+  onSaved.mockResolvedValueOnce({ observations: [] });
+  renderEditor({ observations: [] }, datedForm);
+  const date = screen.getByLabelText('Procedure date');
+  const time = screen.getByLabelText('Procedure time');
+  expect(date).toHaveAttribute('type', 'date');
+  expect(date).toHaveAttribute('min', '0001-01-01');
+  expect(time).toHaveAttribute('type', 'datetime-local');
+  expect(time).toHaveAttribute('step', '60');
+  expect(date).toHaveAttribute('max');
+  fireEvent.change(date, { target: { value: '2026-10-03' } });
+  fireEvent.change(time, { target: { value: '2026-10-03T13:25' } });
+  expect(time).toHaveValue('2026-10-03T13:25');
+  const no = screen.getByRole('button', { name: 'No', exact: true });
+  await userEvent.click(no);
+  expect(no).toHaveAttribute('aria-pressed', 'true');
+  await userEvent.click(no);
+  expect(no).toHaveAttribute('aria-pressed', 'false');
+  await userEvent.click(no);
+  const notes = screen.getByLabelText('Notes for Performed');
+  expect(notes).toHaveAttribute('maxlength', '255');
+  fireEvent.change(notes, {
+    target: { value: 'QorliaQA synthetic Boolean note' },
+  });
+  await confirmSave();
+  await waitFor(() => expect(onSaved).toHaveBeenCalled());
+  expect(saveFulfillment).toHaveBeenCalledWith(
+    'patient',
+    'location',
+    'provider',
+    'order',
+    { observations: [] },
+    expect.objectContaining({
+      groupMembers: [
+        expect.objectContaining({ value: '2026-10-03' }),
+        expect.objectContaining({ value: '2026-10-03T13:25' }),
+        expect.objectContaining({
+          value: false,
+          comment: 'QorliaQA synthetic Boolean note',
+        }),
+      ],
+    }),
+  );
+});
+
+it('blocks future dates even if native form validation is bypassed, but honors explicit permission', async () => {
+  renderEditor({ observations: [] }, datedForm, {
+    'Procedure time': { allowFutureDates: true, disableAddNotes: true },
+  });
+  expect(
+    screen.queryByLabelText('Notes for Procedure time'),
+  ).not.toBeInTheDocument();
+  const date = screen.getByLabelText('Procedure date');
+  fireEvent.change(date, { target: { value: '2999-10-04' } });
+  expect(date).toBeInvalid();
+  fireEvent.submit(date.closest('form')!);
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Procedure date cannot be in the future.',
+  );
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(saveFulfillment).not.toHaveBeenCalled();
+  fireEvent.change(date, { target: { value: '2026-10-03' } });
+  const time = screen.getByLabelText('Procedure time');
+  fireEvent.change(time, { target: { value: '2999-10-04T13:25' } });
+  expect(time).toBeValid();
+  await userEvent.click(screen.getByRole('button', { name: 'Save result' }));
+  expect(await screen.findByRole('dialog')).toBeInTheDocument();
+});
+
+it('loads persisted timestamps in local time without shifting them or dropping cleared values', async () => {
+  jest.mocked(useUserPrivilege).mockReturnValue({
+    userPrivileges: [
+      'Add Encounters',
+      'Add Observations',
+      'Edit Observations',
+    ].map((name) => ({ name, uuid: name })),
+    isLoading: false,
+  });
+  const original = makeFulfillmentObservation(datedForm);
+  original.uuid = 'saved-root';
+  original.orderUuid = 'order';
+  const value = '2026-10-03T13:25:17+05:30';
+  original.groupMembers[0] = {
+    ...original.groupMembers[0],
+    uuid: 'saved-date',
+    value: '2026-10-02T18:30:00Z',
+  };
+  original.groupMembers[1] = {
+    ...original.groupMembers[1],
+    uuid: 'saved-time',
+    value,
+  };
+  const snapshot = { encounterUuid: 'encounter', observations: [original] };
+  renderEditor(snapshot, datedForm);
+  const parsed = new Date(value);
+  const pad = (part: number) => String(part).padStart(2, '0');
+  expect(screen.getByLabelText('Procedure time')).toHaveValue(
+    `2026-10-03T${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`,
+  );
+  fireEvent.change(screen.getByLabelText('Procedure date'), {
+    target: { value: '' },
+  });
+  jest
+    .mocked(saveFulfillment)
+    .mockRejectedValueOnce(new Error('Synthetic failure'));
+  await confirmSave();
+  await screen.findByRole('alert');
+  expect(saveFulfillment).toHaveBeenCalledWith(
+    'patient',
+    'location',
+    'provider',
+    'order',
+    snapshot,
+    expect.objectContaining({
+      groupMembers: expect.arrayContaining([
+        expect.objectContaining({ uuid: 'saved-date', value: undefined }),
+        expect.objectContaining({ uuid: 'saved-time', value }),
+      ]),
+    }),
+  );
+});
+
+it('displays saved Boolean and date-time results in human-readable form', () => {
+  render(
+    <OrderResultValues
+      observations={[
+        {
+          concept: { uuid: 'no', name: 'Performed', dataType: 'Boolean' },
+          value: false,
+          groupMembers: [],
+        },
+        {
+          concept: { uuid: 'date', name: 'Procedure date', dataType: 'Date' },
+          value: '2026-10-03',
+          groupMembers: [],
+        },
+      ]}
+    />,
+  );
+  expect(screen.getByText('No')).toBeInTheDocument();
+  expect(screen.queryByText('false')).not.toBeInTheDocument();
+  expect(
+    screen.getByText(formatDateTime('2026-10-03').formattedResult),
+  ).toBeInTheDocument();
 });

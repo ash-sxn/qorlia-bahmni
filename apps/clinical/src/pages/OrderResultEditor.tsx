@@ -1,4 +1,5 @@
 import {
+  formatDateTime,
   getDocumentUploadMaxSizeMb,
   getAuthenticatedDocumentUrl as documentLink,
   hasPrivilege,
@@ -11,6 +12,7 @@ import styles from './BedManagement.module.scss';
 import {
   codedResultUuid,
   fulfillmentAnswerLabel,
+  fulfillmentDateForControl,
   makeFulfillmentObservation,
   observationsForOrder,
   saveFulfillment,
@@ -22,7 +24,17 @@ import {
   type OrderObservation,
 } from './ordersApi';
 
-const resultValueLabel = (value: unknown): string => {
+const resultValueLabel = (value: unknown, datatype: string): string => {
+  if (datatype === 'Boolean' && typeof value === 'boolean')
+    return value ? 'Yes' : 'No';
+  if (
+    ['Date', 'Datetime'].includes(datatype) &&
+    (typeof value === 'string' || typeof value === 'number')
+  )
+    return (
+      formatDateTime(value, undefined, datatype === 'Datetime')
+        .formattedResult || String(value)
+    );
   if (!value || typeof value !== 'object') return String(value ?? '');
   const coded = value as {
     shortName?: unknown;
@@ -55,7 +67,7 @@ export const OrderResultValues = ({
               Open attachment
             </a>
           ) : (
-            resultValueLabel(obs.value)
+            resultValueLabel(obs.value, obs.concept.dataType)
           )}
           {obs.comment && <p>{obs.comment}</p>}
         </li>
@@ -190,7 +202,11 @@ const ResultField = ({
         ))}
       </fieldset>
     );
-  if (['Numeric', 'Coded'].includes(obs.concept.dataType)) {
+  if (
+    ['Numeric', 'Coded', 'Date', 'Datetime', 'Boolean'].includes(
+      obs.concept.dataType,
+    )
+  ) {
     const note =
       uiConfig[label]?.disableAddNotes === true ? null : (
         <label className={styles.resultText} htmlFor={`${id}-notes`}>
@@ -198,6 +214,7 @@ const ResultField = ({
           <textarea
             id={`${id}-notes`}
             rows={2}
+            maxLength={255}
             value={obs.comment ?? ''}
             onChange={(event) =>
               onChange([{ ...obs, comment: event.target.value }])
@@ -249,34 +266,72 @@ const ResultField = ({
         </div>
       );
     }
+    if (['Date', 'Datetime'].includes(obs.concept.dataType)) {
+      const includeTime = obs.concept.dataType === 'Datetime';
+      return (
+        <div>
+          <label className={styles.resultText} htmlFor={id}>
+            {label}
+            <input
+              id={id}
+              type={includeTime ? 'datetime-local' : 'date'}
+              min={includeTime ? '0001-01-01T00:00' : '0001-01-01'}
+              max={
+                uiConfig[label]?.allowFutureDates === true
+                  ? includeTime
+                    ? '9999-12-31T23:59'
+                    : '9999-12-31'
+                  : fulfillmentDateForControl(Date.now(), includeTime)
+              }
+              step={includeTime ? 60 : undefined}
+              value={fulfillmentDateForControl(obs.value, includeTime)}
+              onChange={(event) =>
+                onChange([{ ...obs, value: event.target.value || undefined }])
+              }
+            />
+          </label>
+          {note}
+        </div>
+      );
+    }
+    const boolean = obs.concept.dataType === 'Boolean';
+    const answers = boolean
+      ? [
+          { key: 'yes', label: 'Yes', value: true },
+          { key: 'no', label: 'No', value: false },
+        ]
+      : concept.answers!.map((answer) => ({
+          key: answer.uuid,
+          label: fulfillmentAnswerLabel(answer),
+          value: {
+            uuid: answer.uuid,
+            name: answer.name.name,
+            shortName: fulfillmentAnswerLabel(answer),
+          },
+        }));
     return (
       <fieldset>
         <legend>{label}</legend>
         <div className={styles.tabs}>
-          {concept.answers!.map((answer) => (
-            <button
-              type="button"
-              key={answer.uuid}
-              aria-pressed={codedResultUuid(obs.value) === answer.uuid}
-              onClick={() =>
-                onChange([
-                  {
-                    ...obs,
-                    value:
-                      codedResultUuid(obs.value) === answer.uuid
-                        ? undefined
-                        : {
-                            uuid: answer.uuid,
-                            name: answer.name.name,
-                            shortName: fulfillmentAnswerLabel(answer),
-                          },
-                  },
-                ])
-              }
-            >
-              {fulfillmentAnswerLabel(answer)}
-            </button>
-          ))}
+          {answers.map((answer) => {
+            const selected = boolean
+              ? obs.value === answer.value
+              : codedResultUuid(obs.value) === answer.key;
+            return (
+              <button
+                type="button"
+                key={answer.key}
+                aria-pressed={selected}
+                onClick={() =>
+                  onChange([
+                    { ...obs, value: selected ? undefined : answer.value },
+                  ])
+                }
+              >
+                {answer.label}
+              </button>
+            );
+          })}
         </div>
         {note}
       </fieldset>
