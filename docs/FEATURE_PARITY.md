@@ -1,5 +1,46 @@
 # Bahmni workflow parity ledger
 
+## 5 October native chart and landing read-permission checkpoint
+
+This closes the tested unrelated chart authorization/error panels for the
+condition-only role, not every clinical role or complete workflow parity.
+
+- Built-in widget registration now declares the verified native read prerequisites
+  for allergies, FHIR appointments, diagnoses, orders/medications and immunizations.
+  The existing shared filter requires those prerequisites in addition to the
+  hospital's configured OR restriction. Empty configured restrictions cannot waive
+  native reads; custom registry overrides use their own declared requirements.
+  Unauthorized controls and now-empty navigation sections are removed together.
+- Read-only checks against isolated staging returned 403 explicitly requiring
+  Get Allergies, Get Appointments, Get Diagnoses, Get Orders or Get Immunizations
+  for the matching FHIR resources, and 200 for the seed account. Observation reads
+  returned 200 even without Get Observations in the restricted role, so no invented
+  observation gate was added. Explicit hospital observation restrictions remain.
+  Backend authorization remains authoritative; staff privileges were not expanded.
+- The landing page's legacy appointment search requires View Appointments or
+  Manage Appointments, not the FHIR widget's Get Appointments. Its existing query
+  is disabled without that native permission and cached appointment names/counts
+  disappear immediately on permission loss. Patient search remains available.
+  Four new landing regressions failed before the correction and all seven landing
+  checks pass afterward. Actual read failures remain errors, not an empty schedule.
+- A full restricted-role browser reload retained the saved active Essential
+  hypertension condition and two-day onset, with no unauthorized widget requests
+  or failed reads in the non-truncated capture. A separate full landing reload
+  issued no appointment search, rendered no appointment panel/summary, and searched
+  QST910015 successfully into the same chart. No clinical entries were written.
+  The temporary test user/provider were retired with native read-back and the
+  ordinary seed session was restored for local review.
+- Four focused clinical suites pass 93 tests and one unchanged snapshot in India
+  and US Pacific time. The registry suite passes 36 tests. Clinical/widget type
+  checking, changed-source lint and dependency-first library builds pass. Existing
+  duplicate-mock, dynamic/static import, form-renderer eval and bundle warnings
+  remain. The change reuses registry metadata, query enabled and render-derived
+  permissions, without mirrored permission state, effects or a new dependency.
+
+Remaining: retained drafts across permission changes, diagnosis editing/removal,
+condition onset/status/notes/noncoded workflows, concurrency and the other React
+and separate-product release gates. No production/shared-demo deployment occurred.
+
 ## 5 October condition-only input and restricted-browser checkpoint
 
 This closes direct coded-condition creation for the tested condition-only role,

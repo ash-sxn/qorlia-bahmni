@@ -43,12 +43,17 @@ const ClinicalWorkspace = ({
   const todayRange = getTodayRange();
   const canRegister = hasPrivilege(userPrivileges, 'app:registration');
   const canSchedule = hasPrivilege(userPrivileges, 'app:appointments');
+  const canReadAppointments = hasPrivilege(userPrivileges, [
+    'View Appointments',
+    'Manage Appointments',
+  ]);
   const canManageBeds = hasPrivilege(userPrivileges, 'app:adt');
   const canViewOT = hasPrivilege(userPrivileges, 'app:ot');
 
   const appointments = useQuery({
     queryKey: ['clinical-todays-appointments', todayRange.startDate],
     queryFn: () => searchAppointmentsByAttribute(todayRange),
+    enabled: canReadAppointments,
   });
   const patients = useQuery({
     queryKey: ['clinical-patient-search', searchTerm],
@@ -61,7 +66,7 @@ const ClinicalWorkspace = ({
     setSearchTerm(searchInput.trim());
   };
 
-  const appointmentRows = appointments.data ?? [];
+  const appointmentRows = canReadAppointments ? (appointments.data ?? []) : [];
   const patientRows = patients.data?.pageOfResults ?? [];
 
   return (
@@ -111,73 +116,79 @@ const ClinicalWorkspace = ({
           <p>{t('CLINICAL_WORKSPACE_DESCRIPTION')}</p>
         </div>
 
-        <section
-          className={styles.panel}
-          aria-labelledby="appointments-heading"
-        >
-          <div className={styles.panelHeading}>
-            <div>
-              <span className={styles.sectionKicker}>
-                {t('CLINICAL_WORKSPACE_TODAY')}
-              </span>
-              <h2 id="appointments-heading">
-                {t('CLINICAL_WORKSPACE_APPOINTMENTS')}
-              </h2>
+        {canReadAppointments && (
+          <section
+            className={styles.panel}
+            aria-labelledby="appointments-heading"
+          >
+            <div className={styles.panelHeading}>
+              <div>
+                <span className={styles.sectionKicker}>
+                  {t('CLINICAL_WORKSPACE_TODAY')}
+                </span>
+                <h2 id="appointments-heading">
+                  {t('CLINICAL_WORKSPACE_APPOINTMENTS')}
+                </h2>
+              </div>
+              <span className={styles.count}>{appointmentRows.length}</span>
             </div>
-            <span className={styles.count}>{appointmentRows.length}</span>
-          </div>
-          {appointments.isLoading ? (
-            <p role="status">{t('CLINICAL_WORKSPACE_LOADING_APPOINTMENTS')}</p>
-          ) : appointments.isError ? (
-            <p role="alert">{t('CLINICAL_WORKSPACE_APPOINTMENTS_ERROR')}</p>
-          ) : appointmentRows.length === 0 ? (
-            <div className={styles.empty}>
-              <Calendar size={24} />
-              <p>{t('CLINICAL_WORKSPACE_NO_APPOINTMENTS')}</p>
-            </div>
-          ) : (
-            <div className={styles.tableScroll}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>{t('CLINICAL_WORKSPACE_TIME')}</th>
-                    <th>{t('CLINICAL_WORKSPACE_PATIENT')}</th>
-                    <th>{t('CLINICAL_WORKSPACE_SERVICE')}</th>
-                    <th>{t('CLINICAL_WORKSPACE_STATUS')}</th>
-                    <th>{t('CLINICAL_WORKSPACE_ACTION')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {appointmentRows.map((appointment: Appointment) => (
-                    <tr key={appointment.uuid}>
-                      <td>
-                        {new Date(appointment.startDateTime).toLocaleTimeString(
-                          undefined,
-                          { hour: 'numeric', minute: '2-digit' },
-                        )}
-                      </td>
-                      <td>
-                        <strong>{appointment.patient.name}</strong>
-                        <small>{appointment.patient.identifier}</small>
-                      </td>
-                      <td>
-                        {appointment.service?.name ??
-                          t('CLINICAL_WORKSPACE_NOT_SPECIFIED')}
-                      </td>
-                      <td>{appointment.status}</td>
-                      <td>
-                        <Link to={`/clinical/${appointment.patient.uuid}`}>
-                          {t('CLINICAL_WORKSPACE_OPEN_RECORD')}
-                          <ArrowRight size={16} />
-                        </Link>
-                      </td>
+            {appointments.isLoading ? (
+              <p role="status">
+                {t('CLINICAL_WORKSPACE_LOADING_APPOINTMENTS')}
+              </p>
+            ) : appointments.isError ? (
+              <p role="alert">{t('CLINICAL_WORKSPACE_APPOINTMENTS_ERROR')}</p>
+            ) : appointmentRows.length === 0 ? (
+              <div className={styles.empty}>
+                <Calendar size={24} />
+                <p>{t('CLINICAL_WORKSPACE_NO_APPOINTMENTS')}</p>
+              </div>
+            ) : (
+              <div className={styles.tableScroll}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{t('CLINICAL_WORKSPACE_TIME')}</th>
+                      <th>{t('CLINICAL_WORKSPACE_PATIENT')}</th>
+                      <th>{t('CLINICAL_WORKSPACE_SERVICE')}</th>
+                      <th>{t('CLINICAL_WORKSPACE_STATUS')}</th>
+                      <th>{t('CLINICAL_WORKSPACE_ACTION')}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+                  </thead>
+                  <tbody>
+                    {appointmentRows.map((appointment: Appointment) => (
+                      <tr key={appointment.uuid}>
+                        <td>
+                          {new Date(
+                            appointment.startDateTime,
+                          ).toLocaleTimeString(undefined, {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </td>
+                        <td>
+                          <strong>{appointment.patient.name}</strong>
+                          <small>{appointment.patient.identifier}</small>
+                        </td>
+                        <td>
+                          {appointment.service?.name ??
+                            t('CLINICAL_WORKSPACE_NOT_SPECIFIED')}
+                        </td>
+                        <td>{appointment.status}</td>
+                        <td>
+                          <Link to={`/clinical/${appointment.patient.uuid}`}>
+                            {t('CLINICAL_WORKSPACE_OPEN_RECORD')}
+                            <ArrowRight size={16} />
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
 
         <section
           className={styles.panel}
@@ -261,15 +272,17 @@ const ClinicalWorkspace = ({
         className={styles.rail}
         aria-label={t('CLINICAL_WORKSPACE_SUMMARY')}
       >
-        <div className={styles.railPanel}>
-          <h2>{t('CLINICAL_WORKSPACE_TODAY')}</h2>
-          <strong>
-            {appointments.isError
-              ? t('CLINICAL_WORKSPACE_UNAVAILABLE')
-              : appointmentRows.length}
-          </strong>
-          <p>{t('CLINICAL_WORKSPACE_APPOINTMENTS')}</p>
-        </div>
+        {canReadAppointments && (
+          <div className={styles.railPanel}>
+            <h2>{t('CLINICAL_WORKSPACE_TODAY')}</h2>
+            <strong>
+              {appointments.isError
+                ? t('CLINICAL_WORKSPACE_UNAVAILABLE')
+                : appointmentRows.length}
+            </strong>
+            <p>{t('CLINICAL_WORKSPACE_APPOINTMENTS')}</p>
+          </div>
+        )}
         <div className={styles.railPanel}>
           <h2>{t('CLINICAL_WORKSPACE_QUICK_ACTIONS')}</h2>
           <button

@@ -663,7 +663,7 @@
   "CLINICAL_WORKSPACE_AGE": "Age",
   "CLINICAL_WORKSPACE_APPOINTMENTS": "Appointments",
   "CLINICAL_WORKSPACE_APPOINTMENTS_ERROR": "Appointments could not be loaded. You can still search for a patient below.",
-  "CLINICAL_WORKSPACE_DESCRIPTION": "Today's appointments and patient records in one place.",
+  "CLINICAL_WORKSPACE_DESCRIPTION": "Find patient records and continue your clinical work.",
   "CLINICAL_WORKSPACE_FIND_PATIENT": "Find a patient",
   "CLINICAL_WORKSPACE_HEADING": "Your clinical workspace",
   "CLINICAL_WORKSPACE_ID": "Patient ID",

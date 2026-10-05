@@ -88,7 +88,11 @@ jest.mock('../../components/dashboardContainer/DashboardContainer', () => ({
       activeItemId,
       scrollTrigger,
     }: {
-      sections: Array<{ id: string; name: string }>;
+      sections: Array<{
+        id: string;
+        name: string;
+        controls: Array<{ type: string; name: string }>;
+      }>;
       activeItemId?: string | null;
       scrollTrigger?: number;
     }) => (
@@ -103,6 +107,16 @@ jest.mock('../../components/dashboardContainer/DashboardContainer', () => ({
             data-testid={`dashboard-section-article-${section.name}`}
           >
             {section.name}
+            {section.controls
+              .filter((control) => control.type !== 'widget')
+              .map((control) => (
+                <span
+                  key={control.name}
+                  data-testid={`dashboard-control-${control.name}`}
+                >
+                  {control.type}
+                </span>
+              ))}
           </article>
         ))}
       </div>
@@ -704,6 +718,118 @@ describe('ConsultationPage', () => {
   });
 
   describe('Privilege-based section filtering', () => {
+    it('filters native read requirements from the dashboard and navigation, including permission loss', async () => {
+      (getConfig as jest.Mock).mockResolvedValue({
+        sections: [
+          {
+            id: 'conditions',
+            name: 'Conditions',
+            icon: 'fa-stethoscope',
+            controls: [
+              {
+                type: 'conditions',
+                name: 'conditions',
+                requiredPrivileges: ['Get Conditions'],
+              },
+              { type: 'diagnoses', name: 'diagnoses' },
+            ],
+          },
+          {
+            id: 'allergies',
+            name: 'Allergies',
+            icon: 'fa-heart',
+            controls: [{ type: 'allergies', name: 'allergies' }],
+          },
+          {
+            id: 'orders',
+            name: 'Orders',
+            icon: 'fa-flask',
+            controls: [
+              { type: 'labOrders', name: 'labs' },
+              { type: 'treatment', name: 'medications' },
+            ],
+          },
+          {
+            id: 'immunizations',
+            name: 'Immunizations',
+            icon: 'fa-heart',
+            controls: [{ type: 'immunizationHistory', name: 'immunizations' }],
+          },
+          {
+            id: 'appointments',
+            name: 'Appointments',
+            icon: 'fa-calendar',
+            controls: [{ type: 'appointments', name: 'appointments' }],
+          },
+          {
+            id: 'vitals',
+            name: 'Vitals',
+            icon: 'fa-heart',
+            controls: [{ type: 'observations', name: 'observations' }],
+          },
+        ],
+      });
+      (useUserPrivilege as jest.Mock).mockReturnValue({
+        userPrivileges: [
+          'Get Conditions',
+          'Get Allergies',
+          'Get Orders',
+          'Get Diagnoses',
+          'Get Immunizations',
+          'Get Appointments',
+        ].map((name) => ({ uuid: name, name })),
+      });
+      renderWithProvider();
+      await screen.findByTestId('dashboard-control-immunizations');
+      expect(
+        screen.getByTestId('dashboard-control-diagnoses'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('dashboard-control-medications'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('dashboard-control-appointments'),
+      ).toBeInTheDocument();
+
+      (useUserPrivilege as jest.Mock).mockReturnValue({
+        userPrivileges: [{ uuid: 'condition-read', name: 'Get Conditions' }],
+      });
+      fireEvent.click(screen.getByTestId('sidenav-item-vitals'));
+      expect(
+        screen.getByTestId('dashboard-control-conditions'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('dashboard-control-observations'),
+      ).toBeInTheDocument();
+      for (const name of [
+        'diagnoses',
+        'allergies',
+        'labs',
+        'medications',
+        'immunizations',
+        'appointments',
+      ]) {
+        expect(
+          screen.queryByTestId(`dashboard-control-${name}`),
+        ).not.toBeInTheDocument();
+      }
+      for (const name of [
+        'allergies',
+        'orders',
+        'immunizations',
+        'appointments',
+      ]) {
+        expect(
+          screen.queryByTestId(`sidenav-item-${name}`),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByTestId(
+            `dashboard-section-article-${name.charAt(0).toUpperCase() + name.slice(1)}`,
+          ),
+        ).not.toBeInTheDocument();
+      }
+    });
+
     const privilegedDashboardConfig = {
       sections: [
         {

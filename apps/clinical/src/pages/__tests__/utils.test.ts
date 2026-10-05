@@ -1,4 +1,6 @@
 import type { UserPrivilege } from '@bahmni/services';
+import { registerWidget, resetWidgetRegistry } from '@bahmni/widgets';
+import { lazy } from 'react';
 import {
   validFullClinicalConfig,
   validDashboardConfig,
@@ -20,6 +22,7 @@ const privileges = (...names: string[]): UserPrivilege[] =>
 describe('ConsultationPageService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetWidgetRegistry();
   });
 
   describe('isPatientNotFoundError', () => {
@@ -73,6 +76,97 @@ describe('ConsultationPageService', () => {
   });
 
   describe('filterControlsByPrivileges', () => {
+    it.each([
+      ['allergies', 'Get Allergies', 'Edit Allergies'],
+      ['appointments', 'Get Appointments', 'Manage Appointments'],
+      ['diagnoses', 'Get Diagnoses', 'Edit Diagnoses'],
+      ['immunizationHistory', 'Get Immunizations', 'Add Immunizations'],
+      ['labOrders', 'Get Orders', 'Add Orders'],
+      ['pacsOrders', 'Get Orders', 'Add Orders'],
+      ['ordersControl', 'Get Orders', 'Edit Orders'],
+      ['treatment', 'Get Orders', 'Edit Orders'],
+    ])(
+      'requires %s read access even without dashboard metadata',
+      (type, read, write) => {
+        const controls = [{ type, name: type }];
+        expect(filterControlsByPrivileges(controls, [])).toEqual([]);
+        expect(filterControlsByPrivileges(controls, privileges(write))).toEqual(
+          [],
+        );
+        expect(filterControlsByPrivileges(controls, privileges(read))).toEqual(
+          controls,
+        );
+      },
+    );
+
+    it('preserves observations access and explicit hospital restrictions without inventing a native read gate', () => {
+      const controls = [{ type: 'observations', name: 'vitals' }];
+      expect(filterControlsByPrivileges(controls, [])).toEqual(controls);
+      const restricted = [
+        { ...controls[0], requiredPrivileges: ['Hospital observation access'] },
+      ];
+      expect(filterControlsByPrivileges(restricted, [])).toEqual([]);
+      expect(
+        filterControlsByPrivileges(
+          restricted,
+          privileges('Hospital observation access'),
+        ),
+      ).toEqual(restricted);
+    });
+
+    it('retains configured OR restrictions in addition to native read access', () => {
+      const controls = [
+        {
+          type: 'allergies',
+          name: 'allergies',
+          requiredPrivileges: ['Hospital chart access', 'Hospital supervisor'],
+        },
+      ];
+      expect(
+        filterControlsByPrivileges(controls, privileges('Get Allergies')),
+      ).toEqual([]);
+      expect(
+        filterControlsByPrivileges(controls, privileges('Hospital supervisor')),
+      ).toEqual([]);
+      expect(
+        filterControlsByPrivileges(
+          controls,
+          privileges('Get Allergies', 'Hospital supervisor'),
+        ),
+      ).toEqual(controls);
+    });
+
+    it('does not let an explicit empty restriction waive native read access', () => {
+      const controls = [
+        { type: 'treatment', name: 'vaccinations', requiredPrivileges: [] },
+      ];
+      expect(
+        filterControlsByPrivileges(controls, privileges('Edit Orders')),
+      ).toEqual([]);
+      expect(
+        filterControlsByPrivileges(controls, privileges('Get Orders')),
+      ).toEqual(controls);
+    });
+
+    it('uses the registered component read requirements, including all prerequisites', () => {
+      registerWidget({
+        type: 'customChart',
+        component: lazy(() => Promise.resolve({ default: () => null })),
+        readPrivileges: ['Get Orders', 'Get Observations'],
+      });
+      const controls = [{ type: 'customChart', name: 'custom' }];
+      expect(
+        filterControlsByPrivileges(controls, privileges('Get Orders')),
+      ).toEqual([]);
+      expect(
+        filterControlsByPrivileges(
+          controls,
+          privileges('Get Orders', 'Get Observations'),
+        ),
+      ).toEqual(controls);
+      resetWidgetRegistry();
+      expect(filterControlsByPrivileges(controls, [])).toEqual(controls);
+    });
     it('includes control when user has the required privilege', () => {
       const controls = [
         {
@@ -137,6 +231,43 @@ describe('ConsultationPageService', () => {
   });
 
   describe('filterSectionsByPrivileges', () => {
+    it('removes denied widgets and their sidebar sections without mutating configuration', () => {
+      const configured: DashboardSectionConfig[] = [
+        {
+          id: 'conditions',
+          name: 'Conditions',
+          icon: 'fa-stethoscope',
+          controls: [
+            {
+              type: 'conditions',
+              name: 'conditions',
+              requiredPrivileges: ['Get Conditions'],
+            },
+            { type: 'diagnoses', name: 'diagnoses' },
+          ],
+        },
+        {
+          id: 'orders',
+          name: 'Orders',
+          icon: 'fa-flask',
+          controls: [{ type: 'labOrders', name: 'labs' }],
+        },
+      ];
+      const result = filterSectionsByPrivileges(
+        configured,
+        privileges('Get Conditions'),
+      );
+      expect(result).toEqual([
+        { ...configured[0], controls: [configured[0].controls[0]] },
+      ]);
+      expect(
+        getSidebarItems({ sections: result }, mockTranslation).map(
+          (item) => item.id,
+        ),
+      ).toEqual(['conditions']);
+      expect(configured[0].controls).toHaveLength(2);
+      expect(filterSectionsByPrivileges(configured, [])).toEqual([]);
+    });
     const sections: DashboardSectionConfig[] = [
       {
         id: 'section-1',

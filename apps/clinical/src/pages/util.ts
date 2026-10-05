@@ -4,6 +4,7 @@ import {
   PATIENT_NOT_FOUND_ERROR_KEY,
   type UserPrivilege,
 } from '@bahmni/services';
+import { getWidgetConfig } from '@bahmni/widgets';
 import { Dashboard } from '../providers/clinicalConfig/models';
 import {
   DashboardConfig,
@@ -35,8 +36,11 @@ export const filterControlsByPrivileges = (
 ): ControlConfig[] => {
   return controls.filter(
     (control) =>
-      !control.requiredPrivileges?.length ||
-      hasPrivilege(userPrivileges, control.requiredPrivileges),
+      (!control.requiredPrivileges?.length ||
+        hasPrivilege(userPrivileges, control.requiredPrivileges)) &&
+      (getWidgetConfig(control.type)?.readPrivileges ?? []).every((privilege) =>
+        hasPrivilege(userPrivileges, privilege),
+      ),
   );
 };
 

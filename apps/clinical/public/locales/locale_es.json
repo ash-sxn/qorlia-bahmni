@@ -642,7 +642,7 @@
   "CLINICAL_WORKSPACE_AGE": "Edad",
   "CLINICAL_WORKSPACE_APPOINTMENTS": "Citas",
   "CLINICAL_WORKSPACE_APPOINTMENTS_ERROR": "No se pudieron cargar las citas. Puede buscar un paciente abajo.",
-  "CLINICAL_WORKSPACE_DESCRIPTION": "Las citas de hoy y los registros de pacientes en un solo lugar.",
+  "CLINICAL_WORKSPACE_DESCRIPTION": "Encuentre registros de pacientes y continúe su trabajo clínico.",
   "CLINICAL_WORKSPACE_FIND_PATIENT": "Buscar paciente",
   "CLINICAL_WORKSPACE_HEADING": "Su espacio clínico",
   "CLINICAL_WORKSPACE_ID": "ID del paciente",

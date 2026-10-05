@@ -1,5 +1,33 @@
 # Qorlia React frontend backend readiness
 
+## Latest native chart and landing read-permission verification
+
+The condition-only chart now excludes unrelated denied widgets and their empty
+navigation sections using native read requirements in the existing registry/filter.
+Those requirements are additional to configured hospital restrictions, not an
+authorization bypass. Native isolated checks explicitly denied the matching FHIR
+allergy, appointment, diagnosis, order/medication and immunization resources while
+the seed reads succeeded. Observation reads succeeded without Get Observations;
+the frontend does not invent that restriction for this installed backend.
+
+The clinical landing uses the distinct legacy appointment search gate:
+View Appointments or Manage Appointments. It neither fetches nor renders that data
+without permission, including previously cached names/counts after role loss.
+Get Appointments alone does not authorize this legacy query. Patient search works.
+
+Actual restricted-role full reloads retained the saved active condition and onset,
+with no unauthorized widget requests or failed reads in the non-truncated chart
+capture. The landing issued no appointment search and opened the same synthetic
+patient through search. No clinical data was changed. The temporary user/provider
+were retired with native read-back and the normal local review session restored.
+
+Focused clinical checks pass 93 tests and one snapshot in India/US Pacific time;
+registry checks pass 36 tests. Type checking, lint and dependency-first builds pass
+with the existing import/eval/mock/bundle warnings. This is not complete role,
+clinical or separate-product acceptance. Remaining permission/draft transitions,
+editing, concurrency and broader release gates are recorded in the newest parity
+checkpoint. No public/shared-demo deployment or existing staff-role change occurred.
+
 ## Latest condition-only restricted-role verification
 
 Direct coded-condition entry now works independently of diagnosis access. The
