@@ -608,6 +608,7 @@ describe('GenericServiceRequestTable', () => {
           'This is a test note for the service request',
         );
         expect(tooltipIcon).toBeInTheDocument();
+        expect(tooltipIcon.closest('p')).toBeNull();
       });
     });
 

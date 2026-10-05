@@ -147,6 +147,24 @@ describe('RadiologyInvestigationTable', () => {
     ],
   };
 
+  it('keeps the note toggletip outside paragraph-only content', async () => {
+    const note = 'QorliaQA synthetic radiology note';
+    mockGetPatientRadiologyInvestigationBundleWithImagingStudy.mockResolvedValue(
+      createMockBundleWithServiceRequestAndImagingStudy(
+        createMockServiceRequest({
+          id: 'investigation-note',
+          code: { text: 'Chest X-Ray' },
+          note: [{ text: note }],
+          occurrencePeriod: { start: '2023-12-01T10:30:00.000Z' },
+        }),
+        [],
+      ),
+    );
+    render(renderRadiologyInvestigationTable());
+    const icon = await screen.findByLabelText(note);
+    expect(icon.closest('p')).toBeNull();
+  });
+
   afterEach(() => {
     localStorage.removeItem(DEFAULT_DATE_FORMAT_STORAGE_KEY);
   });

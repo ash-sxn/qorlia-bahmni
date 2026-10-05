@@ -1,5 +1,21 @@
 # Bahmni workflow parity ledger
 
+## 5 October chart-note markup checkpoint
+
+- Radiology and procedure note toggletips now use a block-compatible container,
+  not a paragraph containing Carbon's block content. The shared tooltip stays
+  unchanged; other callers already use compatible markup.
+- Both regression assertions failed before correction. The two populated widget
+  suites pass 91 tests in India and US Pacific time; widget type checking, changed
+  source lint, formatting and build checks pass, retaining existing build warnings.
+- A fresh isolated chart reload has no captured new console errors. Both saved
+  synthetic notes open and dismiss with Escape. A dependency build temporarily
+  replaced generated CSS; the existing development process recovered without a
+  restart before this reload. No clinical record or public deployment changed.
+
+This closes the paragraph-nesting issue below, not complete chart accessibility,
+responsive acceptance or the remaining React/separate-product workflow gates.
+
 ## 5 October submitted-form history and edit-recovery checkpoint
 
 This closes the tested history/read-failure paths, not complete observation-form

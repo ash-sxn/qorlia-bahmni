@@ -386,7 +386,7 @@ const RadiologyInvestigationTable: React.FC<WidgetProps> = ({
             id={`${investigation.id}-test-name`}
             data-testid={`${investigation.id}-test-name-test-id`}
           >
-            <p className={styles.investigationName}>
+            <div className={styles.investigationName}>
               <span>{investigation.testName}</span>
               {investigation.note && (
                 <TooltipIcon
@@ -395,7 +395,7 @@ const RadiologyInvestigationTable: React.FC<WidgetProps> = ({
                   ariaLabel={investigation.note}
                 />
               )}
-            </p>
+            </div>
             {investigation.priority === 'stat' && (
               <Tag
                 id={`${investigation.id}-priority`}

@@ -1,5 +1,15 @@
 # Qorlia React frontend backend readiness
 
+## Latest chart-note rendering verification
+
+The radiology/procedure paragraph-nesting issue recorded below is corrected in
+the existing row containers, without changing the shared Carbon tooltip or APIs.
+Both regressions failed before correction; 91 widget tests pass in India and US
+Pacific time, alongside widget type checks, changed-source lint and build checks.
+A fresh populated staging chart opens both notes and dismisses them with Escape,
+with no newly captured reload console errors. No clinical records or production
+routes changed. Broader responsive/accessibility and workflow acceptance remain.
+
 ## Latest submitted-form history and edit-recovery verification
 
 The observation editor now distinguishes unavailable/pending history from an

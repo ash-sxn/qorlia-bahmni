@@ -210,7 +210,7 @@ const GenericServiceRequestTable: React.FC<WidgetProps> = ({
         case 'testName':
           return (
             <>
-              <p className={styles.requestName}>
+              <div className={styles.requestName}>
                 <span>{request.testName}</span>
                 {request.note && (
                   <TooltipIcon
@@ -219,7 +219,7 @@ const GenericServiceRequestTable: React.FC<WidgetProps> = ({
                     ariaLabel={request.note}
                   />
                 )}
-              </p>
+              </div>
               {request.priority === 'stat' && (
                 <Tag type="red">{t('SERVICE_REQUEST_PRIORITY_URGENT')}</Tag>
               )}
