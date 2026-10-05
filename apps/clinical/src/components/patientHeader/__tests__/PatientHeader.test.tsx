@@ -4,8 +4,16 @@ import {
   resetEncounterSession,
   setEncounterSessionDecision,
   getEncounterSessionSnapshot,
+  resolveEncounterMatchDecision,
+  getUserLoginLocation,
 } from '@bahmni/services';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import {
+  render,
+  screen,
+  fireEvent,
+  act,
+  waitFor,
+} from '@testing-library/react';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import React from 'react';
 import { dispatchConsultationStart } from '../../../events/startConsultation';
@@ -19,6 +27,8 @@ expect.extend(toHaveNoViolations);
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   useTranslation: jest.fn(),
+  resolveEncounterMatchDecision: jest.fn(),
+  getUserLoginLocation: jest.fn(),
   // Let the real store functions through so we can assert on them
 }));
 
@@ -132,6 +142,25 @@ describe('PatientHeader Component', () => {
     // Reset shared store so each test starts from a clean slate
     resetEncounterSession();
     mockedUseTranslation.mockReturnValue({ t: mockTranslate } as any);
+    jest.mocked(resolveEncounterMatchDecision).mockReset();
+    jest
+      .mocked(getUserLoginLocation)
+      .mockReturnValue({ uuid: 'location-uuid' } as any);
+    jest
+      .requireMock('@bahmni/widgets')
+      .usePatientUUID.mockReturnValue('patient-uuid');
+    jest.requireMock('@bahmni/widgets').useActivePractitioner.mockReturnValue({
+      practitioner: { uuid: 'active-practitioner-uuid' },
+    });
+    jest
+      .requireMock('../../../hooks/useEncounterConcepts')
+      .useEncounterConcepts.mockReturnValue({
+        encounterConcepts: {
+          encounterTypes: [
+            { name: 'Consultation', uuid: 'consultation-encounter-type-uuid' },
+          ],
+        },
+      });
     mockedUseEncounterSession.mockReturnValue({
       hasActiveSession: false,
       activeEncounter: null,
@@ -295,6 +324,97 @@ describe('PatientHeader Component', () => {
   });
 
   describe('Shared encounter session store writes (BAH-4652)', () => {
+    test.each(['patient', 'provider', 'encounter type'])(
+      'the real hook clears shared actions and ignores a late retry after a %s change',
+      async (kind) => {
+        type Decision = Awaited<
+          ReturnType<typeof resolveEncounterMatchDecision>
+        >;
+        const decision = (id: string): Decision => ({
+          matched: true,
+          reasons: ['MATCHED'],
+          encounter: { resourceType: 'Encounter', status: 'in-progress', id },
+        });
+        let finishOld!: (value: Decision) => void;
+        let finishNext!: (value: Decision) => void;
+        jest
+          .mocked(resolveEncounterMatchDecision)
+          .mockResolvedValueOnce(decision('initial'))
+          .mockReturnValueOnce(
+            new Promise((resolve) => {
+              finishOld = resolve;
+            }),
+          )
+          .mockReturnValueOnce(
+            new Promise((resolve) => {
+              finishNext = resolve;
+            }),
+          );
+        mockedUseEncounterSession.mockImplementation(
+          jest.requireActual('../../../hooks/useEncounterSession')
+            .useEncounterSession,
+        );
+        const { rerender } = renderComponent();
+        await waitFor(() =>
+          expect(getEncounterSessionSnapshot().activeEncounter?.id).toBe(
+            'initial',
+          ),
+        );
+        act(() => {
+          window.dispatchEvent(
+            new CustomEvent(CONSULTATION_SAVED_EVENT, {
+              detail: { patientUUID: 'patient-uuid' },
+            }),
+          );
+        });
+        expect(getEncounterSessionSnapshot().activeEncounter).toBeNull();
+        expect(getEncounterSessionSnapshot().canEditOrCreate).toBe(false);
+        expect(getEncounterSessionSnapshot().isLoading).toBe(true);
+        expect(
+          screen.getByTestId('consultation-action-button-skeleton'),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId('consultation-action-button'),
+        ).not.toBeInTheDocument();
+
+        if (kind === 'patient') {
+          jest
+            .requireMock('@bahmni/widgets')
+            .usePatientUUID.mockReturnValue('next-patient');
+        } else if (kind === 'provider') {
+          jest
+            .requireMock('@bahmni/widgets')
+            .useActivePractitioner.mockReturnValue({
+              practitioner: { uuid: 'next-provider' },
+            });
+        } else {
+          jest
+            .requireMock('../../../hooks/useEncounterConcepts')
+            .useEncounterConcepts.mockReturnValue({
+              encounterConcepts: {
+                encounterTypes: [{ name: 'Consultation', uuid: 'next-type' }],
+              },
+            });
+        }
+        rerender(<PatientHeader isActionAreaVisible={false} />);
+        expect(getEncounterSessionSnapshot().activeEncounter).toBeNull();
+        expect(getEncounterSessionSnapshot().canEditOrCreate).toBe(false);
+        await act(async () => finishNext(decision('next')));
+        await waitFor(() =>
+          expect(getEncounterSessionSnapshot().activeEncounter?.id).toBe(
+            'next',
+          ),
+        );
+        await act(async () => finishOld(decision('obsolete')));
+        expect(getEncounterSessionSnapshot().activeEncounter?.id).toBe('next');
+        expect(getEncounterSessionSnapshot().isLoading).toBe(false);
+        expect(
+          screen.getByTestId('consultation-action-button'),
+        ).toHaveTextContent('Continue Consultation');
+        expect(mockDispatchConsultationStart).not.toHaveBeenCalled();
+      },
+    );
+
     test('writes MATCHED decision to shared store when session resolves', async () => {
       const mockEncounter = {
         resourceType: 'Encounter',

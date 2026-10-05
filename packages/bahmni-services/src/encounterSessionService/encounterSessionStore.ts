@@ -82,9 +82,11 @@ export function setEncounterSessionDecision(decision: {
   notify();
 }
 
-/** Mark as loading while encounter session is being resolved. */
+/** A pending lookup cannot retain a previous actionable decision. */
 export function setEncounterSessionLoading(isLoading: boolean): void {
-  currentState = { ...currentState, isLoading };
+  currentState = isLoading
+    ? { ...INITIAL_STATE, isLoading: true }
+    : { ...currentState, isLoading: false };
   notify();
 }
 

@@ -1,5 +1,38 @@
 # Bahmni workflow parity ledger
 
+## 5 October encounter-request lifecycle checkpoint
+
+This closes the tested header-hook initial-load/retry/context races, not all
+clinical request races, concurrent native writes or complete React acceptance.
+
+- One lifecycle now owns initial encounter lookup and retries. Only its newest
+  request can publish a decision or error; cleanup rejects late completions.
+  Patient/provider/encounter-type changes immediately hide the old hook result,
+  including A-to-B-to-A navigation. Old callbacks cannot fetch a replaced context
+  or update an unmounted hook. Missing context remains pending and non-actionable.
+- Starting shared-store loading clears the previous encounter and eligibility.
+  The header keeps its existing loading skeleton, and its saved-event listener
+  tracks the current retry callback. No new dependency or transport cancellation
+  layer was added; obsolete requests may finish but cannot publish their result.
+- Eleven initial hook regressions and the pending-store regression failed before
+  correction. Focused verification now passes 168 clinical tests and one snapshot,
+  plus 181 service tests, in India and US Pacific time. Header integration tests
+  use the real hook/store with deferred transport responses for patient, provider
+  and type changes. They verify pending non-eligibility and rejection of a late
+  retry after a newer decision. Additional tests retain a newer failure after an
+  older success and reject post-unmount completions.
+- Service/clinical type checks, changed-source lint and builds pass. Existing
+  duplicate-mock, consultation act/CDSS warnings, upstream form-renderer eval and
+  large bundles remain. The actual-source read-only native verifier still passes
+  paginated selection, saved-ID validation, index-lag and failure checks, with
+  full records unchanged. Its native reads do not prove browser response-order
+  races; those are covered by controlled regression tests in this checkpoint.
+
+Remaining: submitted-form failure handling, other context/draft/permission
+transitions, noncoded/configured condition details, concurrent native writes,
+broader React workflows and the separate-product redesign/acceptance. No clinical
+write, staff privilege change or production/shared-demo deployment occurred.
+
 ## 5 October session-duration boundary checkpoint
 
 This closes invalid duration parsing and window-construction boundaries, not

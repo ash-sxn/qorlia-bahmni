@@ -99,7 +99,7 @@ const PatientHeader: React.FC<PatientHeaderProps> = ({
         refetch();
       }
     },
-    [patientUUID],
+    [patientUUID, refetch],
   );
 
   const {

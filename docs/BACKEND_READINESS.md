@@ -1,5 +1,28 @@
 # Qorlia React frontend backend readiness
 
+## Latest encounter-request lifecycle verification
+
+The header encounter hook now gives its initial lookup and retries one lifecycle
+and newest-request guard. Late success/failure cannot overwrite a newer request
+or another patient/provider/type context. Replaced context is hidden during render,
+before the next lookup finishes; old callbacks and unmounted completions are inert.
+Pending shared-store loading clears previous encounter eligibility, preserving the
+existing header skeleton rather than exposing an old consultation action.
+
+Eleven initial hook regressions and one store regression failed before correction.
+Focused checks pass 168 clinical tests and one snapshot, plus 181 service tests,
+in India and US Pacific time. Real hook/store integration with deferred responses
+covers context changes; additional checks cover retry ordering, A-to-B-to-A,
+missing context and unmount. Type checks, changed-source lint and builds pass,
+retaining existing test/build warnings. No dependency or cancellation layer was
+added: obsolete network requests may finish but cannot publish results.
+
+The actual-source native read-only verifier still preserves full records and
+passes selection, saved-ID/index-lag and read-failure checks. These native reads
+are not browser response-order proof. No clinical record, role or public deployment
+changed. Other request races, submitted-form failures, draft/permission handling,
+concurrency and broader React/separate-product acceptance remain open.
+
 ## Latest session-duration boundary verification
 
 The shared session-window constructor now rejects non-finite, non-positive and
