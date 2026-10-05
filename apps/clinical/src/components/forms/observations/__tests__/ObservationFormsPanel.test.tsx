@@ -6,7 +6,8 @@ import {
   fetchFormUuidByObservationDate,
 } from '@bahmni/services';
 import { useActivePractitioner } from '@bahmni/widgets';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { useClinicalAppData } from '../../../../hooks/useClinicalAppData';
 import useObservationFormsSearch from '../../../../hooks/useObservationFormsSearch';
@@ -55,7 +56,7 @@ jest.mock('../../../../hooks/usePinnedObservationForms', () => ({
 }));
 
 jest.mock('../../../../hooks/useSubmittedEncounterForms', () => ({
-  useSubmittedEncounterForms: jest.fn(() => new Set<string>()),
+  useSubmittedEncounterForms: jest.fn(),
 }));
 
 jest.mock('../../../../stores/observationFormsStore', () => ({
@@ -81,6 +82,15 @@ jest.mock('@bahmni/form2-controls', () => ({
 const MockObservationForms = jest.mocked(ObservationForms);
 
 beforeEach(() => {
+  jest.mocked(getPatientFormData).mockResolvedValue([]);
+  jest.mocked(fetchFormUuidByObservationDate).mockResolvedValue(null);
+  jest.mocked(useSubmittedEncounterForms).mockReturnValue({
+    submittedFormUuids: new Set<string>(),
+    isReady: true,
+    isLoading: false,
+    error: null,
+    refetch: jest.fn(),
+  });
   jest.mocked(useActivePractitioner).mockReturnValue({
     user: { uuid: 'practitioner-uuid' },
   } as ReturnType<typeof useActivePractitioner>);
@@ -151,7 +161,13 @@ describe('ObservationFormsPanel', () => {
 
   it('passes submittedFormUuids from useSubmittedEncounterForms to ObservationForms', () => {
     const mockSubmittedUuids = new Set(['form-uuid-1']);
-    jest.mocked(useSubmittedEncounterForms).mockReturnValue(mockSubmittedUuids);
+    jest.mocked(useSubmittedEncounterForms).mockReturnValue({
+      submittedFormUuids: mockSubmittedUuids,
+      isReady: true,
+      isLoading: false,
+      error: null,
+      refetch: jest.fn(),
+    });
 
     render(<ObservationFormsPanel />);
 
@@ -166,6 +182,37 @@ describe('ObservationFormsPanel', () => {
     onFormSelect!(mockForm1);
 
     expect(mockAddForm).toHaveBeenCalledWith(mockForm1);
+  });
+
+  it('hides selection on failed history and offers retry without discarding drafts', async () => {
+    const refetch = jest.fn();
+    jest.mocked(useSubmittedEncounterForms).mockReturnValue({
+      submittedFormUuids: new Set(),
+      isReady: false,
+      isLoading: false,
+      error: new Error('denied'),
+      refetch,
+    });
+    render(<ObservationFormsPanel />);
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(MockObservationForms).not.toHaveBeenCalled();
+    expect(mockRemoveForm).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not expose selections while history is pending', () => {
+    jest.mocked(useSubmittedEncounterForms).mockReturnValue({
+      submittedFormUuids: new Set(),
+      isReady: false,
+      isLoading: true,
+      error: null,
+      refetch: jest.fn(),
+    });
+    render(<ObservationFormsPanel />);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(MockObservationForms).not.toHaveBeenCalled();
+    expect(mockAddForm).not.toHaveBeenCalled();
   });
 
   it('calls removeForm when onRemoveForm is invoked', () => {
@@ -274,6 +321,49 @@ describe('ObservationFormsPanel', () => {
       expect(mockAddForm).not.toHaveBeenCalled();
     });
 
+    it('keeps drafts and blocks direct opening during failed history', () => {
+      jest.mocked(useSubmittedEncounterForms).mockReturnValue({
+        submittedFormUuids: new Set(),
+        isReady: false,
+        isLoading: false,
+        error: new Error('denied'),
+        refetch: jest.fn(),
+      });
+      render(
+        <ObservationFormsPanel
+          encounterSessionStartContext={{
+            formName: 'Vitals',
+            directFormMode: true,
+            activeEncounter: null,
+          }}
+        />,
+      );
+      expect(mockReset).not.toHaveBeenCalled();
+      expect(mockAddForm).not.toHaveBeenCalled();
+    });
+
+    it('does not open a submitted direct form or reset unrelated drafts', () => {
+      jest.mocked(useSubmittedEncounterForms).mockReturnValue({
+        submittedFormUuids: new Set([mockForm1.uuid]),
+        isReady: true,
+        isLoading: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      render(
+        <ObservationFormsPanel
+          encounterSessionStartContext={{
+            formName: 'Vitals',
+            directFormMode: true,
+            activeEncounter: null,
+          }}
+        />,
+      );
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(mockReset).not.toHaveBeenCalled();
+      expect(mockAddForm).not.toHaveBeenCalled();
+    });
+
     it('should not reset store when formName is not provided', () => {
       const encounterContext = {
         directFormMode: true,
@@ -301,7 +391,7 @@ describe('ObservationFormsPanel', () => {
         />,
       );
 
-      expect(mockReset).toHaveBeenCalledTimes(1);
+      expect(mockReset).not.toHaveBeenCalled();
       expect(mockAddForm).not.toHaveBeenCalled();
     });
 
@@ -343,6 +433,9 @@ describe('ObservationFormsPanel', () => {
       (
         useObservationFormsStore as unknown as { setState: jest.Mock }
       ).setState = mockSetState;
+      (
+        useObservationFormsStore as unknown as { getState: jest.Mock }
+      ).getState = jest.fn(() => ({ reset: jest.fn() }));
     });
 
     it('shows the loading indicator while the edit fetch is in flight (viewingForm not yet set)', () => {
@@ -486,7 +579,7 @@ describe('ObservationFormsPanel', () => {
       expect(storedObservations[0].concept.uuid).toBe('concept-vitals');
     });
 
-    it('calls addForm even when FHIR fetch fails', async () => {
+    it('does not open a blank edit form when FHIR fetch fails', async () => {
       jest
         .mocked(getObservationsBundleByEncounterUuid)
         .mockRejectedValue(new Error('Network error'));
@@ -503,8 +596,10 @@ describe('ObservationFormsPanel', () => {
       );
 
       await waitFor(() => {
-        expect(mockAddForm).toHaveBeenCalledWith(mockForm1);
+        expect(screen.getByRole('alert')).toBeInTheDocument();
       });
+      expect(mockAddForm).not.toHaveBeenCalled();
+      expect(mockSetState).not.toHaveBeenCalled();
     });
 
     it('does not fetch when formName does not match any form', async () => {
@@ -523,6 +618,106 @@ describe('ObservationFormsPanel', () => {
         expect(getObservationsBundleByEncounterUuid).not.toHaveBeenCalled();
         expect(mockAddForm).not.toHaveBeenCalled();
       });
+    });
+
+    it.each(['metadata', 'version'])(
+      'blocks edit when saved %s lookup fails',
+      async (failure) => {
+        jest.mocked(getObservationsBundleByEncounterUuid).mockResolvedValue({
+          resourceType: 'Bundle',
+          type: 'searchset',
+          entry: [],
+        });
+        jest.mocked(getObservationsFromFhir).mockReturnValue([]);
+        if (failure === 'metadata')
+          jest
+            .mocked(getPatientFormData)
+            .mockRejectedValueOnce(new Error('metadata denied'));
+        else
+          jest
+            .mocked(fetchFormUuidByObservationDate)
+            .mockRejectedValueOnce(new Error('version denied'));
+        render(
+          <ObservationFormsPanel
+            encounterSessionStartContext={{
+              editOnly: 'observationForms',
+              formName: 'Vitals',
+              sourceEncounterUuid: 'encounter-uuid-1',
+              activeEncounter: { id: 'encounter-uuid-1' } as any,
+            }}
+          />,
+        );
+        await screen.findByRole('alert');
+        expect(mockAddForm).not.toHaveBeenCalled();
+        expect(mockSetState).not.toHaveBeenCalled();
+      },
+    );
+
+    it('recovers a failed edit through retry without a blank replacement', async () => {
+      jest
+        .mocked(getObservationsBundleByEncounterUuid)
+        .mockRejectedValueOnce(new Error('unavailable'))
+        .mockResolvedValue({
+          resourceType: 'Bundle',
+          type: 'searchset',
+          entry: [],
+        });
+      jest.mocked(getObservationsFromFhir).mockReturnValue([]);
+      render(
+        <ObservationFormsPanel
+          encounterSessionStartContext={{
+            editOnly: 'observationForms',
+            formName: 'Vitals',
+            sourceEncounterUuid: 'encounter-uuid-1',
+            activeEncounter: { id: 'encounter-uuid-1' } as any,
+          }}
+        />,
+      );
+      await screen.findByRole('alert');
+      expect(mockAddForm).not.toHaveBeenCalled();
+      await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      await waitFor(() => expect(mockAddForm).toHaveBeenCalledTimes(1));
+      expect(getObservationsBundleByEncounterUuid).toHaveBeenCalledTimes(2);
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('ignores a late edit response after switching sessions', async () => {
+      let resolve!: (value: any) => void;
+      jest
+        .mocked(getObservationsBundleByEncounterUuid)
+        .mockReturnValueOnce(
+          new Promise((done) => {
+            resolve = done;
+          }),
+        )
+        .mockResolvedValue({
+          resourceType: 'Bundle',
+          type: 'searchset',
+          entry: [],
+        });
+      jest.mocked(getObservationsFromFhir).mockReturnValue([]);
+      const context = {
+        editOnly: 'observationForms',
+        formName: 'Vitals',
+        sourceEncounterUuid: 'encounter-uuid-1',
+        activeEncounter: { id: 'encounter-uuid-1' } as any,
+      };
+      const { rerender } = render(
+        <ObservationFormsPanel encounterSessionStartContext={context} />,
+      );
+      rerender(
+        <ObservationFormsPanel
+          encounterSessionStartContext={{
+            ...context,
+            sourceEncounterUuid: 'encounter-uuid-2',
+            activeEncounter: { id: 'encounter-uuid-2' } as any,
+          }}
+        />,
+      );
+      await waitFor(() => expect(mockAddForm).toHaveBeenCalledTimes(1));
+      await act(async () => resolve({ entry: [] }));
+      expect(mockAddForm).toHaveBeenCalledTimes(1);
+      expect(mockSetState).not.toHaveBeenCalled();
     });
 
     it('does not re-fetch on re-render within the same edit session', async () => {
@@ -565,6 +760,47 @@ describe('ObservationFormsPanel', () => {
       await waitFor(() => {
         expect(getObservationsBundleByEncounterUuid).toHaveBeenCalledTimes(1);
       });
+    });
+
+    it('does not replace an initialized edit draft when the form catalogue refreshes', async () => {
+      jest.mocked(getObservationsBundleByEncounterUuid).mockResolvedValue({
+        resourceType: 'Bundle',
+        type: 'searchset',
+        entry: [],
+      });
+      jest.mocked(getObservationsFromFhir).mockReturnValue([
+        {
+          concept: { uuid: 'concept-1' },
+          value: 81,
+          uuid: 'obs-uuid-1',
+          formFieldPath: 'Vitals.1/1-0',
+        },
+      ] as never);
+      const context = {
+        editOnly: 'observationForms',
+        formName: 'Vitals',
+        sourceEncounterUuid: 'encounter-uuid-1',
+        activeEncounter: { id: 'encounter-uuid-1' } as any,
+      };
+      const { rerender } = render(
+        <ObservationFormsPanel encounterSessionStartContext={context} />,
+      );
+      await waitFor(() => expect(mockAddForm).toHaveBeenCalledTimes(1));
+      expect(mockSetState).toHaveBeenCalledTimes(1);
+
+      jest.mocked(useObservationFormsSearch).mockReturnValue({
+        forms: [{ ...mockForm1 }, { ...mockForm2 }],
+        isLoading: false,
+        error: null,
+      });
+      await act(async () => {
+        rerender(
+          <ObservationFormsPanel encounterSessionStartContext={context} />,
+        );
+      });
+      expect(getObservationsBundleByEncounterUuid).toHaveBeenCalledTimes(1);
+      expect(mockSetState).toHaveBeenCalledTimes(1);
+      expect(mockAddForm).toHaveBeenCalledTimes(1);
     });
 
     it('enriches stored observations with status and basedOn from the FHIR bundle', async () => {

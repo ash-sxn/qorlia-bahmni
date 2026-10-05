@@ -16,6 +16,7 @@ import userEvent from '@testing-library/user-event';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { useClinicalAppData } from '../../../hooks/useClinicalAppData';
 import { useEncounterConcepts } from '../../../hooks/useEncounterConcepts';
+import { useSubmittedEncounterForms } from '../../../hooks/useSubmittedEncounterForms';
 import { useClinicalConfig } from '../../../providers/clinicalConfig';
 import { useAllergyStore } from '../../../stores/allergyStore';
 import { useEncounterDetailsStore } from '../../../stores/encounterDetailsStore';
@@ -92,9 +93,10 @@ jest.mock('../../../stores/encounterDetailsStore');
 jest.mock('../../../stores/observationFormsStore');
 jest.mock('../../../hooks/useClinicalAppData');
 jest.mock('../../../hooks/useEncounterConcepts');
+jest.mock('../../../hooks/useSubmittedEncounterForms');
 jest.mock('../../../providers/clinicalConfig');
 
-const mockObservationFormsContainer = jest.fn(() => null);
+const mockObservationFormsContainer = jest.fn<null, [unknown]>(() => null);
 jest.mock('../../forms/observations/ObservationFormsContainer', () => ({
   __esModule: true,
   default: (props: unknown) => mockObservationFormsContainer(props),
@@ -144,6 +146,13 @@ const renderComponent = (
   );
 
 beforeEach(() => {
+  jest.mocked(useSubmittedEncounterForms).mockReturnValue({
+    submittedFormUuids: new Set<string>(),
+    isReady: true,
+    isLoading: false,
+    error: null,
+    refetch: jest.fn(),
+  });
   queryClient.clear();
 
   mockRegistry.forEach((entry) => {
@@ -747,6 +756,85 @@ describe('ConsultationPad', () => {
     const enableSubmit = () => {
       (mockRegistry[0].hasData as jest.Mock).mockReturnValue(true);
     };
+
+    it.each([null, new Error('history denied')])(
+      'blocks observation submission with pending or failed history (%p)',
+      async (error) => {
+        const obsEntry = mockRegistry.find(
+          (entry) => entry.key === 'observationForms',
+        )!;
+        (obsEntry.hasData as jest.Mock).mockReturnValue(true);
+        jest.mocked(useSubmittedEncounterForms).mockReturnValue({
+          submittedFormUuids: new Set(),
+          isReady: false,
+          isLoading: !error,
+          error,
+          refetch: jest.fn(),
+        });
+        renderComponent();
+        await waitFor(() =>
+          expect(screen.getByTestId('primary-button')).toBeDisabled(),
+        );
+        await userEvent.click(screen.getByTestId('primary-button'));
+        expect(submitConsultation).not.toHaveBeenCalled();
+        expect(obsEntry.reset).not.toHaveBeenCalled();
+      },
+    );
+
+    it('does not block a consultation without observation data on unrelated form history', async () => {
+      enableSubmit();
+      jest.mocked(useSubmittedEncounterForms).mockReturnValue({
+        submittedFormUuids: new Set(),
+        isReady: false,
+        isLoading: false,
+        error: new Error('history denied'),
+        refetch: jest.fn(),
+      });
+      renderComponent();
+      await waitFor(() =>
+        expect(screen.getByTestId('primary-button')).toBeEnabled(),
+      );
+      await userEvent.click(screen.getByTestId('primary-button'));
+      await waitFor(() => expect(submitConsultation).toHaveBeenCalledTimes(1));
+      expect(useSubmittedEncounterForms).toHaveBeenLastCalledWith([], {
+        encounter: null,
+        enabled: false,
+      });
+    });
+
+    it('blocks the direct form submit handler and retains the draft while history is unavailable', async () => {
+      (
+        mockRegistry.find((entry) => entry.key === 'observationForms')!
+          .hasData as jest.Mock
+      ).mockReturnValue(true);
+      jest.mocked(useObservationFormsStore).mockReturnValue({
+        ...mockObsFormsState,
+        viewingForm: { uuid: 'vitals', name: 'Vitals' },
+      } as any);
+      jest.mocked(useSubmittedEncounterForms).mockReturnValue({
+        submittedFormUuids: new Set(),
+        isReady: false,
+        isLoading: false,
+        error: new Error('history denied'),
+        refetch: jest.fn(),
+      });
+      renderComponent({
+        encounterSessionStartContext: {
+          encounterType: 'Consultation',
+          directFormMode: true,
+        },
+      });
+      await waitFor(() =>
+        expect(mockObservationFormsContainer).toHaveBeenCalled(),
+      );
+      await act(async () => {
+        await (
+          mockObservationFormsContainer.mock.calls.at(-1)![0] as any
+        ).onDirectModeSubmit();
+      });
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(submitConsultation).not.toHaveBeenCalled();
+    });
 
     it('dispatches events, shows success notification, and closes on success', async () => {
       const onClose = jest.fn();

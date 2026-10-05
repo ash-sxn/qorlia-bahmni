@@ -1,4 +1,4 @@
-import { ActionArea } from '@bahmni/design-system';
+import { ActionArea, Button } from '@bahmni/design-system';
 import {
   AUDIT_LOG_EVENT_DETAILS,
   type AuditEventType,
@@ -14,6 +14,7 @@ import {
   type CDSSServerConfig,
   useCDSSCheckListener,
   useTranslation,
+  type ObservationForm,
 } from '@bahmni/services';
 import { useActivePractitioner, useNotification } from '@bahmni/widgets';
 import { useQuery } from '@tanstack/react-query';
@@ -33,6 +34,7 @@ import type { EncounterSessionStartContext } from '../../events/startConsultatio
 import { useActionAreaExpandProps } from '../../hooks/useActionAreaExpandProps';
 import { useClinicalAppData } from '../../hooks/useClinicalAppData';
 import { useEncounterConcepts } from '../../hooks/useEncounterConcepts';
+import { useSubmittedEncounterForms } from '../../hooks/useSubmittedEncounterForms';
 import { useClinicalConfig } from '../../providers/clinicalConfig';
 import { useAllergyStore } from '../../stores/allergyStore';
 import { useEncounterDetailsStore } from '../../stores/encounterDetailsStore';
@@ -58,6 +60,8 @@ interface ConsultationPadProps {
   isActionAreaExpanded?: boolean;
   onToggleActionAreaExpand?: () => void;
 }
+
+const NO_FORM_CATALOG: ObservationForm[] = [];
 
 const ConsultationPad: React.FC<ConsultationPadProps> = ({
   encounterSessionStartContext,
@@ -233,6 +237,16 @@ const ConsultationPad: React.FC<ConsultationPadProps> = ({
     sourceEncounter,
     sessionEncounter,
     sessionEncounterStatus,
+  });
+
+  const hasObservationData = useSyncExternalStore(subscribeAll, () =>
+    activeEntries.some(
+      (entry) => entry.key === 'observationForms' && entry.hasData(),
+    ),
+  );
+  const formHistory = useSubmittedEncounterForms(NO_FORM_CATALOG, {
+    encounter: activeEncounter,
+    enabled: hasObservationData,
   });
 
   const effectiveContext = useMemo<EncounterSessionStartContext>(
@@ -425,7 +439,11 @@ const ConsultationPad: React.FC<ConsultationPadProps> = ({
   useCDSSCheckListener(handleCDSSCheck);
 
   const handleSubmit = async () => {
-    if (activeEncounter === undefined) return;
+    if (
+      activeEncounter === undefined ||
+      (hasObservationData && !formHistory.isReady)
+    )
+      return;
     const validationResults = activeEntries.map((entry) => ({
       key: entry.key,
       valid: entry.validate(),
@@ -593,6 +611,7 @@ const ConsultationPad: React.FC<ConsultationPadProps> = ({
     !hasConsultationData ||
     !editChangesExist ||
     sourceEncounterLoading ||
+    (hasObservationData && !formHistory.isReady) ||
     activeEncounter === undefined;
   return (
     <>
@@ -615,19 +634,43 @@ const ConsultationPad: React.FC<ConsultationPadProps> = ({
         {...actionAreaExpandProps}
       />
       {viewingForm && (
-        <ObservationFormsContainer
-          onViewingFormChange={setViewingForm}
-          viewingForm={viewingForm}
-          onRemoveForm={removeForm}
-          onFormObservationsChange={updateFormData}
-          existingObservations={getFormData(viewingForm.uuid)?.observations}
-          directMode={directFormMode}
-          onDirectModeSubmit={directFormMode ? handleSubmit : undefined}
-          onDirectModeCancel={directFormMode ? handleCancel : undefined}
-          encounterSessionStartContext={effectiveContext}
-          isActionAreaExpanded={isActionAreaExpanded}
-          onToggleActionAreaExpand={onToggleActionAreaExpand}
-        />
+        <>
+          {hasObservationData && !formHistory.isReady && (
+            <div
+              role={formHistory.error ? 'alert' : 'status'}
+              className={styles.error}
+            >
+              <p>
+                {t(
+                  formHistory.error
+                    ? 'OBSERVATION_FORM_HISTORY_UNAVAILABLE'
+                    : 'OBSERVATION_FORM_HISTORY_LOADING',
+                )}
+              </p>
+              {formHistory.error && (
+                <Button
+                  kind="tertiary"
+                  onClick={() => void formHistory.refetch()}
+                >
+                  {t('OBSERVATION_FORM_TRY_AGAIN')}
+                </Button>
+              )}
+            </div>
+          )}
+          <ObservationFormsContainer
+            onViewingFormChange={setViewingForm}
+            viewingForm={viewingForm}
+            onRemoveForm={removeForm}
+            onFormObservationsChange={updateFormData}
+            existingObservations={getFormData(viewingForm.uuid)?.observations}
+            directMode={directFormMode}
+            onDirectModeSubmit={directFormMode ? handleSubmit : undefined}
+            onDirectModeCancel={directFormMode ? handleCancel : undefined}
+            encounterSessionStartContext={effectiveContext}
+            isActionAreaExpanded={isActionAreaExpanded}
+            onToggleActionAreaExpand={onToggleActionAreaExpand}
+          />
+        </>
       )}
     </>
   );

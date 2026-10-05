@@ -1,4 +1,9 @@
 {
+  "OBSERVATION_FORM_EDIT_UNAVAILABLE": "The saved form could not be loaded. No blank replacement has been opened. Try again or cancel.",
+  "OBSERVATION_FORM_HISTORY_UNAVAILABLE": "Submitted form history is unavailable. Your draft is kept, but forms cannot be added or submitted until history is loaded.",
+  "OBSERVATION_FORM_HISTORY_LOADING": "Checking submitted form history…",
+  "OBSERVATION_FORM_TRY_AGAIN": "Try again",
+  "OBSERVATION_FORM_ALREADY_SUBMITTED": "This form is already submitted in this consultation. Open the saved form from the chart to edit it.",
   "ABNORMAL_VALUE": "Abnormal Value",
   "ACTIONS": "Actions",
   "ADD_ALLERGY_NOTE": "Add Note",

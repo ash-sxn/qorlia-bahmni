@@ -1,5 +1,45 @@
 # Bahmni workflow parity ledger
 
+## 5 October submitted-form history and edit-recovery checkpoint
+
+This closes the tested history/read-failure paths, not complete observation-form
+or clinical parity.
+
+- Submitted-form history now distinguishes resolved empty/new encounters from
+  pending or failed reads. The consultation's explicit encounter context takes
+  precedence over the header snapshot; reset shared context remains pending.
+  Selection and observation submission block until history is ready. A failed
+  refresh keeps the draft and offers the existing branded retry control.
+- Saved form observation, metadata and version reads no longer turn failures into
+  an empty replacement. Edit/copyover initialization rejects late responses from
+  replaced contexts, preserves native observation identity on edit and strips it
+  only for copyover. Successful initialization remains latched across catalogue
+  refresh so an existing draft cannot be reset by a repeated fetch. The reset
+  readiness and catalogue-refresh regressions failed before correction.
+- The shared observation reader follows every FHIR next page through the existing
+  compatibility helper. Operation search cursors can target the FHIR root;
+  unexpected paths, incomplete pages and cycles still reject. This operation's
+  multi-page behavior has controlled transport coverage; the native observation
+  fixture returned one complete page. Native Encounter pagination is separately
+  verified with two real one-entry pages using the actual source services.
+- Actual isolated browser fault/recovery blocked observation reads, displayed the
+  saved-form error with Done disabled, and restored pulse 81 and its synthetic
+  note after retry. Cancel returned to the chart. The complete recovery capture
+  contains GET requests only; independent full native before/after records are
+  unchanged. Temporary blocking was removed. This did not replay a save.
+- Three clinical suites pass 131 tests and two snapshots; two sibling widget
+  suites pass 83 tests and three snapshots; two service suites pass 46 tests, all
+  in India and US Pacific time. Service/clinical type checks, builds and source
+  lint pass with one existing consultation effect-dependency warning. Duplicate
+  mock, upstream form-renderer eval and large-bundle warnings remain. A subsequent
+  chart reload exposed invalid paragraph nesting around radiology/procedure note
+  toggletips; that rendering correction is a separate open checkpoint.
+
+Remaining: catalogue/missing-form recovery, additional context/draft/permission
+transitions, noncoded/configured condition details, concurrent writes, broader
+React workflows and separate-product redesign/acceptance. No production or
+shared-demo deployment or staff privilege change occurred.
+
 ## 5 October encounter-request lifecycle checkpoint
 
 This closes the tested header-hook initial-load/retry/context races, not all

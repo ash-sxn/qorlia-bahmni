@@ -1,4 +1,9 @@
 {
+  "OBSERVATION_FORM_EDIT_UNAVAILABLE": "No se pudo cargar el formulario guardado. No se ha abierto un reemplazo vacío. Inténtelo de nuevo o cancele.",
+  "OBSERVATION_FORM_HISTORY_UNAVAILABLE": "El historial de formularios enviados no está disponible. Se conserva su borrador, pero no se pueden añadir ni enviar formularios hasta cargar el historial.",
+  "OBSERVATION_FORM_HISTORY_LOADING": "Comprobando el historial de formularios enviados…",
+  "OBSERVATION_FORM_TRY_AGAIN": "Intentar de nuevo",
+  "OBSERVATION_FORM_ALREADY_SUBMITTED": "Este formulario ya se ha enviado en esta consulta. Abra el formulario guardado desde la historia clínica para editarlo.",
   "ABNORMAL_VALUE": "Valor Anormal",
   "ACTIONS": "Acciones",
   "ADD_ALLERGY_NOTE": "Agregar Nota",

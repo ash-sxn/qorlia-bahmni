@@ -30,7 +30,7 @@ jest.mock('../../api');
 
 describe('observationService', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   describe('getPatientObservationsBundle', () => {
@@ -215,6 +215,58 @@ describe('observationService', () => {
 
   describe('getObservationsBundleByEncounterUuid', () => {
     const encounterUUID = 'e8c5eeb5-86d9-44d4-b37a-9de74a122a6e';
+
+    it('reads later observation pages through the local API', async () => {
+      const next =
+        '/openmrs/ws/fhir2/R4?_getpages=observation-history&_getpagesoffset=1';
+      (api.get as jest.Mock)
+        .mockResolvedValueOnce({
+          resourceType: 'Bundle',
+          type: 'searchset',
+          total: 2,
+          entry: [{ resource: { ...mockObservation, id: 'first' } }],
+          link: [{ relation: 'next', url: `https://internal.invalid${next}` }],
+        })
+        .mockResolvedValueOnce({
+          resourceType: 'Bundle',
+          type: 'searchset',
+          entry: [{ resource: { ...mockObservation, id: 'later' } }],
+        });
+      const result = await getObservationsBundleByEncounterUuid(encounterUUID);
+      expect(result.entry?.map((entry) => entry.resource?.id)).toEqual([
+        'first',
+        'later',
+      ]);
+      expect(api.get).toHaveBeenLastCalledWith(next);
+    });
+
+    it('rejects a later-page failure rather than returning partial edit history', async () => {
+      (api.get as jest.Mock)
+        .mockResolvedValueOnce({
+          resourceType: 'Bundle',
+          type: 'searchset',
+          entry: [{ resource: mockObservation }],
+          link: [
+            { relation: 'next', url: '/openmrs/ws/fhir2/R4?_getpages=history' },
+          ],
+        })
+        .mockRejectedValueOnce(new Error('later page failed'));
+      await expect(
+        getObservationsBundleByEncounterUuid(encounterUUID),
+      ).rejects.toThrow('later page failed');
+    });
+
+    it('rejects incomplete history when the server total exceeds the returned entries', async () => {
+      (api.get as jest.Mock).mockResolvedValueOnce({
+        resourceType: 'Bundle',
+        type: 'searchset',
+        total: 2,
+        entry: [{ resource: mockObservation }],
+      });
+      await expect(
+        getObservationsBundleByEncounterUuid(encounterUUID),
+      ).rejects.toThrow('incomplete result');
+    });
 
     it.each([undefined, null, '', '   '])(
       'rejects missing encounter %p without an API request',

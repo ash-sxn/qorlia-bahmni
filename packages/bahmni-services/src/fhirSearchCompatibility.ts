@@ -45,7 +45,8 @@ export async function getAllFHIRSearchPages<T extends Resource>(
   initialBundle?: Bundle<T>,
 ): Promise<Bundle<T>> {
   const expectedPath = new URL(initialUrl, 'http://localhost').pathname;
-  const searchRoot = expectedPath.slice(0, expectedPath.lastIndexOf('/'));
+  const resourcePath = expectedPath.replace(/\/\$[^/]+$/, '');
+  const searchRoot = resourcePath.slice(0, resourcePath.lastIndexOf('/'));
   const visited = new Set<string>();
   const entries: NonNullable<Bundle<T>['entry']> = [];
   let nextUrl: string | undefined = initialUrl;

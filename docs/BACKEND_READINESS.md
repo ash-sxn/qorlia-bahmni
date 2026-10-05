@@ -1,5 +1,33 @@
 # Qorlia React frontend backend readiness
 
+## Latest submitted-form history and edit-recovery verification
+
+The observation editor now distinguishes unavailable/pending history from an
+empty resolved encounter. It uses the pad's actual encounter context, blocks
+selection/submission while required history is unresolved and preserves drafts
+on failed refresh. Failed saved-form observation/metadata/version reads display
+an error and retry, not a blank replacement. Late replaced-session reads are
+discarded; catalogue refresh cannot reinitialize an already loaded edit draft.
+Reset-context and repeat-initialization regressions failed before correction.
+
+Actual isolated browser read blocking showed the saved-form error and disabled
+Done. Removing the fault and retrying restored pulse 81 and its synthetic note;
+Cancel returned to the chart. A complete GET-only recovery capture and independent
+full native comparison show unchanged records. The native observation response
+is one complete page; operation pagination is controlled-test evidence, while
+actual-source Encounter pagination independently passes two real one-entry pages.
+
+Focused checks pass 131 clinical tests/two snapshots, 83 sibling widget tests/three
+snapshots and 46 service tests in India and US Pacific time. Service/clinical type
+checks and builds pass. Lint has zero errors and one existing pad effect warning;
+existing mock/eval/bundle warnings remain. A later chart reload exposed paragraph
+nesting errors in radiology/procedure note toggletips, pending a separate markup
+correction. No temporary request blocking remains.
+
+This is not catalogue recovery, full form/configuration/role/concurrency acceptance
+or complete React/separate-product parity. No public/shared-demo deployment or
+existing staff privilege change occurred. See the newest parity checkpoint.
+
 ## Latest encounter-request lifecycle verification
 
 The header encounter hook now gives its initial lookup and retries one lifecycle
