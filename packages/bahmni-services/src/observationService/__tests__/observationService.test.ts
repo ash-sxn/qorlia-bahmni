@@ -216,6 +216,16 @@ describe('observationService', () => {
   describe('getObservationsBundleByEncounterUuid', () => {
     const encounterUUID = 'e8c5eeb5-86d9-44d4-b37a-9de74a122a6e';
 
+    it.each([undefined, null, '', '   '])(
+      'rejects missing encounter %p without an API request',
+      async (invalidEncounter) => {
+        await expect(
+          getObservationsBundleByEncounterUuid(invalidEncounter as string),
+        ).rejects.toThrow('An encounter identifier is required');
+        expect(api.get).not.toHaveBeenCalled();
+      },
+    );
+
     it('should fetch forms encounter from the FHIR API endpoint', async () => {
       (api.get as jest.Mock).mockResolvedValueOnce(mockFormsEncounter);
 

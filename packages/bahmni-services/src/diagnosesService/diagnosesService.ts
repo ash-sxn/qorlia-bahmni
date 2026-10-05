@@ -14,11 +14,25 @@ const CONFIRMED_STATUS = 'confirmed';
 const PROVISIONAL_STATUS = 'provisional';
 
 // Fetches all diagnoses (for consultation forms, no pagination).
-async function getPatientDiagnosesBundle(patientUUID: string): Promise<Bundle> {
+async function getPatientDiagnosesBundle(
+  patientUUID: string,
+  encounterUUID?: string,
+): Promise<Bundle> {
+  const scope = encounterUUID
+    ? `&encounter=${encodeURIComponent(encounterUUID)}`
+    : '';
   const { bundle } = await getCompatiblePatientBundle<Diagnoses>(
-    PATIENT_DIAGNOSIS_RESOURCE_URL(patientUUID),
-    `${OPENMRS_FHIR_R4}/Condition?patient=${patientUUID}&_count=100`,
-    isEncounterDiagnosis,
+    PATIENT_DIAGNOSIS_RESOURCE_URL(patientUUID) + scope,
+    // Bahmni's patient-only Condition search omits encounter diagnoses.
+    encounterUUID
+      ? PATIENT_DIAGNOSIS_RESOURCE_URL(patientUUID)
+      : `${OPENMRS_FHIR_R4}/Condition?patient=${patientUUID}&_count=100`,
+    (condition) =>
+      isEncounterDiagnosis(condition) &&
+      (!encounterUUID ||
+        condition.encounter?.reference?.split('/').slice(-2).join('/') ===
+          `Encounter/${encounterUUID}`),
+    !!encounterUUID,
   );
   return bundle;
 }
@@ -143,12 +157,14 @@ function deduplicateDiagnoses(diagnoses: Diagnosis[]): Diagnosis[] {
 /**
  * Fetches and formats diagnoses for a given patient UUID
  * @param patientUUID - The UUID of the patient
+ * @param encounterUUID - Optional encounter scope for consultation duplicate checks
  * @returns Promise resolving to an array of deduplicated diagnoses
  */
 export async function getPatientDiagnoses(
   patientUUID: string,
+  encounterUUID?: string,
 ): Promise<Diagnosis[]> {
-  const bundle = await getPatientDiagnosesBundle(patientUUID);
+  const bundle = await getPatientDiagnosesBundle(patientUUID, encounterUUID);
   const formattedDiagnoses = formatDiagnoses(bundle);
   return deduplicateDiagnoses(formattedDiagnoses);
 }

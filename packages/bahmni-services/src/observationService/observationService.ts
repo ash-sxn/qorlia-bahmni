@@ -69,6 +69,9 @@ export async function getObservationsBundleByEncounterUuid(
   encounterUUID: string,
   basedOn?: string,
 ): Promise<Bundle<Observation>> {
+  if (typeof encounterUUID !== 'string' || !encounterUUID.trim()) {
+    throw new Error('An encounter identifier is required');
+  }
   return await get<Bundle<Observation>>(
     FHIR_OBSERVATIONS_BY_ENCOUNTER_URL(encounterUUID, basedOn),
   );

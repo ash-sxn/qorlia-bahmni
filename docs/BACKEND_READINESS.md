@@ -1,5 +1,28 @@
 # Qorlia React frontend backend readiness
 
+## Latest encounter-scoped diagnosis and refresh verification
+
+Consultation duplicate checks now target the saved encounter, retaining earlier
+diagnoses without allowing a repeat in the current encounter. The pinned backend
+rejects its encounter search filter; the compatible query keeps the diagnosis
+category, reads all pages and filters locally. Missing/failed encounter context
+blocks input and Done rather than silently creating a new encounter.
+
+Actual isolated React save/read-back retains the same confirmed concept in two
+distinct encounters. Current-encounter duplicate selection was blocked with no
+clinical write in the non-truncated capture. A separate new consultation saved
+once with 201 and retained one encounter/diagnosis after full reload and native
+read-back. Reopening fetched observations for its real saved encounter with 200;
+no undefined-encounter request or new reload console error was captured.
+
+The submitted-form callback and shared reader reject missing encounter identifiers
+without a network request; the new-to-matched query transition remains supported.
+Focused service/clinical checks pass 100/289 tests and seven clinical snapshots in
+India/US Pacific time, with type checks and dependency-first builds. Existing lint,
+mock, eval/import and bundle warnings remain. Encounter pagination/selection,
+submitted-form failure states and other clinical/separate-product gates remain
+open. No production/shared-demo deployment or staff privilege change occurred.
+
 ## Latest diagnosis-to-condition verification
 
 React now adds a condition only from a confirmed diagnosis and retains the

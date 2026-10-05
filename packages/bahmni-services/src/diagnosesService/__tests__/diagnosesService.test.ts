@@ -19,6 +19,7 @@ describe('diagnosesService', () => {
     ): Condition => ({
       resourceType: 'Condition',
       id: 'diagnosis-1',
+      category: [{ coding: [{ code: 'encounter-diagnosis' }] }],
       subject: {
         reference: 'Patient/test-patient',
         display: 'Test Patient',
@@ -63,6 +64,158 @@ describe('diagnosesService', () => {
     });
 
     describe('Happy Path Cases', () => {
+      it('includes current-encounter duplicates beyond the first preferred page', async () => {
+        (get as jest.Mock)
+          .mockResolvedValueOnce({
+            ...createMockBundle([]),
+            total: 1,
+            link: [
+              {
+                relation: 'next',
+                url: 'http://localhost/openmrs/ws/fhir2/R4/Condition?patient=test&_getpagesoffset=100',
+              },
+            ],
+          })
+          .mockResolvedValueOnce(
+            createMockBundle([
+              createMockDiagnosis({
+                id: 'later-page',
+                encounter: { reference: 'Encounter/current-encounter' },
+              }),
+            ]),
+          );
+        expect(
+          (await getPatientDiagnoses(patientUUID, 'current-encounter')).map(
+            (item) => item.id,
+          ),
+        ).toEqual(['later-page']);
+        expect(get).toHaveBeenCalledTimes(2);
+      });
+
+      it('scopes duplicate history to the requested encounter before deduplication', async () => {
+        (get as jest.Mock).mockResolvedValueOnce(
+          createMockBundle([
+            createMockDiagnosis({
+              id: 'current',
+              encounter: { reference: 'Encounter/current-encounter' },
+              recordedDate: '2025-03-24T14:30:15+00:00',
+            }),
+            createMockDiagnosis({
+              id: 'other',
+              encounter: { reference: 'Encounter/other-encounter' },
+            }),
+            createMockDiagnosis({
+              id: 'wrong-type',
+              encounter: { reference: 'Patient/current-encounter' },
+            }),
+            createMockDiagnosis({ id: 'missing-encounter' }),
+          ]),
+        );
+        const diagnoses = await getPatientDiagnoses(
+          patientUUID,
+          'current-encounter',
+        );
+        expect(diagnoses.map((diagnosis) => diagnosis.id)).toEqual(['current']);
+        expect(get).toHaveBeenCalledWith(
+          expect.stringContaining('&encounter=current-encounter'),
+        );
+      });
+
+      it('filters unsupported encounter searches without losing prior-encounter history', async () => {
+        const diagnosis = (id: string, encounter: string): Condition =>
+          createMockDiagnosis({
+            id,
+            encounter: { reference: encounter },
+            category: [{ coding: [{ code: 'encounter-diagnosis' }] }],
+          });
+        (get as jest.Mock)
+          .mockRejectedValueOnce(
+            new Error(
+              'Invalid input parameters. Please check your request and try again.',
+            ),
+          )
+          .mockResolvedValueOnce(
+            createMockBundle([
+              diagnosis('old', 'Encounter/older'),
+              diagnosis(
+                'current',
+                'http://localhost/openmrs/ws/fhir2/R4/Encounter/current-encounter',
+              ),
+              diagnosis('wrong-type', 'Patient/current-encounter'),
+              {
+                ...diagnosis('condition', 'Encounter/current-encounter'),
+                category: [{ coding: [{ code: 'problem-list-item' }] }],
+              },
+            ]),
+          );
+        expect(
+          (await getPatientDiagnoses(patientUUID, 'current-encounter')).map(
+            (item) => item.id,
+          ),
+        ).toEqual(['current']);
+        expect(get).toHaveBeenCalledTimes(2);
+      });
+
+      it('retains the diagnosis category when only the encounter filter is unsupported', async () => {
+        const categoryUrl = `/openmrs/ws/fhir2/R4/Condition?category=encounter-diagnosis&patient=${patientUUID}&_count=100&_sort=-_lastUpdated`;
+        const nextUrl = `${categoryUrl}&_getpagesoffset=100`;
+        (get as jest.Mock).mockImplementation(async (url: string) => {
+          if (url.includes('&encounter=')) {
+            throw new Error(
+              'Invalid input parameters. Please check your request and try again.',
+            );
+          }
+          if (url === categoryUrl) {
+            return {
+              ...createMockBundle([
+                createMockDiagnosis({
+                  id: 'older',
+                  encounter: { reference: 'Encounter/older-encounter' },
+                }),
+              ]),
+              total: 2,
+              link: [{ relation: 'next', url: nextUrl }],
+            };
+          }
+          if (url === nextUrl) {
+            return createMockBundle([
+              createMockDiagnosis({
+                id: 'current',
+                encounter: { reference: 'Encounter/current-encounter' },
+              }),
+            ]);
+          }
+          // The installed extension's patient-only search omits diagnoses.
+          return createMockBundle([]);
+        });
+
+        expect(
+          (await getPatientDiagnoses(patientUUID, 'current-encounter')).map(
+            (item) => item.id,
+          ),
+        ).toEqual(['current']);
+        expect(get).toHaveBeenNthCalledWith(2, categoryUrl);
+        expect(get).toHaveBeenNthCalledWith(3, nextUrl);
+        expect(get).toHaveBeenCalledTimes(3);
+      });
+
+      it('rejects unavailable category history rather than accepting an empty patient-only search', async () => {
+        (get as jest.Mock)
+          .mockRejectedValueOnce(
+            new Error(
+              'Invalid input parameters. Please check your request and try again.',
+            ),
+          )
+          .mockRejectedValueOnce(new Error('Diagnosis history unavailable'));
+        await expect(
+          getPatientDiagnoses(patientUUID, 'current-encounter'),
+        ).rejects.toThrow('Diagnosis history unavailable');
+        expect(get).toHaveBeenLastCalledWith(
+          expect.stringContaining('category=encounter-diagnosis'),
+        );
+        expect(get).toHaveBeenCalledTimes(2);
+      });
+
       it('should return array of diagnoses', async () => {
         const mockConditions = [
           createMockDiagnosis({

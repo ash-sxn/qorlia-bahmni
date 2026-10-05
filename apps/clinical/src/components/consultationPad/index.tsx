@@ -414,6 +414,7 @@ const ConsultationPad: React.FC<ConsultationPadProps> = ({
   useCDSSCheckListener(handleCDSSCheck);
 
   const handleSubmit = async () => {
+    if (activeEncounter === undefined) return;
     const validationResults = activeEntries.map((entry) => ({
       key: entry.key,
       valid: entry.validate(),
@@ -536,7 +537,10 @@ const ConsultationPad: React.FC<ConsultationPadProps> = ({
   };
 
   const hasError =
-    isError || isEncounterTypePropInvalid || !!encounterTypesError;
+    isError ||
+    isEncounterTypePropInvalid ||
+    !!encounterTypesError ||
+    sessionEncounterStatus === 'error';
 
   const renderPadContent = (() => {
     if (hasError)

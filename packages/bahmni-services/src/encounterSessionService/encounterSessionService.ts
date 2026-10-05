@@ -71,25 +71,20 @@ export async function filterByActiveVisit(
 ): Promise<Encounter | null> {
   if (!encounters.length) return null;
 
-  try {
-    const activeVisit = await getActiveVisit(patientUUID);
-    if (!activeVisit) return null;
+  const activeVisit = await getActiveVisit(patientUUID);
+  if (!activeVisit) return null;
 
-    // Find encounter that belongs to the active visit
-    return (
-      encounters.find((encounter) => {
-        const visitUUID = encounter.partOf?.reference?.split('/')[1];
-        if (activeVisit.id !== visitUUID) return false;
-        if (!currentEpisodeEncounterUuids) return true;
-        return (
-          !!encounter.id && currentEpisodeEncounterUuids.includes(encounter.id)
-        );
-      }) ?? null
-    );
-  } catch {
-    // If we can't get visit info, default to "New Consultation"
-    return null;
-  }
+  // Find encounter that belongs to the active visit
+  return (
+    encounters.find((encounter) => {
+      const visitUUID = encounter.partOf?.reference?.split('/')[1];
+      if (activeVisit.id !== visitUUID) return false;
+      if (!currentEpisodeEncounterUuids) return true;
+      return (
+        !!encounter.id && currentEpisodeEncounterUuids.includes(encounter.id)
+      );
+    }) ?? null
+  );
 }
 
 /**
@@ -108,42 +103,38 @@ export async function findActiveEncounterInSession(
   encounterTypeUUID?: string,
   currentEpisodeEncounterUuids?: string[],
 ): Promise<Encounter | null> {
-  try {
-    if (!patientUUID) return null;
+  if (!patientUUID) return null;
 
-    const duration =
-      sessionDurationMinutes ?? (await getEncounterSessionDuration());
-    const sessionStartTime = new Date(Date.now() - duration * 60 * 1000);
-    const lastUpdatedParam = `ge${sessionStartTime.toISOString()}`;
+  const duration =
+    sessionDurationMinutes ?? (await getEncounterSessionDuration());
+  const sessionStartTime = new Date(Date.now() - duration * 60 * 1000);
+  const lastUpdatedParam = `ge${sessionStartTime.toISOString()}`;
 
-    const searchParams: EncounterSearchParams = {
-      patient: patientUUID,
-      _tag: 'encounter',
-      _lastUpdated: lastUpdatedParam,
-      type: encounterTypeUUID,
-    };
+  const searchParams: EncounterSearchParams = {
+    patient: patientUUID,
+    _tag: 'encounter',
+    _lastUpdated: lastUpdatedParam,
+    type: encounterTypeUUID,
+  };
 
-    // Add participant filter if practitioner UUID is provided
-    if (practitionerUUID) {
-      searchParams.participant = practitionerUUID;
-    }
-
-    // Search for encounters within session duration
-    // Server-side filtering by patient, duration, and practitioner (if provided)
-    const encounters = await searchEncounters(searchParams);
-
-    if (encounters.length === 0) return null;
-
-    // Filter by active visit and return the most recent one
-    const result = await filterByActiveVisit(
-      encounters,
-      patientUUID,
-      currentEpisodeEncounterUuids,
-    );
-    return result;
-  } catch {
-    return null;
+  // Add participant filter if practitioner UUID is provided
+  if (practitionerUUID) {
+    searchParams.participant = practitionerUUID;
   }
+
+  // Search for encounters within session duration
+  // Server-side filtering by patient, duration, and practitioner (if provided)
+  const encounters = await searchEncounters(searchParams);
+
+  if (encounters.length === 0) return null;
+
+  // Filter by active visit and return the most recent one
+  const result = await filterByActiveVisit(
+    encounters,
+    patientUUID,
+    currentEpisodeEncounterUuids,
+  );
+  return result;
 }
 
 /**

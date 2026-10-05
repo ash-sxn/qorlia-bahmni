@@ -21,8 +21,8 @@ export function getActiveEncounter(args: {
     sessionEncounterStatus,
   } = args;
 
+  if (sessionEncounterStatus !== 'success') return undefined;
   if (!sourceEncounterUuid) return sessionEncounter ?? null;
-  if (sessionEncounterStatus === 'pending') return undefined;
   if (!sessionEncounter) return null;
 
   return sessionEncounter.id === sourceEncounterUuid

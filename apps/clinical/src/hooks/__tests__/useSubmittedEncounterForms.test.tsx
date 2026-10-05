@@ -390,6 +390,75 @@ describe('useSubmittedEncounterForms', () => {
   });
 
   describe('consultationSaved refetch', () => {
+    it.each([
+      [null, [], PATIENT_UUID],
+      [{ id: ENCOUNTER_UUID }, ['SESSION_EXPIRED'], PATIENT_UUID],
+      [{}, ['MATCHED'], PATIENT_UUID],
+      [{ id: ENCOUNTER_UUID }, ['MATCHED'], null],
+    ])(
+      'does not manually fetch a disabled query after save (%p, %p, %p)',
+      async (activeEncounter, matchReasons, patientUUID) => {
+        mockUseEncounterSessionStore.mockReturnValue({
+          activeEncounter,
+          matchReasons,
+        } as unknown as ReturnType<typeof useEncounterSessionStore>);
+        mockUsePatientUUID.mockReturnValue(patientUUID);
+        mockGetObservationsBundleByEncounterUuid.mockResolvedValue(
+          makeBundle([]),
+        );
+        let callback: Parameters<typeof useSubscribeConsultationSaved>[0];
+        mockUseSubscribeConsultationSaved.mockImplementation((cb) => {
+          callback = cb;
+        });
+        renderHook(() => useSubmittedEncounterForms(allForms), {
+          wrapper: createWrapper(),
+        });
+
+        await act(async () => {
+          callback!({
+            patientUUID: patientUUID as string,
+            updatedResources: {
+              conditions: false,
+              allergies: false,
+              medications: false,
+              serviceRequests: {},
+            },
+            updatedConcepts: new Map(),
+          });
+        });
+        expect(mockGetObservationsBundleByEncounterUuid).not.toHaveBeenCalled();
+      },
+    );
+
+    it('fetches submitted forms when a new encounter becomes matched after save', async () => {
+      mockUseEncounterSessionStore.mockReturnValue({
+        activeEncounter: null,
+        matchReasons: [],
+      } as unknown as ReturnType<typeof useEncounterSessionStore>);
+      mockGetObservationsBundleByEncounterUuid.mockResolvedValue(
+        makeBundle([makeObservation('Vitals.1/1-0')]),
+      );
+      const { result, rerender } = renderHook(
+        () => useSubmittedEncounterForms(allForms),
+        { wrapper: createWrapper() },
+      );
+      expect(mockGetObservationsBundleByEncounterUuid).not.toHaveBeenCalled();
+
+      mockUseEncounterSessionStore.mockReturnValue({
+        activeEncounter: { id: ENCOUNTER_UUID },
+        matchReasons: ['MATCHED'],
+      } as unknown as ReturnType<typeof useEncounterSessionStore>);
+      rerender();
+
+      await waitFor(() =>
+        expect(result.current.has('form-uuid-vitals')).toBe(true),
+      );
+      expect(mockGetObservationsBundleByEncounterUuid).toHaveBeenCalledTimes(1);
+      expect(mockGetObservationsBundleByEncounterUuid).toHaveBeenCalledWith(
+        ENCOUNTER_UUID,
+      );
+    });
+
     it('calls refetch when consultationSaved fires for the current patient', async () => {
       mockGetObservationsBundleByEncounterUuid.mockResolvedValue(
         makeBundle([]),

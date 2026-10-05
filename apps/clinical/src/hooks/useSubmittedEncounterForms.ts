@@ -46,11 +46,15 @@ export function useSubmittedEncounterForms(
 
   useSubscribeConsultationSaved(
     (payload) => {
-      if (payload.patientUUID === patientUUID) {
+      if (
+        patientUUID &&
+        activeEncounterUuid &&
+        payload.patientUUID === patientUUID
+      ) {
         refetch();
       }
     },
-    [patientUUID],
+    [patientUUID, activeEncounterUuid, refetch],
   );
 
   return useMemo(() => {

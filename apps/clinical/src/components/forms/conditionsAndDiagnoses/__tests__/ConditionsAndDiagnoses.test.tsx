@@ -2,6 +2,7 @@ import {
   type ConditionInputEntry,
   type DiagnosisInputEntry,
   getConditions,
+  getPatientDiagnoses,
   hasPrivilege,
 } from '@bahmni/services';
 import {
@@ -31,6 +32,7 @@ import { useConceptSearch } from '../../../../hooks/useConceptSearch';
 import { ConceptSearch } from '../../../../models/concepts';
 import { useConditionsAndDiagnosesStore } from '../../../../stores/conditionsAndDiagnosesStore';
 import ConditionsAndDiagnoses from '../ConditionsAndDiagnoses';
+import type { EncounterSessionStartContext } from '../../../../events/startConsultation';
 
 expect.extend(toHaveNoViolations);
 
@@ -209,6 +211,7 @@ describe('ConditionsAndDiagnoses', () => {
     existingConditionsLoading = false,
     existingConditionsError: Error | null = null,
     diagnosesError: Error | null = null,
+    encounterSessionStartContext?: EncounterSessionStartContext,
   ) => {
     mockedUseConceptSearch.mockReturnValue({
       searchResults: conceptSearchResults,
@@ -304,7 +307,9 @@ describe('ConditionsAndDiagnoses', () => {
     return render(
       <QueryClientProvider client={queryClient}>
         <UserPrivilegeProvider>
-          <ConditionsAndDiagnoses />
+          <ConditionsAndDiagnoses
+            encounterSessionStartContext={encounterSessionStartContext}
+          />
         </UserPrivilegeProvider>
       </QueryClientProvider>,
     );
@@ -318,6 +323,125 @@ describe('ConditionsAndDiagnoses', () => {
   });
 
   describe('Initial Rendering', () => {
+    it('uses the consultation pad encounter for duplicate reads, not patient-wide history', async () => {
+      renderComponent(
+        [],
+        [],
+        mockConcepts,
+        false,
+        null,
+        [],
+        false,
+        null,
+        null,
+        {
+          patientUuid: 'test-patient-uuid',
+          activeEncounter: {
+            resourceType: 'Encounter',
+            id: 'current-encounter',
+            status: 'in-progress',
+            class: {},
+            subject: { reference: 'Patient/test-patient-uuid' },
+          },
+        },
+      );
+      const query = mockedUseQuery.mock.calls.find(
+        ([options]: any) => options.queryKey[0] === 'diagnoses',
+      )?.[0] as any;
+      (getPatientDiagnoses as jest.Mock).mockResolvedValueOnce([]);
+      await query.queryFn();
+      expect(query.queryKey).toEqual([
+        'diagnoses',
+        'test-patient-uuid',
+        'current-encounter',
+      ]);
+      expect(getPatientDiagnoses).toHaveBeenCalledWith(
+        'test-patient-uuid',
+        'current-encounter',
+      );
+    });
+
+    it('does not use past diagnoses as duplicates for a new encounter', async () => {
+      renderComponent(
+        [],
+        [],
+        mockConcepts,
+        false,
+        null,
+        [],
+        false,
+        null,
+        null,
+        {
+          patientUuid: 'test-patient-uuid',
+          activeEncounter: null,
+        },
+      );
+      const query = mockedUseQuery.mock.calls.find(
+        ([options]: any) => options.queryKey[0] === 'diagnoses',
+      )?.[0] as any;
+      expect(await query.queryFn()).toEqual([]);
+      expect(getPatientDiagnoses).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      { activeEncounter: undefined },
+      {
+        activeEncounter: {
+          resourceType: 'Encounter',
+          id: 'other-patient-encounter',
+          status: 'in-progress',
+          class: {},
+          subject: { reference: 'Patient/other-patient' },
+        },
+      },
+    ] as EncounterSessionStartContext[])(
+      'blocks diagnosis entry until the current patient encounter is resolved: %j',
+      async (context) => {
+        renderComponent(
+          [],
+          [],
+          mockConcepts,
+          false,
+          null,
+          [],
+          false,
+          null,
+          null,
+          context,
+        );
+        const query = mockedUseQuery.mock.calls.find(
+          ([options]: any) => options.queryKey[0] === 'diagnoses',
+        )?.[0] as any;
+        expect(query.enabled).toBe(false);
+        await userEvent.type(screen.getByRole('combobox'), 'hyper');
+        expect(screen.getByText('Loading concepts...')).toBeInTheDocument();
+        expect(addDiagnosisMock).not.toHaveBeenCalled();
+      },
+    );
+
+    it('rejects same-name draft diagnoses with different concept IDs', async () => {
+      renderComponent(
+        [
+          createMockDiagnosisEntry({
+            id: 'different-id',
+            display: ' HYPERTENSION ',
+          }),
+        ],
+        [],
+        mockConcepts,
+      );
+      await userEvent.type(
+        screen.getByRole('combobox', { name: 'Search for diagnoses' }),
+        'hyper',
+      );
+      await userEvent.click(screen.getByText('Hypertension'));
+      expect(addDiagnosisMock).not.toHaveBeenCalled();
+      expect(
+        screen.getByText('Diagnosis is already added'),
+      ).toBeInTheDocument();
+    });
+
     test('should render the component with default state', () => {
       renderComponent();
       expect(screen.getByText('Conditions and Diagnoses')).toBeInTheDocument();
@@ -1063,7 +1187,7 @@ describe('ConditionsAndDiagnoses', () => {
       );
       expect(mockedUseQuery).toHaveBeenCalledWith(
         expect.objectContaining({
-          queryKey: ['diagnoses', 'test-patient-uuid'],
+          queryKey: ['diagnoses', 'test-patient-uuid', null],
           enabled: false,
         }),
       );

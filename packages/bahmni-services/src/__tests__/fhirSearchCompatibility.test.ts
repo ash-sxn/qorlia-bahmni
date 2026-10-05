@@ -81,3 +81,53 @@ it('preserves real server errors', async () => {
   ).rejects.toThrow('Server Error');
   expect(get).toHaveBeenCalledTimes(1);
 });
+
+it('collects all preferred pages only when requested', async () => {
+  (get as jest.Mock)
+    .mockResolvedValueOnce({
+      resourceType: 'Bundle',
+      total: 2,
+      entry: [{ resource: diagnosis }],
+      link: [{ relation: 'next', url: `${base}&_getpagesoffset=1` }],
+    })
+    .mockResolvedValueOnce({
+      resourceType: 'Bundle',
+      entry: [{ resource: problem }],
+    });
+  const result = await getCompatiblePatientBundle<Condition>(
+    base,
+    base,
+    (resource) => resource.id === diagnosis.id,
+    true,
+  );
+  expect(result.usedFallback).toBe(false);
+  expect(result.bundle.entry).toEqual([{ resource: diagnosis }]);
+  expect(result.bundle.total).toBe(1);
+  expect(result.bundle.link).toBeUndefined();
+  expect(get).toHaveBeenCalledTimes(2);
+});
+
+it.each([
+  ['different resource', `${base.replace('/Condition?', '/Patient?')}`],
+  ['cyclic', base],
+])('rejects a %s preferred pagination link', async (_, nextUrl) => {
+  (get as jest.Mock).mockResolvedValueOnce({
+    resourceType: 'Bundle',
+    link: [{ relation: 'next', url: nextUrl }],
+  });
+  await expect(
+    getCompatiblePatientBundle<Condition>(base, base, () => true, true),
+  ).rejects.toThrow('Invalid FHIR pagination link');
+  expect(get).toHaveBeenCalledTimes(1);
+});
+
+it('rejects incomplete preferred results rather than approving unknown duplicates', async () => {
+  (get as jest.Mock).mockResolvedValueOnce({
+    resourceType: 'Bundle',
+    total: 2,
+    entry: [{ resource: diagnosis }],
+  });
+  await expect(
+    getCompatiblePatientBundle<Condition>(base, base, () => true, true),
+  ).rejects.toThrow('incomplete result');
+});

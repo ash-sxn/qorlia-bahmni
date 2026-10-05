@@ -1,5 +1,46 @@
 # Bahmni workflow parity ledger
 
+## 5 October encounter-scoped diagnosis and submitted-form refresh checkpoint
+
+This closes the tested consultation duplicate scope and missing-encounter refresh
+paths, not full diagnosis, encounter-session or clinical workflow parity.
+
+- Diagnosis duplicates now use the encounter that the consultation will save,
+  rather than every earlier diagnosis for the patient. Saved and draft duplicates
+  still block the same encounter; same-name drafts with different concept IDs are
+  rejected. Missing, pending, failed or mismatched encounter context blocks input
+  and submission instead of being interpreted as a known new encounter.
+- The pinned FHIR server rejects the diagnosis encounter filter. The compatibility
+  query retains the encounter-diagnosis category, reads all pages and filters by
+  the typed encounter reference locally. A generic patient-only Condition search
+  returned zero diagnoses for a fixture with two, so it is not used for this
+  scoped fallback. Incomplete/cyclic pagination and actual read errors fail closed.
+- Actual isolated React saving recorded the same confirmed coded diagnosis in a
+  later encounter while retaining the earlier record. Reopening the current
+  encounter rejected its duplicate, kept Done disabled and issued no clinical
+  write in a complete, non-truncated network capture. Independent native reads
+  retain exactly two diagnoses associated with the two distinct encounters.
+- The submitted-form event callback now refetches only with a matching patient
+  and valid matched encounter. The shared observation reader also rejects a
+  missing/blank identifier before HTTP. Disabled-state regressions failed before
+  the correction; the new-to-matched transition still automatically loads forms.
+  One actual new-consultation save returned 201, and reopening queried the new
+  encounter's observations with 200, without any `encounter=undefined` request.
+  Full reload and independent native reads retain exactly one encounter and one
+  confirmed diagnosis for that second synthetic fixture. No successful save was
+  replayed, and no new console errors were captured after reload.
+- Four service suites pass 100 tests and six clinical suites pass 289 tests and
+  seven snapshots in India and US Pacific time. Service/widget/clinical type
+  checks and dependency-first builds pass. Changed-source lint has zero errors
+  and the existing consultation effect-dependency warning. Existing duplicate
+  mocks, form-renderer eval, import and large-bundle warnings remain. The fixes
+  reuse current queries, events, controls and services without a new dependency
+  or mirrored state. No production/shared-demo deployment or staff-role change.
+
+Remaining: encounter pagination/selection and reference variants, submitted-form
+failure states, noncoded entry, condition details, permission/draft transitions,
+concurrent writes and all wider React and separate-product release gates.
+
 ## 5 October confirmed diagnosis-to-condition checkpoint
 
 This closes confirmed-only condition conversion and diagnosis retention in the

@@ -24,7 +24,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests duplicate diagnosis search should
           <input
             aria-activedescendant=""
             aria-autocomplete="list"
-            aria-controls="downshift-_r_a6_-menu"
+            aria-controls="downshift-_r_as_-menu"
             aria-expanded="false"
             aria-haspopup="listbox"
             aria-label="Search for diagnoses"
@@ -40,11 +40,11 @@ exports[`ConditionsAndDiagnoses Snapshot Tests duplicate diagnosis search should
             value=""
           />
           <button
-            aria-controls="downshift-_r_a6_-menu"
+            aria-controls="downshift-_r_as_-menu"
             aria-expanded="false"
             aria-label="Open"
             class="cds--list-box__menu-icon"
-            id="downshift-_r_a6_-toggle-button"
+            id="downshift-_r_as_-toggle-button"
             tabindex="-1"
             title="Open"
             type="button"
@@ -66,9 +66,9 @@ exports[`ConditionsAndDiagnoses Snapshot Tests duplicate diagnosis search should
           </button>
         </div>
         <ul
-          aria-labelledby="downshift-_r_a6_-label"
+          aria-labelledby="downshift-_r_as_-label"
           class="cds--list-box__menu"
-          id="downshift-_r_a6_-menu"
+          id="downshift-_r_as_-menu"
           role="listbox"
           style="position: fixed; left: 0px; top: 0px; visibility: visible; transform: translate(0px, 0px);"
         />
@@ -125,8 +125,8 @@ exports[`ConditionsAndDiagnoses Snapshot Tests duplicate diagnosis search should
                 >
                   <label
                     class="cds--label"
-                    for="downshift-_r_a9_-toggle-button"
-                    id="downshift-_r_a9_-label"
+                    for="downshift-_r_av_-toggle-button"
+                    id="downshift-_r_av_-label"
                   >
                     Certainty
                   </label>
@@ -136,12 +136,12 @@ exports[`ConditionsAndDiagnoses Snapshot Tests duplicate diagnosis search should
                   >
                     <button
                       aria-activedescendant=""
-                      aria-controls="downshift-_r_a9_-menu"
+                      aria-controls="downshift-_r_av_-menu"
                       aria-expanded="false"
                       aria-haspopup="listbox"
                       aria-label="Diagnoses Certainty"
                       class="cds--list-box__field"
-                      id="downshift-_r_a9_-toggle-button"
+                      id="downshift-_r_av_-toggle-button"
                       role="combobox"
                       tabindex="0"
                       title="Confirmed"
@@ -177,9 +177,9 @@ exports[`ConditionsAndDiagnoses Snapshot Tests duplicate diagnosis search should
                       </div>
                     </button>
                     <ul
-                      aria-labelledby="downshift-_r_a9_-label"
+                      aria-labelledby="downshift-_r_av_-label"
                       class="cds--list-box__menu"
-                      id="downshift-_r_a9_-menu"
+                      id="downshift-_r_av_-menu"
                       role="listbox"
                       style="position: fixed; left: 0px; top: 0px; visibility: visible; transform: translate(0px, 0px);"
                     />
@@ -199,7 +199,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests duplicate diagnosis search should
               >
                 <button
                   aria-label="Close Selected Item"
-                  aria-labelledby="tooltip-_r_ab_"
+                  aria-labelledby="tooltip-_r_b1_"
                   class="cds--btn cds--btn--lg cds--layout--size-lg cds--btn--primary cds--btn--icon-only"
                   data-testid="selected-item-close-button"
                   id="close-selected-item"
@@ -224,7 +224,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests duplicate diagnosis search should
               <span
                 aria-hidden="true"
                 class="cds--popover"
-                id="tooltip-_r_ab_"
+                id="tooltip-_r_b1_"
                 role="tooltip"
               >
                 <span
@@ -269,7 +269,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests empty form matches snapshot 1`] =
           <input
             aria-activedescendant=""
             aria-autocomplete="list"
-            aria-controls="downshift-_r_9m_-menu"
+            aria-controls="downshift-_r_ac_-menu"
             aria-expanded="false"
             aria-haspopup="listbox"
             aria-label="Search for diagnoses"
@@ -285,11 +285,11 @@ exports[`ConditionsAndDiagnoses Snapshot Tests empty form matches snapshot 1`] =
             value=""
           />
           <button
-            aria-controls="downshift-_r_9m_-menu"
+            aria-controls="downshift-_r_ac_-menu"
             aria-expanded="false"
             aria-label="Open"
             class="cds--list-box__menu-icon"
-            id="downshift-_r_9m_-toggle-button"
+            id="downshift-_r_ac_-toggle-button"
             tabindex="-1"
             title="Open"
             type="button"
@@ -311,9 +311,9 @@ exports[`ConditionsAndDiagnoses Snapshot Tests empty form matches snapshot 1`] =
           </button>
         </div>
         <ul
-          aria-labelledby="downshift-_r_9m_-label"
+          aria-labelledby="downshift-_r_ac_-label"
           class="cds--list-box__menu"
-          id="downshift-_r_9m_-menu"
+          id="downshift-_r_ac_-menu"
           role="listbox"
           style="position: fixed; left: 0px; top: 0px; visibility: visible; transform: translate(0px, 0px);"
         />
@@ -347,7 +347,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
           <input
             aria-activedescendant=""
             aria-autocomplete="list"
-            aria-controls="downshift-_r_b1_-menu"
+            aria-controls="downshift-_r_bn_-menu"
             aria-expanded="false"
             aria-haspopup="listbox"
             aria-label="Search for diagnoses"
@@ -363,11 +363,11 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
             value=""
           />
           <button
-            aria-controls="downshift-_r_b1_-menu"
+            aria-controls="downshift-_r_bn_-menu"
             aria-expanded="false"
             aria-label="Open"
             class="cds--list-box__menu-icon"
-            id="downshift-_r_b1_-toggle-button"
+            id="downshift-_r_bn_-toggle-button"
             tabindex="-1"
             title="Open"
             type="button"
@@ -389,9 +389,9 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
           </button>
         </div>
         <ul
-          aria-labelledby="downshift-_r_b1_-label"
+          aria-labelledby="downshift-_r_bn_-label"
           class="cds--list-box__menu"
-          id="downshift-_r_b1_-menu"
+          id="downshift-_r_bn_-menu"
           role="listbox"
           style="position: fixed; left: 0px; top: 0px; visibility: visible; transform: translate(0px, 0px);"
         />
@@ -448,8 +448,8 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
                 >
                   <label
                     class="cds--label"
-                    for="downshift-_r_b4_-toggle-button"
-                    id="downshift-_r_b4_-label"
+                    for="downshift-_r_bq_-toggle-button"
+                    id="downshift-_r_bq_-label"
                   >
                     Certainty
                   </label>
@@ -459,12 +459,12 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
                   >
                     <button
                       aria-activedescendant=""
-                      aria-controls="downshift-_r_b4_-menu"
+                      aria-controls="downshift-_r_bq_-menu"
                       aria-expanded="false"
                       aria-haspopup="listbox"
                       aria-label="Diagnoses Certainty"
                       class="cds--list-box__field"
-                      id="downshift-_r_b4_-toggle-button"
+                      id="downshift-_r_bq_-toggle-button"
                       role="combobox"
                       tabindex="0"
                       title="Confirmed"
@@ -500,9 +500,9 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
                       </div>
                     </button>
                     <ul
-                      aria-labelledby="downshift-_r_b4_-label"
+                      aria-labelledby="downshift-_r_bq_-label"
                       class="cds--list-box__menu"
-                      id="downshift-_r_b4_-menu"
+                      id="downshift-_r_bq_-menu"
                       role="listbox"
                       style="position: fixed; left: 0px; top: 0px; visibility: visible; transform: translate(0px, 0px);"
                     />
@@ -522,7 +522,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
               >
                 <button
                   aria-label="Close Selected Item"
-                  aria-labelledby="tooltip-_r_b6_"
+                  aria-labelledby="tooltip-_r_bs_"
                   class="cds--btn cds--btn--lg cds--layout--size-lg cds--btn--primary cds--btn--icon-only"
                   data-testid="selected-item-close-button"
                   id="close-selected-item"
@@ -547,7 +547,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
               <span
                 aria-hidden="true"
                 class="cds--popover"
-                id="tooltip-_r_b6_"
+                id="tooltip-_r_bs_"
                 role="tooltip"
               >
                 <span
@@ -642,8 +642,8 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
                 >
                   <label
                     class="cds--label"
-                    for="downshift-_r_bb_-toggle-button"
-                    id="downshift-_r_bb_-label"
+                    for="downshift-_r_c1_-toggle-button"
+                    id="downshift-_r_c1_-label"
                   >
                     Duration Unit
                   </label>
@@ -653,12 +653,12 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
                   >
                     <button
                       aria-activedescendant=""
-                      aria-controls="downshift-_r_bb_-menu"
+                      aria-controls="downshift-_r_c1_-menu"
                       aria-expanded="false"
                       aria-haspopup="listbox"
-                      aria-labelledby="downshift-_r_bb_-label"
+                      aria-labelledby="downshift-_r_c1_-label"
                       class="cds--list-box__field"
-                      id="downshift-_r_bb_-toggle-button"
+                      id="downshift-_r_c1_-toggle-button"
                       role="combobox"
                       tabindex="0"
                       title="Months"
@@ -694,9 +694,9 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
                       </div>
                     </button>
                     <ul
-                      aria-labelledby="downshift-_r_bb_-label"
+                      aria-labelledby="downshift-_r_c1_-label"
                       class="cds--list-box__menu"
-                      id="downshift-_r_bb_-menu"
+                      id="downshift-_r_c1_-menu"
                       role="listbox"
                       style="position: fixed; left: 0px; top: 0px; visibility: visible; transform: translate(0px, 0px);"
                     />
@@ -716,7 +716,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
               >
                 <button
                   aria-label="Close Selected Item"
-                  aria-labelledby="tooltip-_r_bd_"
+                  aria-labelledby="tooltip-_r_c3_"
                   class="cds--btn cds--btn--lg cds--layout--size-lg cds--btn--primary cds--btn--icon-only"
                   data-testid="selected-item-close-button"
                   id="close-selected-item"
@@ -741,7 +741,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
               <span
                 aria-hidden="true"
                 class="cds--popover"
-                id="tooltip-_r_bd_"
+                id="tooltip-_r_c3_"
                 role="tooltip"
               >
                 <span
@@ -820,8 +820,8 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
                 >
                   <label
                     class="cds--label"
-                    for="downshift-_r_bi_-toggle-button"
-                    id="downshift-_r_bi_-label"
+                    for="downshift-_r_c8_-toggle-button"
+                    id="downshift-_r_c8_-label"
                   >
                     Duration Unit
                   </label>
@@ -831,12 +831,12 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
                   >
                     <button
                       aria-activedescendant=""
-                      aria-controls="downshift-_r_bi_-menu"
+                      aria-controls="downshift-_r_c8_-menu"
                       aria-expanded="false"
                       aria-haspopup="listbox"
-                      aria-labelledby="downshift-_r_bi_-label"
+                      aria-labelledby="downshift-_r_c8_-label"
                       class="cds--list-box__field"
-                      id="downshift-_r_bi_-toggle-button"
+                      id="downshift-_r_c8_-toggle-button"
                       role="combobox"
                       tabindex="0"
                       title="Duration Unit"
@@ -872,9 +872,9 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
                       </div>
                     </button>
                     <ul
-                      aria-labelledby="downshift-_r_bi_-label"
+                      aria-labelledby="downshift-_r_c8_-label"
                       class="cds--list-box__menu"
-                      id="downshift-_r_bi_-menu"
+                      id="downshift-_r_c8_-menu"
                       role="listbox"
                       style="position: fixed; left: 0px; top: 0px; visibility: visible; transform: translate(0px, 0px);"
                     />
@@ -894,7 +894,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
               >
                 <button
                   aria-label="Close Selected Item"
-                  aria-labelledby="tooltip-_r_bk_"
+                  aria-labelledby="tooltip-_r_ca_"
                   class="cds--btn cds--btn--lg cds--layout--size-lg cds--btn--primary cds--btn--icon-only"
                   data-testid="selected-item-close-button"
                   id="close-selected-item"
@@ -919,7 +919,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with both diagnoses and cond
               <span
                 aria-hidden="true"
                 class="cds--popover"
-                id="tooltip-_r_bk_"
+                id="tooltip-_r_ca_"
                 role="tooltip"
               >
                 <span
@@ -964,7 +964,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with search results matches 
           <input
             aria-activedescendant=""
             aria-autocomplete="list"
-            aria-controls="downshift-_r_9p_-menu"
+            aria-controls="downshift-_r_af_-menu"
             aria-expanded="false"
             aria-haspopup="listbox"
             aria-label="Search for diagnoses"
@@ -980,11 +980,11 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with search results matches 
             value=""
           />
           <button
-            aria-controls="downshift-_r_9p_-menu"
+            aria-controls="downshift-_r_af_-menu"
             aria-expanded="false"
             aria-label="Open"
             class="cds--list-box__menu-icon"
-            id="downshift-_r_9p_-toggle-button"
+            id="downshift-_r_af_-toggle-button"
             tabindex="-1"
             title="Open"
             type="button"
@@ -1006,9 +1006,9 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with search results matches 
           </button>
         </div>
         <ul
-          aria-labelledby="downshift-_r_9p_-label"
+          aria-labelledby="downshift-_r_af_-label"
           class="cds--list-box__menu"
-          id="downshift-_r_9p_-menu"
+          id="downshift-_r_af_-menu"
           role="listbox"
           style="position: fixed; left: 0px; top: 0px; visibility: visible; transform: translate(0px, 0px);"
         />
@@ -1042,7 +1042,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected conditions mat
           <input
             aria-activedescendant=""
             aria-autocomplete="list"
-            aria-controls="downshift-_r_ag_-menu"
+            aria-controls="downshift-_r_b6_-menu"
             aria-expanded="false"
             aria-haspopup="listbox"
             aria-label="Search for diagnoses"
@@ -1058,11 +1058,11 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected conditions mat
             value=""
           />
           <button
-            aria-controls="downshift-_r_ag_-menu"
+            aria-controls="downshift-_r_b6_-menu"
             aria-expanded="false"
             aria-label="Open"
             class="cds--list-box__menu-icon"
-            id="downshift-_r_ag_-toggle-button"
+            id="downshift-_r_b6_-toggle-button"
             tabindex="-1"
             title="Open"
             type="button"
@@ -1084,9 +1084,9 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected conditions mat
           </button>
         </div>
         <ul
-          aria-labelledby="downshift-_r_ag_-label"
+          aria-labelledby="downshift-_r_b6_-label"
           class="cds--list-box__menu"
-          id="downshift-_r_ag_-menu"
+          id="downshift-_r_b6_-menu"
           role="listbox"
           style="position: fixed; left: 0px; top: 0px; visibility: visible; transform: translate(0px, 0px);"
         />
@@ -1170,8 +1170,8 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected conditions mat
                 >
                   <label
                     class="cds--label"
-                    for="downshift-_r_aj_-toggle-button"
-                    id="downshift-_r_aj_-label"
+                    for="downshift-_r_b9_-toggle-button"
+                    id="downshift-_r_b9_-label"
                   >
                     Duration Unit
                   </label>
@@ -1181,12 +1181,12 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected conditions mat
                   >
                     <button
                       aria-activedescendant=""
-                      aria-controls="downshift-_r_aj_-menu"
+                      aria-controls="downshift-_r_b9_-menu"
                       aria-expanded="false"
                       aria-haspopup="listbox"
-                      aria-labelledby="downshift-_r_aj_-label"
+                      aria-labelledby="downshift-_r_b9_-label"
                       class="cds--list-box__field"
-                      id="downshift-_r_aj_-toggle-button"
+                      id="downshift-_r_b9_-toggle-button"
                       role="combobox"
                       tabindex="0"
                       title="Months"
@@ -1222,9 +1222,9 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected conditions mat
                       </div>
                     </button>
                     <ul
-                      aria-labelledby="downshift-_r_aj_-label"
+                      aria-labelledby="downshift-_r_b9_-label"
                       class="cds--list-box__menu"
-                      id="downshift-_r_aj_-menu"
+                      id="downshift-_r_b9_-menu"
                       role="listbox"
                       style="position: fixed; left: 0px; top: 0px; visibility: visible; transform: translate(0px, 0px);"
                     />
@@ -1244,7 +1244,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected conditions mat
               >
                 <button
                   aria-label="Close Selected Item"
-                  aria-labelledby="tooltip-_r_al_"
+                  aria-labelledby="tooltip-_r_bb_"
                   class="cds--btn cds--btn--lg cds--layout--size-lg cds--btn--primary cds--btn--icon-only"
                   data-testid="selected-item-close-button"
                   id="close-selected-item"
@@ -1269,7 +1269,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected conditions mat
               <span
                 aria-hidden="true"
                 class="cds--popover"
-                id="tooltip-_r_al_"
+                id="tooltip-_r_bb_"
                 role="tooltip"
               >
                 <span
@@ -1348,8 +1348,8 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected conditions mat
                 >
                   <label
                     class="cds--label"
-                    for="downshift-_r_aq_-toggle-button"
-                    id="downshift-_r_aq_-label"
+                    for="downshift-_r_bg_-toggle-button"
+                    id="downshift-_r_bg_-label"
                   >
                     Duration Unit
                   </label>
@@ -1359,12 +1359,12 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected conditions mat
                   >
                     <button
                       aria-activedescendant=""
-                      aria-controls="downshift-_r_aq_-menu"
+                      aria-controls="downshift-_r_bg_-menu"
                       aria-expanded="false"
                       aria-haspopup="listbox"
-                      aria-labelledby="downshift-_r_aq_-label"
+                      aria-labelledby="downshift-_r_bg_-label"
                       class="cds--list-box__field"
-                      id="downshift-_r_aq_-toggle-button"
+                      id="downshift-_r_bg_-toggle-button"
                       role="combobox"
                       tabindex="0"
                       title="Duration Unit"
@@ -1400,9 +1400,9 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected conditions mat
                       </div>
                     </button>
                     <ul
-                      aria-labelledby="downshift-_r_aq_-label"
+                      aria-labelledby="downshift-_r_bg_-label"
                       class="cds--list-box__menu"
-                      id="downshift-_r_aq_-menu"
+                      id="downshift-_r_bg_-menu"
                       role="listbox"
                       style="position: fixed; left: 0px; top: 0px; visibility: visible; transform: translate(0px, 0px);"
                     />
@@ -1422,7 +1422,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected conditions mat
               >
                 <button
                   aria-label="Close Selected Item"
-                  aria-labelledby="tooltip-_r_as_"
+                  aria-labelledby="tooltip-_r_bi_"
                   class="cds--btn cds--btn--lg cds--layout--size-lg cds--btn--primary cds--btn--icon-only"
                   data-testid="selected-item-close-button"
                   id="close-selected-item"
@@ -1447,7 +1447,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected conditions mat
               <span
                 aria-hidden="true"
                 class="cds--popover"
-                id="tooltip-_r_as_"
+                id="tooltip-_r_bi_"
                 role="tooltip"
               >
                 <span
@@ -1492,7 +1492,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected diagnoses matc
           <input
             aria-activedescendant=""
             aria-autocomplete="list"
-            aria-controls="downshift-_r_9s_-menu"
+            aria-controls="downshift-_r_ai_-menu"
             aria-expanded="false"
             aria-haspopup="listbox"
             aria-label="Search for diagnoses"
@@ -1508,11 +1508,11 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected diagnoses matc
             value=""
           />
           <button
-            aria-controls="downshift-_r_9s_-menu"
+            aria-controls="downshift-_r_ai_-menu"
             aria-expanded="false"
             aria-label="Open"
             class="cds--list-box__menu-icon"
-            id="downshift-_r_9s_-toggle-button"
+            id="downshift-_r_ai_-toggle-button"
             tabindex="-1"
             title="Open"
             type="button"
@@ -1534,9 +1534,9 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected diagnoses matc
           </button>
         </div>
         <ul
-          aria-labelledby="downshift-_r_9s_-label"
+          aria-labelledby="downshift-_r_ai_-label"
           class="cds--list-box__menu"
-          id="downshift-_r_9s_-menu"
+          id="downshift-_r_ai_-menu"
           role="listbox"
           style="position: fixed; left: 0px; top: 0px; visibility: visible; transform: translate(0px, 0px);"
         />
@@ -1593,8 +1593,8 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected diagnoses matc
                 >
                   <label
                     class="cds--label"
-                    for="downshift-_r_9v_-toggle-button"
-                    id="downshift-_r_9v_-label"
+                    for="downshift-_r_al_-toggle-button"
+                    id="downshift-_r_al_-label"
                   >
                     Certainty
                   </label>
@@ -1604,12 +1604,12 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected diagnoses matc
                   >
                     <button
                       aria-activedescendant=""
-                      aria-controls="downshift-_r_9v_-menu"
+                      aria-controls="downshift-_r_al_-menu"
                       aria-expanded="false"
                       aria-haspopup="listbox"
                       aria-label="Diagnoses Certainty"
                       class="cds--list-box__field"
-                      id="downshift-_r_9v_-toggle-button"
+                      id="downshift-_r_al_-toggle-button"
                       role="combobox"
                       tabindex="0"
                       title="Confirmed"
@@ -1645,9 +1645,9 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected diagnoses matc
                       </div>
                     </button>
                     <ul
-                      aria-labelledby="downshift-_r_9v_-label"
+                      aria-labelledby="downshift-_r_al_-label"
                       class="cds--list-box__menu"
-                      id="downshift-_r_9v_-menu"
+                      id="downshift-_r_al_-menu"
                       role="listbox"
                       style="position: fixed; left: 0px; top: 0px; visibility: visible; transform: translate(0px, 0px);"
                     />
@@ -1667,7 +1667,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected diagnoses matc
               >
                 <button
                   aria-label="Close Selected Item"
-                  aria-labelledby="tooltip-_r_a1_"
+                  aria-labelledby="tooltip-_r_an_"
                   class="cds--btn cds--btn--lg cds--layout--size-lg cds--btn--primary cds--btn--icon-only"
                   data-testid="selected-item-close-button"
                   id="close-selected-item"
@@ -1692,7 +1692,7 @@ exports[`ConditionsAndDiagnoses Snapshot Tests form with selected diagnoses matc
               <span
                 aria-hidden="true"
                 class="cds--popover"
-                id="tooltip-_r_a1_"
+                id="tooltip-_r_an_"
                 role="tooltip"
               >
                 <span

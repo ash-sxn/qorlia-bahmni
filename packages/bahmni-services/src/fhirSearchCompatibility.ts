@@ -4,14 +4,16 @@ import { get } from './api';
 const UNSUPPORTED_SEARCH_MESSAGE =
   'Invalid input parameters. Please check your request and try again.';
 
-/** Use patient-only search when an older FHIR server rejects newer filters. */
+/** Use a compatible search when an older FHIR server rejects newer filters. */
 export async function getCompatiblePatientBundle<T extends Resource>(
   preferredUrl: string,
-  patientOnlyUrl: string,
+  fallbackUrl: string,
   matches: (resource: T) => boolean,
+  allPreferredPages = false,
 ): Promise<{ bundle: Bundle<T>; usedFallback: boolean }> {
+  let preferredBundle: Bundle<T> | undefined;
   try {
-    return { bundle: await get<Bundle<T>>(preferredUrl), usedFallback: false };
+    preferredBundle = await get<Bundle<T>>(preferredUrl);
   } catch (error) {
     if (
       !(error instanceof Error) ||
@@ -21,10 +23,15 @@ export async function getCompatiblePatientBundle<T extends Resource>(
     }
   }
 
-  const expectedPath = new URL(patientOnlyUrl, 'http://localhost').pathname;
+  if (preferredBundle && !allPreferredPages) {
+    return { bundle: preferredBundle, usedFallback: false };
+  }
+
+  const initialUrl = preferredBundle ? preferredUrl : fallbackUrl;
+  const expectedPath = new URL(initialUrl, 'http://localhost').pathname;
   const visited = new Set<string>();
   const entries: NonNullable<Bundle<T>['entry']> = [];
-  let nextUrl: string | undefined = patientOnlyUrl;
+  let nextUrl: string | undefined = initialUrl;
   let firstBundle: Bundle<T> | undefined;
 
   while (nextUrl) {
@@ -35,7 +42,10 @@ export async function getCompatiblePatientBundle<T extends Resource>(
     }
     visited.add(path);
 
-    const bundle: Bundle<T> = await get<Bundle<T>>(path);
+    const bundle: Bundle<T> =
+      !firstBundle && preferredBundle
+        ? preferredBundle
+        : await get<Bundle<T>>(path);
     firstBundle ??= bundle;
     entries.push(...(bundle.entry ?? []));
     nextUrl = bundle.link?.find((link) => link.relation === 'next')?.url;
@@ -55,6 +65,6 @@ export async function getCompatiblePatientBundle<T extends Resource>(
       total: filtered.length,
       link: undefined,
     },
-    usedFallback: true,
+    usedFallback: !preferredBundle,
   };
 }

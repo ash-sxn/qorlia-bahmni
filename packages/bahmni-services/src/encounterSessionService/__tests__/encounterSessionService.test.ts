@@ -1,9 +1,14 @@
 import { Encounter } from 'fhir/r4';
+import { get } from '../../api';
 import { getActiveVisit } from '../../encounterService';
-import { filterByActiveVisit } from '../encounterSessionService';
+import {
+  filterByActiveVisit,
+  findActiveEncounterInSession,
+} from '../encounterSessionService';
 
 // Mock the encounterService
 jest.mock('../../encounterService');
+jest.mock('../../api');
 const mockGetActiveVisit = getActiveVisit as jest.MockedFunction<
   typeof getActiveVisit
 >;
@@ -198,12 +203,13 @@ describe('encounterSessionService', () => {
       expect(result).toBeNull();
     });
 
-    it('should handle API errors gracefully and return null', async () => {
+    it('propagates an unavailable visit rather than inventing a new encounter', async () => {
       mockGetActiveVisit.mockRejectedValue(new Error('API Error'));
       const encounters = [createMockEncounter('encounter-1', 'visit-1')];
 
-      const result = await filterByActiveVisit(encounters, mockPatientUUID);
-      expect(result).toBeNull();
+      await expect(
+        filterByActiveVisit(encounters, mockPatientUUID),
+      ).rejects.toThrow('API Error');
     });
 
     describe('episode of care scoping', () => {
@@ -256,6 +262,61 @@ describe('encounterSessionService', () => {
         const result = await filterByActiveVisit([encounter], mockPatientUUID);
         expect(result).toEqual(encounter);
       });
+    });
+  });
+
+  describe('findActiveEncounterInSession', () => {
+    beforeEach(() => jest.clearAllMocks());
+
+    it('propagates encounter-search failure', async () => {
+      jest.mocked(get).mockRejectedValue(new Error('Search unavailable'));
+      await expect(
+        findActiveEncounterInSession(
+          'patient-123',
+          'provider-123',
+          30,
+          'type-123',
+        ),
+      ).rejects.toThrow('Search unavailable');
+    });
+
+    it('propagates active-visit failure after a successful search', async () => {
+      jest
+        .mocked(get)
+        .mockResolvedValue({
+          resourceType: 'Bundle',
+          entry: [
+            {
+              resource: {
+                resourceType: 'Encounter',
+                id: 'encounter-123',
+                partOf: { reference: 'Encounter/visit-123' },
+              },
+            },
+          ],
+        });
+      mockGetActiveVisit.mockRejectedValue(new Error('Visit unavailable'));
+      await expect(
+        findActiveEncounterInSession(
+          'patient-123',
+          'provider-123',
+          30,
+          'type-123',
+        ),
+      ).rejects.toThrow('Visit unavailable');
+    });
+
+    it('returns null only for a successful empty search', async () => {
+      jest.mocked(get).mockResolvedValue({ resourceType: 'Bundle', entry: [] });
+      await expect(
+        findActiveEncounterInSession(
+          'patient-123',
+          'provider-123',
+          30,
+          'type-123',
+        ),
+      ).resolves.toBeNull();
+      expect(mockGetActiveVisit).not.toHaveBeenCalled();
     });
   });
 });

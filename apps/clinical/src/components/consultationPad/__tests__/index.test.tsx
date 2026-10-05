@@ -169,7 +169,8 @@ beforeEach(() => {
 
   jest
     .mocked(useActivePractitioner)
-    .mockReturnValue({ practitioner: null } as any);
+    .mockReturnValue({ practitioner: { uuid: 'prac-uuid' } } as any);
+  jest.mocked(findActiveEncounterInSession).mockResolvedValue(null);
   jest
     .mocked(useNotification)
     .mockReturnValue({ addNotification: mockAddNotification } as any);
@@ -271,12 +272,14 @@ describe('ConsultationPad', () => {
       expect(screen.getByTestId('primary-button')).toBeDisabled();
     });
 
-    it('is enabled when form is ready and has data', () => {
+    it('is enabled when form and encounter lookup are ready and has data', async () => {
       (mockRegistry[0].hasData as jest.Mock).mockReturnValue(true);
 
       renderComponent();
 
-      expect(screen.getByTestId('primary-button')).not.toBeDisabled();
+      await waitFor(() => {
+        expect(screen.getByTestId('primary-button')).not.toBeDisabled();
+      });
     });
   });
 
@@ -311,6 +314,30 @@ describe('ConsultationPad', () => {
         ...mockObsFormsState,
         viewingForm: { uuid: 'form-uuid', name: 'Vitals' } as any,
       } as any);
+
+    it('does not enable Done while the matching encounter lookup is pending', async () => {
+      jest
+        .mocked(findActiveEncounterInSession)
+        .mockReturnValue(new Promise(() => {}));
+      (mockRegistry[0].hasData as jest.Mock).mockReturnValue(true);
+      renderComponent();
+      expect(screen.getByTestId('primary-button')).toBeDisabled();
+      await userEvent.click(screen.getByTestId('primary-button'));
+      expect(submitConsultation).not.toHaveBeenCalled();
+    });
+
+    it('shows a failure rather than saving a new encounter after lookup rejection', async () => {
+      jest
+        .mocked(findActiveEncounterInSession)
+        .mockRejectedValue(new Error('Encounter unavailable'));
+      (mockRegistry[0].hasData as jest.Mock).mockReturnValue(true);
+      renderComponent();
+      expect(
+        await screen.findByText('Something went wrong'),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('primary-button')).toBeDisabled();
+      expect(submitConsultation).not.toHaveBeenCalled();
+    });
 
     it('passes the resolved activeEncounter through encounterSessionStartContext', async () => {
       jest.mocked(useActivePractitioner).mockReturnValue({
