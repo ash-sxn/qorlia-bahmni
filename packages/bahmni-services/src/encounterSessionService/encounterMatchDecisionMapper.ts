@@ -10,6 +10,7 @@ import {
   getEncounterSessionDuration,
   getTypedReferenceId,
   sortByMostRecent,
+  readSavedEncounter,
 } from './encounterSessionService';
 
 export type { MatchReasonCode, EncounterMatchDecision };
@@ -43,6 +44,7 @@ export async function resolveEncounterMatchDecision(
   practitionerUUID: string,
   locationUUID: string | undefined,
   encounterTypeUUID?: string,
+  savedEncounterUUID?: string,
 ): Promise<EncounterMatchDecision> {
   // 1. Active visit? → NO → NO_ACTIVE_VISIT
   const activeVisit = await getActiveVisit(patientUUID);
@@ -52,34 +54,61 @@ export async function resolveEncounterMatchDecision(
 
   // 2. Get session window
   const sessionDuration = await getEncounterSessionDuration();
-  const sessionStartTime = new Date(Date.now() - sessionDuration * 60 * 1000);
+  const now = Date.now();
+  const sessionStartTime = new Date(now - sessionDuration * 60 * 1000);
   const recentUpdatedParam = `ge${sessionStartTime.toISOString()}`;
 
   // 3. Two parallel searches:
   //    recentEncounters         — all providers, session window  → detect MATCHED / LOCATION_MISMATCH / PROVIDER_MISMATCH
   //    practitionerAllTimeEncounters — this practitioner, all time → detect SESSION_EXPIRED
-  const [recentEncounters, practitionerAllTimeEncounters] = await Promise.all([
-    searchEncounters({
-      patient: patientUUID,
-      _tag: 'encounter',
-      _lastUpdated: recentUpdatedParam,
-      type: encounterTypeUUID,
-    }),
-    searchEncounters({
-      patient: patientUUID,
-      _tag: 'encounter',
-      participant: practitionerUUID,
-      type: encounterTypeUUID,
-    }),
-  ]);
+  const [recentEncounters, practitionerAllTimeEncounters, savedEncounter] =
+    await Promise.all([
+      searchEncounters({
+        patient: patientUUID,
+        _tag: 'encounter',
+        _lastUpdated: recentUpdatedParam,
+        type: encounterTypeUUID,
+      }),
+      searchEncounters({
+        patient: patientUUID,
+        _tag: 'encounter',
+        participant: practitionerUUID,
+        type: encounterTypeUUID,
+      }),
+      readSavedEncounter(
+        savedEncounterUUID,
+        patientUUID,
+        practitionerUUID,
+        activeVisit.id,
+        encounterTypeUUID,
+      ),
+    ]);
+
+  // Search indexing may lag a just-saved widget encounter. Include its current
+  // direct read, but retain normal newest-selection and expiry/location rules.
+  const currentRecentEncounters = [
+    ...recentEncounters.filter(
+      (encounter) => !savedEncounterUUID || encounter.id !== savedEncounterUUID,
+    ),
+    ...(savedEncounter &&
+    Date.parse(savedEncounter.meta!.lastUpdated!) >= sessionStartTime.getTime()
+      ? [savedEncounter]
+      : []),
+  ];
+  const currentPractitionerEncounters = [
+    ...practitionerAllTimeEncounters.filter(
+      (encounter) => !savedEncounterUUID || encounter.id !== savedEncounterUUID,
+    ),
+    ...(savedEncounter ? [savedEncounter] : []),
+  ];
 
   // 4. Filter to current visit only
   const recentEncountersInVisit = filterEncountersByVisit(
-    recentEncounters,
+    currentRecentEncounters,
     activeVisit.id,
   );
   const practitionerEncountersAllTime = sortByMostRecent(
-    filterEncountersByVisit(practitionerAllTimeEncounters, activeVisit.id),
+    filterEncountersByVisit(currentPractitionerEncounters, activeVisit.id),
   );
 
   // 5. No encounters at all → NO_ACTIVE_ENCOUNTER

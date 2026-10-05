@@ -6,6 +6,7 @@ import {
   findActiveEncounterInSession,
   getConfig,
   getEncounterByUuid,
+  getEncounterSessionSnapshot,
   invokeCDSSRule,
 } from '@bahmni/services';
 import { useActivePractitioner, useNotification } from '@bahmni/widgets';
@@ -77,6 +78,7 @@ jest.mock('@bahmni/services', () => ({
   invokeCDSSRule: jest.fn(),
   getConfig: jest.fn(),
   getEncounterByUuid: jest.fn(),
+  getEncounterSessionSnapshot: jest.fn(),
 }));
 
 jest.mock('@bahmni/widgets', () => ({
@@ -171,6 +173,12 @@ beforeEach(() => {
     .mocked(useActivePractitioner)
     .mockReturnValue({ practitioner: { uuid: 'prac-uuid' } } as any);
   jest.mocked(findActiveEncounterInSession).mockResolvedValue(null);
+  jest.mocked(getEncounterSessionSnapshot).mockReturnValue({
+    matchReasons: [],
+    activeEncounter: null,
+    canEditOrCreate: false,
+    isLoading: false,
+  });
   jest
     .mocked(useNotification)
     .mockReturnValue({ addNotification: mockAddNotification } as any);
@@ -308,6 +316,52 @@ describe('ConsultationPad', () => {
 
   describe('activeEncounter wiring', () => {
     const EDIT_ENCOUNTER_UUID = 'edit-enc-uuid';
+
+    it('passes only a resolved MATCHED snapshot ID for native revalidation', async () => {
+      jest.mocked(getEncounterSessionSnapshot).mockReturnValue({
+        matchReasons: ['MATCHED'],
+        activeEncounter: { id: 'saved-encounter' } as any,
+        canEditOrCreate: true,
+        isLoading: false,
+      });
+      renderComponent();
+      await waitFor(() =>
+        expect(findActiveEncounterInSession).toHaveBeenCalledWith(
+          'patient-123',
+          'prac-uuid',
+          undefined,
+          'encounter-type-uuid',
+          undefined,
+          'saved-encounter',
+        ),
+      );
+    });
+
+    it.each([
+      { matchReasons: ['MATCHED'], isLoading: true },
+      { matchReasons: ['MATCHED', 'SESSION_EXPIRED'], isLoading: false },
+      { matchReasons: ['PROVIDER_MISMATCH'], isLoading: false },
+    ])(
+      'does not trust an unresolved or conflicting snapshot %j',
+      async (state) => {
+        jest.mocked(getEncounterSessionSnapshot).mockReturnValue({
+          ...state,
+          activeEncounter: { id: 'saved-encounter' } as any,
+          canEditOrCreate: true,
+        } as any);
+        renderComponent();
+        await waitFor(() =>
+          expect(findActiveEncounterInSession).toHaveBeenCalledWith(
+            'patient-123',
+            'prac-uuid',
+            undefined,
+            'encounter-type-uuid',
+            undefined,
+            undefined,
+          ),
+        );
+      },
+    );
 
     const withViewingForm = () =>
       jest.mocked(useObservationFormsStore).mockReturnValue({
@@ -627,6 +681,7 @@ describe('ConsultationPad', () => {
           undefined,
           'encounter-type-uuid',
           ['encounter-1', 'encounter-2'],
+          undefined,
         );
       });
     });
@@ -648,6 +703,7 @@ describe('ConsultationPad', () => {
           undefined,
           'encounter-type-uuid',
           undefined,
+          undefined,
         );
       });
     });
@@ -668,6 +724,7 @@ describe('ConsultationPad', () => {
           'practitioner-uuid',
           undefined,
           'encounter-type-uuid',
+          undefined,
           undefined,
         );
       });

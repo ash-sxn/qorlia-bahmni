@@ -1,6 +1,10 @@
 import { Encounter } from 'fhir/r4';
 import { get } from '../../api';
-import { getActiveVisit } from '../../encounterService';
+import {
+  FHIR_ENCOUNTER_TAG_SYSTEM,
+  FHIR_ENCOUNTER_TYPE_CODE_SYSTEM,
+} from '../../constants/fhir';
+import { getActiveVisit, getEncounterByUuid } from '../../encounterService';
 import { ENCOUNTER_SEARCH_URL } from '../constants';
 import {
   filterByActiveVisit,
@@ -321,6 +325,132 @@ describe('encounterSessionService', () => {
 
   describe('findActiveEncounterInSession', () => {
     beforeEach(() => jest.clearAllMocks());
+
+    describe('saved encounter handoff', () => {
+      const now = new Date('2026-10-05T10:00:00Z');
+      const saved = (): Encounter => ({
+        resourceType: 'Encounter',
+        id: 'saved-123',
+        status: 'unknown',
+        class: { code: 'AMB' },
+        subject: { reference: 'Patient/patient-123' },
+        participant: [
+          { individual: { reference: 'Practitioner/provider-123' } },
+        ],
+        partOf: { reference: 'Encounter/visit-123' },
+        type: [
+          {
+            coding: [
+              { system: FHIR_ENCOUNTER_TYPE_CODE_SYSTEM, code: 'type-123' },
+            ],
+          },
+        ],
+        meta: {
+          lastUpdated: '2026-10-05T09:59:00Z',
+          tag: [{ system: FHIR_ENCOUNTER_TAG_SYSTEM, code: 'encounter' }],
+        },
+        period: { start: '2026-10-05T09:58:00Z' },
+      });
+      const find = (episode?: string[]) =>
+        findActiveEncounterInSession(
+          'patient-123',
+          'provider-123',
+          30,
+          'type-123',
+          episode,
+          'saved-123',
+        );
+      beforeEach(() => {
+        jest.spyOn(Date, 'now').mockReturnValue(now.getTime());
+        jest
+          .mocked(get)
+          .mockReset()
+          .mockResolvedValue({ resourceType: 'Bundle', entry: [] });
+        mockGetActiveVisit.mockReset().mockResolvedValue({
+          resourceType: 'Encounter',
+          id: 'visit-123',
+          status: 'unknown',
+          class: { code: 'AMB' },
+        });
+        jest.mocked(getEncounterByUuid).mockReset().mockResolvedValue(saved());
+      });
+      afterEach(() => jest.restoreAllMocks());
+
+      it('re-reads the saved encounter when its search index is empty', async () => {
+        await expect(find()).resolves.toEqual(saved());
+        expect(getEncounterByUuid).toHaveBeenCalledWith('saved-123');
+        expect(mockGetActiveVisit).toHaveBeenCalledTimes(1);
+      });
+      it.each([{ episode: [] }, { episode: ['other-123'] }])(
+        'does not bypass episode membership %j',
+        async ({ episode }) => {
+          await expect(find(episode)).resolves.toBeNull();
+        },
+      );
+      it('accepts a saved encounter in the selected episode', async () => {
+        await expect(find(['saved-123'])).resolves.toEqual(saved());
+      });
+      it.each([
+        { subject: { reference: 'Patient/other-patient-123' } },
+        {
+          participant: [
+            { individual: { reference: 'Practitioner/other-provider' } },
+          ],
+        },
+        { partOf: { reference: 'Encounter/other-visit' } },
+        {
+          type: [
+            {
+              coding: [
+                { system: FHIR_ENCOUNTER_TYPE_CODE_SYSTEM, code: 'other-type' },
+              ],
+            },
+          ],
+        },
+        { meta: { ...saved().meta, lastUpdated: '2026-10-05T09:29:59Z' } },
+        { status: 'entered-in-error' },
+      ])('rejects an ineligible direct read %j', async (change) => {
+        jest
+          .mocked(getEncounterByUuid)
+          .mockResolvedValue({ ...saved(), ...change } as Encounter);
+        // An older indexed representation of the same ID must not revive it.
+        jest.mocked(get).mockResolvedValue({
+          resourceType: 'Bundle',
+          entry: [{ resource: saved() }],
+        });
+        await expect(find()).resolves.toBeNull();
+      });
+      it('retains the newest selection and does not mutate search entries', async () => {
+        const newer = {
+          ...saved(),
+          id: 'newer-123',
+          period: { start: '2026-10-05T09:59:00Z' },
+        };
+        const indexed = [newer, saved()];
+        jest.mocked(get).mockResolvedValue({
+          resourceType: 'Bundle',
+          entry: indexed.map((resource) => ({ resource })),
+        });
+        await expect(find()).resolves.toEqual(newer);
+        expect(indexed.map((item) => item.id)).toEqual([
+          'newer-123',
+          'saved-123',
+        ]);
+      });
+      it('keeps a direct-read failure unavailable rather than starting a new encounter', async () => {
+        jest
+          .mocked(getEncounterByUuid)
+          .mockRejectedValue(
+            Object.assign(new Error('Denied'), { status: 403 }),
+          );
+        await expect(find()).rejects.toThrow('Denied');
+      });
+      it('does not read a saved encounter without an active visit', async () => {
+        mockGetActiveVisit.mockResolvedValue(null);
+        await expect(find()).resolves.toBeNull();
+        expect(getEncounterByUuid).not.toHaveBeenCalled();
+      });
+    });
 
     it('propagates encounter-search failure', async () => {
       jest.mocked(get).mockRejectedValue(new Error('Search unavailable'));

@@ -8,6 +8,7 @@ import {
   findActiveEncounterInSession,
   getConfig,
   getEncounterByUuid,
+  getEncounterSessionSnapshot,
   invokeCDSSRule,
   type CDSSCheckEventDetail,
   type CDSSServerConfig,
@@ -184,14 +185,24 @@ const ConsultationPad: React.FC<ConsultationPadProps> = ({
       activeEpisodeId,
       currentEpisodeEncounterUuids,
     ],
-    queryFn: () =>
-      findActiveEncounterInSession(
+    queryFn: () => {
+      // A saved widget encounter is an ID hint, not trusted cached clinical data.
+      const snapshot = getEncounterSessionSnapshot();
+      const savedEncounterUUID =
+        !snapshot.isLoading &&
+        snapshot.matchReasons.length === 1 &&
+        snapshot.matchReasons[0] === 'MATCHED'
+          ? snapshot.activeEncounter?.id
+          : undefined;
+      return findActiveEncounterInSession(
         patientId!,
         practitioner?.uuid,
         undefined,
         selectedEncounterType?.uuid,
         currentEpisodeEncounterUuids,
-      ),
+        savedEncounterUUID,
+      );
+    },
     staleTime: 0,
     enabled: !!(patientId && practitioner?.uuid && selectedEncounterType?.uuid),
   });

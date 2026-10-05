@@ -1,5 +1,33 @@
 # Qorlia React frontend backend readiness
 
+## Latest saved-encounter handoff verification
+
+The saved encounter in frontend state is now an ID hint, not trusted current
+clinical data. Both header and pad use a native read with typed patient, visit,
+provider, type/tag, status and timestamp checks before considering reuse. Actual
+read failures propagate; missing/invalid hints cannot resurrect stale indexed
+records. Session expiry, newest selection and episode membership remain.
+
+Focused verification passes 131 service tests and 105 clinical tests with one
+snapshot in India and US Pacific time, plus type checks, lint and library/app
+builds. Existing duplicate-mock, effect-dependency, eval and bundle warnings
+remain. The actual-source read-only staging verifier preserves full native
+records and covers expired hints, clock-controlled index lag, same header/pad
+selection, provider/type rejection, episode membership and failures. Its clock
+control is not a live browser-session save proof.
+
+After a targeted pad encounter-search fault was cleared, the real browser
+loaded the configured editor for the same synthetic patient. Empty Done stayed
+disabled; Cancel restored the chart. The complete, non-truncated recovery
+capture contains only GETs with no failed requests or clinical mutation. The
+local server remains running; browser-style requests return 200. A prior generic
+curl 404 lacked the dev server's required HTML Accept header.
+
+This closes these handoff/recovery paths only. Duration parsing, context races,
+submitted-form failures, remaining condition/draft/permission behavior,
+concurrency and wider workflow acceptance remain. No production/shared-demo
+deployment, new clinical record or staff privilege change occurred.
+
 ## Latest paginated encounter selection and recovery verification
 
 Visit/session searches collect all native FHIR pages, including the pinned

@@ -1,5 +1,41 @@
 # Bahmni workflow parity ledger
 
+## 5 October freshly validated saved-encounter handoff checkpoint
+
+This closes the tested cached-ID eligibility and search-index-lag handoff paths,
+not complete encounter-session or clinical workflow parity.
+
+- The header no longer trusts a cached MATCHED object. Header and consultation
+  pad pass only a saved-ID hint to the shared resolver, which re-reads the native
+  FHIR encounter and verifies its ID, typed patient/visit/provider references,
+  encounter type/tag, usable status and non-future last-update timestamp. A 404
+  rejects the hint; other read failures propagate instead of starting a new
+  encounter. An invalid hint cannot be revived by an older indexed copy.
+- The normal session window, newest selection, location decision and episode
+  membership restriction remain. Input arrays are not mutated. The pad reads
+  the snapshot in its query callback without mirroring store state.
+- Three service suites pass 131 tests and four clinical suites pass 105 tests
+  and one snapshot in India and US Pacific time. Service/clinical type checks,
+  changed-source lint and dependency-first builds pass, retaining existing
+  duplicate-mock, effect-dependency, form-renderer eval and large-bundle warnings.
+- The read-only native verifier loads the actual source services. It verifies
+  expired saved-ID rejection and clock-controlled index-lag handoff, header/pad
+  selection consistency, mismatched provider/type rejection, episode membership
+  and read-failure propagation. Full native records are unchanged. The controlled
+  clock case is not proof of a currently live browser encounter session.
+- The browser pad displayed its error state with Done disabled during a targeted
+  encounter-search fault. After blocking was removed, the same synthetic patient
+  opened the normal configured editor, kept empty Done disabled and returned to
+  the chart on Cancel. The recovery capture is complete and non-truncated: only
+  GET requests, no failed response and no clinical write. Local browser routes
+  return 200 with Accept: text/html; a generic curl request's 404 was not a server
+  outage and no restart was required.
+
+Remaining: duration-value boundaries, hook refetch/context races, submitted-form
+failure states, noncoded/configured condition details, draft/permission
+transitions, concurrent writes, wider React and separate-product acceptance.
+No production/shared-demo deployment or staff privilege change occurred.
+
 ## 5 October paginated encounter selection and recovery checkpoint
 
 This closes the tested search-page, newest-selection and lookup-failure paths,

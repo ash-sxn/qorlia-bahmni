@@ -62,24 +62,15 @@ export function useEncounterSession(
       // location cookie unavailable — location check will be skipped in mapper
     }
 
-    // Seed immediately from the global store when it already reflects a MATCHED
-    // session. This lets the consultation pad inherit an encounter created by a
-    // dashboard widget action (e.g. mark-condition-inactive) without waiting for
-    // the OpenMRS FHIR search index to catch up to the freshly created encounter.
+    // The store's saved ID can bridge search-index lag, but the shared resolver
+    // must re-read it and verify the current patient/provider/visit/type/window.
     const storeState = getEncounterSessionSnapshot();
-    if (
-      storeState.matchReasons.includes('MATCHED') &&
-      storeState.activeEncounter?.id &&
-      storeState.activeEncounter.subject?.reference?.endsWith(patientUUID) &&
-      !signal.ignored
-    ) {
-      setHasActiveSession(true);
-      setActiveEncounter(storeState.activeEncounter);
-      setIsPractitionerMatch(true);
-      setMatchReason(storeState.matchReasons);
-      setIsLoading(false);
-      return;
-    }
+    const savedEncounterUUID =
+      !storeState.isLoading &&
+      storeState.matchReasons.length === 1 &&
+      storeState.matchReasons[0] === 'MATCHED'
+        ? storeState.activeEncounter?.id
+        : undefined;
 
     setIsLoading(true);
     setError(null);
@@ -90,6 +81,7 @@ export function useEncounterSession(
         practitionerUUID,
         loginLocationUUID,
         encounterTypeUUID,
+        savedEncounterUUID,
       );
 
       if (signal.ignored) return;

@@ -1,6 +1,7 @@
 import {
   resolveEncounterMatchDecision,
   getUserLoginLocation,
+  getEncounterSessionSnapshot,
 } from '@bahmni/services';
 import { usePatientUUID } from '@bahmni/widgets';
 import { act, renderHook, waitFor } from '@testing-library/react';
@@ -51,6 +52,12 @@ const defaultOptions = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.mocked(getEncounterSessionSnapshot).mockReturnValue({
+    matchReasons: [],
+    activeEncounter: null,
+    canEditOrCreate: false,
+    isLoading: false,
+  });
   mockUsePatientUUID.mockReturnValue(PATIENT_UUID);
   mockGetUserLoginLocation.mockReturnValue({ uuid: LOCATION_UUID } as any);
 });
@@ -102,7 +109,7 @@ describe('useEncounterSession', () => {
       subject: { reference: `Patient/${PATIENT_UUID}` },
     } as any;
 
-    it('seeds state from store and skips resolver when snapshot is MATCHED and belongs to this patient', async () => {
+    it('passes the saved ID to the shared resolver without seeding an unverified session', async () => {
       (
         jest.requireMock('@bahmni/services')
           .getEncounterSessionSnapshot as jest.Mock
@@ -112,16 +119,120 @@ describe('useEncounterSession', () => {
         canEditOrCreate: true,
         isLoading: false,
       });
+      let finish!: (
+        decision: Awaited<ReturnType<typeof resolveEncounterMatchDecision>>,
+      ) => void;
+      mockResolveEncounterMatchDecision.mockReturnValue(
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+      );
 
       const { result } = renderHook(() => useEncounterSession(defaultOptions));
+      expect(result.current.isLoading).toBe(true);
+      expect(result.current.hasActiveSession).toBe(false);
+      expect(result.current.activeEncounter).toBeNull();
+      expect(mockResolveEncounterMatchDecision).toHaveBeenCalledWith(
+        PATIENT_UUID,
+        PRACTITIONER_UUID,
+        LOCATION_UUID,
+        ENCOUNTER_TYPE_UUID,
+        'snap-enc-1',
+      );
+      await act(async () =>
+        finish({
+          matched: true,
+          encounter: snapshotEncounter,
+          reasons: ['MATCHED'],
+        }),
+      );
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       expect(result.current.hasActiveSession).toBe(true);
       expect(result.current.activeEncounter).toBe(snapshotEncounter);
       expect(result.current.matchReason).toEqual(['MATCHED']);
-      expect(mockResolveEncounterMatchDecision).not.toHaveBeenCalled();
+      expect(mockResolveEncounterMatchDecision).toHaveBeenCalledTimes(1);
     });
+
+    it('cannot resume a same-patient cached match when fresh resolution fails', async () => {
+      jest.mocked(getEncounterSessionSnapshot).mockReturnValue({
+        matchReasons: ['MATCHED'],
+        activeEncounter: snapshotEncounter,
+        canEditOrCreate: true,
+        isLoading: false,
+      });
+      mockResolveEncounterMatchDecision.mockRejectedValue(
+        new Error('Fresh encounter read failed'),
+      );
+      const { result } = renderHook(() => useEncounterSession(defaultOptions));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      expect(result.current.error).toBe('Fresh encounter read failed');
+      expect(result.current.editActiveEncounter).toBe(false);
+      expect(result.current.activeEncounter).toBeNull();
+      expect(result.current.matchReason).toEqual([]);
+    });
+
+    it('uses the new provider and encounter type rather than a cached MATCHED decision', async () => {
+      jest.mocked(getEncounterSessionSnapshot).mockReturnValue({
+        matchReasons: ['MATCHED'],
+        activeEncounter: snapshotEncounter,
+        canEditOrCreate: true,
+        isLoading: false,
+      });
+      mockResolveEncounterMatchDecision.mockResolvedValue({
+        matched: false,
+        encounter: snapshotEncounter,
+        reasons: ['PROVIDER_MISMATCH'],
+      });
+      const { result } = renderHook(() =>
+        useEncounterSession({
+          practitioner: { uuid: 'new-provider' } as any,
+          encounterTypeUUID: 'new-type',
+        }),
+      );
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      expect(mockResolveEncounterMatchDecision).toHaveBeenCalledWith(
+        PATIENT_UUID,
+        'new-provider',
+        LOCATION_UUID,
+        'new-type',
+        'snap-enc-1',
+      );
+      expect(result.current.editActiveEncounter).toBe(false);
+    });
+
+    it.each([
+      { matchReasons: ['MATCHED'], isLoading: true },
+      { matchReasons: ['MATCHED', 'SESSION_EXPIRED'], isLoading: false },
+      { matchReasons: ['PROVIDER_MISMATCH'], isLoading: false },
+    ])(
+      'does not supply a pending or conflicting cached match: %j',
+      async (state) => {
+        jest.mocked(getEncounterSessionSnapshot).mockReturnValue({
+          ...state,
+          activeEncounter: snapshotEncounter,
+          canEditOrCreate: true,
+        } as any);
+        mockResolveEncounterMatchDecision.mockResolvedValue({
+          matched: false,
+          encounter: null,
+          reasons: ['NO_ACTIVE_ENCOUNTER'],
+        });
+        const { result } = renderHook(() =>
+          useEncounterSession(defaultOptions),
+        );
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+        expect(mockResolveEncounterMatchDecision).toHaveBeenCalledWith(
+          PATIENT_UUID,
+          PRACTITIONER_UUID,
+          LOCATION_UUID,
+          ENCOUNTER_TYPE_UUID,
+          undefined,
+        );
+        expect(result.current.editActiveEncounter).toBe(false);
+      },
+    );
 
     it('does not seed and falls through to resolver when snapshot encounter belongs to a different patient', async () => {
       (
@@ -287,6 +398,7 @@ describe('useEncounterSession', () => {
           PRACTITIONER_UUID,
           LOCATION_UUID,
           ENCOUNTER_TYPE_UUID,
+          undefined,
         ),
       );
     });
@@ -309,6 +421,7 @@ describe('useEncounterSession', () => {
           PRACTITIONER_UUID,
           undefined,
           ENCOUNTER_TYPE_UUID,
+          undefined,
         ),
       );
     });
