@@ -315,7 +315,7 @@ describe('useEncounterSession', () => {
   });
 
   describe('error handling', () => {
-    it('defaults to NO_ACTIVE_ENCOUNTER when resolver throws', async () => {
+    it('keeps resolution failure distinct from a known new encounter', async () => {
       mockResolveEncounterMatchDecision.mockRejectedValue(
         new Error('network error'),
       );
@@ -326,7 +326,8 @@ describe('useEncounterSession', () => {
 
       expect(result.current.hasActiveSession).toBe(false);
       expect(result.current.activeEncounter).toBeNull();
-      expect(result.current.matchReason).toEqual(['NO_ACTIVE_ENCOUNTER']);
+      expect(result.current.matchReason).toEqual([]);
+      expect(result.current.error).toBe('network error');
       expect(result.current.editActiveEncounter).toBe(false);
     });
   });

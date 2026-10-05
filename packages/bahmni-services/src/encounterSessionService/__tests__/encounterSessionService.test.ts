@@ -1,9 +1,11 @@
 import { Encounter } from 'fhir/r4';
 import { get } from '../../api';
 import { getActiveVisit } from '../../encounterService';
+import { ENCOUNTER_SEARCH_URL } from '../constants';
 import {
   filterByActiveVisit,
   findActiveEncounterInSession,
+  searchEncounters,
 } from '../encounterSessionService';
 
 // Mock the encounterService
@@ -122,6 +124,58 @@ describe('encounterSessionService', () => {
     it('should return null when no encounters provided', async () => {
       const result = await filterByActiveVisit([], mockPatientUUID);
       expect(result).toBeNull();
+    });
+
+    it('selects the newest matching encounter without changing the input order', async () => {
+      const older = createMockEncounter('older', 'visit-123');
+      const newer = {
+        ...older,
+        id: 'newer',
+        period: { start: '2025-07-22T03:00:00Z' },
+      };
+      const missingDate = { ...older, id: 'undated', period: undefined };
+      const invalidDate = {
+        ...older,
+        id: 'invalid',
+        period: { start: 'invalid' },
+      };
+      const encounters = [missingDate, older, invalidDate, newer];
+      mockGetActiveVisit.mockResolvedValue(createMockVisit('visit-123', false));
+      await expect(
+        filterByActiveVisit(encounters, mockPatientUUID),
+      ).resolves.toEqual(newer);
+      expect(encounters.map((encounter) => encounter.id)).toEqual([
+        'undated',
+        'older',
+        'invalid',
+        'newer',
+      ]);
+    });
+
+    it.each([
+      'https://staging.example/openmrs/ws/fhir2/R4/Encounter/visit-123',
+      'Encounter/visit-123/_history/2',
+      'https://staging.example/openmrs/ws/fhir2/R4/Encounter/visit-123/_history/2',
+    ])('recognizes the active visit reference %s', async (reference) => {
+      const encounter = {
+        ...createMockEncounter('encounter-1', 'visit-123'),
+        partOf: { reference },
+      };
+      mockGetActiveVisit.mockResolvedValue(createMockVisit('visit-123', false));
+      await expect(
+        filterByActiveVisit([encounter], mockPatientUUID),
+      ).resolves.toEqual(encounter);
+    });
+
+    it('does not match a different resource type with the same identifier', async () => {
+      const encounter = {
+        ...createMockEncounter('encounter-1', 'visit-123'),
+        partOf: { reference: 'Patient/visit-123' },
+      };
+      mockGetActiveVisit.mockResolvedValue(createMockVisit('visit-123', false));
+      await expect(
+        filterByActiveVisit([encounter], mockPatientUUID),
+      ).resolves.toBeNull();
     });
 
     it('should return null when no visits found', async () => {
@@ -281,20 +335,18 @@ describe('encounterSessionService', () => {
     });
 
     it('propagates active-visit failure after a successful search', async () => {
-      jest
-        .mocked(get)
-        .mockResolvedValue({
-          resourceType: 'Bundle',
-          entry: [
-            {
-              resource: {
-                resourceType: 'Encounter',
-                id: 'encounter-123',
-                partOf: { reference: 'Encounter/visit-123' },
-              },
+      jest.mocked(get).mockResolvedValue({
+        resourceType: 'Bundle',
+        entry: [
+          {
+            resource: {
+              resourceType: 'Encounter',
+              id: 'encounter-123',
+              partOf: { reference: 'Encounter/visit-123' },
             },
-          ],
-        });
+          },
+        ],
+      });
       mockGetActiveVisit.mockRejectedValue(new Error('Visit unavailable'));
       await expect(
         findActiveEncounterInSession(
@@ -317,6 +369,76 @@ describe('encounterSessionService', () => {
         ),
       ).resolves.toBeNull();
       expect(mockGetActiveVisit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('searchEncounters pagination', () => {
+    const params = {
+      patient: 'patient-123',
+      _tag: 'encounter',
+      type: 'type-123',
+      participant: 'provider-123',
+    };
+    const initial = `${ENCOUNTER_SEARCH_URL}?${new URLSearchParams(params)}`;
+    const next = `${initial}&_getpagesoffset=1`;
+    const encounter = { resourceType: 'Encounter', id: 'encounter-2' };
+    beforeEach(() => jest.resetAllMocks());
+
+    it('reads the later encounter page through the same local API boundary', async () => {
+      jest
+        .mocked(get)
+        .mockResolvedValueOnce({
+          resourceType: 'Bundle',
+          total: 1,
+          entry: [],
+          link: [{ relation: 'next', url: `https://staging.example${next}` }],
+        })
+        .mockResolvedValueOnce({
+          resourceType: 'Bundle',
+          entry: [{ resource: encounter }],
+        });
+      await expect(searchEncounters(params)).resolves.toEqual([encounter]);
+      expect(get).toHaveBeenNthCalledWith(1, initial);
+      expect(get).toHaveBeenNthCalledWith(2, next);
+    });
+
+    it.each([
+      ['cyclic', initial],
+      ['different resource', next.replace('/Encounter?', '/Patient?')],
+    ])('rejects a %s pagination link', async (_, url) => {
+      jest.mocked(get).mockResolvedValueOnce({
+        resourceType: 'Bundle',
+        link: [{ relation: 'next', url }],
+      });
+      await expect(searchEncounters(params)).rejects.toThrow(
+        'Invalid FHIR pagination link',
+      );
+      expect(get).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects an incomplete history', async () => {
+      jest.mocked(get).mockResolvedValueOnce({
+        resourceType: 'Bundle',
+        total: 2,
+        entry: [{ resource: encounter }],
+      });
+      await expect(searchEncounters(params)).rejects.toThrow(
+        'incomplete result',
+      );
+    });
+
+    it('propagates a later-page failure instead of returning the partial history', async () => {
+      jest
+        .mocked(get)
+        .mockResolvedValueOnce({
+          resourceType: 'Bundle',
+          entry: [{ resource: encounter }],
+          link: [{ relation: 'next', url: next }],
+        })
+        .mockRejectedValueOnce(new Error('Later page unavailable'));
+      await expect(searchEncounters(params)).rejects.toThrow(
+        'Later page unavailable',
+      );
     });
   });
 });

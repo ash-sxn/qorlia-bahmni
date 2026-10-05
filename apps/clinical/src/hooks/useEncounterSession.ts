@@ -108,7 +108,7 @@ export function useEncounterSession(
       setHasActiveSession(false);
       setActiveEncounter(null);
       setIsPractitionerMatch(false);
-      setMatchReason(['NO_ACTIVE_ENCOUNTER']);
+      setMatchReason([]);
     } finally {
       if (!signal.ignored) setIsLoading(false);
     }

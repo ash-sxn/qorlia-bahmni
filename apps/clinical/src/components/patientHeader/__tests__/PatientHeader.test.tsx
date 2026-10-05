@@ -182,6 +182,32 @@ describe('PatientHeader Component', () => {
 
   // Button tests
   describe('Button functionality', () => {
+    test('shows an accessible retry without exposing a failed lookup as a new consultation', async () => {
+      const refetch = jest.fn();
+      mockedUseEncounterSession.mockReturnValue({
+        hasActiveSession: false,
+        activeEncounter: null,
+        isPractitionerMatch: false,
+        matchReason: [],
+        editActiveEncounter: false,
+        isLoading: false,
+        error: 'Backend unavailable',
+        refetch,
+      });
+      const { container } = renderComponent();
+      expect(screen.getByTestId('consultation-action-button')).toBeDisabled();
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'CONSULTATION_SESSION_LOAD_ERROR',
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'CONSULTATION_SESSION_RETRY' }),
+      );
+      expect(refetch).toHaveBeenCalledTimes(1);
+      expect(mockDispatchConsultationStart).not.toHaveBeenCalled();
+      expect(getEncounterSessionSnapshot().matchReasons).toEqual([]);
+      expect(getEncounterSessionSnapshot().canEditOrCreate).toBe(false);
+      expect(await axe(container)).toHaveNoViolations();
+    });
     test('renders button with "New Consultation" text and dispatches event on click', () => {
       renderComponent({ isActionAreaVisible: false });
       const button = screen.getByRole('button');

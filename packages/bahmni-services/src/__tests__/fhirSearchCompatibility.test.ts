@@ -21,7 +21,7 @@ const diagnosis: Condition = {
   category: [{ coding: [{ code: 'encounter-diagnosis' }] }],
 };
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => jest.resetAllMocks());
 
 it('uses patient-only search, follows pages, and filters unsupported categories', async () => {
   (get as jest.Mock)
@@ -107,9 +107,42 @@ it('collects all preferred pages only when requested', async () => {
   expect(get).toHaveBeenCalledTimes(2);
 });
 
+it('follows a HAPI search cursor at the FHIR root through the local API', async () => {
+  const nextPath =
+    '/openmrs/ws/fhir2/R4?_getpages=search-token&_getpagesoffset=1&_count=1&_bundletype=searchset';
+  (get as jest.Mock)
+    .mockResolvedValueOnce({
+      resourceType: 'Bundle',
+      total: 2,
+      entry: [{ resource: diagnosis }],
+      link: [{ relation: 'next', url: `https://upstream.invalid${nextPath}` }],
+    })
+    .mockResolvedValueOnce({
+      resourceType: 'Bundle',
+      entry: [{ resource: problem }],
+    });
+
+  const result = await getCompatiblePatientBundle<Condition>(
+    base,
+    base,
+    () => true,
+    true,
+  );
+
+  expect(result.bundle.entry).toEqual([
+    { resource: diagnosis },
+    { resource: problem },
+  ]);
+  expect(get).toHaveBeenNthCalledWith(2, nextPath);
+});
+
 it.each([
   ['different resource', `${base.replace('/Condition?', '/Patient?')}`],
   ['cyclic', base],
+  [
+    'FHIR root without a search cursor',
+    '/openmrs/ws/fhir2/R4?_getpagesoffset=1',
+  ],
 ])('rejects a %s preferred pagination link', async (_, nextUrl) => {
   (get as jest.Mock).mockResolvedValueOnce({
     resourceType: 'Bundle',
@@ -119,6 +152,25 @@ it.each([
     getCompatiblePatientBundle<Condition>(base, base, () => true, true),
   ).rejects.toThrow('Invalid FHIR pagination link');
   expect(get).toHaveBeenCalledTimes(1);
+});
+
+it('rejects a repeated HAPI cursor page', async () => {
+  const cursor =
+    '/openmrs/ws/fhir2/R4?_getpages=search-token&_getpagesoffset=1';
+  (get as jest.Mock)
+    .mockResolvedValueOnce({
+      resourceType: 'Bundle',
+      link: [{ relation: 'next', url: cursor }],
+    })
+    .mockResolvedValueOnce({
+      resourceType: 'Bundle',
+      link: [{ relation: 'next', url: cursor }],
+    });
+
+  await expect(
+    getCompatiblePatientBundle<Condition>(base, base, () => true, true),
+  ).rejects.toThrow('Invalid FHIR pagination link');
+  expect(get).toHaveBeenCalledTimes(2);
 });
 
 it('rejects incomplete preferred results rather than approving unknown duplicates', async () => {

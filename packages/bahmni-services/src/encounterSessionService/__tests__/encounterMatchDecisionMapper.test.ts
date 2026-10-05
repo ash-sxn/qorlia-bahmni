@@ -7,7 +7,11 @@ import {
 } from '../encounterSessionService';
 
 jest.mock('../../encounterService');
-jest.mock('../encounterSessionService');
+jest.mock('../encounterSessionService', () => ({
+  ...jest.requireActual('../encounterSessionService'),
+  searchEncounters: jest.fn(),
+  getEncounterSessionDuration: jest.fn(),
+}));
 
 const mockGetActiveVisit = getActiveVisit as jest.MockedFunction<
   typeof getActiveVisit
@@ -95,6 +99,59 @@ describe('resolveEncounterMatchDecision', () => {
   });
 
   describe('MATCHED', () => {
+    it('accepts absolute/versioned visit, provider and location references', async () => {
+      const encounter = {
+        ...createEncounter('enc-1', LOCATION_UUID),
+        partOf: {
+          reference: `https://staging.example/R4/Encounter/${VISIT_UUID}/_history/2`,
+        },
+        participant: [
+          {
+            individual: {
+              reference: `Practitioner/${PRACTITIONER_UUID}/_history/3`,
+            },
+          },
+        ],
+        location: [
+          {
+            location: {
+              reference: `https://staging.example/R4/Location/${LOCATION_UUID}`,
+            },
+          },
+        ],
+      };
+      mockGetActiveVisit.mockResolvedValue(createActiveVisit());
+      mockSearches([encounter], [encounter]);
+      await expect(
+        resolveEncounterMatchDecision(
+          PATIENT_UUID,
+          PRACTITIONER_UUID,
+          LOCATION_UUID,
+          ENCOUNTER_TYPE_UUID,
+        ),
+      ).resolves.toMatchObject({ matched: true, encounter });
+    });
+
+    it('rejects a visit reference of the wrong resource type', async () => {
+      const encounter = {
+        ...createEncounter('enc-1', LOCATION_UUID),
+        partOf: { reference: `Patient/${VISIT_UUID}` },
+      };
+      mockGetActiveVisit.mockResolvedValue(createActiveVisit());
+      mockSearches([encounter], [encounter]);
+      await expect(
+        resolveEncounterMatchDecision(
+          PATIENT_UUID,
+          PRACTITIONER_UUID,
+          LOCATION_UUID,
+          ENCOUNTER_TYPE_UUID,
+        ),
+      ).resolves.toMatchObject({
+        matched: false,
+        encounter: null,
+        reasons: ['NO_ACTIVE_ENCOUNTER'],
+      });
+    });
     it('returns MATCHED when in-session own encounter location UUID matches login location', async () => {
       const encounter = createEncounter('enc-1', LOCATION_UUID);
       mockGetActiveVisit.mockResolvedValue(createActiveVisit());
@@ -496,51 +553,30 @@ describe('resolveEncounterMatchDecision', () => {
   });
 
   describe('error handling', () => {
-    it('returns NO_ACTIVE_ENCOUNTER and logs error when getActiveVisit throws', async () => {
-      const consoleSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+    it('propagates an active-visit failure instead of claiming a new encounter', async () => {
       mockGetActiveVisit.mockRejectedValue(new Error('Network error'));
-
-      const result = await resolveEncounterMatchDecision(
-        PATIENT_UUID,
-        PRACTITIONER_UUID,
-        LOCATION_UUID,
-        ENCOUNTER_TYPE_UUID,
-      );
-
-      expect(result).toEqual({
-        matched: false,
-        encounter: null,
-        reasons: ['NO_ACTIVE_ENCOUNTER'],
-      });
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Error in resolveEncounterMatchDecision:',
-        'Network error',
-      );
-      consoleSpy.mockRestore();
+      await expect(
+        resolveEncounterMatchDecision(
+          PATIENT_UUID,
+          PRACTITIONER_UUID,
+          LOCATION_UUID,
+          ENCOUNTER_TYPE_UUID,
+        ),
+      ).rejects.toThrow('Network error');
     });
 
-    it('returns NO_ACTIVE_ENCOUNTER when searchEncounters throws', async () => {
-      const consoleSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+    it('propagates search failure instead of claiming a new encounter', async () => {
       mockGetActiveVisit.mockResolvedValue(createActiveVisit());
       mockSearchEncounters.mockRejectedValue(new Error('API timeout'));
 
-      const result = await resolveEncounterMatchDecision(
-        PATIENT_UUID,
-        PRACTITIONER_UUID,
-        LOCATION_UUID,
-        ENCOUNTER_TYPE_UUID,
-      );
-
-      expect(result).toEqual({
-        matched: false,
-        encounter: null,
-        reasons: ['NO_ACTIVE_ENCOUNTER'],
-      });
-      consoleSpy.mockRestore();
+      await expect(
+        resolveEncounterMatchDecision(
+          PATIENT_UUID,
+          PRACTITIONER_UUID,
+          LOCATION_UUID,
+          ENCOUNTER_TYPE_UUID,
+        ),
+      ).rejects.toThrow('API timeout');
     });
   });
 });

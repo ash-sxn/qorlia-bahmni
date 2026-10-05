@@ -116,6 +116,15 @@ describe('ConsultationActionButton', () => {
         screen.queryByTestId('consultation-action-button'),
       ).not.toBeInTheDocument();
     });
+
+    it('blocks starting a consultation when encounter resolution failed', () => {
+      render(<ConsultationActionButton {...defaultProps} sessionError />);
+      const button = screen.getByTestId('consultation-action-button');
+      expect(button).toBeDisabled();
+      expect(button).toHaveTextContent('CONSULTATION_SESSION_UNAVAILABLE');
+      fireEvent.click(button);
+      expect(mockDispatchConsultationStart).not.toHaveBeenCalled();
+    });
   });
 
   it('hides button when user lacks Add Encounters privilege', () => {

@@ -1,5 +1,46 @@
 # Bahmni workflow parity ledger
 
+## 5 October paginated encounter selection and recovery checkpoint
+
+This closes the tested search-page, newest-selection and lookup-failure paths,
+not complete encounter-session or clinical workflow parity.
+
+- The shared visit and encounter searches now read every next page, reject
+  incomplete/cyclic results and exclude non-Encounter resources. Relative,
+  absolute and history-versioned references are matched by their resource type.
+  Encounter selection sorts a copy by start time rather than assuming response
+  order. Actual read failures propagate instead of becoming NO_ACTIVE_ENCOUNTER.
+- Four active-visit regressions failed before the correction. Real staging's
+  HAPI next link targets the FHIR root with a search cursor, which the initial
+  same-resource-path check rejected. Two cursor regressions failed before the
+  compatible correction; another resource/root-without-cursor remains rejected.
+  Absolute next links are requested through the local API, not their origin.
+- A read-only verifier loads the actual source services and forces one-entry
+  pages against isolated staging. Both encounter pages match native REST IDs;
+  reversing their input still selects the newest encounter. The older fixture
+  correctly reports SESSION_EXPIRED. Injected later-page failure propagates,
+  and full native before/after records are unchanged. No save was replayed.
+- The patient header disables the consultation action on lookup failure and
+  offers an accessible, branded retry. Actual browser fault/recovery retained
+  the same synthetic patient, showed Consultation unavailable, then restored
+  Continue Consultation after Try again. The final complete, non-truncated
+  capture has no clinical mutation, only the normal chart-view audit POST.
+  An earlier capture was truncated and is not used for that assertion. Temporary
+  request blocking was removed; the recovered page has no error overlay.
+- Eight service suites pass 200 tests; five clinical suites pass 121 tests and
+  one snapshot in India and US Pacific time. Service/clinical type checks and
+  dependency-first builds pass; changed-source lint has zero errors/warnings.
+  A parallel type check overlapped the service build's output replacement and
+  could not resolve declarations; the sequential check passed without a source
+  change. Existing duplicate-mock, form-renderer eval and large-bundle warnings
+  remain. Shared controls/services are reused without a new dependency.
+
+Remaining: snapshot patient/provider/type/age eligibility, session-duration
+failure policy, submitted-form failure states, noncoded entry and configured
+condition details, draft/permission transitions, concurrency, wider React and
+separate-product acceptance. No production/shared-demo deployment, new clinical
+record or existing staff privilege change occurred in this checkpoint.
+
 ## 5 October encounter-scoped diagnosis and submitted-form refresh checkpoint
 
 This closes the tested consultation duplicate scope and missing-encounter refresh

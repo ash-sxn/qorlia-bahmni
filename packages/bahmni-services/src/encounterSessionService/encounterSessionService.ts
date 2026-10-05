@@ -1,6 +1,7 @@
-import { Encounter, Bundle } from 'fhir/r4';
+import { Encounter } from 'fhir/r4';
 import { get } from '../api';
 import { getActiveVisit } from '../encounterService';
+import { getAllFHIRSearchPages } from '../fhirSearchCompatibility';
 import {
   ENCOUNTER_SESSION_DURATION_GP_URL,
   ENCOUNTER_SEARCH_URL,
@@ -32,13 +33,32 @@ export async function searchEncounters(
 
   const url = `${ENCOUNTER_SEARCH_URL}?${queryParams.toString()}`;
 
-  const bundle = await get<Bundle<Encounter>>(url);
+  const bundle = await getAllFHIRSearchPages<Encounter>(url);
 
   return (
     bundle.entry
       ?.map((entry) => entry.resource)
-      .filter((resource): resource is Encounter => resource !== undefined) ?? []
+      .filter(
+        (resource): resource is Encounter =>
+          resource?.resourceType === 'Encounter',
+      ) ?? []
   );
+}
+
+export function getTypedReferenceId(
+  reference: string | undefined,
+  resourceType: string,
+): string | undefined {
+  const match = reference?.match(
+    /(?:^|\/)([A-Za-z][A-Za-z0-9]*)\/([A-Za-z0-9.-]+)(?:\/_history\/[A-Za-z0-9.-]+)?$/,
+  );
+  return match?.[1] === resourceType ? match[2] : undefined;
+}
+
+export function sortByMostRecent(encounters: Encounter[]): Encounter[] {
+  const start = (encounter: Encounter) =>
+    Date.parse(encounter.period?.start ?? '') || 0;
+  return [...encounters].sort((a, b) => start(b) - start(a));
 }
 
 /**
@@ -76,8 +96,11 @@ export async function filterByActiveVisit(
 
   // Find encounter that belongs to the active visit
   return (
-    encounters.find((encounter) => {
-      const visitUUID = encounter.partOf?.reference?.split('/')[1];
+    sortByMostRecent(encounters).find((encounter) => {
+      const visitUUID = getTypedReferenceId(
+        encounter.partOf?.reference,
+        'Encounter',
+      );
       if (activeVisit.id !== visitUUID) return false;
       if (!currentEpisodeEncounterUuids) return true;
       return (

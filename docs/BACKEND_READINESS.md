@@ -1,5 +1,31 @@
 # Qorlia React frontend backend readiness
 
+## Latest paginated encounter selection and recovery verification
+
+Visit/session searches collect all native FHIR pages, including the pinned
+HAPI server's FHIR-root search cursor, through the local API. Incomplete/cyclic
+pages and later-page failures reject the lookup. Typed reference variants and
+newest encounter selection are covered without mutating the caller's array.
+Lookup errors no longer mean that a new consultation is known to be safe.
+
+The actual source-service read-only verifier forces two one-entry staging pages,
+matches both native REST encounter IDs, chooses the newest from reversed input,
+retains the fixture's SESSION_EXPIRED decision and propagates injected page
+failure. Native before/after records are identical. Browser request blocking
+produces a disabled Consultation unavailable action and retry alert; restoring
+reads and Try again returns Continue Consultation for the existing synthetic
+patient. The final non-truncated capture has only reads and the normal view
+audit POST, not a clinical mutation. Blocking is removed and no error overlay
+remains. The earlier truncated capture is not treated as complete evidence.
+
+Focused service/clinical checks pass 200/121 tests and one clinical snapshot in
+India/US Pacific time. Type checks, changed-source lint and dependency-first
+builds pass. A check initially ran during declaration-output replacement; its
+sequential rerun passed without changing source. Existing upstream mock/eval
+and bundle warnings remain. No production/shared-demo deployment, clinical save
+or existing staff-role change occurred. Snapshot context/age, duration failure
+policy, broader encounter/clinical and separate-product gates remain open.
+
 ## Latest encounter-scoped diagnosis and refresh verification
 
 Consultation duplicate checks now target the saved encounter, retaining earlier

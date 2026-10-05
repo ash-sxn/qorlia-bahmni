@@ -1,3 +1,4 @@
+import { Button } from '@bahmni/design-system';
 import {
   useTranslation,
   useSubscribeConsultationSaved,
@@ -61,6 +62,7 @@ const PatientHeader: React.FC<PatientHeaderProps> = ({
     activeEncounter,
     isLoading,
     refetch,
+    error,
   } = useEncounterSession({
     practitioner,
     encounterTypeUUID,
@@ -139,6 +141,7 @@ const PatientHeader: React.FC<PatientHeaderProps> = ({
           isActionAreaVisible={isActionAreaVisible}
           editActiveEncounter={editActiveEncounter}
           isLoading={isLoading}
+          sessionError={!!error}
         />
         <DocumentPrintButton
           printOptions={printOptions}
@@ -148,6 +151,14 @@ const PatientHeader: React.FC<PatientHeaderProps> = ({
           size="md"
         />
       </div>
+      {error && (
+        <div className={styles.sessionError}>
+          <p role="alert">{t('CONSULTATION_SESSION_LOAD_ERROR')}</p>
+          <Button size="sm" kind="tertiary" onClick={() => void refetch()}>
+            {t('CONSULTATION_SESSION_RETRY')}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

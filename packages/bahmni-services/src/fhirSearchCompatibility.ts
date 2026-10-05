@@ -28,7 +28,24 @@ export async function getCompatiblePatientBundle<T extends Resource>(
   }
 
   const initialUrl = preferredBundle ? preferredUrl : fallbackUrl;
+  const complete = await getAllFHIRSearchPages<T>(initialUrl, preferredBundle);
+  const filtered =
+    complete.entry?.filter(
+      (entry) => entry.resource && matches(entry.resource as T),
+    ) ?? [];
+  return {
+    bundle: { ...complete, entry: filtered, total: filtered.length },
+    usedFallback: !preferredBundle,
+  };
+}
+
+/** Collect a complete search through the local API, never an upstream origin. */
+export async function getAllFHIRSearchPages<T extends Resource>(
+  initialUrl: string,
+  initialBundle?: Bundle<T>,
+): Promise<Bundle<T>> {
   const expectedPath = new URL(initialUrl, 'http://localhost').pathname;
+  const searchRoot = expectedPath.slice(0, expectedPath.lastIndexOf('/'));
   const visited = new Set<string>();
   const entries: NonNullable<Bundle<T>['entry']> = [];
   let nextUrl: string | undefined = initialUrl;
@@ -37,14 +54,22 @@ export async function getCompatiblePatientBundle<T extends Resource>(
   while (nextUrl) {
     const parsed: URL = new URL(nextUrl, 'http://localhost');
     const path: string = parsed.pathname + parsed.search;
-    if (parsed.pathname !== expectedPath || visited.has(path)) {
+    // HAPI's next link can target the FHIR root with a server search cursor.
+    const isSearchCursor =
+      (parsed.pathname === searchRoot ||
+        parsed.pathname === `${searchRoot}/`) &&
+      !!parsed.searchParams.get('_getpages');
+    if (
+      (parsed.pathname !== expectedPath && !isSearchCursor) ||
+      visited.has(path)
+    ) {
       throw new Error('Invalid FHIR pagination link');
     }
     visited.add(path);
 
     const bundle: Bundle<T> =
-      !firstBundle && preferredBundle
-        ? preferredBundle
+      !firstBundle && initialBundle
+        ? initialBundle
         : await get<Bundle<T>>(path);
     firstBundle ??= bundle;
     entries.push(...(bundle.entry ?? []));
@@ -55,16 +80,10 @@ export async function getCompatiblePatientBundle<T extends Resource>(
     throw new Error('FHIR search returned an incomplete result');
   }
 
-  const filtered = entries.filter(
-    (entry) => entry.resource && matches(entry.resource as T),
-  );
   return {
-    bundle: {
-      ...(firstBundle as Bundle<T>),
-      entry: filtered,
-      total: filtered.length,
-      link: undefined,
-    },
-    usedFallback: !preferredBundle,
+    ...(firstBundle as Bundle<T>),
+    entry: entries,
+    total: entries.length,
+    link: undefined,
   };
 }

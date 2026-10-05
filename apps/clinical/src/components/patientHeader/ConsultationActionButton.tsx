@@ -9,12 +9,14 @@ interface ConsultationActionButtonProps {
   isActionAreaVisible: boolean;
   editActiveEncounter: boolean;
   isLoading: boolean;
+  sessionError?: boolean;
 }
 
 const ConsultationActionButton: React.FC<ConsultationActionButtonProps> = ({
   isActionAreaVisible,
   editActiveEncounter,
   isLoading,
+  sessionError = false,
 }) => {
   const { t } = useTranslation();
   const canAddEncounter = useHasPrivilege(
@@ -37,7 +39,7 @@ const ConsultationActionButton: React.FC<ConsultationActionButtonProps> = ({
   return (
     <Button
       size="md"
-      disabled={isActionAreaVisible}
+      disabled={isActionAreaVisible || sessionError}
       onClick={() =>
         dispatchConsultationStart(
           editActiveEncounter
@@ -47,11 +49,13 @@ const ConsultationActionButton: React.FC<ConsultationActionButtonProps> = ({
       }
       data-testid="consultation-action-button"
     >
-      {isActionAreaVisible
-        ? t('CONSULTATION_ACTION_IN_PROGRESS')
-        : editActiveEncounter
-          ? t('CONSULTATION_ACTION_CONTINUE')
-          : t('CONSULTATION_ACTION_NEW')}
+      {sessionError
+        ? t('CONSULTATION_SESSION_UNAVAILABLE')
+        : isActionAreaVisible
+          ? t('CONSULTATION_ACTION_IN_PROGRESS')
+          : editActiveEncounter
+            ? t('CONSULTATION_ACTION_CONTINUE')
+            : t('CONSULTATION_ACTION_NEW')}
     </Button>
   );
 };
