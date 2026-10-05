@@ -36,6 +36,7 @@ const mockAddForm = jest.fn();
 const mockRemoveForm = jest.fn();
 const mockUpdatePinnedForms = jest.fn();
 const mockRefetchPinnedForms = jest.fn();
+const mockRefetchForms = jest.fn();
 
 jest.mock('@bahmni/widgets', () => ({
   useActivePractitioner: jest.fn(),
@@ -103,6 +104,7 @@ beforeEach(() => {
     forms: [mockForm1, mockForm2],
     isLoading: false,
     error: null,
+    refetch: mockRefetchForms,
   });
 
   jest.mocked(usePinnedObservationForms).mockReturnValue({
@@ -224,6 +226,22 @@ describe('ObservationFormsPanel', () => {
     expect(mockRemoveForm).toHaveBeenCalledWith('form-uuid-1');
   });
 
+  it('offers catalogue retry and keeps selected drafts without allowing stale selection', async () => {
+    jest.mocked(useObservationFormsSearch).mockReturnValue({
+      forms: [mockForm1, mockForm2],
+      isLoading: false,
+      error: new Error('catalogue unavailable'),
+      refetch: mockRefetchForms,
+    });
+    render(<ObservationFormsPanel />);
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(MockObservationForms).not.toHaveBeenCalled();
+    expect(mockRemoveForm).not.toHaveBeenCalled();
+    expect(mockAddForm).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(mockRefetchForms).toHaveBeenCalledTimes(1);
+  });
+
   it('refetches pinned forms when viewingForm changes from non-null to null', () => {
     jest.mocked(useObservationFormsStore).mockReturnValue({
       selectedForms: [mockForm2],
@@ -271,6 +289,78 @@ describe('ObservationFormsPanel', () => {
       ).getState = jest.fn(() => ({
         reset: mockReset,
       }));
+    });
+
+    it('does not reset drafts or open cached forms after a catalogue failure', () => {
+      jest.mocked(useObservationFormsSearch).mockReturnValue({
+        forms: [mockForm1],
+        isLoading: false,
+        error: new Error('catalogue unavailable'),
+        refetch: mockRefetchForms,
+      });
+      render(
+        <ObservationFormsPanel
+          encounterSessionStartContext={{
+            formName: 'Vitals',
+            directFormMode: true,
+            activeEncounter: null,
+          }}
+        />,
+      );
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(mockReset).not.toHaveBeenCalled();
+      expect(mockAddForm).not.toHaveBeenCalled();
+    });
+
+    it('explains an unavailable direct form and can retry the catalogue', async () => {
+      render(
+        <ObservationFormsPanel
+          encounterSessionStartContext={{
+            formName: 'Unavailable form',
+            directFormMode: true,
+            activeEncounter: null,
+          }}
+        />,
+      );
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(MockObservationForms).not.toHaveBeenCalled();
+      await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      expect(mockRefetchForms).toHaveBeenCalledTimes(1);
+      expect(mockReset).not.toHaveBeenCalled();
+    });
+
+    it('opens a previously missing direct form exactly once when the catalogue recovers', () => {
+      const context = {
+        formName: 'Vitals',
+        directFormMode: true,
+        activeEncounter: null,
+      };
+      jest.mocked(useObservationFormsSearch).mockReturnValue({
+        forms: [],
+        isLoading: false,
+        error: null,
+        refetch: mockRefetchForms,
+      });
+      const { rerender } = render(
+        <ObservationFormsPanel encounterSessionStartContext={context} />,
+      );
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(mockAddForm).not.toHaveBeenCalled();
+      jest.mocked(useObservationFormsSearch).mockReturnValue({
+        forms: [mockForm1],
+        isLoading: false,
+        error: null,
+        refetch: mockRefetchForms,
+      });
+      rerender(
+        <ObservationFormsPanel encounterSessionStartContext={context} />,
+      );
+      rerender(
+        <ObservationFormsPanel encounterSessionStartContext={context} />,
+      );
+      expect(mockAddForm).toHaveBeenCalledTimes(1);
+      expect(mockAddForm).toHaveBeenCalledWith(mockForm1);
+      expect(mockReset).toHaveBeenCalledTimes(1);
     });
 
     it('calls useObservationFormsSearch without episodeUuids when directFormMode is true and formName is provided', () => {
@@ -400,6 +490,7 @@ describe('ObservationFormsPanel', () => {
         forms: [mockForm1, mockForm2],
         isLoading: true,
         error: null,
+        refetch: mockRefetchForms,
       });
 
       const encounterContext = {
@@ -436,6 +527,53 @@ describe('ObservationFormsPanel', () => {
       (
         useObservationFormsStore as unknown as { getState: jest.Mock }
       ).getState = jest.fn(() => ({ reset: jest.fn() }));
+    });
+
+    it('shows a missing-form error instead of an endless edit spinner', async () => {
+      render(
+        <ObservationFormsPanel
+          encounterSessionStartContext={{
+            editOnly: 'observationForms',
+            formName: 'Unavailable form',
+            sourceEncounterUuid: 'encounter-uuid-1',
+            activeEncounter: { id: 'encounter-uuid-1' } as any,
+          }}
+        />,
+      );
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('edit-observation-form-loading'),
+      ).not.toBeInTheDocument();
+      expect(getObservationsBundleByEncounterUuid).not.toHaveBeenCalled();
+      await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      expect(mockRefetchForms).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not read or open an edit from stale catalogue data after failure', () => {
+      jest.mocked(getObservationsBundleByEncounterUuid).mockResolvedValue({
+        resourceType: 'Bundle',
+        type: 'searchset',
+        entry: [],
+      });
+      jest.mocked(useObservationFormsSearch).mockReturnValue({
+        forms: [mockForm1],
+        isLoading: false,
+        error: new Error('catalogue unavailable'),
+        refetch: mockRefetchForms,
+      });
+      render(
+        <ObservationFormsPanel
+          encounterSessionStartContext={{
+            editOnly: 'observationForms',
+            formName: 'Vitals',
+            sourceEncounterUuid: 'encounter-uuid-1',
+            activeEncounter: { id: 'encounter-uuid-1' } as any,
+          }}
+        />,
+      );
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(getObservationsBundleByEncounterUuid).not.toHaveBeenCalled();
+      expect(mockAddForm).not.toHaveBeenCalled();
     });
 
     it('shows the loading indicator while the edit fetch is in flight (viewingForm not yet set)', () => {
@@ -792,6 +930,7 @@ describe('ObservationFormsPanel', () => {
         forms: [{ ...mockForm1 }, { ...mockForm2 }],
         isLoading: false,
         error: null,
+        refetch: mockRefetchForms,
       });
       await act(async () => {
         rerender(

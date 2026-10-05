@@ -62,6 +62,7 @@ const ObservationFormsPanel: React.FC<ObservationFormsPanelProps> = ({
     forms: allForms,
     isLoading: isAllFormsLoading,
     error: observationFormsError,
+    refetch: refetchForms,
   } = useObservationFormsSearch(
     '',
     isTaskDirectMode ? undefined : episodeOfCareUuids,
@@ -103,6 +104,7 @@ const ObservationFormsPanel: React.FC<ObservationFormsPanelProps> = ({
       formName &&
       directFormMode &&
       !isAllFormsLoading &&
+      !observationFormsError &&
       !sourceEncounterUuid &&
       history.isReady
     ) {
@@ -123,6 +125,7 @@ const ObservationFormsPanel: React.FC<ObservationFormsPanelProps> = ({
     directFormMode,
     allForms,
     isAllFormsLoading,
+    observationFormsError,
     sourceEncounterUuid,
     addForm,
     patientUUID,
@@ -172,6 +175,7 @@ const ObservationFormsPanel: React.FC<ObservationFormsPanelProps> = ({
       !sourceEncounterUuid ||
       !patientUUID ||
       isAllFormsLoading ||
+      observationFormsError ||
       (!isEditMode && !isCopyoverMode)
     )
       return;
@@ -310,6 +314,7 @@ const ObservationFormsPanel: React.FC<ObservationFormsPanelProps> = ({
     sourceEncounterUuid,
     basedOnId,
     isAllFormsLoading,
+    observationFormsError,
     isEditMode,
     isCopyoverMode,
     allForms,
@@ -318,6 +323,35 @@ const ObservationFormsPanel: React.FC<ObservationFormsPanelProps> = ({
     editSessionKey,
     editRetry,
   ]);
+
+  const matchingRequestedForm = formName
+    ? allForms.find(
+        (form) => form.name.toLowerCase() === formName.toLowerCase(),
+      )
+    : undefined;
+  const isRequestedFormMissing =
+    !!formName &&
+    (isEditObservationFormsMode || directFormMode) &&
+    !isAllFormsLoading &&
+    !observationFormsError &&
+    !matchingRequestedForm;
+
+  if (!viewingForm && (observationFormsError || isRequestedFormMissing)) {
+    return (
+      <div role="alert" className={styles.loadingWrapper}>
+        <p>
+          {t(
+            observationFormsError
+              ? 'OBSERVATION_FORM_CATALOGUE_UNAVAILABLE'
+              : 'OBSERVATION_FORM_NOT_AVAILABLE',
+          )}
+        </p>
+        <Button kind="tertiary" onClick={() => void refetchForms()}>
+          {t('OBSERVATION_FORM_TRY_AGAIN')}
+        </Button>
+      </div>
+    );
+  }
 
   // In edit mode the add-form search panel must never appear. Show a loading
   // indicator while addForm() hasn't fired yet — the fetch it waits on can
@@ -356,7 +390,13 @@ const ObservationFormsPanel: React.FC<ObservationFormsPanelProps> = ({
   }
 
   const handleFormSelect = (form: ObservationForm) => {
-    if (history.isReady && !submittedFormUuids.has(form.uuid)) addForm(form);
+    if (
+      !isAllFormsLoading &&
+      !observationFormsError &&
+      history.isReady &&
+      !submittedFormUuids.has(form.uuid)
+    )
+      addForm(form);
   };
 
   if (!history.isReady) {

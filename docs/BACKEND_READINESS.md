@@ -1,5 +1,23 @@
 # Qorlia React frontend backend readiness
 
+## Latest form-catalogue recovery verification
+
+The existing React catalogue query now supplies a retry action and guards manual,
+direct and saved-form initialization against failed or unavailable catalogue
+data. Unresolved privileges/background reads stay pending. Five regressions
+failed before the correction; four clinical suites pass 169 checks and four
+snapshots in India and US Pacific time. Clinical type checking, source lint and
+build pass with existing upstream warnings.
+
+The isolated browser's blocked catalogue displayed an error and disabled Done.
+Removing the temporary block and retrying returned native catalogue/schema data
+and opened the configured History and Examination controls. The fresh complete
+capture contains GET requests only, with 200 responses. Discard/Cancel returned
+to the chart; independent full native records are unchanged. No clinical save,
+public/shared-demo deployment or privilege change occurred. A narrow-screen field
+label remains clipped. Malformed payloads, translated form identity, other
+recovery/configuration paths and broader workflow acceptance remain open.
+
 ## Latest chart-note rendering verification
 
 The radiology/procedure paragraph-nesting issue recorded below is corrected in

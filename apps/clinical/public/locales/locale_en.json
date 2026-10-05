@@ -1,4 +1,6 @@
 {
+  "OBSERVATION_FORM_CATALOGUE_UNAVAILABLE": "The form list could not be loaded. Your selected forms are kept. Try again or cancel.",
+  "OBSERVATION_FORM_NOT_AVAILABLE": "This form is not currently available to your account. Try again or cancel. No replacement form has been opened.",
   "OBSERVATION_FORM_EDIT_UNAVAILABLE": "The saved form could not be loaded. No blank replacement has been opened. Try again or cancel.",
   "OBSERVATION_FORM_HISTORY_UNAVAILABLE": "Submitted form history is unavailable. Your draft is kept, but forms cannot be added or submitted until history is loaded.",
   "OBSERVATION_FORM_HISTORY_LOADING": "Checking submitted form history…",

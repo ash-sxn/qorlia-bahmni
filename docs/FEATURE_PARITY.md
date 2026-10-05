@@ -1,5 +1,39 @@
 # Bahmni workflow parity ledger
 
+## 5 October form-catalogue recovery checkpoint
+
+This closes the tested catalogue-request and unavailable-form paths, not complete
+observation-form, responsive or clinical parity.
+
+- The observation selector now exposes the existing query's retry action. A
+  catalogue failure or missing requested form shows an explicit error instead of
+  initializing from failed cached data, inventing a replacement or spinning
+  indefinitely. Manual, direct and edit/copyover entry respect the same guard.
+  Retry does not remove selected drafts or reset the form store.
+- Background catalogue fetching and unresolved privileges remain pending rather
+  than being interpreted as an empty permitted form list. Matching and error
+  states are derived from existing query data; no dependency or mirrored state
+  was added. A loaded form is not replaced by the selector's error screen.
+- Five catalogue/missing-form regressions failed before the fix. Recovery and
+  cached-refetch hook checks were added afterward. The four affected clinical
+  suites pass 169 tests and four snapshots in India and US Pacific time. Clinical
+  type checking, changed-source lint and build pass, retaining the existing
+  upstream form-renderer eval and large-bundle warnings.
+- Actual isolated browser testing blocked the catalogue request, displayed the
+  retry error with Done disabled, removed the temporary block and recovered the
+  configured History and Examination form. The fresh complete recovery capture
+  is non-truncated: catalogue/schema/translation/history requests are GET and
+  return 200, with no clinical mutation. The empty form was discarded and the
+  consultation cancelled. Full independent native records remain unchanged
+  (seven encounters, three visits, pulse 81). An older evicted capture is not
+  used as proof. The rendered narrow form still has clipped field labels, so
+  responsive acceptance is not claimed.
+
+Remaining: malformed catalogue payloads, translated/native form identity,
+metadata and privilege-load recovery, broader draft/context/permission changes,
+concurrent writes, full React parity and separate-product redesign. No public or
+shared-demo deployment, staff privilege change or clinical save occurred.
+
 ## 5 October chart-note markup checkpoint
 
 - Radiology and procedure note toggletips now use a block-compatible container,
