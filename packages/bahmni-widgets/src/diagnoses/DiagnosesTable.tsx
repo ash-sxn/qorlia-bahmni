@@ -1,22 +1,29 @@
-import { SortableDataTable, Tag, Tile } from '@bahmni/design-system';
+import { Button, SortableDataTable, Tag, Tile } from '@bahmni/design-system';
 import {
   formatDateTime,
   Diagnosis,
   useTranslation,
   getDiagnosesPage,
   useSubscribeConsultationSaved,
+  hasPrivilege,
 } from '@bahmni/services';
 import { useQuery } from '@tanstack/react-query';
 import React, { useMemo, useCallback, useEffect, useState } from 'react';
 import { usePatientUUID } from '../hooks/usePatientUUID';
 import { useNotification } from '../notification';
-import { WidgetProps } from '../registry/model';
+import { WidgetActionConfig, WidgetProps } from '../registry/model';
+import { useHasPrivilege } from '../userPrivileges/useHasPrivilege';
+import { useUserPrivilege } from '../userPrivileges/useUserPrivilege';
+import SavedDiagnosisEditor from './SavedDiagnosisEditor';
 import styles from './styles/DiagnosesTable.module.scss';
 
 /**
  * Component to display patient diagnoses using SortableDataTable
  */
-const DiagnosesTable: React.FC<WidgetProps> = ({ config }) => {
+const DiagnosesTable: React.FC<WidgetProps> = ({
+  config,
+  disableActions = false,
+}) => {
   // Number() safely handles non-numeric config values (NaN → falsy → fallback 10)
   const configPageSize = Number(config?.pageSize) || 5;
   const { t } = useTranslation();
@@ -25,6 +32,28 @@ const DiagnosesTable: React.FC<WidgetProps> = ({ config }) => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPageSize, setSelectedPageSize] = useState(configPageSize);
+  const [selection, setSelection] = useState<{
+    patientUUID: string;
+    diagnosis: Diagnosis;
+    mode: 'edit' | 'remove';
+    launcher: HTMLElement;
+  } | null>(null);
+  const nativeEdit = useHasPrivilege('Edit Diagnoses');
+  const { userPrivileges } = useUserPrivilege();
+  const configuredActions = config?.actions as WidgetActionConfig[] | undefined;
+  const allowedModes = (['edit', 'remove'] as const).filter(
+    (mode) =>
+      nativeEdit &&
+      (configuredActions === undefined ||
+        (Array.isArray(configuredActions) &&
+          configuredActions.some(
+            (action) =>
+              action.type === mode &&
+              hasPrivilege(userPrivileges, action.requiredPrivilege),
+          ))),
+  );
+  const showActions = allowedModes.length > 0;
+  const eligible = showActions && !disableActions && !!patientUUID;
 
   // Use TanStack Query for data fetching and caching
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -56,6 +85,7 @@ const DiagnosesTable: React.FC<WidgetProps> = ({ config }) => {
   // Reset pagination when patient changes
   useEffect(() => {
     setCurrentPage(1);
+    setSelection(null);
   }, [patientUUID]);
 
   // Handle errors with notifications
@@ -90,8 +120,9 @@ const DiagnosesTable: React.FC<WidgetProps> = ({ config }) => {
       { key: 'display', header: t('DIAGNOSIS_LIST_DIAGNOSIS') },
       { key: 'recordedDate', header: t('DIAGNOSIS_RECORDED_DATE') },
       { key: 'recorder', header: t('DIAGNOSIS_LIST_RECORDED_BY') },
+      ...(showActions ? [{ key: 'actions', header: t('ACTIONS') }] : []),
     ],
-    [t],
+    [t, showActions],
   );
 
   // Server sorts by _sort=-_lastUpdated (latest first); no per-page client sort needed.
@@ -123,11 +154,37 @@ const DiagnosesTable: React.FC<WidgetProps> = ({ config }) => {
           return formatDateTime(diagnosis.recordedDate, t).formattedResult;
         case 'recorder':
           return diagnosis.recorder || t('DIAGNOSIS_TABLE_NOT_AVAILABLE');
+        case 'actions':
+          return (
+            <div className={styles.actions}>
+              {allowedModes.map((mode) => (
+                <Button
+                  key={mode}
+                  kind="ghost"
+                  size="sm"
+                  disabled={!eligible}
+                  aria-label={`${t(mode === 'edit' ? 'DIAGNOSIS_EDIT' : 'DIAGNOSIS_REMOVE')}: ${diagnosis.display}`}
+                  onClick={(event) =>
+                    eligible &&
+                    patientUUID &&
+                    setSelection({
+                      patientUUID,
+                      diagnosis,
+                      mode,
+                      launcher: event.currentTarget,
+                    })
+                  }
+                >
+                  {t(mode === 'edit' ? 'DIAGNOSIS_EDIT' : 'DIAGNOSIS_REMOVE')}
+                </Button>
+              ))}
+            </div>
+          );
         default:
           return null;
       }
     },
-    [t],
+    [t, eligible, patientUUID, allowedModes],
   );
 
   return (
@@ -139,7 +196,13 @@ const DiagnosesTable: React.FC<WidgetProps> = ({ config }) => {
       >
         <p>{t('DIAGNOSES_DISPLAY_CONTROL_HEADING')}</p>
       </Tile>
-      <div data-testid="diagnoses-table">
+      <div
+        data-testid="diagnoses-table"
+        className={styles.viewport}
+        role="region"
+        aria-label={t('DIAGNOSES_DISPLAY_CONTROL_HEADING')}
+        tabIndex={0}
+      >
         <SortableDataTable
           headers={headers}
           ariaLabel={t('DIAGNOSES_DISPLAY_CONTROL_HEADING')}
@@ -156,6 +219,18 @@ const DiagnosesTable: React.FC<WidgetProps> = ({ config }) => {
           onPageChange={handlePageChange}
         />
       </div>
+      {selection?.patientUUID === patientUUID && selection && (
+        <SavedDiagnosisEditor
+          key={`${selection.patientUUID}:${selection.diagnosis.id}:${selection.mode}`}
+          patientUUID={selection.patientUUID}
+          diagnosisUUID={selection.diagnosis.id}
+          display={selection.diagnosis.display}
+          mode={selection.mode}
+          launcher={selection.launcher}
+          eligible={eligible && allowedModes.includes(selection.mode)}
+          onClose={() => setSelection(null)}
+        />
+      )}
     </>
   );
 };

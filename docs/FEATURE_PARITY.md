@@ -1,5 +1,53 @@
 # Bahmni workflow parity ledger
 
+## 5 October saved-diagnosis edit/removal checkpoint
+
+This closes certainty/order editing and reasoned native voiding for the tested
+saved diagnosis, not complete diagnosis/condition workflow parity.
+
+- The chart now loads the selected native `patientdiagnoses` record before
+  editing certainty or primary/secondary rank. FHIR does not retain the full
+  writable native shape. The service re-reads immediately before submission and
+  preserves patient, encounter, coded/noncoded values, condition link and form
+  references. Missing, mismatched, removed or observed-stale records block writes.
+  Ambiguous acknowledgements never trigger automatic replay. Native conditional
+  writes are not verified, so a competing write after the re-read remains a gate.
+- Removal uses native DELETE with a required bounded reason, without purge or
+  encounter deletion. Isolated native permission checks establish Edit Diagnoses
+  for update and void; Add-only, Delete-only and read-only roles were denied.
+  The frontend requires that native permission plus each configured action's
+  own restriction. An Edit-only configuration cannot expose Remove. Explicit
+  empty/unknown action configurations add no actions. Permission loss disables
+  an open confirmation; switching patients discards it permanently.
+- The diagnosis reader now displays the official non-coded-condition FHIR
+  extension when `code` is absent, and coding display when text is absent. This
+  is display support for saved noncoded records, not new noncoded entry parity.
+  Confirmed tags use sage/ink instead of error red. The table uses a named,
+  keyboard-focusable viewport and automatic columns rather than compressed cells.
+- Actual React editing returned 200 and full reload retained confirmed certainty
+  and secondary rank. One reasoned removal returned 204; independent exact-ID
+  native reads retain the original creation date, form fields, void reason,
+  earlier coded history and the original active encounter. FHIR contains zero
+  active diagnoses for that fixture. Repeat verification is read-only and does
+  not replay successful saves. A separate existing coded fixture loaded confirmed
+  primary values; unchanged Save was disabled and Cancel restored the launcher
+  without a write. Desktop table width matched its 1136px viewport without page
+  overflow. Other responsive layouts remain release gates.
+- The asynchronous loading/editor transition passes the original launcher through
+  the existing shared Carbon confirmation, preserving initial Cancel focus and
+  focus restoration. Regression tests cover per-action restrictions, revoked
+  removal permission and patient-switch round trips, alongside native request
+  shape, stale records, cancellation and ambiguous failures. Focused suites pass
+  70 service and 106 widget checks in India and US Pacific time. Type checking,
+  changed-source lint and dependency-first builds pass, retaining the existing
+  lifecycle-ref warning, duplicate mocks and upstream import/eval/bundle warnings.
+
+Remaining: noncoded entry, configured notes/status, retained consultation drafts
+across permission changes, full role/configuration variants, concurrency and the
+other React/separate-product gates. No production/shared-demo deployment or
+existing staff privilege change occurred. Only isolated synthetic records were
+used for native writes.
+
 ## 5 October native chart and landing read-permission checkpoint
 
 This closes the tested unrelated chart authorization/error panels for the

@@ -13,7 +13,7 @@ import { Diagnosis } from './models';
 const CONFIRMED_STATUS = 'confirmed';
 const PROVISIONAL_STATUS = 'provisional';
 
-// Fetches all diagnoses (for consultation forms — no pagination)
+// Fetches all diagnoses (for consultation forms, no pagination).
 async function getPatientDiagnosesBundle(patientUUID: string): Promise<Bundle> {
   const { bundle } = await getCompatiblePatientBundle<Diagnoses>(
     PATIENT_DIAGNOSIS_RESOURCE_URL(patientUUID),
@@ -66,9 +66,15 @@ const mapDiagnosisCertainty = (diagnosis: Diagnoses): Coding => {
  * @param diagnosis - The FHIR Condition resource to validate
  * @returns true if valid, false otherwise
  */
-const isValidDiagnosis = (diagnosis: Diagnoses): boolean => {
-  return !!(diagnosis.id && diagnosis.code && diagnosis.recordedDate);
-};
+const diagnosisLabel = (diagnosis: Diagnoses): string | undefined =>
+  [
+    diagnosis.code?.text,
+    ...(diagnosis.code?.coding?.map((coding) => coding.display) ?? []),
+    diagnosis.extension?.find(
+      (extension) =>
+        extension.url === 'http://fhir.openmrs.org/ext/non-coded-condition',
+    )?.valueString,
+  ].find((label) => label?.trim());
 
 /**
  * Formats FHIR diagnoses into a more user-friendly format
@@ -83,7 +89,8 @@ function formatDiagnoses(bundle: Bundle): Diagnosis[] {
       .map((entry) => entry.resource as Diagnoses) ?? [];
 
   return diagnoses.map((diagnosis) => {
-    if (!isValidDiagnosis(diagnosis)) {
+    const display = diagnosisLabel(diagnosis);
+    if (!diagnosis.id || !display || !diagnosis.recordedDate) {
       throw new Error('Incomplete diagnosis data');
     }
 
@@ -92,7 +99,7 @@ function formatDiagnoses(bundle: Bundle): Diagnosis[] {
 
     return {
       id: diagnosis.id as string,
-      display: diagnosis.code?.text ?? '',
+      display,
       certainty,
       recordedDate,
       recorder: diagnosis.recorder?.display ?? '',

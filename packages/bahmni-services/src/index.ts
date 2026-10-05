@@ -196,9 +196,13 @@ export {
 export {
   getPatientDiagnoses,
   getDiagnosesPage,
+  getSavedDiagnosis,
+  updateSavedDiagnosis,
+  removeSavedDiagnosis,
   type DiagnosisPage,
   type Diagnosis,
   type DiagnosisInputEntry,
+  type SavedDiagnosis,
   type DiagnosesByDate,
 } from './diagnosesService';
 export {

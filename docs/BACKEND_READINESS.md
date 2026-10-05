@@ -1,5 +1,33 @@
 # Qorlia React frontend backend readiness
 
+## Latest saved-diagnosis verification
+
+The chart can edit native saved diagnosis certainty/rank and void a selected
+diagnosis with its reason. Exact native reads retain patient/encounter identity,
+coded or noncoded values, condition links and form references. A fresh read guards
+observed stale edits; incomplete acknowledgements block retry until reopening.
+There is no verified native conditional-write guarantee against a later race.
+
+Isolated native checks require Edit Diagnoses for both update and void. The UI
+also respects each configured action independently, explicit empty/unknown
+configurations, action permission loss and patient switches. It does not expand
+staff privileges. Saved noncoded FHIR records now render their official extension
+label rather than failing when the code element is absent.
+
+One React edit and one removal persisted across full reloads. Independent native
+read-back retains confirmed/secondary values, original creation/form fields,
+the removal audit and earlier coded history, with one original active encounter
+and zero active FHIR diagnoses for that synthetic fixture. Repeat verification
+does not submit writes. A separate coded record's unchanged editor and Cancel
+issued only its native GET, restored focus and left the record untouched.
+
+Focused checks pass 70 service and 106 widget tests in India and US Pacific time,
+with type checking, changed-source lint and library builds. Existing warnings
+remain. This supersedes only saved certainty/order editing and voiding gaps,
+not noncoded entry, configured notes/status, all roles, concurrency or complete
+clinical acceptance. See the newest parity checkpoint. No production/shared-demo
+deployment or existing staff-role change occurred.
+
 ## Latest native chart and landing read-permission verification
 
 The condition-only chart now excludes unrelated denied widgets and their empty

@@ -168,7 +168,7 @@ describe('diagnosesService', () => {
         );
       });
 
-      it('should handle missing code.text (uses empty string)', async () => {
+      it('should retain coding-only diagnosis labels', async () => {
         const mockConditions = [
           createMockDiagnosis({
             code: {
@@ -188,8 +188,39 @@ describe('diagnosesService', () => {
 
         const result = await getPatientDiagnoses(patientUUID);
 
-        expect(result[0].display).toBe('');
+        expect(result[0].display).toBe('Diabetes mellitus type 2');
       });
+
+      it('retains native noncoded diagnoses without a FHIR code', async () => {
+        const diagnosis = createMockDiagnosis({
+          code: undefined,
+          extension: [
+            {
+              url: 'http://fhir.openmrs.org/ext/non-coded-condition',
+              valueString: 'QorliaQA noncoded diagnosis',
+            },
+          ],
+        });
+        (get as jest.Mock).mockResolvedValue(createMockBundle([diagnosis]));
+        expect((await getPatientDiagnoses(patientUUID))[0].display).toBe(
+          'QorliaQA noncoded diagnosis',
+        );
+        expect((await getDiagnosesPage(patientUUID)).diagnoses[0].display).toBe(
+          'QorliaQA noncoded diagnosis',
+        );
+      });
+
+      it.each([{}, { text: '   ' }, { coding: [{ code: 'x' }] }])(
+        'rejects a diagnosis with no readable label: %j',
+        async (code) => {
+          (get as jest.Mock).mockResolvedValueOnce(
+            createMockBundle([createMockDiagnosis({ code })]),
+          );
+          await expect(getPatientDiagnoses(patientUUID)).rejects.toThrow(
+            'Incomplete diagnosis data',
+          );
+        },
+      );
 
       it('should handle missing recorder (uses empty string)', async () => {
         const mockConditions = [createMockDiagnosis({ recorder: undefined })];

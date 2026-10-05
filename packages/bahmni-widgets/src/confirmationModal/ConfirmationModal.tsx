@@ -4,13 +4,15 @@ import React, { useLayoutEffect, useRef } from 'react';
 export interface ConfirmationModalProps {
   open: boolean;
   heading: string;
-  body: string;
+  body: React.ReactNode;
   confirmLabel: string;
   cancelLabel: string;
   isSubmitting?: boolean;
   isConfirmDisabled?: boolean;
   danger?: boolean;
   testId?: string;
+  /** Keep the original launcher when asynchronous content replaces a dialog. */
+  launcher?: HTMLElement;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -25,6 +27,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   isConfirmDisabled = false,
   danger = false,
   testId = 'confirmation-modal',
+  launcher,
   onConfirm,
   onCancel,
 }) => {
@@ -35,8 +38,9 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     if (open && !lifecycle.current.open) {
       // Capture before Carbon moves focus, without recapturing its Cancel
       // button when StrictMode replays the opening effects.
-      const launcher = document.activeElement;
-      launcherRef.current = launcher instanceof HTMLElement ? launcher : null;
+      const openingElement = launcher ?? document.activeElement;
+      launcherRef.current =
+        openingElement instanceof HTMLElement ? openingElement : null;
     }
     lifecycle.current.open = open;
     if (!open) return;
@@ -52,7 +56,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         }
       });
     };
-  }, [open]);
+  }, [open, launcher]);
 
   return (
     <Modal
