@@ -1,5 +1,25 @@
 # Qorlia React frontend backend readiness
 
+## Latest session-duration boundary verification
+
+The shared session-window constructor now rejects non-finite, non-positive and
+unrepresentable explicit durations before encounter search. The configuration
+reader rejects coerced boolean/array values and retains the official defaults:
+60 minutes for missing/invalid values, 30 for failed lookup. Fractional positive
+minutes remain supported. Source:
+[Bahmni observation-form guide](https://bahmni.atlassian.net/wiki/spaces/BAH/pages/5644877826/Edit%2BObservation%2BForms%2BIG).
+
+Eighteen added regressions failed before the correction. Focused service suites
+pass 165 tests; clinical suites pass 105 tests and one snapshot in India and US
+Pacific time. Type checks, changed-source lint and the service build pass, with
+existing duplicate-mock/CDSS test warnings. The actual-source read-only native
+verifier preserves full records. Browser reload rendered the chart without
+captured console errors, and the Qorlia link reached the branded React home.
+No hospital global property, staff privilege or production deployment changed.
+
+This is a parsing/boundary checkpoint, not complete session-context, concurrency
+or clinical parity. The remaining React and separate-product gates still apply.
+
 ## Latest saved-encounter handoff verification
 
 The saved encounter in frontend state is now an ID hint, not trusted current

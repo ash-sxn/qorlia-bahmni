@@ -85,6 +85,23 @@ beforeEach(() => {
 });
 
 describe('resolveEncounterMatchDecision', () => {
+  it.each([0, -1, NaN, Infinity, -Infinity, Number.MAX_VALUE])(
+    'blocks encounter searches when the supplied session policy is unusable: %s',
+    async (duration) => {
+      mockGetActiveVisit.mockResolvedValue(createActiveVisit());
+      mockGetEncounterSessionDuration.mockResolvedValue(duration);
+      await expect(
+        resolveEncounterMatchDecision(
+          PATIENT_UUID,
+          PRACTITIONER_UUID,
+          LOCATION_UUID,
+        ),
+      ).rejects.toThrow('Invalid encounter session duration');
+      expect(mockSearchEncounters).not.toHaveBeenCalled();
+      expect(mockGetEncounterByUuid).not.toHaveBeenCalled();
+    },
+  );
+
   describe('saved encounter handoff', () => {
     const now = new Date('2026-10-05T10:00:00Z');
     const savedEncounter = (): Encounter => ({

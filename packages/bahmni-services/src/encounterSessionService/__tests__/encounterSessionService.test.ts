@@ -5,10 +5,14 @@ import {
   FHIR_ENCOUNTER_TYPE_CODE_SYSTEM,
 } from '../../constants/fhir';
 import { getActiveVisit, getEncounterByUuid } from '../../encounterService';
-import { ENCOUNTER_SEARCH_URL } from '../constants';
+import {
+  ENCOUNTER_SEARCH_URL,
+  ENCOUNTER_SESSION_DURATION_GP_URL,
+} from '../constants';
 import {
   filterByActiveVisit,
   findActiveEncounterInSession,
+  getEncounterSessionDuration,
   searchEncounters,
 } from '../encounterSessionService';
 
@@ -20,6 +24,91 @@ const mockGetActiveVisit = getActiveVisit as jest.MockedFunction<
 >;
 
 describe('encounterSessionService', () => {
+  describe('session duration boundaries', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      jest.mocked(get).mockReset();
+      jest
+        .spyOn(Date, 'now')
+        .mockReturnValue(Date.parse('2026-10-05T10:00:00Z'));
+    });
+    afterEach(() => jest.restoreAllMocks());
+
+    it.each([
+      { value: '60', expected: 60 },
+      { value: ' 30 ', expected: 30 },
+      { value: '45.5', expected: 45.5 },
+      { value: 15, expected: 15 },
+    ])(
+      'preserves usable configured minutes %j',
+      async ({ value, expected }) => {
+        jest.mocked(get).mockResolvedValue({ value });
+        await expect(getEncounterSessionDuration()).resolves.toBe(expected);
+        expect(get).toHaveBeenCalledWith(ENCOUNTER_SESSION_DURATION_GP_URL);
+      },
+    );
+
+    it.each([
+      '',
+      'invalid',
+      'NaN',
+      'Infinity',
+      '-Infinity',
+      '1e300',
+      '0',
+      '-1',
+      undefined,
+      null,
+      true,
+      [15],
+      {},
+    ])(
+      'uses the documented invalid-property fallback for %j',
+      async (value) => {
+        jest.mocked(get).mockResolvedValue({ value });
+        await expect(getEncounterSessionDuration()).resolves.toBe(60);
+      },
+    );
+
+    it.each([undefined, null, {}])(
+      'treats a missing property response as invalid, not a failed lookup: %j',
+      async (response) => {
+        jest.mocked(get).mockResolvedValue(response);
+        await expect(getEncounterSessionDuration()).resolves.toBe(60);
+      },
+    );
+
+    it('retains the documented lookup-failure fallback', async () => {
+      jest.mocked(get).mockRejectedValue(new Error('Lookup unavailable'));
+      await expect(getEncounterSessionDuration()).resolves.toBe(30);
+    });
+
+    it.each([0, -1, NaN, Infinity, -Infinity, Number.MAX_VALUE])(
+      'rejects an unusable explicit duration before any encounter query: %s',
+      async (duration) => {
+        await expect(
+          findActiveEncounterInSession('patient-123', 'provider-123', duration),
+        ).rejects.toThrow('Invalid encounter session duration');
+        expect(get).not.toHaveBeenCalled();
+        expect(mockGetActiveVisit).not.toHaveBeenCalled();
+      },
+    );
+
+    it('uses fractional minutes consistently in the query window', async () => {
+      jest.mocked(get).mockResolvedValue({ resourceType: 'Bundle', entry: [] });
+      await expect(
+        findActiveEncounterInSession('patient-123', 'provider-123', 0.5),
+      ).resolves.toBeNull();
+      const url = new URL(
+        jest.mocked(get).mock.calls[0][0],
+        'http://localhost',
+      );
+      expect(url.searchParams.get('_lastUpdated')).toBe(
+        'ge2026-10-05T09:59:30.000Z',
+      );
+    });
+  });
+
   describe('filterByActiveVisit', () => {
     const mockPatientUUID = 'patient-123';
 

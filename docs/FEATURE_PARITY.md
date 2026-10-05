@@ -1,5 +1,36 @@
 # Bahmni workflow parity ledger
 
+## 5 October session-duration boundary checkpoint
+
+This closes invalid duration parsing and window-construction boundaries, not
+the wider session-context/concurrency or clinical acceptance gates.
+
+- The shared duration reader preserves Bahmni's documented policy: 60 minutes
+  for an unset/invalid property and 30 minutes for a failed lookup. See the
+  [official observation-form guide](https://bahmni.atlassian.net/wiki/spaces/BAH/pages/5644877826/Edit%2BObservation%2BForms%2BIG).
+  Missing successful responses are not confused with failed HTTP lookups.
+  Booleans/arrays, non-finite values and values outside Date's representable
+  range are invalid; positive numeric values and fractional minutes remain.
+- Header and pad use one shared start-time boundary. Unusable explicit minute
+  overrides reject before encounter searches rather than querying a future
+  window or raising an unhandled Date conversion error. No new duration limit,
+  setting, dependency or mirrored state was introduced.
+- Eighteen new regressions failed before the correction. Three service suites
+  now pass 165 tests and four clinical suites pass 105 tests with one snapshot
+  in India and US Pacific time. Service/clinical type checks, changed-source
+  lint and the service build pass. Existing duplicate-mock/CDSS test warnings
+  remain; this is not a full application acceptance run or new clinical build.
+- The actual-source native read-only verifier still passes and preserves full
+  records. After reload the browser chart rendered with no captured console
+  errors; its Qorlia link opened the branded home and React module routes.
+  Invalid-property cases were tested at the transport boundary, not by changing
+  the hospital's global property. No clinical write or production/shared-demo
+  deployment occurred.
+
+Remaining: hook refetch/context races, submitted-form failures, noncoded and
+configured condition details, draft/permission transitions, concurrent writes,
+the broader React workflows and separate-product redesign/acceptance.
+
 ## 5 October freshly validated saved-encounter handoff checkpoint
 
 This closes the tested cached-ID eligibility and search-index-lag handoff paths,

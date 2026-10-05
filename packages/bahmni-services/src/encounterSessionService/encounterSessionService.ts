@@ -135,18 +135,41 @@ function findEncounterInVisit(
 
 /**
  * Gets the encounter session duration from global properties
- * @returns Promise resolving to session duration in minutes (default: 30)
+ * @returns Minutes; 60 for unset/invalid values, 30 when the lookup fails.
  */
 export async function getEncounterSessionDuration(): Promise<number> {
+  let response: { value?: unknown } | null | undefined;
   try {
-    const response = await get<{ value: string }>(
+    response = await get<{ value?: unknown } | null | undefined>(
       ENCOUNTER_SESSION_DURATION_GP_URL,
     );
-    const duration = Number(response.value);
-    return !isNaN(duration) && duration > 0 ? duration : 60; // Default to 60 minutes if invalid
   } catch {
     return 30;
   }
+  const value = response?.value;
+  const duration =
+    typeof value === 'string' || typeof value === 'number'
+      ? Number(value)
+      : NaN;
+  try {
+    getEncounterSessionStartTime(duration);
+    return duration;
+  } catch {
+    return 60;
+  }
+}
+
+/** Shared boundary for header and editor, including explicit minute overrides. */
+export function getEncounterSessionStartTime(duration: number): Date {
+  const start = new Date(Date.now() - duration * 60 * 1000);
+  if (
+    !Number.isFinite(duration) ||
+    duration <= 0 ||
+    !Number.isFinite(start.getTime())
+  ) {
+    throw new Error('Invalid encounter session duration');
+  }
+  return start;
 }
 
 /**
@@ -197,7 +220,7 @@ export async function findActiveEncounterInSession(
 
   const duration =
     sessionDurationMinutes ?? (await getEncounterSessionDuration());
-  const sessionStartTime = new Date(Date.now() - duration * 60 * 1000);
+  const sessionStartTime = getEncounterSessionStartTime(duration);
   const lastUpdatedParam = `ge${sessionStartTime.toISOString()}`;
 
   const searchParams: EncounterSearchParams = {

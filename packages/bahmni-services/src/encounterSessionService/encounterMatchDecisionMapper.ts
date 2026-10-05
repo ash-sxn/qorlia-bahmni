@@ -8,6 +8,7 @@ import {
 import {
   searchEncounters,
   getEncounterSessionDuration,
+  getEncounterSessionStartTime,
   getTypedReferenceId,
   sortByMostRecent,
   readSavedEncounter,
@@ -54,8 +55,7 @@ export async function resolveEncounterMatchDecision(
 
   // 2. Get session window
   const sessionDuration = await getEncounterSessionDuration();
-  const now = Date.now();
-  const sessionStartTime = new Date(now - sessionDuration * 60 * 1000);
+  const sessionStartTime = getEncounterSessionStartTime(sessionDuration);
   const recentUpdatedParam = `ge${sessionStartTime.toISOString()}`;
 
   // 3. Two parallel searches:
