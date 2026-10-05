@@ -1,5 +1,28 @@
 # Bahmni workflow parity ledger
 
+## 5 October native-form narrow-layout checkpoint
+
+- The configured History and Examination form had a duration label starting
+  outside the pad at the normal 437px browser viewport. A scoped container query
+  now stacks native form labels above controls below 40rem of actual form width,
+  removes the reserved inline action gutter and keeps comment/clone actions in
+  normal flow. The existing renderer, schema, validation and save payload remain
+  unchanged. No resize listener or dependency was introduced.
+- The failing DOM-boundary check now passes for labels, control wrappers and the
+  numeric wrapper at 320px and 437px viewports. At 1440px, the 859px desktop pad
+  retains the original row layout and passes the same boundary check. A 1000px
+  viewport also retains the row layout in its full-width pad. Temporary viewport
+  overrides were reset. These are fixture-specific checks, not acceptance of
+  every configured control, language or device.
+- The container suite passes 46 tests and two snapshots; clinical production
+  build and changed-style formatting pass with the existing upstream eval/bundle
+  warnings. The empty form was discarded and the consultation cancelled. The
+  independent full native snapshot remains unchanged: seven encounters, three
+  visits and pulse 81. No clinical save or public deployment occurred.
+
+Remaining responsive work includes the narrow chart header, action-area height,
+additional native form/control configurations and broader keyboard/touch checks.
+
 ## 5 October form-catalogue recovery checkpoint
 
 This closes the tested catalogue-request and unavailable-form paths, not complete

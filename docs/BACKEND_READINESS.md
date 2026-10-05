@@ -1,5 +1,21 @@
 # Qorlia React frontend backend readiness
 
+## Latest native-form layout verification
+
+The clipped History and Examination duration label is corrected with a scoped
+CSS container query based on form width, without changing native schemas,
+validation or API payloads. Rendered labels/control wrappers/numeric wrappers
+pass boundary checks at 320px and 437px viewports; the 859px pad at a 1440px
+viewport retains its row layout and passes. The 1000px full-width pad also passes.
+Viewport overrides were reset. This is one configured fixture, not complete
+responsive acceptance. The narrow chart header, action-area height and other
+form/control configurations remain to be checked.
+
+The container suite passes 46 tests/two snapshots; clinical build and formatting
+pass with existing upstream warnings. Discard/Cancel and an independent full
+native snapshot confirm unchanged records (seven encounters, three visits,
+pulse 81). No save, public deployment or privilege change occurred.
+
 ## Latest form-catalogue recovery verification
 
 The existing React catalogue query now supplies a retry action and guards manual,
