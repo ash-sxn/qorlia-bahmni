@@ -452,8 +452,7 @@ describe('useConditionsAndDiagnosesStore', () => {
       const { result } = renderHook(() => useConditionsAndDiagnosesStore());
 
       act(() => {
-        result.current.addDiagnosis(mockConcept);
-        result.current.markAsCondition(mockConcept.conceptUuid);
+        result.current.addCondition(mockConcept);
       });
 
       let isValid: boolean = true;
@@ -475,8 +474,7 @@ describe('useConditionsAndDiagnosesStore', () => {
       const { result } = renderHook(() => useConditionsAndDiagnosesStore());
 
       act(() => {
-        result.current.addDiagnosis(mockConcept);
-        result.current.markAsCondition(mockConcept.conceptUuid);
+        result.current.addCondition(mockConcept);
         result.current.updateConditionDuration(
           mockConcept.conceptUuid,
           5,
@@ -502,8 +500,7 @@ describe('useConditionsAndDiagnosesStore', () => {
       const { result } = renderHook(() => useConditionsAndDiagnosesStore());
 
       act(() => {
-        result.current.addDiagnosis(mockConcept);
-        result.current.markAsCondition(mockConcept.conceptUuid);
+        result.current.addCondition(mockConcept);
         result.current.updateConditionDuration(
           mockConcept.conceptUuid,
           null,
@@ -529,8 +526,7 @@ describe('useConditionsAndDiagnosesStore', () => {
       const { result } = renderHook(() => useConditionsAndDiagnosesStore());
 
       act(() => {
-        result.current.addDiagnosis(mockConcept);
-        result.current.markAsCondition(mockConcept.conceptUuid);
+        result.current.addCondition(mockConcept);
         result.current.updateConditionDuration(
           mockConcept.conceptUuid,
           5,
@@ -552,10 +548,8 @@ describe('useConditionsAndDiagnosesStore', () => {
       const { result } = renderHook(() => useConditionsAndDiagnosesStore());
 
       act(() => {
-        result.current.addDiagnosis(mockConcept);
-        result.current.addDiagnosis(mockConcept2);
-        result.current.markAsCondition(mockConcept.conceptUuid);
-        result.current.markAsCondition(mockConcept2.conceptUuid);
+        result.current.addCondition(mockConcept);
+        result.current.addCondition(mockConcept2);
         result.current.updateConditionDuration(
           mockConcept.conceptUuid,
           5,
@@ -595,7 +589,7 @@ describe('useConditionsAndDiagnosesStore', () => {
         result.current.addDiagnosis(mockConcept);
         result.current.addDiagnosis(mockConcept2);
         result.current.addDiagnosis(mockConcept3);
-        result.current.markAsCondition(mockConcept2.conceptUuid);
+        result.current.addCondition(mockConcept2);
         // mockConcept has no certainty
         // mockConcept2 condition has no duration
         // mockConcept3 has no certainty
@@ -643,7 +637,7 @@ describe('useConditionsAndDiagnosesStore', () => {
           mockConcept2.conceptUuid,
           mockCertainty2,
         );
-        result.current.markAsCondition(mockConcept2.conceptUuid);
+        result.current.addCondition(mockConcept2);
         result.current.updateConditionDuration(
           mockConcept2.conceptUuid,
           7,
@@ -679,8 +673,8 @@ describe('useConditionsAndDiagnosesStore', () => {
         result.current.addDiagnosis(mockConcept);
         result.current.addDiagnosis(mockConcept2);
         result.current.addDiagnosis(mockConcept3);
-        result.current.markAsCondition(mockConcept2.conceptUuid);
-        result.current.markAsCondition(mockConcept3.conceptUuid);
+        result.current.addCondition(mockConcept2);
+        result.current.addCondition(mockConcept3);
         // All items are invalid
       });
 
@@ -689,7 +683,7 @@ describe('useConditionsAndDiagnosesStore', () => {
       });
 
       // All diagnoses should be marked as validated with errors
-      expect(result.current.selectedDiagnoses).toHaveLength(1);
+      expect(result.current.selectedDiagnoses).toHaveLength(3);
       expect(result.current.selectedDiagnoses[0].hasBeenValidated).toBe(true);
       expect(result.current.selectedDiagnoses[0].errors.certainty).toBe(
         'DROPDOWN_VALUE_REQUIRED',
@@ -711,11 +705,51 @@ describe('useConditionsAndDiagnosesStore', () => {
 
   // MARK AS CONDITION TESTS
   describe('markAsCondition', () => {
-    test('should successfully move diagnosis to conditions', () => {
+    test.each([null, mockCertainty2, { code: 'refuted' }, { code: 'unknown' }])(
+      'rejects condition creation for unconfirmed certainty %j without losing the diagnosis',
+      (certainty) => {
+        const store = useConditionsAndDiagnosesStore.getState();
+        act(() => {
+          store.addDiagnosis(mockConcept);
+          store.updateCertainty(mockConcept.conceptUuid, certainty);
+        });
+        const before = useConditionsAndDiagnosesStore.getState();
+        act(() => {
+          expect(store.markAsCondition(mockConcept.conceptUuid)).toBe(false);
+        });
+        const after = useConditionsAndDiagnosesStore.getState();
+        expect(after.selectedDiagnoses).toBe(before.selectedDiagnoses);
+        expect(after.selectedConditions).toBe(before.selectedConditions);
+      },
+    );
+
+    test('retains the complete confirmed diagnosis when adding its condition', () => {
+      const store = useConditionsAndDiagnosesStore.getState();
+      act(() => {
+        store.addDiagnosis(mockConcept);
+        store.updateCertainty(mockConcept.conceptUuid, mockCertainty);
+        store.validate();
+      });
+      const before =
+        useConditionsAndDiagnosesStore.getState().selectedDiagnoses;
+      act(() => {
+        expect(store.markAsCondition(mockConcept.conceptUuid)).toBe(true);
+      });
+      const after = useConditionsAndDiagnosesStore.getState();
+      expect(after.selectedDiagnoses).toBe(before);
+      expect(after.selectedConditions).toHaveLength(1);
+      act(() => store.removeCondition(mockConcept.conceptUuid));
+      expect(useConditionsAndDiagnosesStore.getState().selectedDiagnoses).toBe(
+        before,
+      );
+    });
+
+    test('should add a condition from a confirmed diagnosis without moving the diagnosis', () => {
       const { result } = renderHook(() => useConditionsAndDiagnosesStore());
 
       act(() => {
         result.current.addDiagnosis(mockConcept);
+        result.current.updateCertainty(mockConcept.conceptUuid, mockCertainty);
       });
 
       expect(result.current.selectedDiagnoses).toHaveLength(1);
@@ -727,7 +761,7 @@ describe('useConditionsAndDiagnosesStore', () => {
       });
 
       expect(success).toBe(true);
-      expect(result.current.selectedDiagnoses).toHaveLength(0);
+      expect(result.current.selectedDiagnoses).toHaveLength(1);
       expect(result.current.selectedConditions).toHaveLength(1);
 
       const expectedCondition: ConditionInputEntry = {
@@ -760,6 +794,7 @@ describe('useConditionsAndDiagnosesStore', () => {
 
       act(() => {
         result.current.addDiagnosis(mockConcept);
+        result.current.updateCertainty(mockConcept.conceptUuid, mockCertainty);
         result.current.markAsCondition(mockConcept.conceptUuid);
       });
 
@@ -796,6 +831,10 @@ describe('useConditionsAndDiagnosesStore', () => {
       );
 
       act(() => {
+        result.current.updateCertainty(
+          conceptWithSystem.conceptUuid,
+          mockCertainty,
+        );
         result.current.markAsCondition(conceptWithSystem.conceptUuid);
       });
 
@@ -828,8 +867,7 @@ describe('useConditionsAndDiagnosesStore', () => {
       const { result } = renderHook(() => useConditionsAndDiagnosesStore());
 
       act(() => {
-        result.current.addDiagnosis(mockConcept);
-        result.current.markAsCondition(mockConcept.conceptUuid);
+        result.current.addCondition(mockConcept);
       });
 
       expect(result.current.selectedConditions).toHaveLength(1);
@@ -845,10 +883,8 @@ describe('useConditionsAndDiagnosesStore', () => {
       const { result } = renderHook(() => useConditionsAndDiagnosesStore());
 
       act(() => {
-        result.current.addDiagnosis(mockConcept);
-        result.current.addDiagnosis(mockConcept2);
-        result.current.markAsCondition(mockConcept.conceptUuid);
-        result.current.markAsCondition(mockConcept2.conceptUuid);
+        result.current.addCondition(mockConcept);
+        result.current.addCondition(mockConcept2);
       });
 
       expect(result.current.selectedConditions).toHaveLength(2);
@@ -867,8 +903,7 @@ describe('useConditionsAndDiagnosesStore', () => {
       const { result } = renderHook(() => useConditionsAndDiagnosesStore());
 
       act(() => {
-        result.current.addDiagnosis(mockConcept);
-        result.current.markAsCondition(mockConcept.conceptUuid);
+        result.current.addCondition(mockConcept);
       });
 
       expect(result.current.selectedConditions).toHaveLength(1);
@@ -887,8 +922,7 @@ describe('useConditionsAndDiagnosesStore', () => {
     beforeEach(() => {
       const { result } = renderHook(() => useConditionsAndDiagnosesStore());
       act(() => {
-        result.current.addDiagnosis(mockConcept);
-        result.current.markAsCondition(mockConcept.conceptUuid);
+        result.current.addCondition(mockConcept);
       });
     });
 
@@ -1250,9 +1284,8 @@ describe('useConditionsAndDiagnosesStore', () => {
       const { result } = renderHook(() => useConditionsAndDiagnosesStore());
 
       act(() => {
-        result.current.addDiagnosis(mockConcept);
+        result.current.addCondition(mockConcept);
         result.current.addDiagnosis(mockConcept2);
-        result.current.markAsCondition(mockConcept.conceptUuid);
         result.current.updateCertainty(mockConcept2.conceptUuid, mockCertainty);
       });
 
@@ -1274,8 +1307,7 @@ describe('useConditionsAndDiagnosesStore', () => {
       const { result } = renderHook(() => useConditionsAndDiagnosesStore());
 
       act(() => {
-        result.current.addDiagnosis(mockConcept);
-        result.current.markAsCondition(mockConcept.conceptUuid);
+        result.current.addCondition(mockConcept);
       });
 
       const state = result.current.getState();
@@ -1316,7 +1348,7 @@ describe('useConditionsAndDiagnosesStore', () => {
         markSuccess = result.current.markAsCondition(mockConcept.conceptUuid);
       });
       expect(markSuccess).toBe(true);
-      expect(result.current.selectedDiagnoses).toHaveLength(0);
+      expect(result.current.selectedDiagnoses).toHaveLength(1);
       expect(result.current.selectedConditions).toHaveLength(1);
 
       // Validate condition without duration (should fail)
@@ -1351,10 +1383,7 @@ describe('useConditionsAndDiagnosesStore', () => {
       // Set certainty for some diagnoses
       act(() => {
         result.current.updateCertainty(mockConcept.conceptUuid, mockCertainty);
-        result.current.updateCertainty(
-          mockConcept2.conceptUuid,
-          mockCertainty2,
-        );
+        result.current.updateCertainty(mockConcept2.conceptUuid, mockCertainty);
         // mockConcept3 has no certainty
       });
 
@@ -1381,7 +1410,7 @@ describe('useConditionsAndDiagnosesStore', () => {
       });
       expect(allValid).toBe(false); // mockConcept3 has no certainty and mockConcept2 condition has no duration
 
-      expect(result.current.selectedDiagnoses).toHaveLength(1);
+      expect(result.current.selectedDiagnoses).toHaveLength(3);
       expect(result.current.selectedConditions).toHaveLength(2);
     });
 
@@ -1395,6 +1424,7 @@ describe('useConditionsAndDiagnosesStore', () => {
 
       // Mark as condition
       act(() => {
+        result.current.updateCertainty(mockConcept.conceptUuid, mockCertainty);
         result.current.markAsCondition(mockConcept.conceptUuid);
       });
 
@@ -1477,8 +1507,7 @@ describe('useConditionsAndDiagnosesStore', () => {
       const { result } = renderHook(() => useConditionsAndDiagnosesStore());
 
       act(() => {
-        result.current.addDiagnosis(mockConcept);
-        result.current.markAsCondition(mockConcept.conceptUuid);
+        result.current.addCondition(mockConcept);
         result.current.validate();
       });
 

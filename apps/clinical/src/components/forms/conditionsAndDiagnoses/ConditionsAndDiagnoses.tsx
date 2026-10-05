@@ -364,6 +364,7 @@ const ConditionsAndDiagnoses: React.FC = React.memo(() => {
                 onMarkAsCondition={() => {
                   if (
                     canAddConditions &&
+                    diagnosis.selectedCertainty?.code === 'confirmed' &&
                     existingConditions &&
                     !existingConditionsLoading &&
                     !existingConditionsError &&

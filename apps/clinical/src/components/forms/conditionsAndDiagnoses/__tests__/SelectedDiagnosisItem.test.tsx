@@ -210,6 +210,30 @@ describe('SelectedDiagnosisItem', () => {
 
   // Add as Condition Link Tests
   describe('Add as Condition Link', () => {
+    test.each([null, CERTAINITY_CONCEPTS[1], { code: 'unknown' }])(
+      'disables condition creation for unconfirmed certainty %j',
+      async (selectedCertainty) => {
+        const user = userEvent.setup();
+        const { rerender } = render(
+          <SelectedDiagnosisItem
+            {...defaultProps}
+            diagnosis={{ ...mockDiagnosis, selectedCertainty }}
+          />,
+        );
+        const link = screen.getByTestId('add-as-condition-link');
+        expect(link).toHaveAttribute('aria-disabled', 'true');
+        await user.click(link);
+        expect(defaultProps.onMarkAsCondition).not.toHaveBeenCalled();
+        rerender(<SelectedDiagnosisItem {...defaultProps} />);
+        expect(screen.getByTestId('add-as-condition-link')).toHaveAttribute(
+          'aria-disabled',
+          'false',
+        );
+        await user.click(screen.getByTestId('add-as-condition-link'));
+        expect(defaultProps.onMarkAsCondition).toHaveBeenCalledTimes(1);
+      },
+    );
+
     // Link State and Text
     describe('Link State and Text', () => {
       test('renders "Add as condition" link enabled when not an existing condition', () => {

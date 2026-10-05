@@ -1,5 +1,28 @@
 # Qorlia React frontend backend readiness
 
+## Latest diagnosis-to-condition verification
+
+React now adds a condition only from a confirmed diagnosis and retains the
+original diagnosis, matching the pinned legacy controller. Shared store, visible
+action and parent-handler checks preserve existing permission/history/duplicate
+guards without new dependencies or mirrored state.
+
+Actual isolated browser testing rejected unset/provisional conversion and missing
+duration/unit submission without a transaction or clinical entry. One valid save
+returned 201. Full reload displays both the confirmed type-2 diabetes diagnosis
+and active matching condition with a two-day duration. Independent native REST
+and exact FHIR reads retain distinct resource IDs, matching coded concepts,
+correct patient/visit association and exactly one encounter shared by both.
+Read-back verification does not replay successful saves. No console errors were
+captured after reload.
+
+Six focused suites pass 352 tests and nine reviewed snapshots in India/US Pacific
+time, with clinical type checking, changed-source lint and build. Existing build
+warnings remain. This does not establish all condition onset/status/notes,
+noncoded or duplicate-entry rules, retained-draft permission transitions,
+concurrency or broader clinical/separate-product acceptance. No public/shared-demo
+deployment or staff privilege change occurred. See the newest parity checkpoint.
+
 ## Latest saved-diagnosis verification
 
 The chart can edit native saved diagnosis certainty/rank and void a selected

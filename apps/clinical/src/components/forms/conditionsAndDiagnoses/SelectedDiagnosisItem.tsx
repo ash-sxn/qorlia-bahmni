@@ -31,6 +31,10 @@ const SelectedDiagnosisItem: React.FC<SelectedDiagnosisItemProps> = React.memo(
     const { id, display, selectedCertainty, errors, hasBeenValidated } =
       diagnosis;
     const hasCertaintyError = !!(hasBeenValidated && errors.certainty);
+    const cannotAddCondition =
+      doesConditionExist ||
+      !canMarkAsCondition ||
+      selectedCertainty?.code !== 'confirmed';
 
     return (
       <Grid data-testid="selected-diagnosis-item-grid">
@@ -47,13 +51,13 @@ const SelectedDiagnosisItem: React.FC<SelectedDiagnosisItemProps> = React.memo(
             href="#"
             onClick={(e) => {
               e.preventDefault();
-              if (doesConditionExist || !canMarkAsCondition) {
+              if (cannotAddCondition) {
                 return;
               }
               onMarkAsCondition(id);
             }}
-            disabled={doesConditionExist || !canMarkAsCondition}
-            aria-disabled={doesConditionExist || !canMarkAsCondition}
+            disabled={cannotAddCondition}
+            aria-disabled={cannotAddCondition}
             className={styles.addAsConditionLink}
           >
             {doesConditionExist

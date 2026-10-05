@@ -613,6 +613,19 @@ describe('ConditionsAndDiagnoses', () => {
   });
 
   describe('Diagnosis to Condition Conversion', () => {
+    test.each([null, CERTAINITY_CONCEPTS[1], { code: 'unknown' }])(
+      'retains but does not convert a diagnosis with certainty %j',
+      (selectedCertainty) => {
+        renderComponent([createMockDiagnosisEntry({ selectedCertainty })]);
+        const link = screen.getByTestId('add-as-condition-link');
+        expect(link).toHaveAttribute('aria-disabled', 'true');
+        fireEvent.click(link);
+        expect(markAsConditionMock).not.toHaveBeenCalled();
+        expect(removeDiagnosisMock).not.toHaveBeenCalled();
+        expect(screen.getByText('Hypertension')).toBeInTheDocument();
+      },
+    );
+
     test('should handle marking diagnosis as condition', async () => {
       const user = userEvent.setup();
       const diagnosisToConvert = createMockDiagnosisEntry({

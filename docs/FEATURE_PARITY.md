@@ -1,5 +1,36 @@
 # Bahmni workflow parity ledger
 
+## 5 October confirmed diagnosis-to-condition checkpoint
+
+This closes confirmed-only condition conversion and diagnosis retention in the
+tested consultation, not complete diagnosis/condition workflow parity.
+
+- The pinned legacy diagnosis controller adds a condition from a confirmed
+  diagnosis without removing that diagnosis. The shared React store now follows
+  both rules; the visible action and parent handler also reject unset, provisional
+  or unsupported certainty. Existing permissions, history and duplicate-condition
+  guards remain. Direct condition entry remains independent.
+- Eleven added regressions cover rejected conversion and retained diagnosis
+  state. Six focused suites pass 352 tests and nine snapshots in India and US
+  Pacific time. Reviewed snapshot changes contain generated control IDs and the
+  intended disabled action for unset certainty. Clinical type checking,
+  changed-source lint and build pass, retaining upstream eval/bundle warnings.
+- Actual isolated React testing disabled conversion for unset and provisional
+  certainty, enabled it for confirmed certainty, and retained both drafts.
+  Missing duration/unit produced field errors with no transaction request;
+  independent native reads found zero clinical entries. One valid Done returned
+  201 and full reload retained the confirmed type-2 diabetes diagnosis and its
+  active matching condition with a two-day duration. Exact native REST/FHIR reads
+  confirm distinct resource IDs, the same concept, correct patient/visit links and
+  exactly one shared encounter. Repeat verification is read-only, not save replay.
+- The change reuses the existing store and controls, with no new dependency or
+  mirrored certainty state. No production/shared-demo deployment or existing
+  staff privilege change occurred. Only isolated synthetic records were written.
+
+Remaining: condition onset/status/notes, noncoded entry, current-encounter
+diagnosis duplicate rules, retained drafts across permission changes, full
+role/configuration variants, concurrent writes and all wider release gates.
+
 ## 5 October saved-diagnosis edit/removal checkpoint
 
 This closes certainty/order editing and reasoned native voiding for the tested

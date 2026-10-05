@@ -44,7 +44,7 @@ export interface ConditionsAndDiagnosesState {
   validate: () => boolean;
 
   /**
-   * Moves a diagnosis from diagnoses list to conditions list
+   * Adds a condition from a confirmed diagnosis, retaining the diagnosis
    * @param diagnosisId - The ID of the diagnosis to mark as condition
    * @returns True if successfully marked as condition, false otherwise
    */
@@ -277,7 +277,7 @@ export const useConditionsAndDiagnosesStore =
       const diagnosis = state.selectedDiagnoses.find(
         (d) => d.id === diagnosisId,
       );
-      if (!diagnosis) {
+      if (diagnosis?.selectedCertainty?.code !== 'confirmed') {
         return false;
       }
 
@@ -292,9 +292,6 @@ export const useConditionsAndDiagnosesStore =
       };
 
       set((state) => ({
-        selectedDiagnoses: state.selectedDiagnoses.filter(
-          (d) => d.id !== diagnosisId,
-        ),
         selectedConditions: [newCondition, ...state.selectedConditions],
       }));
 
