@@ -22,15 +22,15 @@ export const loadPinnedForms = async (userUuid: string): Promise<string[]> => {
     const userData = await get<UserData>(USER_PINNED_PREFERENCE_URL(userUuid));
 
     // Validate user data structure
-    if (!userData || typeof userData !== 'object') {
-      return [];
+    if (!userData || typeof userData !== 'object' || Array.isArray(userData)) {
+      throw new Error(PINNED_FORMS_ERROR_MESSAGES.INVALID_DATA);
     }
 
     const pinnedString = userData.userProperties?.pinnedObsTemplates ?? '';
 
     // Additional validation for malformed data
     if (typeof pinnedString !== 'string') {
-      return [];
+      throw new Error(PINNED_FORMS_ERROR_MESSAGES.INVALID_DATA);
     }
 
     return pinnedString

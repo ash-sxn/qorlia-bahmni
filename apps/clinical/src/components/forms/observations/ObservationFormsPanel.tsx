@@ -72,6 +72,7 @@ const ObservationFormsPanel: React.FC<ObservationFormsPanelProps> = ({
     pinnedForms,
     updatePinnedForms,
     isLoading: isPinnedFormsLoading,
+    error: pinnedFormsError,
     refetch: refetchPinnedForms,
   } = usePinnedObservationForms(allForms, {
     userUuid: user?.uuid,
@@ -432,18 +433,33 @@ const ObservationFormsPanel: React.FC<ObservationFormsPanelProps> = ({
   }
 
   return (
-    <ObservationForms
-      onFormSelect={handleFormSelect}
-      selectedForms={selectedForms}
-      onRemoveForm={removeForm}
-      pinnedForms={pinnedForms}
-      updatePinnedForms={updatePinnedForms}
-      isPinnedFormsLoading={isPinnedFormsLoading}
-      allForms={allForms}
-      isAllFormsLoading={isAllFormsLoading}
-      observationFormsError={observationFormsError}
-      submittedFormUuids={submittedFormUuids}
-    />
+    <>
+      {pinnedFormsError && (
+        <div role="alert">
+          <p>{t('OBSERVATION_FORM_PIN_UNAVAILABLE')}</p>
+          <Button
+            kind="tertiary"
+            disabled={isPinnedFormsLoading}
+            onClick={() => void refetchPinnedForms()}
+          >
+            {t('OBSERVATION_FORM_TRY_AGAIN')}
+          </Button>
+        </div>
+      )}
+      <ObservationForms
+        onFormSelect={handleFormSelect}
+        selectedForms={selectedForms}
+        onRemoveForm={removeForm}
+        pinnedForms={pinnedForms}
+        updatePinnedForms={updatePinnedForms}
+        isPinnedFormsLoading={isPinnedFormsLoading}
+        isPinningUnavailable={!user?.uuid || !!pinnedFormsError}
+        allForms={allForms}
+        isAllFormsLoading={isAllFormsLoading}
+        observationFormsError={observationFormsError}
+        submittedFormUuids={submittedFormUuids}
+      />
+    </>
   );
 };
 

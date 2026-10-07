@@ -245,6 +245,29 @@ it('queries the surgical block API for the selected week', async () => {
   });
 });
 
+it('respects the native timestamp offset rather than its written calendar date', () => {
+  const [entry] = appointmentsForBlock({
+    uuid: 'offset-block',
+    startDatetime: '2026-09-28T00:30:00.000+0530',
+    surgicalAppointments: [{ uuid: 'offset-case', status: 'SCHEDULED' }],
+  });
+  expect(entry.expectedStart).toBe('2026-09-27T19:00:00.000Z');
+  expect(
+    appointmentOverlapsRange(
+      entry,
+      new Date('2026-09-27T00:00:00.000Z'),
+      new Date('2026-09-28T00:00:00.000Z'),
+    ),
+  ).toBe(true);
+  expect(
+    appointmentOverlapsRange(
+      entry,
+      new Date('2026-09-28T00:00:00.000Z'),
+      new Date('2026-09-29T00:00:00.000Z'),
+    ),
+  ).toBe(false);
+});
+
 it('uses a configured Tuesday week boundary', async () => {
   jest.mocked(get).mockResolvedValueOnce({ results: [] });
 
@@ -266,8 +289,8 @@ it('shows live bookings and filters by patient without changing them', async () 
     results: [
       {
         uuid: 'block-1',
-        startDatetime: '2026-09-28T09:00:00.000+0530',
-        endDatetime: '2026-09-28T12:00:00.000+0530',
+        startDatetime: new Date('2026-09-28T09:00:00').toISOString(),
+        endDatetime: new Date('2026-09-28T12:00:00').toISOString(),
         location: { uuid: 'theatre-1', name: 'Theatre 1' },
         provider: { uuid: 'surgeon-1', person: { display: 'Dr Demo' } },
         surgicalAppointments: [
@@ -342,7 +365,7 @@ it('shows configured case attributes and sorts the OT list', async () => {
     results: [
       {
         uuid: 'block-1',
-        startDatetime: '2026-09-28T09:00:00.000+0530',
+        startDatetime: new Date('2026-09-28T09:00:00').toISOString(),
         location: { uuid: 'theatre-1', name: 'Theatre 1' },
         surgicalAppointments: [
           {
@@ -401,7 +424,7 @@ it('keeps configured surgery columns when bookings have no values', async () => 
             results: [
               {
                 uuid: 'block-1',
-                startDatetime: '2026-09-28T09:00:00.000+0530',
+                startDatetime: new Date('2026-09-28T09:00:00').toISOString(),
                 surgicalAppointments: [
                   {
                     uuid: 'case-1',
@@ -442,7 +465,7 @@ it('shows the actual-time form only to OT writers', async () => {
     results: [
       {
         uuid: 'block-1',
-        startDatetime: '2026-09-28T09:00:00.000+0530',
+        startDatetime: new Date('2026-09-28T09:00:00').toISOString(),
         surgicalAppointments: [
           {
             id: 9,
@@ -483,15 +506,15 @@ it('can clear a completed surgery time before saving it', async () => {
     results: [
       {
         uuid: 'block-1',
-        startDatetime: '2026-09-28T09:00:00.000+0530',
+        startDatetime: new Date('2026-09-28T09:00:00').toISOString(),
         surgicalAppointments: [
           {
             id: 9,
             uuid: 'appointment-1',
             patient: { uuid: 'patient-1', display: 'ABC123 - Asha Demo' },
             status: 'COMPLETED',
-            actualStartDatetime: '2026-09-28T09:10:00.000+0530',
-            actualEndDatetime: '2026-09-28T10:10:00.000+0530',
+            actualStartDatetime: new Date('2026-09-28T09:10:00').toISOString(),
+            actualEndDatetime: new Date('2026-09-28T10:10:00').toISOString(),
             notes: 'Completed',
           },
         ],

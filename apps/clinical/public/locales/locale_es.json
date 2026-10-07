@@ -1,4 +1,5 @@
 {
+  "OBSERVATION_FORM_PIN_UNAVAILABLE": "Las preferencias de formularios fijados no están disponibles. Puede completar el formulario. Inténtelo de nuevo antes de fijar o quitar un formulario.",
   "OBSERVATION_FORM_EDIT_UNAVAILABLE": "No se pudo cargar el formulario guardado. No se ha abierto un reemplazo vacío. Inténtelo de nuevo o cancele.",
   "OBSERVATION_FORM_HISTORY_UNAVAILABLE": "El historial de formularios enviados no está disponible. Se conserva su borrador, pero no se pueden añadir ni enviar formularios hasta cargar el historial.",
   "OBSERVATION_FORM_HISTORY_LOADING": "Comprobando el historial de formularios enviados…",

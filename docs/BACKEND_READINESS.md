@@ -1,5 +1,33 @@
 # Qorlia React frontend backend readiness
 
+## Latest confirmed form-pin preference verification
+
+The selector and native-form editor now share user-keyed preferences through the
+existing query cache. Confirmed saves update pins; failed or uncertain saves do
+not publish optimistic success or replay POSTs. Retry reads the native preference
+without resetting the draft. Same-client concurrent writes are guarded, late
+old-user responses remain isolated and hidden-catalogue pins are preserved.
+Malformed top-level payloads/non-string values reject rather than looking empty.
+
+Six focused suites pass 248 tests/five snapshots in India and US Pacific time.
+The full clinical suite passes 2,706 tests/36 snapshots in both India and US
+Pacific time. One stale header snapshot needed only four generated CSS class
+names refreshed. Five OT fixtures now encode the selected browser-local time,
+matching the original Bahmni calendar; an added regression preserves explicit
+API timestamp offsets. Application date handling was unchanged. Type checks,
+source lint, formatting and build pass with existing warnings. Real isolated
+browser read/write faults preserve unsaved input, expose retry and keep clinical
+form actions usable. Complete retry captures contain one GET 200 and no POST.
+Successful keyboard pin/unpin POSTs return 200 and independent native reads
+confirm both persistence and restoration of the original empty preference.
+Discard/Cancel leaves full clinical records unchanged after the earlier synthetic
+visit initialization (seven encounters, four visits, pulse 81).
+
+This is not full clinical acceptance. Cross-browser preference concurrency,
+broader malformed/configured forms, privilege recovery, other workflow/role
+boundaries, operator tools and separate products still need work. Public/shared
+demo routes, deployments and existing staff permissions are unchanged.
+
 ## Latest form-pin keyboard verification
 
 The observation header now uses the existing shared native IconButton with a

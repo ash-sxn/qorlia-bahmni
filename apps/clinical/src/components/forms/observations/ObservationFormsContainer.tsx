@@ -177,10 +177,16 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
   const episodeOfCareUuids = episodeOfCare.map((eoc) => eoc.uuid);
   const { forms: allForms, isLoading: isAllFormsLoading } =
     useObservationFormsSearch('', episodeOfCareUuids);
-  const { pinnedForms, updatePinnedForms } = usePinnedObservationForms(
-    allForms,
-    { userUuid: user?.uuid, isFormsLoading: isAllFormsLoading },
-  );
+  const {
+    pinnedForms,
+    updatePinnedForms,
+    isLoading: isPinnedFormsLoading,
+    error: pinnedFormsError,
+    refetch: retryPinnedForms,
+  } = usePinnedObservationForms(allForms, {
+    userUuid: user?.uuid,
+    isFormsLoading: isAllFormsLoading,
+  });
   const [validationErrorType, setValidationErrorType] = useState<
     | null
     | typeof VALIDATION_STATE_EMPTY
@@ -344,7 +350,12 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
   const handlePinToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (viewingForm) {
+    if (
+      viewingForm &&
+      user?.uuid &&
+      !isPinnedFormsLoading &&
+      !pinnedFormsError
+    ) {
       const newPinnedForms = isCurrentFormPinned
         ? pinnedForms.filter((form) => form.uuid !== viewingForm.uuid)
         : [...pinnedForms, viewingForm];
@@ -656,6 +667,18 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
         className={styles.formContent}
         data-testid="observation-form-content"
       >
+        {pinnedFormsError && (
+          <div role="alert">
+            <p>{t('OBSERVATION_FORM_PIN_UNAVAILABLE')}</p>
+            <Button
+              kind="tertiary"
+              disabled={isPinnedFormsLoading}
+              onClick={() => void retryPinnedForms()}
+            >
+              {t('OBSERVATION_FORM_TRY_AGAIN')}
+            </Button>
+          </div>
+        )}
         {(!!error ||
           (!isLoadingMetadata &&
             !isPatientLoading &&
@@ -734,6 +757,7 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
       size="sm"
       isSelected={isCurrentFormPinned}
       aria-pressed={isCurrentFormPinned}
+      disabled={!user?.uuid || isPinnedFormsLoading || !!pinnedFormsError}
       onClick={handlePinToggle}
       className={`${styles.pinIconContainer} ${isCurrentFormPinned ? styles.pinned : styles.unpinned}`}
       label={

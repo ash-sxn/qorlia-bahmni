@@ -128,6 +128,27 @@ afterEach(() => {
 });
 
 describe('ObservationFormsPanel', () => {
+  it('offers pin-preference retry without blocking form selection or clearing drafts', async () => {
+    jest.mocked(usePinnedObservationForms).mockReturnValue({
+      pinnedForms: [],
+      updatePinnedForms: mockUpdatePinnedForms,
+      isLoading: false,
+      error: { title: 'Error', message: 'Unavailable' },
+      refetch: mockRefetchPinnedForms,
+    });
+    render(<ObservationFormsPanel />);
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Form pin preferences are unavailable',
+    );
+    expect(MockObservationForms.mock.calls[0][0].isPinningUnavailable).toBe(
+      true,
+    );
+    expect(screen.getByTestId('observation-forms')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(mockRefetchPinnedForms).toHaveBeenCalledTimes(1);
+    expect(mockRemoveForm).not.toHaveBeenCalled();
+    expect(mockUpdatePinnedForms).not.toHaveBeenCalled();
+  });
   it('renders ObservationForms with props wired from all hooks', () => {
     render(<ObservationFormsPanel />);
 

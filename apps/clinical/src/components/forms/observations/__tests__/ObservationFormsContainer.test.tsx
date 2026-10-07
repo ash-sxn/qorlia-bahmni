@@ -1043,6 +1043,60 @@ describe('ObservationFormsContainer', () => {
       privileges: [],
     };
 
+    it.each([true, false])(
+      'blocks pin writes while preferences are pending or failed (loading=%s)',
+      async (isLoading) => {
+        mockUseObservationFormData.mockReturnValue({
+          observations: [],
+          formMetadata: { schema: { controls: [] } },
+          isLoadingMetadata: false,
+          resetForm: jest.fn(),
+          handleFormDataChange: jest.fn(),
+        });
+        const updatePinnedForms = jest.fn();
+        const refetch = jest.fn();
+        jest
+          .requireMock('../../../../hooks/usePinnedObservationForms')
+          .usePinnedObservationForms.mockReturnValue({
+            pinnedForms: [],
+            updatePinnedForms,
+            isLoading,
+            error: isLoading
+              ? null
+              : { title: 'Error', message: 'Unavailable' },
+            refetch,
+          });
+        const onFormObservationsChange = jest.fn();
+        render(
+          <ObservationFormsContainer
+            {...defaultProps}
+            viewingForm={nonDefaultForm}
+            onFormObservationsChange={onFormObservationsChange}
+          />,
+        );
+        const pin = screen.getByRole('button', {
+          name: 'translated_OBSERVATION_FORMS_PIN_TOOLTIP',
+        });
+        expect(pin).toBeDisabled();
+        await userEvent.click(pin);
+        expect(updatePinnedForms).not.toHaveBeenCalled();
+        if (!isLoading) {
+          expect(
+            screen.getByText('translated_OBSERVATION_FORM_PIN_UNAVAILABLE'),
+          ).toBeInTheDocument();
+          await userEvent.click(
+            screen.getByRole('button', {
+              name: 'translated_OBSERVATION_FORM_TRY_AGAIN',
+            }),
+          );
+          expect(refetch).toHaveBeenCalledTimes(1);
+        }
+        expect(onFormObservationsChange).not.toHaveBeenCalled();
+        expect(defaultProps.onViewingFormChange).not.toHaveBeenCalled();
+        expect(defaultProps.onRemoveForm).not.toHaveBeenCalled();
+      },
+    );
+
     it('exposes a named native toggle button with its pinned state', () => {
       const pinnedState = {
         pinnedForms: [] as ObservationForm[],

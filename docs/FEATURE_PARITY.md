@@ -1,5 +1,40 @@
 # Bahmni workflow parity ledger
 
+## 7 October confirmed form-pin preference checkpoint
+
+- Selector and editor use the existing shared, user-keyed query cache. Pins
+  reflect confirmed native preferences, not optimistic success. Pending or
+  failed reads/writes disable pin changes without blocking clinical form entry
+  or saving. A lost write response triggers a read, never an automatic POST
+  replay. Try again performs a GET and preserves the mounted form draft.
+- Same-client writes are serialized per user. Late replaced-user responses stay
+  in their own cache; refreshed form versions rematch by native stored name.
+  Pins outside the current privilege/programme-filtered catalogue are retained.
+  Malformed top-level preference payloads and non-string pin values reject.
+- Nine hook regressions and four malformed-payload regressions failed before
+  correction. Six focused suites pass 248 tests/five snapshots in India and US
+  Pacific time. The complete clinical suite passes 2,706 tests/36 snapshots in
+  both time zones after refreshing only four stale generated header CSS class
+  names. Five OT fixtures now encode the selected browser-local time rather
+  than a fixed India offset, matching the original Bahmni calendar. An explicit
+  offset regression confirms that actual API timestamps keep their meaning;
+  application date handling was unchanged.
+  Clinical type checking, source lint, formatting and build pass with the
+  existing form-renderer eval and bundle-size warnings.
+- Actual isolated browser blocking verifies failed preference reads and a failed
+  POST while keeping unsaved pulse 82 in the native form. Complete retry captures
+  contain one GET returning 200, with no POST replay. Enter pin and Space unpin
+  each returned POST 200; independent read-back confirmed the saved pin and the
+  restored original empty preference. The form was discarded and consultation
+  cancelled. Full native records remain unchanged after today's earlier
+  synthetic visit initialization: seven encounters, four visits and pulse 81.
+
+Remaining: concurrent writes from separate browsers/clients (the native API has
+no compared-version write), broader malformed preferences, privilege recovery,
+other form/context/permission transitions, responsive/keyboard acceptance,
+unfinished operator tools, full React parity and separate-product redesign.
+No public/shared-demo deployment or existing staff privilege change occurred.
+
 ## 7 October observation-form pin accessibility checkpoint
 
 - The form header reuses the shared Carbon IconButton instead of a clickable
