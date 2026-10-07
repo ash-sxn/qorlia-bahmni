@@ -1,3 +1,4 @@
+import { Modal } from '@bahmni/design-system';
 import {
   del,
   fetchMedicationOrdersMetadata,
@@ -8,7 +9,7 @@ import {
   type MedicationOrdersMetadataResponse,
 } from '@bahmni/services';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AdminLayout } from '../components/AdminLayout';
 import styles from './styles/OrderSets.module.scss';
@@ -476,17 +477,42 @@ const MemberEditor = ({
 };
 
 export const OrderSets = () => {
-  const { t } = useTranslation();
   const { uuid } = useParams<{ uuid: string }>();
+  return <OrderSetsPage key={uuid ?? 'list'} uuid={uuid} />;
+};
+
+const OrderSetsPage = ({ uuid }: { uuid?: string }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [form, setForm] = useState<OrderSet | null>(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [pendingRetirement, setPendingRetirement] = useState<OrderSet | null>(
+    null,
+  );
+  const [retiring, setRetiring] = useState(false);
+  const [retirementError, setRetirementError] = useState('');
+  const retirementInFlight = useRef(false);
+  const retirementLauncher = useRef<HTMLButtonElement | null>(null);
+  const createLauncher = useRef<HTMLButtonElement | null>(null);
+  const closeRetirement = () => {
+    if (retirementInFlight.current) return;
+    setPendingRetirement(null);
+    retirementLauncher.current?.focus();
+  };
   const list = useQuery({
     queryKey: ['admin', 'order-sets'],
     queryFn: () => get<{ results: OrderSet[] }>(`${base}?v=full`),
     enabled: !uuid,
+    refetchOnMount: 'always',
   });
   const types = useQuery({
     queryKey: ['admin', 'order-types'],
@@ -502,7 +528,22 @@ export const OrderSets = () => {
     queryKey: ['admin', 'order-set', uuid],
     queryFn: () => get<OrderSet>(`${base}/${encodeURIComponent(uuid!)}?v=full`),
     enabled: !!uuid && uuid !== 'new',
+    refetchOnMount: 'always',
   });
+  const requiredReadsUnavailable =
+    types.isPending ||
+    types.isFetching ||
+    types.isError ||
+    config.isPending ||
+    config.isFetching ||
+    config.isError ||
+    (uuid !== 'new' &&
+      (detail.isPending || detail.isFetching || detail.isError));
+  const retryReads = () => {
+    if (types.isError) void types.refetch();
+    if (config.isError) void config.refetch();
+    if (detail.isError) void detail.refetch();
+  };
 
   useEffect(() => {
     if (!uuid) {
@@ -558,7 +599,7 @@ export const OrderSets = () => {
     );
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    if (!form) return;
+    if (!form || saving || requiredReadsUnavailable) return;
     const active = form.orderSetMembers.filter((member) => !member.retired);
     if (active.length < 2) {
       setError(t('ADMIN_ORDER_MINIMUM'));
@@ -587,27 +628,52 @@ export const OrderSets = () => {
       await queryClient.invalidateQueries({
         queryKey: ['admin', 'order-sets'],
       });
-      setForm(null);
-      navigate(`${routeBase}/${saved.uuid}`);
+      // Like the original editor's reload, discard cached detail and read the
+      // full native representation, not the POST's partial representation.
+      await queryClient.resetQueries({
+        queryKey: ['admin', 'order-set', saved.uuid],
+        exact: true,
+      });
+      if (mounted.current) {
+        setForm(null);
+        navigate(`${routeBase}/${saved.uuid}`);
+      }
     } catch {
-      setError(t('ADMIN_ORDER_SAVE_ERROR'));
+      if (mounted.current) setError(t('ADMIN_ORDER_SAVE_ERROR'));
     } finally {
-      setSaving(false);
+      if (mounted.current) setSaving(false);
     }
   };
-  const retire = async (set: OrderSet) => {
-    if (
-      !set.uuid ||
-      !window.confirm(t('ADMIN_ORDER_REMOVE_CONFIRM', { name: set.name }))
-    )
-      return;
+  const retire = async () => {
+    const set = pendingRetirement;
+    if (!set?.uuid || retirementInFlight.current) return;
+    retirementInFlight.current = true;
+    setRetiring(true);
+    setRetirementError('');
     try {
       await del(`${base}/${encodeURIComponent(set.uuid)}`, {
         params: { reason: 'User deleted the orderSet.' },
       });
+      // This reflects a confirmed retirement, even if the following GET fails.
+      queryClient.setQueryData<{ results: OrderSet[] }>(
+        ['admin', 'order-sets'],
+        (current) =>
+          current && {
+            results: current.results.map((item) =>
+              item.uuid === set.uuid ? { ...item, retired: true } : item,
+            ),
+          },
+      );
       await list.refetch();
+      if (mounted.current) {
+        setPendingRetirement(null);
+        createLauncher.current?.focus();
+      }
     } catch {
-      setError(t('ADMIN_ORDER_REMOVE_ERROR'));
+      if (mounted.current) setRetirementError(t('ADMIN_ORDER_REMOVE_ERROR'));
+    } finally {
+      retirementInFlight.current = false;
+      if (mounted.current) setRetiring(false);
     }
   };
 
@@ -623,6 +689,7 @@ export const OrderSets = () => {
           {uuid ? (
             <button
               type="button"
+              disabled={saving}
               onClick={() => {
                 setForm(null);
                 setError('');
@@ -633,6 +700,7 @@ export const OrderSets = () => {
             </button>
           ) : (
             <button
+              ref={createLauncher}
               type="button"
               onClick={() => {
                 setError('');
@@ -651,7 +719,18 @@ export const OrderSets = () => {
         {!uuid && (
           <div className={styles.card}>
             {list.isLoading && <p role="status">{t('ADMIN_ORDER_LOADING')}</p>}
-            {list.isError && <p role="alert">{t('ADMIN_ORDER_LOAD_ERROR')}</p>}
+            {list.isError && (
+              <div role="alert">
+                <p>{t('ADMIN_ORDER_LOAD_ERROR')}</p>
+                <button
+                  type="button"
+                  disabled={list.isFetching}
+                  onClick={() => void list.refetch()}
+                >
+                  {t('ADMIN_ORDER_TRY_AGAIN')}
+                </button>
+              </div>
+            )}
             {list.data?.results.filter((set) => !set.retired).length === 0 && (
               <p>{t('ADMIN_ORDER_EMPTY')}</p>
             )}
@@ -681,7 +760,15 @@ export const OrderSets = () => {
                             </button>
                           </td>
                           <td>
-                            <button type="button" onClick={() => retire(set)}>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                retirementLauncher.current =
+                                  event.currentTarget;
+                                setRetirementError('');
+                                setPendingRetirement(set);
+                              }}
+                            >
                               {t('ADMIN_ORDER_REMOVE')}
                             </button>
                           </td>
@@ -698,97 +785,137 @@ export const OrderSets = () => {
             <p role="status">{t('ADMIN_ORDER_LOADING')}</p>
           )}
         {!!uuid && (types.isError || detail.isError || config.isError) && (
-          <p role="alert">{t('ADMIN_ORDER_LOAD_ERROR')}</p>
+          <div role="alert">
+            <p>{t('ADMIN_ORDER_LOAD_ERROR')}</p>
+            <button
+              type="button"
+              disabled={
+                saving ||
+                types.isFetching ||
+                detail.isFetching ||
+                config.isFetching
+              }
+              onClick={retryReads}
+            >
+              {t('ADMIN_ORDER_TRY_AGAIN')}
+            </button>
+          </div>
         )}
         {!!uuid && form && types.data && config.data && (
           <form className={styles.card} onSubmit={save}>
-            <h2>{t('ADMIN_ORDER_DETAILS')}</h2>
-            <div className={styles.fields}>
-              <label>
-                {t('ADMIN_ORDER_NAME')}
-                <input
-                  required
-                  value={form.name}
-                  onChange={(event) =>
-                    setForm({ ...form, name: event.target.value })
-                  }
-                />
-              </label>
-              <label>
-                {t('ADMIN_ORDER_SET_DESCRIPTION')}
-                <input
-                  required
-                  value={form.description}
-                  onChange={(event) =>
-                    setForm({ ...form, description: event.target.value })
-                  }
-                />
-              </label>
-              <label>
-                {t('ADMIN_ORDER_OPERATOR')}
-                <select
-                  required
-                  value={form.operator}
-                  onChange={(event) =>
+            <fieldset className={styles.editorFields} disabled={saving}>
+              <h2>{t('ADMIN_ORDER_DETAILS')}</h2>
+              <div className={styles.fields}>
+                <label>
+                  {t('ADMIN_ORDER_NAME')}
+                  <input
+                    required
+                    value={form.name}
+                    onChange={(event) =>
+                      setForm({ ...form, name: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  {t('ADMIN_ORDER_SET_DESCRIPTION')}
+                  <input
+                    required
+                    value={form.description}
+                    onChange={(event) =>
+                      setForm({ ...form, description: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  {t('ADMIN_ORDER_OPERATOR')}
+                  <select
+                    required
+                    value={form.operator}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        operator: event.target.value as OrderSet['operator'],
+                      })
+                    }
+                  >
+                    <option>ALL</option>
+                    <option>ANY</option>
+                    <option>ONE</option>
+                  </select>
+                </label>
+              </div>
+              <div className={styles.subheading}>
+                <h2>{t('ADMIN_ORDER_MEMBERS')}</h2>
+                <button
+                  type="button"
+                  onClick={() =>
                     setForm({
                       ...form,
-                      operator: event.target.value as OrderSet['operator'],
+                      orderSetMembers: [
+                        ...form.orderSetMembers,
+                        blankMember(types.data.results[0]?.uuid),
+                      ],
                     })
                   }
                 >
-                  <option>ALL</option>
-                  <option>ANY</option>
-                  <option>ONE</option>
-                </select>
-              </label>
-            </div>
-            <div className={styles.subheading}>
-              <h2>{t('ADMIN_ORDER_MEMBERS')}</h2>
-              <button
-                type="button"
-                onClick={() =>
-                  setForm({
-                    ...form,
-                    orderSetMembers: [
-                      ...form.orderSetMembers,
-                      blankMember(types.data.results[0]?.uuid),
-                    ],
-                  })
-                }
-              >
-                {t('ADMIN_ORDER_ADD_MEMBER')}
-              </button>
-            </div>
-            {form.orderSetMembers
-              .filter((member) => !member.retired)
-              .map((member) => (
-                <MemberEditor
-                  key={member.key}
-                  member={member}
-                  types={types.data.results}
-                  config={config.data}
-                  onChange={(next) => changeMember(member.key, next)}
-                  onRemove={() => removeMember(member.key)}
-                  onMove={(direction) => moveMember(member.key, direction)}
-                />
-              ))}
-            <div className={styles.footer}>
-              <button
-                type="button"
-                onClick={() => {
-                  setForm(null);
-                  navigate(routeBase);
-                }}
-              >
-                {t('ADMIN_ORDER_CANCEL')}
-              </button>
-              <button type="submit" disabled={saving}>
-                {saving ? t('ADMIN_ORDER_SAVING') : t('ADMIN_ORDER_SAVE')}
-              </button>
-            </div>
+                  {t('ADMIN_ORDER_ADD_MEMBER')}
+                </button>
+              </div>
+              {form.orderSetMembers
+                .filter((member) => !member.retired)
+                .map((member) => (
+                  <MemberEditor
+                    key={member.key}
+                    member={member}
+                    types={types.data.results}
+                    config={config.data}
+                    onChange={(next) => changeMember(member.key, next)}
+                    onRemove={() => removeMember(member.key)}
+                    onMove={(direction) => moveMember(member.key, direction)}
+                  />
+                ))}
+              <div className={styles.footer}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm(null);
+                    navigate(routeBase);
+                  }}
+                >
+                  {t('ADMIN_ORDER_CANCEL')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving || requiredReadsUnavailable}
+                >
+                  {saving ? t('ADMIN_ORDER_SAVING') : t('ADMIN_ORDER_SAVE')}
+                </button>
+              </div>
+            </fieldset>
           </form>
         )}
       </section>
+      {pendingRetirement && (
+        <Modal
+          open
+          danger
+          modalHeading={t('ADMIN_ORDER_REMOVE_CONFIRM', {
+            name: pendingRetirement.name,
+          })}
+          closeButtonLabel={t('ADMIN_ORDER_CLOSE')}
+          secondaryButtonText={t('ADMIN_ORDER_CANCEL')}
+          primaryButtonText={t('ADMIN_ORDER_REMOVE')}
+          loadingStatus={retiring ? 'active' : 'inactive'}
+          loadingDescription={t('ADMIN_ORDER_REMOVING')}
+          loadingIconDescription={t('ADMIN_ORDER_REMOVING')}
+          preventCloseOnClickOutside
+          onRequestClose={closeRetirement}
+          onRequestSubmit={() => void retire()}
+        >
+          <p>{pendingRetirement.name}</p>
+          {retirementError && <p role="alert">{retirementError}</p>}
+        </Modal>
+      )}
     </AdminLayout>
   );
 };

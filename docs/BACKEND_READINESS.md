@@ -1,5 +1,35 @@
 # Qorlia React frontend backend readiness
 
+## Latest order-set lifecycle verification
+
+The local order-set editor retains Bahmni's native full-read, create/update,
+serialized-template and non-purge retirement APIs. Saving now reloads native
+detail, preserves drafts on failed writes/required reads, and cannot navigate an
+old editor back over a new URL. List/detail mount reads override the Admin app's
+cache default so saved records appear when returning to the list. The shared
+Qorlia retirement modal replaces the browser-native prompt, blocks repeat or
+dismissal during the pending request, restores row focus on cancellation and
+focuses Create order set after confirmed retirement.
+
+Nine Admin suites pass 44 tests in India and US Pacific time, including 15
+order-set checks using the actual app query defaults. Type checking, source lint,
+formatting and package build pass; the existing large bundle is unchanged in
+scope. Actual isolated browser creation returned POST 201/full GET 200, and
+populated edit/read-recovery checks preserved native member templates and UUIDs.
+Returning from the editor now performs a fresh list GET 200. Cancel and Escape
+send no mutation. A blocked retirement stays in the modal with an error and an
+independent read confirms the record is still active. Clearing the fault and
+explicitly confirming sends one DELETE 204 followed by list GET 200, without
+automatic replay. Keyboard confirmation of a second disposable fixture returns
+focus to Create order set. Both fixtures are retired, readable and not purged.
+
+The independent clinical snapshot still matches the after-visit baseline (seven
+encounters, four visits, pulse 81). This closes these tested lifecycle paths, not
+all order types, dosing rules, member removal, malformed templates, concurrency
+or limited-role checks. Other Admin/operator workflows, full React parity and
+OpenELIS/Odoo/radiology/analytics/outreach remain unfinished. No public/shared-demo
+deployment, purchase, exposure or existing staff privilege change occurred.
+
 ## Latest confirmed form-pin preference verification
 
 The selector and native-form editor now share user-keyed preferences through the

@@ -44,6 +44,12 @@
   margin: 0 0 16px;
   font-size: 19px;
 }
+.editorFields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
 .fields,
 .template {
   display: grid;

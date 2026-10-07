@@ -1,5 +1,52 @@
 # Bahmni workflow parity ledger
 
+## 7 October order-set lifecycle and retirement checkpoint
+
+- The React editor follows the pinned native Bahmni [controller](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/admin/controllers/orderSetController.js)
+  and [service](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/admin/services/adminOrderSetService.js):
+  full native reads, POST create/update, serialized member templates, native
+  concept/drug/configuration lookups, member ordering and retirement without
+  purge. It retains the original template fields after concept selection.
+- Saving now resets the native detail query instead of restoring an old cached
+  representation. A successful write followed by an unavailable read exposes
+  GET retry, not another POST. Required read failures block saving while keeping
+  unsaved input. Pending saves disable editing/cancellation. URL-keyed editors
+  separate drafts, and completion of an old unmounted editor cannot redirect a
+  newer one. List/detail entry refetches explicitly override the app's disabled
+  mount-refetch default; browser QA found that otherwise a saved new order set
+  stayed invisible in the cached empty list.
+- Retirement now uses the existing shared Qorlia modal, not a browser-native
+  confirmation. Cancel and Escape restore the row trigger. Pending retirement
+  disables both footer controls and prevents Close/Escape dismissal or repeat
+  submission. After confirmed retirement, focus moves to Create order set. A
+  failed DELETE stays in the confirmation without automatic replay. A failed
+  following list GET has its own read retry and retains the confirmed retirement.
+- The order-set suite passes 15 tests; the complete Admin suite passes 44 tests
+  across nine suites in India and US Pacific time. This includes the actual
+  Admin query defaults. Stale-list and post-retirement focus regressions failed
+  before correction. Admin type checking, changed-source lint, formatting and
+  package build pass. The existing large Admin bundle remains.
+- Isolated browser creation returned POST 201 and full detail GET 200. Earlier
+  populated edits preserved member UUIDs/templates and ordering after POST 200
+  and fresh GET 200; blocked post-save detail reads recovered through GET only.
+  For the new retirement fixture, Cancel/Escape captures contain no mutations.
+  A blocked DELETE produced one failed attempt and a visible error; independent
+  read-back confirmed the fixture remained active. After clearing the fault,
+  confirmation returned DELETE 204 followed by list GET 200. A second disposable
+  fixture verified keyboard Enter confirmation and focus on Create order set.
+  Both native records remain readable as retired, with their two members intact.
+  Complete relevant captures are non-truncated.
+- The two newly retired fixtures are `32ab378c-cb2e-449a-97d8-0cb29f79f26e` and
+  `3414a46c-2a3b-477f-9225-1fe721551585`. They were not purged. Independent full
+  clinical comparison remains unchanged from the after-visit baseline: seven
+  encounters, four visits and pulse 81. Temporary request blocking is cleared.
+
+Remaining: other order types/dosing rules, member-removal saves, malformed
+templates, concurrent writes and actual limited-role boundaries. Admin imports,
+operator tools, broader React acceptance and separate-product redesign remain
+open. The legacy production tile is unchanged; this is a verified local staging
+checkpoint, not complete product acceptance or a public deployment.
+
 ## 7 October confirmed form-pin preference checkpoint
 
 - Selector and editor use the existing shared, user-keyed query cache. Pins
