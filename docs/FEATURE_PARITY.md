@@ -1,5 +1,24 @@
 # Bahmni workflow parity ledger
 
+## 7 October observation-form pin accessibility checkpoint
+
+- The form header reuses the shared Carbon IconButton instead of a clickable
+  div. Tab, Enter and Space work natively; the translated accessible name and
+  pressed state identify Pin/Unpin. Hover, focus and selected styling come from
+  the existing design system, without a separate keyboard handler or dependency.
+- Two added regressions failed before correction. Five focused clinical suites
+  pass 204 tests/four snapshots in India and US Pacific time. Clinical type
+  checking, changed-source lint, formatting and build pass with existing warnings.
+- In the isolated browser, keyboard Enter pinned Second Vitals with a captured
+  native preference POST returning 200. Independent read-back confirmed the pin.
+  Space unpinned it and read-back confirmed the original empty preference. The
+  temporary QA tab is closed. No form was submitted; full clinical records still
+  match the after-visit baseline (seven encounters, four visits and pulse 81).
+
+Remaining: pin preference failure/recovery, ordering and user-context changes,
+broader keyboard/responsive acceptance, full React parity and separate products.
+No public/shared-demo deployment or existing staff privilege change occurred.
+
 ## 7 October form-metadata and patient-read recovery checkpoint
 
 - The observation editor exposes the existing metadata and patient query retry

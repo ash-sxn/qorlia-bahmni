@@ -1,6 +1,7 @@
 import { ObservationForm } from '@bahmni/services';
 import { useQuery } from '@tanstack/react-query';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { useTranslation } from 'react-i18next';
 import { useClinicalAppData } from '../../../../hooks/useClinicalAppData';
 import ObservationFormsContainer from '../ObservationFormsContainer';
@@ -119,6 +120,7 @@ jest.mock('../../encounterDetails/EncounterDetails', () => ({
 
 // Mock ActionArea component
 jest.mock('@bahmni/design-system', () => ({
+  IconButton: jest.requireActual('@carbon/react').IconButton,
   Button: ({ children, ...props }: React.ComponentProps<'button'>) => (
     <button {...props}>{children}</button>
   ),
@@ -1041,6 +1043,73 @@ describe('ObservationFormsContainer', () => {
       privileges: [],
     };
 
+    it('exposes a named native toggle button with its pinned state', () => {
+      const pinnedState = {
+        pinnedForms: [] as ObservationForm[],
+        updatePinnedForms: jest.fn(),
+        isLoading: false,
+      };
+      jest
+        .requireMock('../../../../hooks/usePinnedObservationForms')
+        .usePinnedObservationForms.mockImplementation(() => pinnedState);
+      const { rerender } = render(
+        <ObservationFormsContainer
+          {...defaultProps}
+          viewingForm={nonDefaultForm}
+        />,
+      );
+      const pin = screen.getByRole('button', {
+        name: 'translated_OBSERVATION_FORMS_PIN_TOOLTIP',
+      });
+      expect(pin).toHaveAttribute('type', 'button');
+      expect(pin).toHaveAttribute('aria-pressed', 'false');
+      pinnedState.pinnedForms = [nonDefaultForm];
+      rerender(
+        <ObservationFormsContainer
+          {...defaultProps}
+          viewingForm={nonDefaultForm}
+        />,
+      );
+      expect(
+        screen.getByRole('button', {
+          name: 'translated_OBSERVATION_FORMS_UNPIN_TOOLTIP',
+        }),
+      ).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('lets keyboard users pin with Enter and Space without saving or discarding', async () => {
+      const keyboard = userEvent.setup();
+      const updatePinnedForms = jest.fn();
+      jest
+        .requireMock('../../../../hooks/usePinnedObservationForms')
+        .usePinnedObservationForms.mockReturnValue({
+          pinnedForms: [],
+          updatePinnedForms,
+          isLoading: false,
+        });
+      const onFormObservationsChange = jest.fn();
+      render(
+        <ObservationFormsContainer
+          {...defaultProps}
+          viewingForm={nonDefaultForm}
+          onFormObservationsChange={onFormObservationsChange}
+        />,
+      );
+      await keyboard.tab();
+      expect(
+        screen.getByRole('button', {
+          name: 'translated_OBSERVATION_FORMS_PIN_TOOLTIP',
+        }),
+      ).toHaveFocus();
+      await keyboard.keyboard('{Enter}');
+      await keyboard.keyboard(' ');
+      expect(updatePinnedForms).toHaveBeenCalledTimes(2);
+      expect(updatePinnedForms).toHaveBeenLastCalledWith([nonDefaultForm]);
+      expect(onFormObservationsChange).not.toHaveBeenCalled();
+      expect(defaultProps.onViewingFormChange).not.toHaveBeenCalled();
+      expect(defaultProps.onRemoveForm).not.toHaveBeenCalled();
+    });
+
     it('should show pinned state when form is in pinnedForms array', () => {
       const mockUsePinnedObservationForms = jest.requireMock(
         '../../../../hooks/usePinnedObservationForms',
@@ -1062,8 +1131,7 @@ describe('ObservationFormsContainer', () => {
       const pinContainer = pinIcon.parentElement;
 
       expect(pinContainer).toHaveClass('pinned');
-      expect(pinContainer).toHaveAttribute(
-        'title',
+      expect(pinContainer).toHaveAccessibleName(
         'translated_OBSERVATION_FORMS_UNPIN_TOOLTIP',
       );
     });
@@ -1100,8 +1168,7 @@ describe('ObservationFormsContainer', () => {
       const pinContainer = pinIcon.parentElement;
 
       expect(pinContainer).toHaveClass('unpinned');
-      expect(pinContainer).toHaveAttribute(
-        'title',
+      expect(pinContainer).toHaveAccessibleName(
         'translated_OBSERVATION_FORMS_PIN_TOOLTIP',
       );
     });

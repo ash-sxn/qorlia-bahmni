@@ -1,5 +1,19 @@
 # Qorlia React frontend backend readiness
 
+## Latest form-pin keyboard verification
+
+The observation header now uses the existing shared native IconButton with a
+translated name, pressed state and design-system focus/selection styling.
+Keyboard Enter/Space toggles are covered by two regressions that failed before
+correction; five suites pass 204 tests/four snapshots in India and US Pacific
+time. Type checking, lint, formatting and clinical build pass with existing
+warnings. Actual staging Enter pinning returned POST 200 and independent native
+read-back confirmed it. Space unpinning restored the original empty preference.
+The temporary tab is closed; no form was saved and full clinical records remain
+unchanged after today's synthetic visit initialization. Pin failure, ordering,
+context transitions and wider React/separate-product acceptance remain open.
+There was no public/shared-demo deployment or staff privilege change.
+
 ## Latest metadata and patient-read recovery verification
 
 The observation editor now retries failed/missing metadata and patient queries

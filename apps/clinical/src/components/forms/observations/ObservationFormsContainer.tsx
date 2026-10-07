@@ -2,6 +2,7 @@ import {
   ActionArea,
   Button,
   Icon,
+  IconButton,
   ICON_SIZE,
   InlineNotification,
   Loading,
@@ -727,17 +728,27 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
     !directMode && !DEFAULT_FORM_API_NAMES.includes(viewingForm?.name ?? '');
 
   const pinIcon = canPinForm && (
-    <div
+    <IconButton
+      type="button"
+      kind="ghost"
+      size="sm"
+      isSelected={isCurrentFormPinned}
+      aria-pressed={isCurrentFormPinned}
       onClick={handlePinToggle}
       className={`${styles.pinIconContainer} ${isCurrentFormPinned ? styles.pinned : styles.unpinned}`}
-      title={
+      label={
         isCurrentFormPinned
           ? t('OBSERVATION_FORMS_UNPIN_TOOLTIP')
           : t('OBSERVATION_FORMS_PIN_TOOLTIP')
       }
     >
-      <Icon id="pin-icon" name="fa-thumbtack" size={ICON_SIZE.SM} />
-    </div>
+      <Icon
+        id="pin-icon"
+        name="fa-thumbtack"
+        size={ICON_SIZE.SM}
+        ariaLabel=""
+      />
+    </IconButton>
   );
 
   if (viewingForm) {
