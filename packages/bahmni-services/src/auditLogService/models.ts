@@ -21,4 +21,4 @@ export type AuditEventType =
   | 'STOP_MEDICATION'
   | 'UPLOAD_PATIENT_DOCUMENT'
   | 'RUN_REPORT'
-  | 'START_VISIT';
+  | 'OPEN_VISIT';

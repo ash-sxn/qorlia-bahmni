@@ -1,5 +1,6 @@
 import * as bahmniServices from '@bahmni/services';
 import { render, screen } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import App from '../App';
 
@@ -46,6 +47,33 @@ const renderApp = (initialPath = '/reports/') =>
   );
 
 describe('App', () => {
+  it('cleans up the audit listener on StrictMode replay and unmount', async () => {
+    const cleanups: jest.Mock[] = [];
+    jest
+      .mocked(bahmniServices.initializeAuditListener)
+      .mockImplementation(() => {
+        const cleanup = jest.fn();
+        cleanups.push(cleanup);
+        return cleanup;
+      });
+
+    const { unmount } = render(
+      <StrictMode>
+        <MemoryRouter initialEntries={['/reports/']}>
+          <App />
+        </MemoryRouter>
+      </StrictMode>,
+    );
+    await screen.findByTestId('reports-page-test-id');
+
+    expect(cleanups).toHaveLength(2);
+    expect(cleanups[0]).toHaveBeenCalledTimes(1);
+    expect(cleanups[1]).not.toHaveBeenCalled();
+    unmount();
+    expect(cleanups[1]).toHaveBeenCalledTimes(1);
+    jest.mocked(bahmniServices.initializeAuditListener).mockReset();
+  });
+
   it('renders the reports page once initialized', async () => {
     renderApp();
 

@@ -81,7 +81,7 @@ jest.mock('../../../hooks/useEncounterConcepts');
 jest.mock('../../../providers/clinicalConfig');
 jest.mock('../../../stores/encounterDetailsStore');
 
-const mockConsultationPad = jest.fn(() => (
+const mockConsultationPad = jest.fn<React.ReactElement, [unknown]>(() => (
   <div data-testid="consultation-pad" />
 ));
 jest.mock('../../consultationPad', () => ({
@@ -342,7 +342,7 @@ describe('ConsultationPadContainer', () => {
     });
     expect(dispatchAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        eventType: 'START_VISIT',
+        eventType: 'OPEN_VISIT',
         messageParams: { visitType: 'OPD' },
       }),
     );

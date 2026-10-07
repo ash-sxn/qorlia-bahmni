@@ -1,5 +1,38 @@
 # Qorlia React frontend backend readiness
 
+## Latest native audit-writer verification (7 October 2026)
+
+The shared writer follows the pinned native [logging service](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/common/logging/services/auditLogService.js):
+persist a message key plus optional JSON parameters, translate when reading.
+Clinical visit creation now uses the native [OPEN_VISIT definition](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/common/models/auditLogEventDetails.js),
+with `OPEN_VISIT_MESSAGE~{"visitType":"OPD"}`. Neither the backend contract nor
+existing audit history was changed. Reports listener initialization now returns
+effect cleanup, verified through StrictMode replay and unmount.
+
+Local browser verification created synthetic patient ABC200000, UUID
+`67258453-d605-41b1-ae7e-3a3e520a8556`, named QorliaQA AuditFixture. One explicit
+Start visit action produced one FHIR Encounter POST returning 201 and one
+OPEN_VISIT audit POST returning 200. Complete network captures were not
+truncated. Independent native reads confirm one active OPD visit,
+`f769b1e9-b6a4-4da6-907f-89da6c9a6e83`, with zero clinical encounters. Patient
+creation, dashboard access and visit open persisted as audit IDs 155, 156 and
+157. The redesigned audit filter displays all three messages translated with
+their actual patient ID, user and visit type. Screenshot:
+`audit-native-writer-20261007.png` in the private staging evidence directory.
+The empty consultation was cancelled, not saved as clinical content.
+
+The full services suite passes 1,658 tests. Five focused audit/visit suites pass
+48 tests in US Pacific time. Reports passes 57 tests in both tested time zones;
+the consultation-container suite passes 19 tests in India and US Pacific time.
+Library type checks, changed-source lint and services/Clinical/Reports builds
+pass. Reports test-project types pass; services and Clinical test-project types
+retain unrelated existing errors and are not green acceptance gates. Large
+bundles and the upstream form2-controls eval warning remain.
+
+Remaining: complete event coverage, write-failure reporting, automatic visit
+creation under effect replay and live limited-role checks. This is not complete
+React or separate-product acceptance. No production or shared-demo change.
+
 ## Latest audit-log verification (7 October 2026)
 
 The reader was compared with the pinned native [controller](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/admin/controllers/auditLogController.js),

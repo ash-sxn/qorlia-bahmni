@@ -1,5 +1,39 @@
 # Bahmni workflow parity ledger
 
+## 7 October native audit-writer checkpoint
+
+- The shared writer now persists the native message key and optional JSON
+  parameters, not text translated in the writer's locale. Read-time translation
+  remains in the audit screen. Clinical visit creation emits `OPEN_VISIT` with
+  `OPEN_VISIT_MESSAGE` and its visit-type parameter, replacing the non-native
+  `START_VISIT` emission. Existing stored history was not rewritten.
+- Reports now installs its audit listener in an effect that returns cleanup,
+  matching the other apps. The StrictMode regression failed before the fix and
+  confirms cleanup both on effect replay and unmount. No listener is installed
+  later by a stale asynchronous initialization callback.
+- The isolated browser registered QorliaQA AuditFixture as ABC200000, opened its
+  clinical record and explicitly started one OPD visit. Complete request captures
+  show one FHIR Encounter POST (201) and one native OPEN_VISIT audit POST (200).
+  Independent native reads confirm one active visit with no clinical encounters
+  and three patient audit entries: registration, dashboard access and visit open.
+  The redesigned table filters to IDs 155, 156 and 157 and displays their full
+  translated descriptions, including the OPD visit type. Patient creation used
+  synthetic details only. The empty consultation was cancelled afterward.
+- The full services suite passes 1,658 tests. The five audit/visit suites pass
+  48 tests in US Pacific time; Reports passes 57 tests in both India and US
+  Pacific time. The focused consultation-container suite passes 19 tests in
+  both tested time zones. Changed-source lint, library type checks and services,
+  Clinical and Reports builds pass. Reports' test type check passes. Services
+  and Clinical test-project type checks still have unrelated existing errors;
+  they are not claimed green. Existing large bundles and form2-controls eval
+  warnings remain.
+
+This verifies these emissions and Reports listener ownership, not every native
+event, audit-write failure handling, one-type automatic visit creation under
+effect replay, limited-role behavior or full React acceptance. Separate-product
+redesign and other workflow parity work remain unfinished. Production and the
+shared demo are unchanged.
+
 ## 7 October native audit-log checkpoint
 
 - The redesigned table follows the native default reversal and 50-record cursor

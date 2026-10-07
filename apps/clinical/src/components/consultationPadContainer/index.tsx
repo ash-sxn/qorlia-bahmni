@@ -124,7 +124,7 @@ const ConsultationPadContainer: React.FC<ConsultationPadContainerProps> = ({
         );
 
         dispatchAuditEvent({
-          eventType: 'START_VISIT',
+          eventType: 'OPEN_VISIT',
           patientUuid: patientUuid!,
           messageParams: { visitType: visitTypeName },
           module: MODULE_LABELS.CLINICAL,
