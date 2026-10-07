@@ -1,5 +1,28 @@
 # Qorlia React frontend backend readiness
 
+## Latest metadata and patient-read recovery verification
+
+The observation editor now retries failed/missing metadata and patient queries
+without resetting a loaded renderer or draft. Save and validation override are
+blocked while required reads are pending, fetching or failed. Four regressions
+and two real-query hook checks cover the guarded paths; five clinical suites
+pass 202 tests/four snapshots in India and US Pacific time, with type checks,
+source lint and build passing under the existing upstream build warnings.
+
+Real isolated browser request blocking verifies initial metadata failure plus
+background metadata and patient failures with typed unsaved text. Retry restores
+HTTP 200 reads and the same draft. Complete non-truncated GET-only recovery
+captures confirm that patient retry does not refetch valid metadata. Faults were
+removed, query devtools closed, the form discarded and consultation cancelled.
+This does not prove every form configuration, permission transition or save path.
+
+The old native baseline is preserved; OpenMRS's daemon closed its old visit after
+the earlier QA. Today's comparison baseline was taken after one approved
+synthetic OPD visit initialization. Full native records are unchanged afterward
+(seven encounters, four visits, pulse 81), with no observation submission,
+staff privilege change or public/shared-demo deployment. Broader workflow and
+separate-product acceptance remain open.
+
 ## Latest native-form layout verification
 
 The clipped History and Examination duration label is corrected with a scoped

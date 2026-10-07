@@ -44,8 +44,15 @@ exports[`ObservationFormsContainer Rendering and Structure should match the snap
           class="formContent"
           data-testid="observation-form-content"
         >
-          <div>
-            translated_OBSERVATION_FORM_LOADING_METADATA_ERROR
+          <div
+            role="alert"
+          >
+            <p>
+              translated_OBSERVATION_FORM_READ_UNAVAILABLE
+            </p>
+            <button>
+              translated_OBSERVATION_FORM_TRY_AGAIN
+            </button>
           </div>
         </div>
       </div>
@@ -55,6 +62,7 @@ exports[`ObservationFormsContainer Rendering and Structure should match the snap
     >
       <button
         data-testid="primary-button"
+        disabled=""
       >
         translated_OBSERVATION_FORM_SAVE_BUTTON
       </button>

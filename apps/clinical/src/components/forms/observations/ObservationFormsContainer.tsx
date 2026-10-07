@@ -1,5 +1,6 @@
 import {
   ActionArea,
+  Button,
   Icon,
   ICON_SIZE,
   InlineNotification,
@@ -140,7 +141,9 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
   const {
     data: fhirPatient,
     isLoading: isPatientLoading,
+    isFetching: isPatientFetching,
     error: patientError,
+    refetch: retryPatient,
   } = useQuery({
     queryKey: ['patient', patientUUID],
     queryFn: () => getFormattedPatientById(patientUUID!),
@@ -213,12 +216,30 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
     formMetadata,
     isLoadingMetadata,
     metadataError,
+    isFetchingMetadata,
+    retryMetadata,
   } = useObservationFormData(
     viewingForm?.uuid ? { formUuid: viewingForm.uuid } : undefined,
   );
 
   // Non-edit forms are always saveable; edit forms gate on CarbonContainer's setIsFormUpdated.
   const hasFormChanges = !isEditMode || isFormUpdated;
+  const canSubmitForm = Boolean(
+    formMetadata &&
+      patientUUID &&
+      patientContext &&
+      !isLoadingMetadata &&
+      !isFetchingMetadata &&
+      !metadataError &&
+      !isPatientLoading &&
+      !isPatientFetching &&
+      !patientError,
+  );
+
+  const retryFormReads = () => {
+    if (metadataError || !formMetadata) void retryMetadata();
+    if (patientError || !patientContext) void retryPatient();
+  };
 
   const handleFormDataChange = React.useCallback(
     (data: unknown) => {
@@ -359,11 +380,7 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
   };
 
   const validateAndSave = (handleDirectModeSubmit?: () => void) => {
-    if (!patientContext) {
-      setValidationErrorType(VALIDATION_STATE_SCRIPT_ERROR);
-      setValidationErrorMessage(t('OBSERVATION_FORM_LOADING_METADATA_ERROR'));
-      return;
-    }
+    if (!canSubmitForm || !patientContext) return;
 
     if (formContainerRef.current) {
       if (validationErrorType && !handleDirectModeSubmit) {
@@ -509,6 +526,7 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
   };
 
   const continueAnyway = () => {
+    if (!canSubmitForm) return;
     setValidationErrorType(null);
     if (formContainerRef.current) {
       // Get observations once
@@ -637,6 +655,21 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
         className={styles.formContent}
         data-testid="observation-form-content"
       >
+        {(!!error ||
+          (!isLoadingMetadata &&
+            !isPatientLoading &&
+            (!formMetadata || !patientContext))) && (
+          <div role="alert">
+            <p>{t('OBSERVATION_FORM_READ_UNAVAILABLE')}</p>
+            {error && <p>{error.message}</p>}
+            <Button
+              onClick={retryFormReads}
+              disabled={isFetchingMetadata || isPatientFetching}
+            >
+              {t('OBSERVATION_FORM_TRY_AGAIN')}
+            </Button>
+          </div>
+        )}
         {isLoadingMetadata || isPatientLoading ? (
           <div className={styles.loadingWrapper}>
             <Loading
@@ -646,8 +679,6 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
               withOverlay={false}
             />
           </div>
-        ) : error ? (
-          <div>{error.message}</div>
         ) : formMetadata && patientUUID && patientContext ? (
           <CarbonContainer
             ref={formContainerRef}
@@ -679,9 +710,7 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
             onValueUpdated={handleFormDataChange}
             setIsFormUpdated={setIsFormUpdated}
           />
-        ) : (
-          <div>{t('OBSERVATION_FORM_LOADING_METADATA_ERROR')}</div>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -742,7 +771,7 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
         primaryButtonText={primaryButtonText}
         onPrimaryButtonClick={handlePrimaryClick}
         isPrimaryButtonDisabled={
-          isPatientLoading || !patientContext || (isEditMode && !hasFormChanges)
+          !canSubmitForm || (isEditMode && !hasFormChanges)
         }
         secondaryButtonText={secondaryButtonText}
         onSecondaryButtonClick={handleSecondaryClick}

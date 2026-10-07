@@ -70,6 +70,7 @@ describe('useObservationFormData', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFetchFormMetadata.mockReset();
     (
       bahmniServices.transformFormDataToObservations as jest.Mock
     ).mockReturnValue([]);
@@ -561,6 +562,57 @@ describe('useObservationFormData', () => {
   });
 
   describe('Metadata Fetching (consolidated from useObservationFormMetadata)', () => {
+    it('retries metadata failures without clearing form data', async () => {
+      mockFetchFormMetadata
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockResolvedValue(mockFormMetadata);
+      const { result } = renderHook(
+        () =>
+          useObservationFormData({
+            formUuid: 'form-uuid',
+            initialFormData: mockFormData,
+          }),
+        { wrapper: createWrapper() },
+      );
+      await waitFor(() => expect(result.current.metadataError).not.toBeNull());
+      await act(async () => {
+        await result.current.retryMetadata();
+      });
+      await waitFor(() => expect(result.current.metadataError).toBeNull());
+      expect(result.current.formMetadata).toEqual(mockFormMetadata);
+      expect(result.current.formData).toEqual(mockFormData);
+    });
+
+    it('distinguishes background metadata retry from initial loading', async () => {
+      mockFetchFormMetadata.mockResolvedValueOnce(mockFormMetadata);
+      const { result } = renderHook(
+        () => useObservationFormData({ formUuid: 'form-uuid' }),
+        { wrapper: createWrapper() },
+      );
+      await waitFor(() =>
+        expect(result.current.formMetadata).toEqual(mockFormMetadata),
+      );
+      let finish: (metadata: FormMetadata) => void = () => undefined;
+      mockFetchFormMetadata.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+      act(() => {
+        void result.current.retryMetadata();
+      });
+      await waitFor(() => expect(result.current.isFetchingMetadata).toBe(true));
+      expect(result.current.isLoadingMetadata).toBe(false);
+      expect(result.current.formMetadata).toEqual(mockFormMetadata);
+      await act(async () => {
+        finish(mockFormMetadata);
+      });
+      await waitFor(() =>
+        expect(result.current.isFetchingMetadata).toBe(false),
+      );
+    });
+
     it('should fetch form metadata when formUuid is provided', async () => {
       mockFetchFormMetadata.mockResolvedValue(mockFormMetadata);
 

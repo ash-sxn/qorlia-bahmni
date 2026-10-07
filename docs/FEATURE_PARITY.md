@@ -1,5 +1,37 @@
 # Bahmni workflow parity ledger
 
+## 7 October form-metadata and patient-read recovery checkpoint
+
+- The observation editor exposes the existing metadata and patient query retry
+  actions. Initial unavailable data and background fetch/error states block
+  submission, including the validation override. A loaded renderer remains
+  mounted through background failure and retry, keeping its unsaved input.
+  Retry targets only the failed or missing read. Native schemas, validation and
+  save payloads are unchanged; no dependency or mirrored query state was added.
+- Four container regressions and two real-query hook checks cover unavailable
+  metadata, draft preservation, background loading and patient-only retry. The
+  five focused clinical suites pass 202 tests and four snapshots in India and
+  US Pacific time. Clinical type checking, source lint and build pass, retaining
+  existing upstream form-renderer eval and large-bundle warnings.
+- Actual isolated browser transport blocking covers initial metadata failure,
+  background metadata failure with typed text, and background patient failure
+  with the same draft. Save is disabled during the faults. Removing each block
+  and using Try again recovers native reads with HTTP 200 and preserves the
+  typed text. Complete non-truncated captures contain GET requests only; the
+  patient-only recovery does not refetch valid metadata. Temporary blocking and
+  query devtools are closed. The unsaved form was discarded and consultation
+  cancelled, without submitting observations.
+- The old 5 October baseline remains preserved: its visit was subsequently
+  closed by OpenMRS's daemon, not this editor. A separate 7 October baseline
+  was taken before testing, then another after one explicitly started synthetic
+  OPD visit. Since that visit initialization, the independent full native
+  comparison is unchanged: seven encounters, four visits and pulse 81. No
+  clinical form save, staff privilege change or public deployment occurred.
+
+Remaining: privilege-load recovery, malformed/native form configurations,
+additional draft/context/permission transitions, concurrency, responsive and
+keyboard acceptance, full React parity and separate-product redesign.
+
 ## 5 October native-form narrow-layout checkpoint
 
 - The configured History and Examination form had a duration label starting
