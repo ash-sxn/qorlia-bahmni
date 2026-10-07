@@ -111,14 +111,12 @@ export async function getVisits(
   const fhirEncounterBundle = await getAllFHIRSearchPages<Encounter>(
     PATIENT_VISITS_URL(patientUUID, locationUuid),
   );
-  return (
-    fhirEncounterBundle.entry
-      ?.map((entry) => entry.resource)
-      .filter(
-        (resource): resource is Encounter =>
-          resource?.resourceType === 'Encounter',
-      ) ?? []
-  );
+  return (fhirEncounterBundle.entry ?? []).map((entry) => {
+    if (entry.resource?.resourceType !== 'Encounter') {
+      throw new Error('Invalid visit search resource');
+    }
+    return entry.resource;
+  });
 }
 
 /**

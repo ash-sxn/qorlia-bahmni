@@ -1,5 +1,52 @@
 # Qorlia React frontend backend readiness
 
+## Latest visit creation and recovery verification (7 October 2026)
+
+The entry flow retains the existing native FHIR Encounter creation API. It now
+requires a current patient/location-scoped active-visit read, valid native
+visit-location resolution, and an immediate preflight before writing. This
+matches the location-sensitive existence check in the pinned native
+[visit service](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/common/domain/services/visitService.js).
+An already-created visit is reused. StrictMode effect replay cannot send a second
+POST from the same container. A successful HTTP status alone is insufficient:
+the returned Encounter must match the intended patient/location/type, native
+visit tag, ID and start timestamp. Native status `unknown` is accepted.
+
+Paginated search validates every Bundle envelope. Non-Encounter visit entries
+and malformed visit-location results reject; they cannot masquerade as an empty
+visit list. An uncertain POST exposes Check visit status in the existing Qorlia
+action area. Recovery is GET-only. A successful empty read permits only an
+explicit new Start visit action. Failed reads cannot authorize a write.
+Metadata-read errors have their own reload. Pending unmounted work cannot reset
+the next patient's consultation state.
+
+The isolated browser registered synthetic ABC200001, UUID
+`8b8c8fc5-8d66-404f-98bd-5469eb324767`, named QorliaQA VisitRecovery. Response-stage
+interception dropped only its visit POST reply after the server returned 201.
+The server's Encounter ID was `02c2098f-c43a-4dfe-853a-ad0d8af6d595`, subject and
+location matched, and status was `unknown`. The UI showed an uncertain-status
+panel. Check visit status issued native GETs returning 200 and opened the saved
+visit, without a second POST. Complete captures were not truncated. Independent
+REST reads after cancellation confirm one active OPD visit and zero clinical
+encounters. Patient audit contains registration and dashboard events (160, 161),
+not an invented OPEN_VISIT for a write the browser never acknowledged. This audit
+gap is recorded explicitly, not repaired by fabricating history. Screenshots
+`visit-lost-reply-20261007.png` and `visit-recovered-20261007.png` are in the private
+staging evidence directory. Temporary interception was cleared and the QA tab
+closed; the user's local home tab remains open.
+
+All 65 services suites pass 1,682 tests; all 110 Clinical suites pass 2,716 tests
+and 36 snapshots in both Asia/Kolkata and America/Los_Angeles. Three focused
+Clinical suites pass 67 tests/one snapshot in both zones. Library type checks,
+services/Clinical builds and changed-source lint pass, with one pre-existing
+ConsultationPage hook warning. Test-project type checks are not newly claimed
+green. Large bundles and the form2-controls eval warning remain release concerns.
+
+Remaining: server-atomic prevention of cross-client creation races, actual
+single-type/limited-role browser checks, multi-location consultation selection,
+full clinical workflow parity and the separate products. No backend API,
+production/shared-demo deployment or staff permission was changed.
+
 ## Latest native audit-writer verification (7 October 2026)
 
 The shared writer follows the pinned native [logging service](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/common/logging/services/auditLogService.js):

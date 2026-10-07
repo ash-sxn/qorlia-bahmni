@@ -74,7 +74,10 @@ describe('encounterService', () => {
     });
 
     it('should return empty array if no encounters are found', async () => {
-      mockedGet.mockResolvedValueOnce({ entry: undefined });
+      mockedGet.mockResolvedValueOnce({
+        resourceType: 'Bundle',
+        entry: undefined,
+      });
 
       const encounters = await getVisits(patientUUID);
 
@@ -190,7 +193,9 @@ describe('encounterService', () => {
         entry: [{ resource: { resourceType: 'Patient', id: patientUUID } }],
       });
 
-      await expect(getActiveVisit(patientUUID)).resolves.toBeNull();
+      await expect(getActiveVisit(patientUUID)).rejects.toThrow(
+        'Invalid visit search resource',
+      );
     });
   });
 
@@ -430,7 +435,7 @@ describe('encounterService', () => {
     beforeEach(() => {
       mockGetUserLoginLocation.mockReturnValue({ uuid: LOGIN_LOCATION_UUID });
       mockGetVisitLocationUUID.mockResolvedValue({ uuid: VISIT_LOCATION_UUID });
-      mockedGet.mockResolvedValue({ entry: [] } as any);
+      mockedGet.mockResolvedValue({ resourceType: 'Bundle', entry: [] } as any);
     });
 
     it('returns null when no active visit exists at login location', async () => {
@@ -442,6 +447,7 @@ describe('encounterService', () => {
     it('returns the active visit at the login location', async () => {
       const activeVisit = makeVisit(`Location/${VISIT_LOCATION_UUID}`);
       mockedGet.mockResolvedValue({
+        resourceType: 'Bundle',
         entry: [{ resource: activeVisit }],
       } as any);
 

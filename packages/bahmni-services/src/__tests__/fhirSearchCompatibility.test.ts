@@ -1,6 +1,9 @@
 import type { Bundle, Condition } from 'fhir/r4';
 import { get } from '../api';
-import { getCompatiblePatientBundle } from '../fhirSearchCompatibility';
+import {
+  getAllFHIRSearchPages,
+  getCompatiblePatientBundle,
+} from '../fhirSearchCompatibility';
 
 jest.mock('../api');
 
@@ -22,6 +25,26 @@ const diagnosis: Condition = {
 };
 
 beforeEach(() => jest.resetAllMocks());
+
+it.each([
+  undefined,
+  {},
+  '<html>Sign in</html>',
+  { error: { message: 'Not authenticated' } },
+  { resourceType: 'OperationOutcome' },
+  { resourceType: 'Bundle', entry: {} },
+  { resourceType: 'Bundle', entry: [null] },
+  { resourceType: 'Bundle', link: {} },
+  { resourceType: 'Bundle', total: -1 },
+])(
+  'rejects malformed search data rather than treating it as no visits: %p',
+  async (response) => {
+    (get as jest.Mock).mockResolvedValue(response);
+    await expect(getAllFHIRSearchPages(base)).rejects.toThrow(
+      'Invalid FHIR search response',
+    );
+  },
+);
 
 it('uses patient-only search, follows pages, and filters unsupported categories', async () => {
   (get as jest.Mock)

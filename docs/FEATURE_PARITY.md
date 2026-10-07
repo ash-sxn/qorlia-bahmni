@@ -1,5 +1,48 @@
 # Bahmni workflow parity ledger
 
+## 7 October visit creation and uncertain-reply recovery checkpoint
+
+- Visit entry now waits for a fresh patient/location-scoped read instead of
+  starting from cached empty data. A synchronous guard prevents duplicate starts
+  during StrictMode effect replay. The native visit-location resolution and an
+  immediate active-visit preflight precede every POST. A visit started since the
+  panel opened is reused, without a second creation or invented OPEN_VISIT event.
+- The existing FHIR visit POST is unchanged. Its acknowledgment must identify
+  the expected patient, location and visit type, carry the native visit tag,
+  and include an ID and start timestamp. Native OpenMRS returns status `unknown`;
+  the check does not incorrectly require `in-progress`. Malformed search pages,
+  non-Encounter visit entries and invalid visit-location responses fail visibly,
+  rather than becoming permission to create a visit.
+- Failed or uncertain creation keeps the shared Qorlia action panel visible.
+  Check visit status performs reads only. A recovered visit opens the pad; a
+  confirmed empty read requires an explicit Start visit click, even for a
+  single-type configuration. Failed status checks keep writes blocked. Metadata
+  errors expose read retry. Unmounting a pending start cannot reset the next
+  patient's global consultation draft. Patient-keyed containers isolate entry.
+- Actual isolated browser verification registered QorliaQA VisitRecovery as
+  ABC200001, then intercepted the test POST response only after the backend
+  returned 201. The browser received a failed reply and showed Check visit status.
+  Recovery issued GETs returning 200 and opened the existing OPD visit. Complete,
+  non-truncated captures contain exactly one visit POST and no recovery mutation.
+  Independent native reads confirm one active visit, zero clinical encounters,
+  and no fabricated OPEN_VISIT audit event for the unacknowledged write. The empty
+  consultation was cancelled; interception was cleared and the QA tab closed.
+- Regression checks reproduced the duplicate effect-driven start and blank
+  failure panel before correction. All 65 services suites pass 1,682 tests and
+  all 110 Clinical suites pass 2,716 tests/36 snapshots in India and US Pacific
+  time. The three focused Clinical suites pass 67 tests/one snapshot in both.
+  Changed-source lint has no errors and one pre-existing ConsultationPage hook
+  warning. Library type checks and services/Clinical builds pass. Existing large
+  bundles and the upstream form2-controls eval warning remain.
+
+This verifies same-container write ownership and the tested lost-reply path, not
+atomic duplicate prevention across concurrent clients. The read-before-write
+check cannot close a server race between separate clients. Single-type behavior
+has unit/StrictMode coverage, not a live single-type configuration test. Live
+limited-role checks, multi-location consultation selection, full clinical parity,
+and the separate-product redesign remain unfinished. No production/shared-demo
+deployment, dependency addition, purchase or staff privilege change occurred.
+
 ## 7 October native audit-writer checkpoint
 
 - The shared writer now persists the native message key and optional JSON

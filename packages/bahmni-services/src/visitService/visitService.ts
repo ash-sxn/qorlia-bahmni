@@ -45,7 +45,13 @@ export const getActiveVisitByPatient = async (
 export const getVisitLocationUUID = async (
   loginLocation: string,
 ): Promise<VisitLocationResponse> => {
-  return get<VisitLocationResponse>(GET_VISIT_LOCATION(loginLocation));
+  const location = await get<VisitLocationResponse>(
+    GET_VISIT_LOCATION(loginLocation),
+  );
+  if (typeof location?.uuid !== 'string' || !location.uuid.trim()) {
+    throw new Error('Invalid visit location response');
+  }
+  return location;
 };
 
 /**

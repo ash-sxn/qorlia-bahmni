@@ -410,6 +410,7 @@ const ConsultationPage: React.FC = () => {
         actionArea={
           encounterSessionStartContext && (
             <ConsultationPadContainer
+              key={patientUUID}
               encounterSessionStartContext={encounterSessionStartContext}
               onClose={() => {
                 setIsActionAreaVisible((prev) => !prev);

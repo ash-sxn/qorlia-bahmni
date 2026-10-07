@@ -72,6 +72,24 @@ export async function getAllFHIRSearchPages<T extends Resource>(
       !firstBundle && initialBundle
         ? initialBundle
         : await get<Bundle<T>>(path);
+    if (
+      bundle?.resourceType !== 'Bundle' ||
+      (bundle.entry !== undefined &&
+        (!Array.isArray(bundle.entry) ||
+          bundle.entry.some((entry) => !entry || typeof entry !== 'object'))) ||
+      (bundle.link !== undefined &&
+        (!Array.isArray(bundle.link) ||
+          bundle.link.some(
+            (link) =>
+              !link ||
+              typeof link.relation !== 'string' ||
+              typeof link.url !== 'string',
+          ))) ||
+      (bundle.total !== undefined &&
+        (!Number.isInteger(bundle.total) || bundle.total < 0))
+    ) {
+      throw new Error('Invalid FHIR search response');
+    }
     firstBundle ??= bundle;
     entries.push(...(bundle.entry ?? []));
     nextUrl = bundle.link?.find((link) => link.relation === 'next')?.url;
