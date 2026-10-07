@@ -43,10 +43,20 @@ export const CsvExport = () => {
       <section className={styles.page} aria-label={t('ADMIN_CSV_EXPORT_TITLE')}>
         <p className={styles.eyebrow}>{t('BREADCRUMB_ADMIN')}</p>
         <h1>{t('ADMIN_CSV_EXPORT_TITLE')}</h1>
-        <p className={styles.description}>{t('ADMIN_CSV_EXPORT_DESCRIPTION')}</p>
+        <p className={styles.description}>
+          {t('ADMIN_CSV_EXPORT_DESCRIPTION')}
+        </p>
         <div className={styles.card}>
-          <label htmlFor="concept-export-search">{t('ADMIN_CSV_EXPORT_CONCEPT')}</label>
-          <div className={styles.actions}>
+          <label htmlFor="concept-export-search">
+            {t('ADMIN_CSV_EXPORT_CONCEPT')}
+          </label>
+          <form
+            className={styles.actions}
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (exportUrl) window.open(exportUrl, '_blank', 'noopener');
+            }}
+          >
             <input
               id="concept-export-search"
               value={term}
@@ -60,34 +70,56 @@ export const CsvExport = () => {
             <button
               className={styles.exportButton}
               disabled={!exportUrl}
-              onClick={() => window.open(exportUrl, '_blank', 'noopener')}
-              type="button"
+              type="submit"
             >
               {t('ADMIN_CSV_EXPORT_BUTTON')}
             </button>
-          </div>
-          {!selected && searchTerm === term.trim() && concepts.data && concepts.data.length > 0 && (
-            <ul className={styles.suggestions} aria-label={t('ADMIN_CSV_EXPORT_RESULTS')}>
-              {concepts.data.map((concept) => (
-                <li key={concept.uuid}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTerm(concept.name.name);
-                      setSelected(concept.name.name);
-                    }}
-                  >
-                    {concept.name.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {concepts.isError && <p role="alert">{t('ADMIN_CSV_EXPORT_ERROR')}</p>}
-          {searchTerm.length >= 2 && searchTerm === term.trim() && !concepts.isPending && !concepts.isError &&
-            !selected && concepts.data?.length === 0 && (
-              <p>{t('ADMIN_CSV_EXPORT_EMPTY')}</p>
+          </form>
+          {!selected &&
+            searchTerm === term.trim() &&
+            concepts.data &&
+            concepts.data.length > 0 && (
+              <ul
+                className={styles.suggestions}
+                aria-label={t('ADMIN_CSV_EXPORT_RESULTS')}
+              >
+                {concepts.data.map((concept) => (
+                  <li key={concept.uuid}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTerm(concept.name.name);
+                        setSelected(concept.name.name);
+                      }}
+                    >
+                      {concept.name.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
+          {!selected && searchTerm === term.trim() && concepts.isFetching && (
+            <p role="status">{t('ADMIN_CSV_EXPORT_LOADING')}</p>
+          )}
+          {!selected && searchTerm === term.trim() && concepts.isError && (
+            <div role="alert">
+              <p>{t('ADMIN_CSV_EXPORT_ERROR')}</p>
+              <button
+                type="button"
+                className={styles.exportButton}
+                disabled={concepts.isFetching}
+                onClick={() => concepts.refetch()}
+              >
+                {t('ADMIN_ORDER_TRY_AGAIN')}
+              </button>
+            </div>
+          )}
+          {searchTerm.length >= 2 &&
+            searchTerm === term.trim() &&
+            !concepts.isPending &&
+            !concepts.isError &&
+            !selected &&
+            concepts.data?.length === 0 && <p>{t('ADMIN_CSV_EXPORT_EMPTY')}</p>}
         </div>
       </section>
     </AdminLayout>

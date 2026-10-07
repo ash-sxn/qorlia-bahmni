@@ -1,5 +1,42 @@
 # Bahmni workflow parity ledger
 
+## 7 October native CSV import/export checkpoint
+
+- Import reads the native `bahmni.admin.csv` extension, including its replacement
+  `urlMap` and `patientMatchingAlgorithm`, rather than guessing from the v2 tile
+  catalogue. The eleven native default types remain when no custom map exists.
+  Missing, malformed or external-destination settings block file selection and
+  expose read retry. Queued files retain their selected type and configuration.
+- Multipart requests retain the native file and algorithm fields. Only Boolean
+  `true` acknowledges submission; an HTML login response cannot show success.
+  Acknowledgment is not completion. Failed status refresh leaves the submitted
+  state intact and does not offer another POST. Cancel copy warns that the server
+  may already have received the request. Status refetches on entry and by Refresh.
+- Native browser concept import saved one synthetic row, while a second import
+  rejected a missing Concept Class. Independent status reads show COMPLETED
+  (one success, zero failures) and COMPLETED_WITH_ERRORS (zero successes, one
+  failure). The invalid concept is absent from native concept search.
+- The native error link exposed a missing private staging route. A relative
+  redirect now carries the browser to the existing `/openmrs/auth` endpoint,
+  where its path-scoped session cookie can be checked. CSV import files require
+  `Import CSV Files` or OpenMRS's implicit System Developer privilege; clinical
+  access alone is insufficient. Patient-document permissions remain unchanged.
+  The browser downloaded the exact failed-row CSV, with its proper filename and
+  validation message. Anonymous requests return 403. Actual limited-role browser
+  checks remain, beyond the runnable adapter permission/path checks.
+- Exact concept selection and keyboard Enter downloaded the native ZIP containing
+  `concepts.csv` and `concept_sets.csv`. Archive inspection retained the synthetic
+  concept UUID/name. Copy now describes the ZIP correctly. Editing a selected
+  name disables export; failed searches expose GET retry.
+- Admin's nine suites pass 51 tests in India and US Pacific time. Source lint,
+  type checking, adapter checks and the package build pass. The existing large
+  Admin bundle remains. No new dependency or production deployment was added.
+
+This closes the tested concept-import, error-download and concept-export paths,
+not all eleven import formats, patient matching, cancellation races, large-file
+handling or real limited-role enforcement. Other React workflows and separate
+OpenELIS/Odoo/radiology/analytics/outreach redesign remain in scope and unfinished.
+
 ## 7 October order-set lifecycle and retirement checkpoint
 
 - The React editor follows the pinned native Bahmni [controller](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/admin/controllers/orderSetController.js)

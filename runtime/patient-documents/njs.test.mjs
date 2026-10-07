@@ -34,10 +34,18 @@ for (const value of [
   );
 }
 
-function checkSession(response, expectedStatus, expectedRedirect) {
+function checkSession(
+  response,
+  expectedStatus,
+  expectedRedirect,
+  requestedPath = path,
+  expectedFilename,
+) {
   let status, redirect;
+  const headersOut = {};
   documentAuth.auth({
-    args: { requested_document: path },
+    args: { requested_document: requestedPath },
+    headersOut,
     subrequest: (url, options, callback) => {
       assert.equal(url, "/openmrs/session/verify");
       assert.equal(options.method, "GET");
@@ -52,11 +60,67 @@ function checkSession(response, expectedStatus, expectedRedirect) {
   });
   assert.equal(status, expectedStatus);
   assert.equal(redirect, expectedRedirect);
+  assert.equal(headersOut["Content-Disposition"], expectedFilename);
 }
+const importPath = "/uploaded-files/mrs/concept/QorliaQA.val.err.csv";
 const response = (session) => ({
   status: 200,
   responseText: JSON.stringify(session),
 });
+checkSession(
+  response({
+    authenticated: true,
+    user: { privileges: [{ name: "app:clinical" }] },
+  }),
+  403,
+  undefined,
+  importPath,
+);
+checkSession(
+  response({
+    authenticated: true,
+    user: { privileges: [{ name: "Import CSV Files" }] },
+  }),
+  undefined,
+  `/document/fetch?requested_document=${encodeURIComponent(importPath)}`,
+  importPath,
+  "attachment; filename*=UTF-8''QorliaQA.val.err.csv",
+);
+checkSession(
+  response({
+    authenticated: true,
+    user: { privileges: [{ name: "Import CSV Files" }] },
+  }),
+  403,
+);
+checkSession(
+  response({
+    authenticated: true,
+    user: { privileges: [], roles: [{ name: "System Developer" }] },
+  }),
+  undefined,
+  `/document/fetch?requested_document=${encodeURIComponent(importPath)}`,
+  importPath,
+  "attachment; filename*=UTF-8''QorliaQA.val.err.csv",
+);
+checkSession(
+  response({
+    authenticated: false,
+    user: { privileges: [], roles: [{ name: "System Developer" }] },
+  }),
+  403,
+  undefined,
+  importPath,
+);
+checkSession(
+  response({
+    authenticated: true,
+    user: { privileges: [], roles: [{ name: "SuperAdmin" }] },
+  }),
+  403,
+  undefined,
+  importPath,
+);
 checkSession(response({ authenticated: false }), 403);
 checkSession(response({ authenticated: true, user: { privileges: [] } }), 403);
 checkSession(response(null), 403);

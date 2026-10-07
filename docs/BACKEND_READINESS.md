@@ -1,5 +1,60 @@
 # Qorlia React frontend backend readiness
 
+## Latest native CSV verification (7 October 2026)
+
+The React importer follows the pinned native [upload controller](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/admin/controllers/csvUploadController.js)
+and [import service](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/admin/services/adminImportService.js).
+It reads the native extension's import map/algorithm, uses native multipart APIs,
+requires a Boolean acknowledgment, and retains submission acknowledgment if the
+following status GET fails. Missing or external configuration fails closed.
+
+The already approved isolated staging browser submitted two clearly labelled
+concept fixtures. Independent native status reads returned:
+
+| Import ID | Native status | Successful rows | Failed rows |
+| --- | --- | --- | --- |
+| 1 | COMPLETED | 1 | 0 |
+| 2 | COMPLETED_WITH_ERRORS | 0 | 1 |
+
+The valid concept UUID is `e775e6d0-7b5f-4d70-a286-eb0b383f2e73`, named
+`QorliaQA CSV Concept 20261007`. Native search for the invalid fixture returns
+no results. Neither import was replayed after acknowledgment.
+
+The private proxy lacked the native `/uploaded-files/mrs/` error route. Its new
+relative 302 reaches the existing authenticated file service. This is necessary
+because the session cookie is scoped to `/openmrs`. The adapter requires the
+native CSV import privilege, or the authenticated System Developer role, for
+this prefix. OpenMRS's [2.6.15 User privilege logic](https://github.com/openmrs/openmrs-core/blob/2.6.15/api/src/main/java/org/openmrs/User.java)
+and [role constant](https://github.com/openmrs/openmrs-core/blob/2.6.15/api/src/main/java/org/openmrs/util/RoleConstants.java)
+define this implicit superuser behavior. No user role was changed. Existing
+patient-document access checks remain in place. Anonymous error-file requests
+return 403; runnable adapter checks reject clinical-only CSV access, malformed
+paths and forged unauthenticated superuser responses. Live limited-role and
+inherited-role behavior still requires verification.
+
+The browser error download has the native `.val.err.csv` name and contains
+`Concept Class not specified`. Its SHA-256 is
+`051cd99a56e82fa04fbd04ca46913e2db039ba5bb66af7a06da2da96a85d32bc`.
+Exact concept selection followed by Enter produced the native ZIP. Its two
+members are `concepts.csv` and `concept_sets.csv`; archive inspection confirms
+the imported UUID and name in `concept_sets.csv`. ZIP SHA-256:
+`a7cb520ce5ae59c6fe9738732c0ffbc6fb53587b008bc464f73eb3928f633d63`.
+The download watcher on the opener timed out because the native export opens
+a separate context, but the saved archive's timestamp and contents were checked.
+No export mutation was replayed.
+
+Nine Admin suites pass 51 tests in both Asia/Kolkata and America/Los_Angeles.
+Changed-source lint, type checking, adapter checks and package build pass. The
+first build exposed an ES-target mismatch for `Object.hasOwn`; using the existing
+target's `hasOwnProperty.call` fixes it without changing the target. The large
+Admin bundle remains a release concern.
+
+Remaining: native saves for the other import types and matching algorithms,
+cancellation/large-file boundaries, actual limited-role enforcement and full
+React acceptance. No public/shared-demo deployment, new purchase or exposure
+occurred. The CSV routing/adapter update was reloaded only in private staging.
+Separate-product redesign remains unfinished.
+
 ## Latest order-set lifecycle verification
 
 The local order-set editor retains Bahmni's native full-read, create/update,
