@@ -49,6 +49,7 @@
   font-weight: 400;
 }
 .filters button,
+.retry,
 .pagination button {
   min-height: 40px;
   padding: 8px 15px;
@@ -61,8 +62,9 @@
   cursor: pointer;
 }
 .filters button:disabled,
+.retry:disabled,
 .pagination button:disabled {
-  opacity: .5;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 .cardHeading,

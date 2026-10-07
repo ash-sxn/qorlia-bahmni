@@ -1,5 +1,41 @@
 # Bahmni workflow parity ledger
 
+## 7 October native audit-log checkpoint
+
+- The redesigned table follows the native default reversal and 50-record cursor
+  paging. Submitted date/time, username and patient ID remain attached to page
+  reads. Empty next/previous responses retain the current page. Previous from an
+  empty filter invokes the native default view and clears visible identity
+  fields instead of mislabelling those results. Clearing the date can omit the
+  native startFrom filter; invalid/future dates and nonexistent local times reject.
+- Timestamps retain seconds. Message parsing preserves tildes inside JSON
+  parameters; malformed messages remain visible rather than crashing. Event
+  types and modules use the configured translations. Malformed response envelopes
+  and invalid rows fail visibly, with explicit read retry. Re-entry refetches
+  despite the Admin app's cache defaults. No audit write or history rewrite occurs.
+- Actual isolated browser filtering by superman/QST910001 returned 50 rows
+  (IDs 1 through 147, with gaps belonging to other patients). Next used cursor 147
+  and returned IDs 148 through 153. Previous used 148 with prev=true and restored
+  the original 50 rows. Empty-user filtering and default recovery returned the
+  latest 50 global events (104 through 153), with identity fields cleared.
+- Blocking audit GETs retained the displayed page and disabled paging. The app's
+  configured read retries made three failed GETs. Explicit Try again then issued
+  one GET returning 200, retained the page on its empty response and displayed
+  No more events found. Complete captures contain no mutations; blocking is
+  cleared. Independent native reads corroborate the filter count/cursors.
+- Anonymous audit GET returns HTTP 200 with an authentication-error object, not
+  rows. Envelope validation rejects it instead of treating it as successful data.
+  Actual cleared-date browser filtering omits startFrom and returns 50 records.
+- Nine Admin suites pass 61 tests in India and US Pacific time. Lint, type checks
+  and the package build pass. Existing large-bundle concerns remain. Older React
+  START_VISIT entries use a non-native message key; their emission needs a separate
+  source correction, not rewriting stored audit history. Live limited-role and
+  full cross-workflow event coverage remain unverified.
+
+This is a local/native audit-read checkpoint, not complete React acceptance.
+Other React workflows and separate-product redesign remain unfinished. Production
+and the shared demo are unchanged.
+
 ## 7 October native CSV import/export checkpoint
 
 - Import reads the native `bahmni.admin.csv` extension, including its replacement

@@ -1,5 +1,43 @@
 # Qorlia React frontend backend readiness
 
+## Latest audit-log verification (7 October 2026)
+
+The reader was compared with the pinned native [controller](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/admin/controllers/auditLogController.js),
+[view](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/admin/views/auditLog.html)
+and [service](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/common/logging/services/auditLogService.js).
+The native [REST controller](https://github.com/Bahmni/audit-log/blob/47b98a828a0f8e1f660832d1e9f0eafcec1b7a4b/omod/src/main/java/org/openmrs/module/auditlog/web/controller/AuditLogController.java)
+and [DAO](https://github.com/Bahmni/audit-log/blob/47b98a828a0f8e1f660832d1e9f0eafcec1b7a4b/api/src/main/java/org/openmrs/module/auditlog/dao/impl/AuditLogDaoImpl.java)
+define authentication, app:admin access, date filters, cursor directions and the
+50-record limit. No backend privilege or API contract was changed.
+
+Browser filtering at local September 2 midnight sent UTC September 1 18:30,
+username superman and patient QST910001. Native reads and the rendered table
+agree on the first 50 IDs (1 through 147 with gaps). Next cursor 147 returned
+148 through 153; Previous cursor 148 restored the first page. Empty filtering
+followed by Previous requested defaultView=true without identity filters and
+rendered the latest 50 events (104 through 153). Dates display local seconds,
+configured messages and modules translate, and malformed responses reject.
+
+The read-failure browser test retained 50 rows while the configured three GET
+attempts were blocked. Explicit retry sent one matching GET returning 200;
+its empty response retained the page with No more events found. Clearing every
+native date segment then sent username/patientId without startFrom and returned
+50 records. Complete network
+captures contain no POST/PUT/PATCH/DELETE, and temporary blocking was cleared.
+The screenshot is audit-native-recovery-20261007.png in the private staging
+evidence directory. Anonymous native GET returns HTTP 200 containing the error
+object User is not logged in, not event rows. The reader explicitly rejects this
+envelope; checking the status code alone would be insufficient. Nine Admin suites
+pass 61 tests in both tested time zones,
+including date omission, DST rejection, message parameters, cache re-entry,
+malformed responses and GET-only recovery. Lint/type checking/build pass.
+
+Remaining: actual limited-role checks and complete event emission coverage.
+Existing START_VISIT_MESSAGE entries expose a React emission mismatch, not a
+reader translation failure; stored history is unchanged. Separate products,
+other React workflows and full acceptance remain open. No production deployment
+or shared-demo change occurred.
+
 ## Latest native CSV verification (7 October 2026)
 
 The React importer follows the pinned native [upload controller](https://github.com/Bahmni/openmrs-module-bahmniapps/blob/f9bc64c407f7b1bebd0d8aa2158f0e989ed5e310/ui/app/admin/controllers/csvUploadController.js)

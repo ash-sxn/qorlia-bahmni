@@ -12,6 +12,7 @@
   "ADMIN_AUDIT_EVENTS": "Eventos de auditoría",
   "ADMIN_AUDIT_FILTER": "Filtrar",
   "ADMIN_AUDIT_LOADING": "Cargando eventos...",
+  "ADMIN_AUDIT_INVALID_DATE": "Elija una fecha y hora local válidas, no posteriores a hoy.",
   "ADMIN_AUDIT_MESSAGE": "Mensaje",
   "ADMIN_AUDIT_MODULE": "Módulo",
   "ADMIN_AUDIT_NEXT": "Siguiente",

@@ -12,6 +12,7 @@
   "ADMIN_AUDIT_EVENTS": "Audit events",
   "ADMIN_AUDIT_FILTER": "Filter",
   "ADMIN_AUDIT_LOADING": "Loading audit events...",
+  "ADMIN_AUDIT_INVALID_DATE": "Choose a valid local date and time, no later than today.",
   "ADMIN_AUDIT_MESSAGE": "Message",
   "ADMIN_AUDIT_MODULE": "Module",
   "ADMIN_AUDIT_NEXT": "Next",
