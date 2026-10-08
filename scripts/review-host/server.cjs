@@ -110,6 +110,8 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
 
   app.use(createProxyMiddleware({
     pathFilter: (path) => path.startsWith('/openmrs/ws/') || path === '/openmrs/auth' ||
+      path === '/openmrs/module/addresshierarchy/ajax/getPossibleAddressHierarchyEntriesWithParents.form' ||
+      path === '/openmrs/module/addresshierarchy/ajax/getOrderedAddressHierarchyLevels.form' ||
       path.startsWith('/uploaded-files/mrs/') || path.startsWith('/bahmnireports/') ||
       path.startsWith('/bahmni_config/openmrs/'),
     target: backend, changeOrigin: true, secure: true,

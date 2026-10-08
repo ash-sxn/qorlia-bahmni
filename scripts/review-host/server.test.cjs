@@ -61,6 +61,8 @@ test('review gate protects UI, clinical API and read-only Billing with isolated 
   assert.equal((await rpc('/web/dataset/call_kw/account.move/search_read', allCookies, { model: 'account.move', method: 'write' })).status, 400);
   await request('/openmrs/ws/rest/v1/session', { headers: { Cookie: allCookies } });
   assert.equal(seenClinical, 'JSESSIONID=valid; reporting_session=report');
+  assert.equal((await request('/openmrs/module/addresshierarchy/ajax/getOrderedAddressHierarchyLevels.form',
+    { headers: { Cookie: allCookies } })).status, 200);
   assert.equal((await request('/bahmni/home/index.html', { headers: { Cookie: cookie } })).headers.get('location'), '/bahmni-v2/login');
   for (let i = 0; i < 10; i++) assert.equal((await request('/review-access', {
     method: 'POST', headers: { Origin: base, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'code=wrong',
