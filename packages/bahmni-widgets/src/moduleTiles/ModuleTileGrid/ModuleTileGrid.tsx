@@ -2,6 +2,9 @@ import { InlineNotification, SkeletonPlaceholder } from '@bahmni/design-system';
 import {
   type Module,
   getVisibleModules,
+  filterByPrivilege,
+  filterByOnlineStatus,
+  sortByOrder,
   useTranslation,
 } from '@bahmni/services';
 import { useQuery } from '@tanstack/react-query';
@@ -25,6 +28,7 @@ interface ModuleTileGridProps {
   testId?: string;
   /** Review builds can replace legacy targets and leave unfinished modules unlinked. */
   reviewUrls?: Record<string, string>;
+  additionalModules?: Module[];
 }
 
 /**
@@ -44,6 +48,7 @@ export const ModuleTileGrid: React.FC<ModuleTileGridProps> = ({
   className,
   testId = 'module-tile-grid',
   reviewUrls,
+  additionalModules = [],
 }) => {
   const { t } = useTranslation();
   const {
@@ -113,7 +118,14 @@ export const ModuleTileGrid: React.FC<ModuleTileGridProps> = ({
     );
   }
 
-  if (modules.length === 0) {
+  const visibleModules = sortByOrder([
+    ...modules,
+    ...filterByOnlineStatus(
+      filterByPrivilege(additionalModules, privilegeNames ?? []),
+    ).filter((extra) => !modules.some((module) => module.id === extra.id)),
+  ]);
+
+  if (visibleModules.length === 0) {
     return (
       <div
         className={[styles.emptyState, className].filter(Boolean).join(' ')}
@@ -131,7 +143,7 @@ export const ModuleTileGrid: React.FC<ModuleTileGridProps> = ({
       data-testid={`${testId}-test-id`}
     >
       <div className={styles.tileGrid}>
-        {modules.map((module: Module) => (
+        {visibleModules.map((module: Module) => (
           <AppTile
             key={module.id}
             id={module.id}

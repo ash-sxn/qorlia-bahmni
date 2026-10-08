@@ -11,6 +11,8 @@ module.exports = (env, argv) => {
     env.PUBLIC_PATH || process.env.PUBLIC_PATH || '/bahmni-v2/';
   const isDevelopment = argv.mode !== 'production';
   const backendOrigin = process.env.BAHMNI_API_ORIGIN || 'https://localhost/';
+  const billingOrigin =
+    process.env.BAHMNI_BILLING_ORIGIN || 'https://erp-demo-bahmni.qorlia.com';
   const standardConfigRef = process.env.BAHMNI_STANDARD_CONFIG_REF;
   if (standardConfigRef && !/^[a-f0-9]{40}$/i.test(standardConfigRef)) {
     throw new Error(
@@ -67,6 +69,43 @@ module.exports = (env, argv) => {
       allowedHosts: ['127.0.0.1', 'localhost'],
       port: 3000,
       setupMiddlewares: (middlewares, devServer) => {
+        // ponytail: local review gateway only; add its production equivalent before releasing Billing.
+        devServer.app.use(
+          '/openmrs/qorlia-billing-api',
+          async (request, response, next) => {
+            // Both clinical and ERP permissions remain enforced. Never forward
+            // clinical cookies or credentials to the separate billing service.
+            const clinicalCookie = (request.headers.cookie || '')
+              .split(';')
+              .map((cookie) => cookie.trim())
+              .filter((cookie) => cookie.startsWith('JSESSIONID='))
+              .join('; ');
+            if (!clinicalCookie)
+              return response.status(401).json({ error: 'Sign in to Qorlia.' });
+            try {
+              const session = await fetch(
+                new URL('/openmrs/ws/rest/v1/session', backendOrigin),
+                {
+                  headers: {
+                    Cookie: clinicalCookie,
+                    Accept: 'application/json',
+                  },
+                  signal: AbortSignal.timeout(10000),
+                },
+              );
+              if (!session.ok || !(await session.json()).authenticated) {
+                return response
+                  .status(401)
+                  .json({ error: 'Sign in to Qorlia.' });
+              }
+              next();
+            } catch {
+              response.status(503).json({
+                error: 'Hospital session verification is unavailable.',
+              });
+            }
+          },
+        );
         devServer.app.get(
           ['/', '/bahmni/home', '/bahmni/home/', '/bahmni/home/index.html'],
           (request, response) => {
@@ -85,6 +124,28 @@ module.exports = (env, argv) => {
         htmlAcceptHeaders: ['text/html', 'application/xhtml+xml'],
       },
       proxy: [
+        {
+          context: ['/openmrs/qorlia-billing-api'],
+          target: billingOrigin,
+          pathRewrite: { '^/openmrs/qorlia-billing-api': '' },
+          changeOrigin: true,
+          secure: true,
+          cookieDomainRewrite: { '*': '' },
+          cookiePathRewrite: '/openmrs/qorlia-billing-api',
+          onProxyReq: (proxyRequest, request) => {
+            const cookie = (request.headers.cookie || '')
+              .split(';')
+              .map((value) => value.trim())
+              .filter((value) => value.startsWith('session_id='))
+              .join('; ');
+            proxyRequest.removeHeader('cookie');
+            proxyRequest.removeHeader('authorization');
+            if (cookie) proxyRequest.setHeader('cookie', cookie);
+          },
+          onProxyRes: (response) => {
+            response.headers['cache-control'] = 'no-store';
+          },
+        },
         ...(standardConfigRef
           ? [
               {

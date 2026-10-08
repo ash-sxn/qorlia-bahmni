@@ -1,0 +1,72 @@
+@use "@carbon/react/scss/theme" as *;
+
+.page {
+  min-height: 100vh;
+  padding: 6rem clamp(1rem, 6vw, 6rem) 3rem;
+  background: $background;
+  color: $text-primary;
+  h1 {
+    margin: 0.5rem 0;
+  }
+  h2 {
+    margin-bottom: 1rem;
+  }
+  p {
+    margin: 0.75rem 0;
+  }
+  input:focus-visible,
+  a:focus-visible {
+    outline: 2px solid $focus;
+    outline-offset: 3px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  caption {
+    text-align: left;
+    padding: 1rem 0;
+    font-weight: 600;
+  }
+  th,
+  td {
+    text-align: left;
+    padding: 1rem;
+    border-bottom: 1px solid $border-subtle-01;
+  }
+  th {
+    background: $layer-02;
+  }
+}
+.eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  font-weight: 600;
+}
+.note {
+  color: $text-secondary;
+  max-width: 65rem;
+  font-size: 0.875rem;
+}
+.card {
+  background: $layer-01;
+  border: 1px solid $border-subtle-01;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+.form {
+  display: grid;
+  gap: 1rem;
+  max-width: 28rem;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.tableScroll {
+  overflow-x: auto;
+}

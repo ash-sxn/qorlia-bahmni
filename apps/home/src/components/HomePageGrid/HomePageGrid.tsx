@@ -1,9 +1,11 @@
+import { type Module } from '@bahmni/services';
 import { ModuleTileGrid } from '@bahmni/widgets';
 import React from 'react';
 import { HOME_EXTENSION_POINT } from '../../constants/app';
 import styles from './styles/HomePageGrid.module.scss';
 
 const reviewUrls = {
+  'qorlia.billing': '/bahmni-v2/home/billing',
   'bahmni.registration.new': '/bahmni-v2/registration/search',
   'bahmni.programs': '/bahmni-v2/clinical/programs',
   'bahmni.clinical': '/bahmni-v2/clinical/',
@@ -18,6 +20,19 @@ const reviewUrls = {
   'bahmni.radiology.document.upload':
     '/bahmni-v2/patient-documents/search?encounterType=RADIOLOGY&topLevelConcept=All%20Radiology%20orders',
 };
+
+const billingModules: Module[] = [
+  {
+    id: 'qorlia.billing',
+    extensionPointId: HOME_EXTENSION_POINT,
+    type: 'link',
+    label: 'Billing',
+    url: '/bahmni-v2/home/billing',
+    order: 14,
+    icon: 'fa-file-invoice-dollar',
+    exclusiveOnlineModule: true,
+  },
+];
 
 export const HomePageGrid: React.FC = () => (
   <div className={styles.headerOffset}>
@@ -36,6 +51,7 @@ export const HomePageGrid: React.FC = () => (
         process.env.NODE_ENV !== 'production' ? reviewUrls : undefined
       }
       testId="home-modules"
+      additionalModules={billingModules}
     />
   </div>
 );

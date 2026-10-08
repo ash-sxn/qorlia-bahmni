@@ -25,6 +25,13 @@ describe('HomePageGrid', () => {
     expect(props.loadingLabelKey).toBe('HOME_LOADING_MODULES');
     expect(props.errorMessageKey).toBe('HOME_ERROR_FETCH_CONFIG');
     expect(props.emptyMessageKey).toBe('HOME_NO_MODULES');
+    expect(props.additionalModules).toEqual([
+      expect.objectContaining({
+        id: 'qorlia.billing',
+        label: 'Billing',
+        url: '/bahmni-v2/home/billing',
+      }),
+    ]);
   });
 
   it('opens available React screens in the review build', () => {
