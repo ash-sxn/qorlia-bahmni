@@ -4,6 +4,7 @@ import {
   BillingActionRejected,
   BillingSessionExpired,
   getJournalDetailChoices,
+  getJournalAnalytics,
   getJournalDetails,
   getJournalDetailsStatus,
   previewJournalDetails,
@@ -18,6 +19,7 @@ import {
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
   getJournalDetailChoices: jest.fn(),
+  getJournalAnalytics: jest.fn(),
   getJournalDetails: jest.fn(),
   getJournalDetailsStatus: jest.fn(),
   previewJournalDetails: jest.fn(),
@@ -217,19 +219,42 @@ describe('Native draft journal detail editor', () => {
     ).toBeDisabled();
     expect(saveJournalDetails).not.toHaveBeenCalled();
   });
-  it('prevents malformed analytic text from reviewing an earlier valid distribution', async () => {
+  it('preserves combined allocations and prevents invalid percentages from reviewing an earlier distribution', async () => {
+    const plans = [{ id: 20, name: 'Departments', applicability: 'mandatory' }];
+    const accounts = [
+      { id: 12, name: 'OPD', plan_id: 20 },
+      { id: 13, name: 'Laboratory', plan_id: 20 },
+    ];
     (getJournalDetails as jest.Mock).mockResolvedValue({
       ...journalDetailFixture(),
       analytics_visible: true,
+      analytic_plans: plans,
+      analytic_accounts: accounts,
+      values: {
+        ...journalDetailFixture().values,
+        analytic_distribution: { '12,13': 50 },
+      },
     });
+    (getJournalAnalytics as jest.Mock).mockResolvedValue({ plans, accounts });
     show();
     await review();
-    fireEvent.change(
-      screen.getByLabelText(
-        'Analytic distribution (account IDs and percentages)',
-      ),
-      { target: { value: '{bad' } },
+    expect(
+      await screen.findByText(/Mandatory plan: target 100%/),
+    ).toHaveTextContent('Allocated 100%');
+    const percentage = await screen.findByLabelText(
+      'OPD / Laboratory allocation (%)',
     );
+    fireEvent.change(percentage, { target: { value: '25' } });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review journal details' }),
+    );
+    await waitFor(() =>
+      expect(previewJournalDetails).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({ analytic_distribution: { '12,13': 25 } }),
+      ),
+    );
+    fireEvent.change(percentage, { target: { value: '101' } });
     expect(
       screen.getByRole('button', { name: 'Review journal details' }),
     ).toBeDisabled();

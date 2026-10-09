@@ -2,6 +2,7 @@ import {
   checkedJournalRequest,
   getJournalDetails,
   getJournalDetailChoices,
+  getJournalAnalytics,
   getJournalDetailsStatus,
   previewJournalDetails,
   saveJournalDetails,
@@ -117,5 +118,68 @@ describe('Journal detail native API boundary', () => {
     });
     reply(Array.from({ length: 27 }, (_, index) => [index + 1, 'Too many']));
     await expect(getJournalDetailChoices(7, 17, 'account')).rejects.toThrow();
+  });
+  it('loads native analytic plans and names only for the scoped invoice, line and account IDs', async () => {
+    const metadata = {
+      invoice_id: 7,
+      line_id: 17,
+      account_id: 12,
+      plans: [{ id: 3, name: 'Departments', applicability: 'mandatory' }],
+      accounts: [{ id: 25, name: 'Outpatient', plan_id: 3 }],
+    };
+    reply(metadata);
+    await expect(getJournalAnalytics(7, 17, 12, [25])).resolves.toEqual(
+      metadata,
+    );
+    expect(
+      JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body).params
+        .kwargs,
+    ).toEqual({
+      invoice_id: 7,
+      line_id: 17,
+      account_id: 12,
+      account_ids: [25],
+    });
+    for (const bad of [
+      { ...metadata, account_id: 99 },
+      { ...metadata, accounts: [] },
+      { ...metadata, plans: [] },
+      { ...metadata, accounts: [metadata.accounts[0], metadata.accounts[0]] },
+      {
+        ...metadata,
+        plans: [{ ...metadata.plans[0], applicability: 'unavailable' }],
+      },
+    ]) {
+      reply(bad);
+      await expect(getJournalAnalytics(7, 17, 12, [25])).rejects.toThrow();
+    }
+    await expect(getJournalAnalytics(7, 17, 12, [25, 25])).rejects.toThrow();
+  });
+  it('sends the selected native plan and accounting account with analytic choices', async () => {
+    reply([[25, 'Outpatient']]);
+    await getJournalDetailChoices(7, 17, 'analytic', 'Out', {
+      account_id: 12,
+      plan_id: 3,
+      account_ids: [25],
+    });
+    expect(
+      JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body).params
+        .kwargs,
+    ).toEqual({
+      invoice_id: 7,
+      line_id: 17,
+      kind: 'analytic',
+      search: 'Out',
+      account_id: 12,
+      plan_id: 3,
+      account_ids: [25],
+    });
+    await expect(
+      getJournalDetailChoices(7, 17, 'grid', '', {
+        account_id: 12,
+        plan_id: 3,
+        account_ids: [],
+      }),
+    ).rejects.toThrow();
   });
 });

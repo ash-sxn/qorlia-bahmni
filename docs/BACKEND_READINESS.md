@@ -1,5 +1,34 @@
 # Qorlia React frontend backend readiness
 
+## Named journal analytic allocation checkpoint (10 October 2026)
+
+The journal editor now uses native analytic plan/account labels instead of JSON.
+One invoice/line/account-scoped read action derives company and business domain
+from the authorised invoice and calls installed Odoo 16 `get_relevant_plans`.
+Searches retain native ACLs, record rules, company boundaries and root-plan
+filters. Missing or denied selected accounts fail closed without erasing data.
+There is no caller context, raw model mutation or financial `sudo`.
+
+Percentages, named additions/removals and separate per-plan totals use existing
+Qorlia controls. Combined allocation keys remain intact; the UI creates only
+individual account keys. Plan rules and account labels bind the explicit review
+so changed applicability/names invalidate save. Draft allocation editing does
+not bypass native posting validation or provide monetary journal editing.
+
+Current checks: 240 Home tests, 186 installed native adapter tests, TypeScript,
+lint, Python compilation, seven gateway/webpack tests and development build pass.
+Protected browser review/save and full-page reload retain named outpatient 70%
+and laboratory 30% allocations on synthetic draft #11275/item #29184. Independent
+native readback confirms the INR 250 draft remains balanced, with unchanged
+other items, financial counts and protected documents. Hosted source/LICENSE/
+NOTICE and all 83 JS/CSS chunks match the initial analytic build; its tester,
+clinical-session and raw-route gates remain unchanged. The final native rerun
+passes with no failures/errors/skips. Tests run with the isolated web service stopped
+while the browser-only mandatory plan fixture is temporarily optional; it is
+restored afterwards. These checks do not prove all Billing or other modules
+complete. Compound-key draft preservation does not establish Odoo 16 compound
+posting compatibility. Production and the shared public demo remain unchanged.
+
 ## Draft journal details: protected save acceptance (10 October 2026)
 
 Draft invoice journal rows now open the Qorlia detail editor with native account

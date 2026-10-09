@@ -25,6 +25,7 @@ export function DraftChoiceInput({
   advanceOrderId,
   journalInvoiceId,
   journalLineId,
+  analyticScope,
   disabled,
   onChange,
   reconnect,
@@ -37,6 +38,11 @@ export function DraftChoiceInput({
   shopId?: number | false;
   productId?: number | false;
   disabled?: boolean;
+  analyticScope?: {
+    account_id: number;
+    plan_id: number;
+    account_ids: number[];
+  };
   onChange: (value: number | false, name?: string) => void;
   reconnect: () => void;
 } & (
@@ -80,6 +86,7 @@ export function DraftChoiceInput({
       advanceOrderId,
       journalInvoiceId,
       journalLineId,
+      analyticScope,
       kind,
       term,
       shopId,
@@ -92,6 +99,7 @@ export function DraftChoiceInput({
             journalLineId!,
             kind as 'account' | 'grid' | 'analytic',
             term,
+            analyticScope,
           )
         : advanceOrderId !== undefined
           ? getAdvanceChoices(advanceOrderId, kind as 'account' | 'tax', term)
@@ -117,7 +125,9 @@ export function DraftChoiceInput({
         items={choices.data ?? []}
         itemToString={(item) => item?.[1] ?? ''}
         selectedItem={selected}
-        clearSelectedOnChange={kind === 'tax' || kind === 'grid'}
+        clearSelectedOnChange={
+          kind === 'tax' || kind === 'grid' || kind === 'analytic'
+        }
         shouldFilterItem={() => true}
         onInputChange={setSearch}
         onChange={({ selectedItem }) =>

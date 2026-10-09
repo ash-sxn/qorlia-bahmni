@@ -5,8 +5,8 @@ This is not an Indian chart of accounts or healthcare tax configuration.
 
 ## Draft invoice journal details
 
-Five named `account.move.qorlia_journal_edit_*` methods provide `load`, `choices`,
-`preview`, `save` and `status` for an existing customer invoice/credit journal
+Six named `account.move.qorlia_journal_edit_*` methods provide `load`, `choices`,
+`analytics`, `preview`, `save` and `status` for an existing customer invoice/credit journal
 item. Editing requires draft state, native invoice/line write rules and the
 invoicing group. No financial `sudo` is used. The exact editable fields are
 `name`, `account_id`, `date_maturity`, `tax_tag_ids`, `analytic_distribution`,
@@ -16,6 +16,13 @@ line command is accepted. Generated adjustments remain in the invoice editor.
 Account choices preserve native receivable/non-receivable category and company;
 grids preserve the invoice tax country. Analytic visibility/editing requires the
 native analytic accounting group; existing hidden distributions are preserved.
+The `analytics` action uses installed native root-plan applicability, invoice
+company/business domain and the selected financial account. Only selected native
+account IDs and bounded searches are accepted. Missing, denied or foreign
+accounts never cause an allocation to be silently removed. The UI uses named
+plan/account choices, percentages and per-plan totals rather than JSON. Existing
+combined keys are preserved; new UI selections use individual account keys.
+Review binds plan rules and account labels as well as the selected records.
 Dates, percentages and selected native records are validated. Reviews bind the
 invoice/lines and selected accounting configuration without writing records.
 
@@ -29,12 +36,16 @@ A missing receipt never proves a delayed save stopped. The UI stores the exact
 request before sending, freezes uncertain saves and offers explicit checking or
 same-request retry. There is no automatic financial write retry.
 
-Installed native suite: 180 passing tests with no failures/errors/skips. Home:
-234 passing tests. HTTP concurrent/save/status and protected browser review/save/
+Installed native suite: 186 passing tests with no failures/errors/skips. Home:
+240 passing tests. The prior HTTP concurrent/save/status and protected browser review/save/
 reload acceptance preserve a balanced INR 250 synthetic draft, all other items,
-payment/stock counts and protected invoices. Account/grid/analytic browser edits
-and fault-injected response-loss browser tests remain pending. The analytic JSON
-entry needs a native-plan UI. Monetary journal edits, adding/removing rows,
+payment/stock counts and protected invoices. Protected browser review/save/full
+reload now retain named outpatient 70% and laboratory 30% allocations on the
+synthetic draft, with independent native readback confirming unchanged money,
+other items/counts and protected documents. Initial hosted source/license and
+83 chunks match. Fault-injected response-loss browser tests remain pending.
+Compound draft preservation does
+not establish Odoo 16 compound posting compatibility. Monetary journal edits, adding/removing rows,
 posted editing and cut-off actions remain separate parity work.
 
 ## Invoice Journal Items

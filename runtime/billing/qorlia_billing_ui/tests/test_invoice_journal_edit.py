@@ -199,3 +199,114 @@ class InvoiceJournalEditTest(TransactionCase):
         account.name = 'QorliaQA Changed candidate income'
         with self.assertRaises(UserError):
             self.moves.qorlia_journal_edit_save(**request)
+
+    def analytic(self, invoice, name, applicability='optional', parent=False):
+        plan = self.env['account.analytic.plan'].create({'name': 'QorliaQA ' + name,
+            'default_applicability': applicability, 'company_id': invoice.company_id.id,
+            'parent_id': parent.id if parent else False})
+        account = self.env['account.analytic.account'].create({'name': 'QorliaQA ' + name,
+            'plan_id': plan.id, 'company_id': invoice.company_id.id})
+        return plan, account
+
+    def test_analytic_plans_and_search_use_native_applicability_and_root_plan(self):
+        self.env.user.groups_id |= self.env.ref('analytic.group_analytic_accounting')
+        invoice = self.draft()
+        line = invoice.invoice_line_ids[0]
+        plan, account = self.analytic(invoice, 'Departments', 'mandatory')
+        child, child_account = self.analytic(invoice, 'Outpatient', parent=plan)
+        unavailable, hidden = self.analytic(invoice, 'Unavailable', 'unavailable')
+        data = self.moves.qorlia_journal_edit_analytics(invoice.id, line.id, line.account_id.id, child_account.ids)
+        self.assertIn({'id': plan.id, 'name': plan.name, 'applicability': 'mandatory'}, data['plans'])
+        self.assertNotIn(unavailable.id, [item['id'] for item in data['plans']])
+        self.assertEqual(data['accounts'], [{'id': child_account.id, 'name': child_account.display_name, 'plan_id': plan.id}])
+        choices = self.moves.qorlia_journal_edit_choices(invoice.id, line.id, 'analytic', 'QorliaQA',
+            account_id=line.account_id.id, plan_id=plan.id, account_ids=[])
+        self.assertIn((account.id, account.display_name), choices)
+        self.assertIn((child_account.id, child_account.display_name), choices)
+        self.assertNotIn((hidden.id, hidden.display_name), choices)
+        with self.assertRaises(ValidationError):
+            self.moves.qorlia_journal_edit_choices(invoice.id, line.id, 'analytic', plan_id=unavailable.id)
+        forced = self.moves.qorlia_journal_edit_analytics(invoice.id, line.id, line.account_id.id, hidden.ids)
+        self.assertIn({'id': unavailable.id, 'name': unavailable.name, 'applicability': 'optional'}, forced['plans'])
+
+    def test_combined_analytic_keys_keep_both_names_and_exact_saved_values(self):
+        self.env.user.groups_id |= self.env.ref('analytic.group_analytic_accounting')
+        invoice = self.draft()
+        _plan, account = self.analytic(invoice, 'Department')
+        _project, project = self.analytic(invoice, 'Project')
+        values = {str(account.id) + ',' + str(project.id): 100}
+        request = self.request(invoice, analytic_distribution=values)
+        saved = self.moves.qorlia_journal_edit_save(**request)
+        self.assertEqual(saved['values']['analytic_distribution'], values)
+        self.assertEqual({item['id'] for item in saved['analytic_accounts']}, {account.id, project.id})
+        self.assertEqual(invoice.amount_total, 500)
+
+    def test_analytic_lookups_fail_closed_for_missing_foreign_or_denied_accounts_and_no_group(self):
+        self.env.user.groups_id |= self.env.ref('analytic.group_analytic_accounting')
+        invoice = self.draft()
+        line = invoice.invoice_line_ids[0]
+        _plan, account = self.analytic(invoice, 'Access test')
+        for ids in ([account.id, account.id], [True], [0], [account.id + 10000000]):
+            with self.assertRaises(ValidationError):
+                self.moves.qorlia_journal_edit_analytics(invoice.id, line.id, line.account_id.id, ids)
+        company = self.env['res.company'].create({'name': 'QorliaQA Foreign analytics'})
+        foreign_plan = self.env['account.analytic.plan'].create({'name': 'QorliaQA Foreign', 'company_id': company.id})
+        foreign = self.env['account.analytic.account'].create({'name': 'QorliaQA Foreign',
+            'plan_id': foreign_plan.id, 'company_id': company.id})
+        with self.assertRaises(ValidationError):
+            self.moves.qorlia_journal_edit_analytics(invoice.id, line.id, line.account_id.id, foreign.ids)
+        reader = self.reader()
+        reader.groups_id -= self.env.ref('analytic.group_analytic_accounting')
+        hidden = self.moves.with_user(reader).qorlia_journal_edit_load(invoice.id, line.id)
+        self.assertEqual(hidden['analytic_accounts'], [])
+        self.assertEqual(hidden['analytic_plans'], [])
+        with self.assertRaises(AccessError):
+            self.moves.with_user(reader).qorlia_journal_edit_analytics(invoice.id, line.id, line.account_id.id, account.ids)
+        reader.groups_id |= self.env.ref('analytic.group_analytic_accounting')
+        self.env['ir.rule'].create({'name': 'QorliaQA Denied analytic account',
+            'model_id': self.env.ref('analytic.model_account_analytic_account').id,
+            'domain_force': repr([('id', '!=', account.id)])})
+        with self.assertRaises(AccessError):
+            self.moves.with_user(reader).qorlia_journal_edit_analytics(invoice.id, line.id, line.account_id.id, account.ids)
+
+    def test_changed_analytic_plan_or_name_invalidates_review(self):
+        self.env.user.groups_id |= self.env.ref('analytic.group_analytic_accounting')
+        invoice = self.draft()
+        plan, account = self.analytic(invoice, 'Review plan')
+        request = self.request(invoice, analytic_distribution={str(account.id): 100})
+        plan.default_applicability = 'mandatory'
+        with self.assertRaises(UserError):
+            self.moves.qorlia_journal_edit_save(**request)
+        request = self.request(invoice, analytic_distribution={str(account.id): 100})
+        account.name = 'QorliaQA Changed analytic name'
+        with self.assertRaises(UserError):
+            self.moves.qorlia_journal_edit_save(**request)
+
+    def test_selected_account_controls_native_plan_applicability_and_rejects_other_search_scope(self):
+        self.env.user.groups_id |= self.env.ref('analytic.group_analytic_accounting')
+        invoice = self.draft()
+        line = invoice.invoice_line_ids[0]
+        plan, _account = self.analytic(invoice, 'Account prefix plan')
+        alternate = self.env['account.account'].create({'name': 'QorliaQA Analytic context',
+            'code': 'QJANCTX', 'account_type': 'income', 'company_id': invoice.company_id.id})
+        self.env['account.analytic.applicability'].create({'analytic_plan_id': plan.id,
+            'business_domain': 'invoice', 'account_prefix': alternate.code, 'applicability': 'mandatory'})
+        native = self.moves.qorlia_journal_edit_analytics(invoice.id, line.id, line.account_id.id, [])
+        selected = self.moves.qorlia_journal_edit_analytics(invoice.id, line.id, alternate.id, [])
+        self.assertEqual(next(item['applicability'] for item in native['plans'] if item['id'] == plan.id), 'optional')
+        self.assertEqual(next(item['applicability'] for item in selected['plans'] if item['id'] == plan.id), 'mandatory')
+        with self.assertRaises(ValidationError):
+            self.moves.qorlia_journal_edit_choices(invoice.id, line.id, 'grid', plan_id=plan.id)
+
+    def test_existing_deprecated_posted_account_remains_readable_but_cannot_be_selected_new(self):
+        self.env.user.groups_id |= self.env.ref('analytic.group_analytic_accounting')
+        invoice = self.invoice()
+        line = invoice.invoice_line_ids[0]
+        line.account_id.deprecated = True
+        loaded = self.moves.qorlia_journal_edit_load(invoice.id, line.id)
+        self.assertFalse(loaded['can_edit'])
+        data = self.moves.qorlia_journal_edit_analytics(invoice.id, line.id, line.account_id.id, [])
+        self.assertEqual(data['account_id'], line.account_id.id)
+        other = invoice.line_ids.filtered(lambda item: item.account_type == 'asset_receivable')[0]
+        with self.assertRaises(ValidationError):
+            self.moves.qorlia_journal_edit_analytics(invoice.id, other.id, line.account_id.id, [])

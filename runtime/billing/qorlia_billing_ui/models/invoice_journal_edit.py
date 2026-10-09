@@ -17,6 +17,43 @@ class InvoiceJournalEdit(models.Model):
 
     qorlia_journal_receipts = fields.Json(copy=False, readonly=True)
 
+    def _qorlia_journal_analytics(self, invoice, line, account_id, account_ids):
+        if not self.env.user.has_group('analytic.group_analytic_accounting'):
+            raise AccessError('Analytic distribution requires native analytic permissions.')
+        if (type(account_id) is not int or account_id <= 0 or not isinstance(account_ids, list)
+                or len(account_ids) > 200 or any(type(value) is not int or value <= 0 for value in account_ids)
+                or len(set(account_ids)) != len(account_ids)):
+            raise ValidationError('Select valid journal and analytic accounts.')
+        account = self.env['account.account'].browse(account_id).exists()
+        accounts = self.env['account.analytic.account'].browse(account_ids).exists()
+        for records in (account, accounts):
+            records.check_access_rights('read')
+            records.check_access_rule('read')
+        if (not account or account.company_id != invoice.company_id
+                or account != line.account_id and (account.deprecated or account.is_off_balance)):
+            raise ValidationError('Select an active journal account in this invoice company.')
+        if len(accounts) != len(account_ids) or any(
+                item.company_id and item.company_id != invoice.company_id for item in accounts):
+            raise ValidationError('An analytic account is missing or belongs to another company. Nothing was removed.')
+        plans = self.env['account.analytic.plan'].get_relevant_plans(
+            company_id=invoice.company_id.id, account=account.id, existing_account_ids=account_ids,
+            business_domain='invoice' if invoice.is_sale_document() else 'bill' if invoice.is_purchase_document() else 'general')
+        if len(plans) > 100:
+            raise UserError('More than 100 analytic plans require native Billing review.')
+        plan_records = self.env['account.analytic.plan'].browse([plan['id'] for plan in plans])
+        plan_records.check_access_rights('read')
+        plan_records.check_access_rule('read')
+        return {'invoice_id': invoice.id, 'line_id': line.id, 'account_id': account.id,
+                'plans': [{'id': plan['id'], 'name': plan['name'], 'applicability': plan['applicability']} for plan in plans],
+                'accounts': [{'id': item.id, 'name': item.display_name, 'plan_id': item.root_plan_id.id}
+                             for item in accounts.sorted('id')]}
+
+    @api.model
+    def qorlia_journal_edit_analytics(self, invoice_id, line_id, account_id, account_ids):
+        invoice = self._qorlia_journal_document(invoice_id)
+        line = self._qorlia_journal_line(invoice, line_id)
+        return self._qorlia_journal_analytics(invoice, line, account_id, account_ids)
+
     def _qorlia_journal_edit_version(self):
         self.ensure_one()
         reader = self.env['sale.order']._qorlia_read_fields
@@ -69,11 +106,15 @@ class InvoiceJournalEdit(models.Model):
             self._qorlia_journal_line(invoice, line_id, 'write')
         except (AccessError, UserError):
             editable = False
+        allocation = self._qorlia_journal_analytics(invoice, line, line.account_id.id,
+            sorted({int(part) for key in (line.analytic_distribution or {}) for part in key.split(',')})) if analytics else False
         return {'invoice_id': invoice.id, 'line_id': line.id, 'name': invoice.name or False,
                 'version': invoice._qorlia_journal_edit_version() if invoice.state == 'draft'
                 else self.qorlia_invoice_journal(invoice.id)['version'],
                 'values': values, 'account': [line.account_id.id, line.account_id.display_name],
                 'tax_grids': line.tax_tag_ids.name_get(), 'analytics_visible': analytics,
+                'analytic_plans': allocation['plans'] if allocation else [],
+                'analytic_accounts': allocation['accounts'] if allocation else [],
                 'can_edit': editable, 'currency': [invoice.company_currency_id.id, invoice.company_currency_id.name],
                 'debit': line.debit, 'credit': line.credit}
 
@@ -134,6 +175,11 @@ class InvoiceJournalEdit(models.Model):
         result['values'] = values
         result['account'] = self.env['account.account'].browse(values['account_id']).name_get()[0]
         result['tax_grids'] = self.env['account.account.tag'].browse(values['tax_tag_ids']).name_get()
+        if result['analytics_visible']:
+            allocation = self._qorlia_journal_analytics(invoice, line, values['account_id'],
+                sorted({int(part) for key in (values['analytic_distribution'] or {}) for part in key.split(',')}))
+            result['analytic_plans'] = allocation['plans']
+            result['analytic_accounts'] = allocation['accounts']
         configuration = []
         for records in (self.env['account.account'].browse(values['account_id']),
                         self.env['account.account.tag'].browse(values['tax_tag_ids'])):
@@ -143,11 +189,12 @@ class InvoiceJournalEdit(models.Model):
             configuration.append(self.env['account.analytic.account'].browse(sorted(ids)).read(['write_date']))
         result['review_version'] = _digest({'invoice_id': invoice.id, 'line_id': line.id,
             'version': version, 'values': values, 'author': self.env.uid,
-            'account': result['account'], 'grids': result['tax_grids'], 'configuration': configuration})
+            'account': result['account'], 'grids': result['tax_grids'], 'configuration': configuration,
+            'analytic_plans': result['analytic_plans'], 'analytic_accounts': result['analytic_accounts']})
         return result
 
     @api.model
-    def qorlia_journal_edit_choices(self, invoice_id, line_id, kind, search=''):
+    def qorlia_journal_edit_choices(self, invoice_id, line_id, kind, search='', account_id=False, plan_id=False, account_ids=None):
         invoice = self._qorlia_journal_document(invoice_id)
         line = self._qorlia_journal_line(invoice, line_id)
         if not isinstance(search, str) or len(search) > 200:
@@ -166,6 +213,18 @@ class InvoiceJournalEdit(models.Model):
         if kind == 'analytic' and not self.env.user.has_group('analytic.group_analytic_accounting'):
             raise AccessError('Analytic distribution requires native analytic permissions.')
         model, domain = choices[kind]
+        if kind == 'analytic':
+            allocation = self._qorlia_journal_analytics(invoice, line, account_id or line.account_id.id,
+                account_ids if account_ids is not None else sorted({int(part) for key in
+                    (line.analytic_distribution or {}) for part in key.split(',')}))
+            plan_ids = [plan['id'] for plan in allocation['plans']]
+            if plan_id is not False:
+                if type(plan_id) is not int or plan_id not in plan_ids:
+                    raise ValidationError('Select a native analytic plan for this journal item.')
+                plan_ids = [plan_id]
+            domain += [('root_plan_id', 'in', plan_ids)]
+        elif account_id is not False or plan_id is not False or account_ids is not None:
+            raise ValidationError('Analytic search scope is only allowed for analytic choices.')
         return self.env[model].name_search(name=search, args=domain, operator='ilike', limit=26)
 
     def _qorlia_journal_request(self, line_id, version, values, review_version, request_key):

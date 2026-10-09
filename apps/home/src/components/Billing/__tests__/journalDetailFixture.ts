@@ -17,6 +17,8 @@ export const journalDetailFixture = (): JournalDetails => ({
   account: [12, '4000 Clinical income'],
   tax_grids: [],
   analytics_visible: false,
+  analytic_plans: [],
+  analytic_accounts: [],
   can_edit: true,
   currency: [1, 'INR'],
   debit: 0,

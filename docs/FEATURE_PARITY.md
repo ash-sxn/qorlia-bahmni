@@ -1,5 +1,26 @@
 # Bahmni workflow parity ledger
 
+## 10 October named journal analytic allocation checkpoint
+
+The raw journal analytic JSON input has been replaced by native plan names,
+account search, percentage controls and per-plan totals. Root-plan applicability
+comes from installed Odoo using the selected financial account and invoice
+company/business domain. Existing combined keys are preserved, not silently
+split or removed. New UI selections use individual native account keys.
+
+Review/save still checks the exact authorised item and preserves monetary totals
+and other rows. Mandatory/optional labels are native rules, not a replacement
+for the installed posting validator. Monetary entries, row creation/removal,
+posted editing and Cut-Off workflows remain pending, as do the wider modules.
+Unit/native verification: 240 Home and 186 installed adapter tests pass.
+Protected browser review/save and full reload preserve named outpatient 70% and
+laboratory 30% allocations on synthetic #11275/#29184. Separate native readback
+confirms unchanged INR 250 balance, other rows, financial counts and protected
+documents. Initial hosted source/license and 83 chunks match, with unchanged
+tester/session/raw-route gates. The final native rerun has no failures/errors/skips.
+Compound draft preservation does not prove Odoo 16 compound posting compatibility.
+Production and the shared public demo remain unchanged.
+
 ## 10 October draft journal details protected save checkpoint
 
 - Draft non-adjustment journal items open the house detail editor. Native account,

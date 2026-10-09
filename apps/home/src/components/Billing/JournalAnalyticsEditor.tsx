@@ -1,0 +1,195 @@
+import { Button, TextInput } from '@bahmni/design-system';
+import { useQuery } from '@tanstack/react-query';
+import {
+  BillingSessionExpired,
+  getJournalAnalytics,
+  journalAnalyticIds,
+  JournalAnalyticAccount,
+  JournalDetailValues,
+} from './billingService';
+import { DraftChoiceInput } from './DraftChoiceInput';
+
+export function analyticAllocationLabel(
+  key: string,
+  accounts: JournalAnalyticAccount[],
+) {
+  return key
+    .split(',')
+    .map(
+      (id) =>
+        accounts.find((account) => account.id === Number(id))?.name ??
+        `Unavailable account ${id}`,
+    )
+    .join(' / ');
+}
+
+export function JournalAnalyticsEditor({
+  uid,
+  invoiceId,
+  lineId,
+  accountId,
+  value,
+  disabled,
+  change,
+  reconnect,
+}: {
+  uid: number;
+  invoiceId: number;
+  lineId: number;
+  accountId: number;
+  value: JournalDetailValues['analytic_distribution'];
+  disabled: boolean;
+  change: (value: JournalDetailValues['analytic_distribution']) => void;
+  reconnect: () => void;
+}) {
+  const ids = journalAnalyticIds(value);
+  const metadata = useQuery({
+    queryKey: [
+      'billing',
+      'journal-analytics',
+      uid,
+      invoiceId,
+      lineId,
+      accountId,
+      ids,
+    ],
+    queryFn: () => getJournalAnalytics(invoiceId, lineId, accountId, ids),
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+  const rows = Object.entries(value || {});
+  return (
+    <section aria-label="Analytic allocation">
+      <h3>Analytic allocation</h3>
+      <p>
+        Choose named accounts and their percentages. Existing combined
+        allocations remain intact. Native plan and posting rules still apply.
+      </p>
+      {metadata.isFetching ? (
+        <p role="status">Loading analytic accounts and plan rules...</p>
+      ) : null}
+      {metadata.isError ? (
+        <>
+          <p role="alert">
+            {metadata.error.message} Your allocations have not been removed.
+          </p>
+          <Button
+            kind="tertiary"
+            disabled={metadata.isFetching}
+            onClick={() => void metadata.refetch()}
+          >
+            Reload analytic plans
+          </Button>
+          {metadata.error instanceof BillingSessionExpired ? (
+            <Button onClick={reconnect}>Reconnect Billing</Button>
+          ) : null}
+        </>
+      ) : null}
+      {metadata.data && !metadata.isError && !metadata.isFetching ? (
+        <>
+          {metadata.data.plans.length === 0 ? (
+            <p>No analytic plans are available for this journal account.</p>
+          ) : null}
+          {metadata.data.plans.map((plan) => {
+            const total = rows.reduce(
+              (sum, [key, percent]) =>
+                sum +
+                key
+                  .split(',')
+                  .filter((id) =>
+                    metadata.data.accounts.some(
+                      (account) =>
+                        account.id === Number(id) &&
+                        account.plan_id === plan.id,
+                    ),
+                  ).length *
+                  percent,
+              0,
+            );
+            return (
+              <div key={plan.id}>
+                <h4>{plan.name}</h4>
+                <p>
+                  {plan.applicability === 'mandatory'
+                    ? 'Mandatory plan: target 100%'
+                    : 'Optional plan'}{' '}
+                  · Allocated{' '}
+                  {Number.isFinite(total) ? `${total}%` : 'invalid percentage'}
+                </p>
+                <DraftChoiceInput
+                  id={`journal-analytic-plan-${plan.id}`}
+                  label={`Add account to ${plan.name}`}
+                  uid={uid}
+                  journalInvoiceId={invoiceId}
+                  journalLineId={lineId}
+                  kind="analytic"
+                  analyticScope={{
+                    account_id: accountId,
+                    plan_id: plan.id,
+                    account_ids: ids,
+                  }}
+                  value={false}
+                  disabled={disabled || rows.length >= 100}
+                  reconnect={reconnect}
+                  onChange={(id) => {
+                    if (!id || ids.includes(id)) return;
+                    change({
+                      ...(value || {}),
+                      [String(id)]: Math.max(
+                        0,
+                        100 - (Number.isFinite(total) ? total : 0),
+                      ),
+                    });
+                  }}
+                />
+              </div>
+            );
+          })}
+          {rows.map(([key, percent]) => {
+            const label = analyticAllocationLabel(key, metadata.data.accounts);
+            return (
+              <div key={key}>
+                <TextInput
+                  id={`journal-analytic-${key.replaceAll(',', '-')}`}
+                  labelText={`${label} allocation (%)`}
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="any"
+                  value={Number.isFinite(percent) ? percent : ''}
+                  disabled={disabled}
+                  invalid={
+                    !Number.isFinite(percent) || percent < 0 || percent > 100
+                  }
+                  invalidText="Enter a percentage between zero and 100."
+                  onChange={(event) =>
+                    change({
+                      ...(value || {}),
+                      [key]:
+                        event.target.value === ''
+                          ? NaN
+                          : Number(event.target.value),
+                    })
+                  }
+                />
+                <Button
+                  kind="ghost"
+                  disabled={disabled}
+                  onClick={() => {
+                    const next = { ...(value || {}) };
+                    delete next[key];
+                    change(Object.keys(next).length ? next : false);
+                  }}
+                >
+                  Remove allocation for {label}
+                </Button>
+              </div>
+            );
+          })}
+          {rows.length === 0 ? <p>No analytic allocation selected.</p> : null}
+        </>
+      ) : null}
+    </section>
+  );
+}

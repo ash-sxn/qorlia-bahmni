@@ -1,4 +1,4 @@
-import { Button, Modal, TextInput, TextArea } from '@bahmni/design-system';
+import { Button, Modal, TextInput } from '@bahmni/design-system';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { invoiceName, money } from './billingFormat';
@@ -16,6 +16,10 @@ import {
   saveJournalDetails,
 } from './billingService';
 import { DraftChoiceInput } from './DraftChoiceInput';
+import {
+  analyticAllocationLabel,
+  JournalAnalyticsEditor,
+} from './JournalAnalyticsEditor';
 
 type Props = {
   uid: number;
@@ -126,12 +130,11 @@ function DetailsForm({
   const [gridNames, setGridNames] = useState<Record<number, string>>(
     Object.fromEntries(initial.tax_grids),
   );
-  const [distribution, setDistribution] = useState(
-    values.analytic_distribution
-      ? JSON.stringify(values.analytic_distribution, null, 2)
-      : '',
+  const distributionInvalid = Object.values(
+    values.analytic_distribution || {},
+  ).some(
+    (percent) => !Number.isFinite(percent) || percent < 0 || percent > 100,
   );
-  const [distributionInvalid, setDistributionInvalid] = useState(false);
   const locked = busy || !!pending || !!recovery.error || !initial.can_edit;
   useEffect(() => {
     if (!dirty && !pending) return;
@@ -408,32 +411,17 @@ function DetailsForm({
             </p>
           ))}
           {initial.analytics_visible ? (
-            <TextArea
-              id="journal-analytics"
-              labelText="Analytic distribution (account IDs and percentages)"
-              helperText={
-                'Example: {"12": 100}. Native account permissions and plan rules apply.'
-              }
-              value={distribution}
+            <JournalAnalyticsEditor
+              uid={uid}
+              invoiceId={invoiceId}
+              lineId={lineId}
+              accountId={values.account_id}
+              value={values.analytic_distribution}
               disabled={locked}
-              invalid={distributionInvalid}
-              invalidText="Use a JSON object of account IDs and percentages."
-              onChange={(event) => {
-                if (locked || busyRef.current) return;
-                const text = event.target.value;
-                setDistribution(text);
-                setReview(null);
-                setDirty(true);
-                try {
-                  change(
-                    'analytic_distribution',
-                    text.trim() ? JSON.parse(text) : false,
-                  );
-                  setDistributionInvalid(false);
-                } catch {
-                  setDistributionInvalid(true);
-                }
-              }}
+              change={(distribution) =>
+                change('analytic_distribution', distribution)
+              }
+              reconnect={() => leave('reconnect')}
             />
           ) : null}
           {review ? (
@@ -460,8 +448,13 @@ function DetailsForm({
               </p>
               {review.analytics_visible ? (
                 <p>
-                  Analytic distribution:{' '}
-                  {JSON.stringify(review.values.analytic_distribution)}
+                  Analytic allocation:{' '}
+                  {Object.entries(review.values.analytic_distribution || {})
+                    .map(
+                      ([key, percent]) =>
+                        `${analyticAllocationLabel(key, review.analytic_accounts)}: ${percent}%`,
+                    )
+                    .join('; ') || 'None'}
                 </p>
               ) : null}
               <p>

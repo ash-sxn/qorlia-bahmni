@@ -223,6 +223,23 @@ export type JournalDetailValues = {
   discount_date: string | false;
   discount_amount_currency: number;
 };
+export type JournalAnalyticPlan = {
+  id: number;
+  name: string;
+  applicability: 'optional' | 'mandatory';
+};
+export type JournalAnalyticAccount = {
+  id: number;
+  name: string;
+  plan_id: number;
+};
+export type JournalAnalytics = {
+  invoice_id: number;
+  line_id: number;
+  account_id: number;
+  plans: JournalAnalyticPlan[];
+  accounts: JournalAnalyticAccount[];
+};
 export interface JournalDetails {
   invoice_id: number;
   line_id: number;
@@ -232,6 +249,8 @@ export interface JournalDetails {
   account: [number, string];
   tax_grids: [number, string][];
   analytics_visible: boolean;
+  analytic_plans: JournalAnalyticPlan[];
+  analytic_accounts: JournalAnalyticAccount[];
   can_edit: boolean;
   currency: [number, string];
   debit: number;
@@ -250,6 +269,47 @@ const journalId = (value: unknown) =>
   Number.isSafeInteger(value) && Number(value) > 0;
 const journalHash = (value: unknown) =>
   typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+export function journalAnalyticIds(
+  distribution: Record<string, number> | false,
+) {
+  return [
+    ...new Set(
+      Object.keys(distribution || {}).flatMap((key) =>
+        key.split(',').map(Number),
+      ),
+    ),
+  ].sort((a, b) => a - b);
+}
+function checkedAnalyticMetadata(
+  plans: JournalAnalyticPlan[],
+  accounts: JournalAnalyticAccount[],
+  ids: number[],
+) {
+  if (
+    !Array.isArray(plans) ||
+    plans.length > 100 ||
+    !plans.every(
+      (plan) =>
+        journalId(plan?.id) &&
+        typeof plan.name === 'string' &&
+        ['optional', 'mandatory'].includes(plan.applicability),
+    ) ||
+    new Set(plans.map((plan) => plan.id)).size !== plans.length ||
+    !Array.isArray(accounts) ||
+    accounts.length !== ids.length ||
+    !accounts.every(
+      (account) =>
+        journalId(account?.id) &&
+        ids.includes(account.id) &&
+        typeof account.name === 'string' &&
+        plans.some((plan) => plan.id === account.plan_id),
+    ) ||
+    new Set(accounts.map((account) => account.id)).size !== accounts.length
+  )
+    throw new Error(
+      'Analytic account names or plan rules are unavailable. Nothing was removed.',
+    );
+}
 function checkedJournalValues(
   values: JournalDetailValues,
 ): JournalDetailValues {
@@ -365,10 +425,17 @@ function checkedJournalDetails(
       'Invalid journal detail response. Reload the current invoice.',
     );
   checkedJournalValues(value.values);
+  checkedAnalyticMetadata(
+    value.analytic_plans,
+    value.analytic_accounts,
+    journalAnalyticIds(value.values.analytic_distribution),
+  );
   if (
     value.account[0] !== value.values.account_id ||
     (!value.analytics_visible &&
-      value.values.analytic_distribution !== false) ||
+      (value.values.analytic_distribution !== false ||
+        value.analytic_plans.length !== 0 ||
+        value.analytic_accounts.length !== 0)) ||
     value.tax_grids.length !== value.values.tax_tag_ids.length ||
     !value.tax_grids.every(([id]) => value.values.tax_tag_ids.includes(id))
   )
@@ -446,13 +513,27 @@ export async function getJournalDetailChoices(
   lineId: number,
   kind: 'account' | 'grid' | 'analytic',
   search = '',
+  analyticScope?: {
+    account_id: number;
+    plan_id: number;
+    account_ids: number[];
+  },
 ) {
   if (
     !journalId(invoiceId) ||
     !journalId(lineId) ||
     !['account', 'grid', 'analytic'].includes(kind) ||
     typeof search !== 'string' ||
-    search.length > 200
+    search.length > 200 ||
+    (analyticScope &&
+      (kind !== 'analytic' ||
+        !journalId(analyticScope.account_id) ||
+        !journalId(analyticScope.plan_id) ||
+        !Array.isArray(analyticScope.account_ids) ||
+        analyticScope.account_ids.length > 200 ||
+        !analyticScope.account_ids.every(journalId) ||
+        new Set(analyticScope.account_ids).size !==
+          analyticScope.account_ids.length))
   )
     throw new Error('Use a valid journal detail search.');
   const result = await journalDetailsRpc<[number, string][]>('choices', {
@@ -460,6 +541,13 @@ export async function getJournalDetailChoices(
     line_id: lineId,
     kind,
     search,
+    ...(analyticScope
+      ? {
+          account_id: analyticScope.account_id,
+          plan_id: analyticScope.plan_id,
+          account_ids: analyticScope.account_ids,
+        }
+      : {}),
   });
   if (
     !Array.isArray(result) ||
@@ -467,6 +555,38 @@ export async function getJournalDetailChoices(
     !result.every((row) => Array.isArray(row) && validRelation(row))
   )
     throw new Error('Invalid journal detail choices.');
+  return result;
+}
+
+export async function getJournalAnalytics(
+  invoiceId: number,
+  lineId: number,
+  accountId: number,
+  accountIds: number[],
+) {
+  if (
+    ![invoiceId, lineId, accountId].every(journalId) ||
+    !Array.isArray(accountIds) ||
+    accountIds.length > 200 ||
+    !accountIds.every(journalId) ||
+    new Set(accountIds).size !== accountIds.length
+  )
+    throw new Error('Select valid journal and analytic accounts.');
+  const result = await journalDetailsRpc<JournalAnalytics>('analytics', {
+    invoice_id: invoiceId,
+    line_id: lineId,
+    account_id: accountId,
+    account_ids: accountIds,
+  });
+  if (
+    result?.invoice_id !== invoiceId ||
+    result.line_id !== lineId ||
+    result.account_id !== accountId
+  )
+    throw new Error(
+      'Invalid analytic plan response. Reload this journal item.',
+    );
+  checkedAnalyticMetadata(result.plans, result.accounts, accountIds);
   return result;
 }
 
