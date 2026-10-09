@@ -1,5 +1,25 @@
 # Bahmni workflow parity ledger
 
+## 10 October Invoice Journal Items protected read checkpoint
+
+- Signed-in invoice details now expose native journal entries in the Qorlia modal,
+  including account/label, partner, dates, debit/credit/balance, original currency,
+  residual/matching, taxes/grids and role-scoped analytic distribution.
+- Full totals cover the entire authorised journal; ordered 100-row pages carry a
+  snapshot version. Changed journals and cross-invoice cursors are rejected.
+  A denied journal line fails the full view instead of silently reducing totals.
+- Installed native suite: 168 tests, zero failures/errors/skips. Home: 219 tests
+  in 28 suites. Types, lint, seven gateway/webpack checks, compilation and build
+  pass. Actual HTTP native comparisons cover two posted invoices and one draft,
+  stable reload and unchanged financial/protected records.
+- Protected browser opening/reload of INV/2026/00039 show three native rows with
+  INR 500 debit and credit. Hosted 83 JS/CSS chunks and source/license archive
+  match; authentication, robots exclusion and raw-route denial remain intact.
+  Source was packaged before this note; tester access and expiry are unchanged.
+- This is journal read parity only. Narrow-screen table polish, journal editing,
+  remaining Billing, clinical and separate-product acceptance are still pending.
+  Production and the shared public demo remain unchanged.
+
 ## 10 October regular-invoice deduction protected acceptance
 
 - Explicit protected browser saves produced INR 300 with deduction enabled and

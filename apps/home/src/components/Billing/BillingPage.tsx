@@ -30,6 +30,7 @@ import { CreditWorkflowModal } from './CreditWorkflowModal';
 import { CustomerStatementModal } from './CustomerStatementModal';
 import { InvoiceConversationModal } from './InvoiceConversationModal';
 import { InvoiceDraftEditor } from './InvoiceDraftEditor';
+import { InvoiceJournalModal } from './InvoiceJournalModal';
 import { InvoiceReportsModal } from './InvoiceReportsModal';
 import { InvoiceWorkflowModal } from './InvoiceWorkflowModal';
 import { PaymentWorkflowModal } from './PaymentWorkflowModal';
@@ -64,6 +65,7 @@ export function BillingPage() {
     null,
   );
   const [invoiceNotice, setInvoiceNotice] = useState('');
+  const [journalInvoice, setJournalInvoice] = useState<number | null>(null);
   const session = useQuery({
     queryKey: ['billing', 'session'],
     queryFn: getBillingSession,
@@ -123,6 +125,7 @@ export function BillingPage() {
       setReportInvoice(null);
       setConversationInvoice(null);
       setStatementInvoice(null);
+      setJournalInvoice(null);
       setEditInvoice(null);
       setPaymentInvoice(null);
       setCreditInvoice(null);
@@ -231,6 +234,7 @@ export function BillingPage() {
                     setReviewInvoice(null);
                     setStatementInvoice(null);
                     setConversationInvoice(null);
+                    setJournalInvoice(null);
                     setPaymentInvoice(null);
                     setCreditInvoice(null);
                     setInvoiceNotice('');
@@ -499,6 +503,12 @@ export function BillingPage() {
                       </Button>
                       <Button
                         kind="tertiary"
+                        onClick={() => setJournalInvoice(selected.id)}
+                      >
+                        Journal items
+                      </Button>
+                      <Button
+                        kind="tertiary"
                         onClick={() => setReviewInvoice(selected.id)}
                       >
                         Review invoice posting
@@ -675,6 +685,20 @@ export function BillingPage() {
                 close={() => setConversationInvoice(null)}
                 reconnect={() => {
                   setConversationInvoice(null);
+                  setSelected(null);
+                  queryClient.removeQueries({ queryKey: ['billing'] });
+                  void session.refetch();
+                }}
+              />
+            ) : null}
+            {journalInvoice !== null ? (
+              <InvoiceJournalModal
+                key={`${session.data!.uid}:${journalInvoice}`}
+                uid={session.data!.uid as number}
+                invoiceId={journalInvoice}
+                close={() => setJournalInvoice(null)}
+                reconnect={() => {
+                  setJournalInvoice(null);
                   setSelected(null);
                   queryClient.removeQueries({ queryKey: ['billing'] });
                   void session.refetch();

@@ -3,6 +3,29 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+## Invoice Journal Items
+
+`account.move.qorlia_invoice_journal` reads an authorised customer invoice or
+credit note's native financial journal items. It accepts only `invoice_id`, an
+optional native line-ID cursor and a snapshot version. Ordered pages contain up
+to 100 rows; company-currency totals cover all authorised financial entries.
+Changed snapshots and foreign cursors require a fresh reload. Sections and notes
+are excluded, while legacy false display types remain valid financial rows.
+
+Internal Billing access, native invoice/line ACLs, record rules and company scope
+are required. A scoped ID-only SQL query prevents a native one-to-many read from
+silently filtering denied lines; every resolved line is checked before field or
+total reads. Tax/grid reads retain their native checks. Analytic distribution is
+returned only to the native analytic accounting group. There is no financial
+`sudo`, journal mutation, posting or reconciliation method in this view.
+
+Installed native suite: 168 passing tests, no failures/errors/skips. Home: 219
+passing tests. Native/HTTP checks cover paging, stale versions, access denial,
+foreign currency, drafts and credits, actual ledger equality and no financial
+writes. Protected browser open/reload and matching source/build verification are
+recorded in the readiness ledger. Narrow-screen readability and native journal
+editing remain separate pending work, not completed parity.
+
 ## Invoice conversation and internal notes
 
 `account.move.qorlia_invoice_messages` returns native invoice messages/change

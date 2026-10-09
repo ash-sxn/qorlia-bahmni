@@ -61,6 +61,157 @@ export interface InvoiceWorkflow {
   can_post: boolean;
 }
 
+export interface InvoiceJournal {
+  invoice_id: number;
+  name: string | false;
+  state: 'draft' | 'posted' | 'cancel';
+  journal: string;
+  company: string;
+  currency: [number, string];
+  date: string | false;
+  version: string;
+  after: number | false;
+  next_after: number | false;
+  total_count: number;
+  debit: number;
+  credit: number;
+  balanced: boolean;
+  analytics_visible: boolean;
+  rows: {
+    id: number;
+    name: string | false;
+    account_id: Relation;
+    partner_id: Relation;
+    date: string | false;
+    date_maturity: string | false;
+    debit: number;
+    credit: number;
+    balance: number;
+    currency_id: Relation;
+    amount_currency: number;
+    amount_residual: number;
+    amount_residual_currency: number;
+    reconciled: boolean;
+    matching_number: string | false;
+    tax_ids: [number, string][];
+    tax_tag_ids: [number, string][];
+    display_type: string | false;
+    qorlia_adjustment_kind: false | 'discount' | 'rounding';
+    analytic_distribution: Record<string, number> | false;
+  }[];
+}
+
+export async function getInvoiceJournal(
+  invoiceId: number,
+  after: number | false = false,
+  version: string | false = false,
+): Promise<InvoiceJournal> {
+  const identifier = (value: unknown) =>
+    Number.isSafeInteger(value) && Number(value) > 0;
+  const date = (value: unknown) =>
+    value === false ||
+    (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value));
+  const hash = (value: unknown) =>
+    typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+  const text = (value: unknown) => value === false || typeof value === 'string';
+  if (
+    !identifier(invoiceId) ||
+    !(after === false || identifier(after)) ||
+    !(version === false || hash(version)) ||
+    (after !== false && version === false)
+  )
+    throw new Error('Select an invoice and reload its journal items.');
+  const method = 'qorlia_invoice_journal';
+  const result = await rpc<InvoiceJournal>(
+    `/web/dataset/call_kw/account.move/${method}`,
+    {
+      model: 'account.move',
+      method,
+      args: [],
+      kwargs: { invoice_id: invoiceId, after, version },
+    },
+  );
+  if (
+    result?.invoice_id !== invoiceId ||
+    result.after !== after ||
+    !text(result.name) ||
+    !['draft', 'posted', 'cancel'].includes(result.state) ||
+    typeof result.journal !== 'string' ||
+    typeof result.company !== 'string' ||
+    !Array.isArray(result.currency) ||
+    !validRelation(result.currency) ||
+    !date(result.date) ||
+    !hash(result.version) ||
+    (version !== false && result.version !== version) ||
+    !(result.next_after === false || identifier(result.next_after)) ||
+    !Number.isSafeInteger(result.total_count) ||
+    result.total_count < 0 ||
+    ![result.debit, result.credit].every(Number.isFinite) ||
+    result.debit < 0 ||
+    result.credit < 0 ||
+    typeof result.balanced !== 'boolean' ||
+    typeof result.analytics_visible !== 'boolean' ||
+    !Array.isArray(result.rows) ||
+    result.rows.length > 100 ||
+    result.rows.length > result.total_count
+  )
+    throw new Error('Invalid journal response. Reload all journal items.');
+  let previous = after || 0;
+  for (const row of result.rows) {
+    const distribution = row?.analytic_distribution;
+    if (
+      !row ||
+      !identifier(row.id) ||
+      row.id <= previous ||
+      !text(row.name) ||
+      !validRelation(row.account_id) ||
+      !validRelation(row.partner_id) ||
+      !date(row.date) ||
+      !date(row.date_maturity) ||
+      !validRelation(row.currency_id) ||
+      ![
+        row.debit,
+        row.credit,
+        row.balance,
+        row.amount_currency,
+        row.amount_residual,
+        row.amount_residual_currency,
+      ].every(Number.isFinite) ||
+      row.debit < 0 ||
+      row.credit < 0 ||
+      typeof row.reconciled !== 'boolean' ||
+      !text(row.matching_number) ||
+      ![row.tax_ids, row.tax_tag_ids].every(
+        (values) =>
+          Array.isArray(values) &&
+          values.every((value) => Array.isArray(value) && validRelation(value)),
+      ) ||
+      !text(row.display_type) ||
+      ![false, 'discount', 'rounding'].includes(row.qorlia_adjustment_kind) ||
+      !(
+        distribution === false ||
+        (result.analytics_visible &&
+          distribution &&
+          typeof distribution === 'object' &&
+          !Array.isArray(distribution) &&
+          Object.entries(distribution).every(
+            ([key, value]) =>
+              /^\d+(,\d+)*$/.test(key) && Number.isFinite(value),
+          ))
+      )
+    )
+      throw new Error('Invalid journal item. Reload all journal items.');
+    previous = row.id;
+  }
+  if (
+    (result.next_after !== false &&
+      (result.rows.length !== 100 || result.next_after !== previous)) ||
+    (after === false && result.rows.length === 0 && result.total_count !== 0)
+  )
+    throw new Error('Invalid journal pagination. Reload all journal items.');
+  return result;
+}
+
 type Relation = [number, string] | false;
 
 export interface ChargeOrder {

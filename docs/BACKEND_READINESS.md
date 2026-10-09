@@ -1,5 +1,35 @@
 # Qorlia React frontend backend readiness
 
+## Invoice Journal Items: protected read acceptance (10 October 2026)
+
+The signed-in Billing invoice details now open a house modal with native account,
+partner, date, debit/credit, transaction-currency, residual, matching, tax and grid
+entries. Authorised analytic users also receive native analytic distributions.
+This is a read-only view, not journal editing, posting or bank reconciliation.
+Full-journal totals are separate from the loaded 100-row pages. Snapshot-bound
+cursors reject changed journals; failed reads hide previously loaded rows.
+
+Native invoice and line ACLs, record rules and company scope apply. Native
+one-to-many reads can silently filter denied lines, so the adapter first resolves
+only IDs for the authorised invoice, then checks every line before reading values
+or full totals. Denied lines fail the entire view. No elevated financial read or
+write is introduced. The installed adapter suite passes 168 tests with zero
+failures, errors or skips; Home passes 219 tests in 28 suites. Types, lint, seven
+gateway/webpack checks, Python compilation and development build pass.
+
+Actual HTTP comparison matches native rows and totals for two posted invoices
+and one draft, with stable reloads and unchanged financial/protected records.
+Protected browser opening and explicit reload of INV/2026/00039 show all three
+native entries and balanced debit/credit totals of INR 500. All 83 hosted JS/CSS
+chunks and the secret-free source/LICENSE/NOTICE archive match the tested build.
+Tester code/expiry, clinical-session gate, secure cookies, robots exclusion and
+blocked raw financial/mail/report routes remain unchanged. Source was packaged
+before this acceptance note.
+
+Narrow-screen table readability still needs polish. Journal editing, remaining
+Billing workflows and full clinical/separate-product parity remain incomplete.
+Production and the shared public demo have not received the redesign.
+
 ## Regular invoice advance deduction: protected acceptance (10 October 2026)
 
 Protected browser saves explicitly exercise both native choices: INR 300 when

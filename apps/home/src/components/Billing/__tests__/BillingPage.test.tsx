@@ -33,12 +33,14 @@ import {
   getCustomerStatement,
   getInvoiceConversation,
   postInvoiceNote,
+  getInvoiceJournal,
 } from '../billingService';
 import { correctionWorkflowFixture } from './correctionWorkflowFixture';
 import { creditWorkflowFixture } from './creditWorkflowFixture';
 import { customerStatementFixture } from './customerStatementFixture';
 import { invoiceConversationFixture } from './invoiceConversationFixture';
 import { invoiceDraftFixture } from './invoiceDraftFixture';
+import { invoiceJournalFixture } from './invoiceJournalFixture';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
 import { paymentWorkflowFixture } from './paymentWorkflowFixture';
 import {
@@ -76,6 +78,7 @@ jest.mock('../billingService', () => ({
   getCustomerStatement: jest.fn(),
   getInvoiceConversation: jest.fn(),
   postInvoiceNote: jest.fn(),
+  getInvoiceJournal: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({
   useUserPrivilege: jest.fn(),
@@ -154,6 +157,27 @@ describe('Billing workspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Back to invoices' }));
     expect(
       screen.getByRole('button', { name: 'Invoice conversation' }),
+    ).toBeInTheDocument();
+  });
+  it('opens native journal items only after selecting a signed-in invoice', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([invoice]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    (getInvoiceJournal as jest.Mock).mockResolvedValue(invoiceJournalFixture());
+    show();
+    expect(
+      screen.queryByRole('button', { name: 'Journal items' }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    expect(getInvoiceJournal).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Journal items' }));
+    await screen.findByRole('table', { name: 'Native invoice journal items' });
+    expect(getInvoiceJournal).toHaveBeenCalledWith(7, false, false);
+    expect(postInvoiceWorkflow).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to invoice' }));
+    expect(
+      screen.getByRole('region', { name: 'Invoice details' }),
     ).toBeInTheDocument();
   });
   it('opens native report choices from a selected invoice without generating or posting automatically', async () => {
