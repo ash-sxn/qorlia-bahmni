@@ -19,7 +19,10 @@ import {
   getCreditWorkflow,
   applyCreditWorkflow,
   removeCreditWorkflow,
+  getCorrectionWorkflow,
+  runCorrectionWorkflow,
 } from '../billingService';
+import { correctionWorkflowFixture } from './correctionWorkflowFixture';
 import { creditWorkflowFixture } from './creditWorkflowFixture';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
 import { paymentWorkflowFixture } from './paymentWorkflowFixture';
@@ -40,6 +43,8 @@ jest.mock('../billingService', () => ({
   getCreditWorkflow: jest.fn(),
   applyCreditWorkflow: jest.fn(),
   removeCreditWorkflow: jest.fn(),
+  getCorrectionWorkflow: jest.fn(),
+  runCorrectionWorkflow: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({ useUserPrivilege: jest.fn() }));
 jest.mock('../../HomePageHeader', () => ({
@@ -287,6 +292,43 @@ describe('Billing workspace', () => {
       'aria-selected',
       'true',
     );
+  });
+  it('reviews a selected invoice correction and invalidates stale details after confirmation', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([
+      { ...invoice, state: 'posted' },
+    ]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    (getCorrectionWorkflow as jest.Mock).mockResolvedValue(
+      correctionWorkflowFixture(),
+    );
+    (runCorrectionWorkflow as jest.Mock).mockResolvedValue(
+      invoiceWorkflowFixture({ name: 'INV/QA/7' }),
+    );
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review invoice correction' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Review reset to draft' }),
+    );
+    expect(runCorrectionWorkflow).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole('button', { name: /Confirm reset to draft/ }),
+    );
+    expect(
+      await screen.findByText(
+        /INV\/QA\/7 reset to draft.*No money was transferred/,
+      ),
+    ).toBeInTheDocument();
+    expect(getCorrectionWorkflow).toHaveBeenCalledWith(7);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Invoice details' }),
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(getInvoices).toHaveBeenCalledTimes(2));
   });
   it('records a reviewed payment inside the workspace and refreshes native invoice balances', async () => {
     (getInvoices as jest.Mock).mockResolvedValue([

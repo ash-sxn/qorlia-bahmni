@@ -1,5 +1,43 @@
 # Bahmni workflow parity ledger
 
+## 9 October reviewed invoice reset/cancellation checkpoint
+
+- Signed-in Billing now reviews invoice/credit-note reset to draft and draft
+  cancellation through named adapter methods. Native `button_draft` and
+  `button_cancel` preserve accounting behavior, document identity and permissions.
+  Posted invoices cannot be directly cancelled. These actions do not delete
+  receipts, move funds, return stock or cancel sales orders.
+- The review displays current allocations and reset consequences. Separate
+  confirmation, duplicate-click prevention, blocked closing during saves and
+  read-only recovery after uncertain responses protect the React workflow.
+  Native ACLs/rules, connected-document locks, post-lock version checks and
+  ledger checks remain enforced. Snapshots include analytic entries, related
+  reconciliation, lock dates and protected-journal configuration.
+- All 63 native adapter tests pass without failures/errors/skips. New cases
+  cover reset/cancel/restore/repost, disabling scheduled posting, retained
+  receipts and unrelated allocations, foreign-currency exchange reversal,
+  locked periods, protected journals, ordinary cashier and read-only/company
+  boundaries, stale/repeated requests and unbalanced history. Home passes
+  101 tests in 12 suites; gateway/webpack seven checks. Types, targeted lint,
+  formatting, diff and development build pass, retaining existing build warnings.
+- Native HTTP INV/2026/00024 produced one reset and one rejection for concurrent
+  identical requests, then cancelled/restored/reposted with its number retained.
+  Its INR 100 receipt remains posted and unapplied; final invoice balance is
+  INR 500. No extra payment was created and journal entries balance.
+- Hosted browser INV/2026/00025 was reviewed/closed with INR 400 unchanged,
+  then explicitly reset, cancelled, restored and reposted. Independent reads
+  verified each state, preserved posted receipt 219, no additional payments,
+  balanced journals and unchanged unrelated INV/2026/00022 at INR 400.
+  Full reload retained posted INR 500 and the released INR 100 credit without
+  automatic reallocation. Tester gate, expiry, isolated sessions and blocked
+  raw mutation routes remain unchanged; source/licenses match the review build.
+
+Credit-note creation/edit/reversal, statement matching, provider/check/PDC,
+printing, down payments, POS, stock/batch fulfillment and Clinical-to-ERP sync
+remain unfinished or unverified. Only isolated synthetic staging and protected
+review changed, not production. This supersedes reset/cancellation gaps below,
+not the full Billing or whole-product parity requirement.
+
 ## 9 October reviewed reconciliation removal checkpoint
 
 - The existing-credit dialog now reviews and removes one native reconciled item

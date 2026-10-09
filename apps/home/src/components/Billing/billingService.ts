@@ -515,6 +515,78 @@ export const postInvoiceWorkflow = (invoice: InvoiceWorkflow) =>
     version: invoice.version,
   });
 
+export interface CorrectionWorkflow {
+  invoice: InvoiceWorkflow;
+  version: string;
+  can_reset: boolean;
+  can_cancel: boolean;
+  posted_before: boolean;
+  allocations: {
+    id: number;
+    name: string;
+    date: string;
+    amount: number;
+    currency: [number, string];
+    is_exchange: boolean;
+  }[];
+}
+
+export const getCorrectionWorkflow = async (invoiceId: number) => {
+  const value = await rpc<CorrectionWorkflow>(
+    '/web/dataset/call_kw/account.move/qorlia_correction_load',
+    {
+      model: 'account.move',
+      method: 'qorlia_correction_load',
+      args: [],
+      kwargs: { invoice_id: invoiceId },
+    },
+  );
+  if (
+    !value ||
+    typeof value.version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(value.version) ||
+    typeof value.can_reset !== 'boolean' ||
+    typeof value.can_cancel !== 'boolean' ||
+    typeof value.posted_before !== 'boolean' ||
+    !Array.isArray(value.allocations) ||
+    value.allocations.length > 200 ||
+    value.allocations.some(
+      (row) =>
+        !row ||
+        !Number.isInteger(row.id) ||
+        row.id <= 0 ||
+        typeof row.name !== 'string' ||
+        typeof row.date !== 'string' ||
+        !Number.isFinite(row.amount) ||
+        row.amount < 0 ||
+        !Array.isArray(row.currency) ||
+        !validRelation(row.currency) ||
+        typeof row.is_exchange !== 'boolean',
+    )
+  )
+    throw new Error('Invalid correction review. Reload the current status.');
+  checkedInvoiceWorkflow(value.invoice);
+  if (value.invoice.id !== invoiceId)
+    throw new Error('The correction review belongs to another invoice.');
+  return value;
+};
+
+export const runCorrectionWorkflow = async (
+  review: CorrectionWorkflow,
+  action: 'reset' | 'cancel',
+) => {
+  const result = await invoiceWorkflowCall('qorlia_correction_run', {
+    invoice_id: review.invoice.id,
+    version: review.version,
+    action,
+  });
+  if (result.id !== review.invoice.id)
+    throw new Error(
+      'The correction result belongs to another invoice. Reload its current status.',
+    );
+  return result;
+};
+
 export interface CreditWorkflow {
   invoice: InvoiceWorkflow;
   version: string;

@@ -4,3 +4,4 @@ from . import order_workflow
 from . import account_move
 from . import payment_workflow
 from . import credit_workflow
+from . import correction_workflow

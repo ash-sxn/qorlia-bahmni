@@ -20,7 +20,10 @@ import {
   getCreditWorkflow,
   applyCreditWorkflow,
   removeCreditWorkflow,
+  getCorrectionWorkflow,
+  runCorrectionWorkflow,
 } from '../billingService';
+import { correctionWorkflowFixture } from './correctionWorkflowFixture';
 import { creditWorkflowFixture } from './creditWorkflowFixture';
 import { draftFixture } from './draftFixture';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
@@ -50,6 +53,44 @@ describe('billing API', () => {
       status: 200,
       json: async () => body,
     });
+  it('uses only named correction actions with the reviewed invoice and version', async () => {
+    const review = correctionWorkflowFixture();
+    reply({ result: review });
+    expect(await getCorrectionWorkflow(7)).toEqual(review);
+    reply({ result: invoiceWorkflowFixture() });
+    await runCorrectionWorkflow(review, 'reset');
+    const [url, options] = (fetch as jest.Mock).mock.calls[1];
+    expect(url).toContain('/account.move/qorlia_correction_run');
+    expect(JSON.parse(options.body).params).toEqual({
+      model: 'account.move',
+      method: 'qorlia_correction_run',
+      args: [],
+      kwargs: { invoice_id: 7, version: review.version, action: 'reset' },
+    });
+  });
+  it('rejects malformed correction financial data and wrong-invoice reviews', async () => {
+    const review = correctionWorkflowFixture();
+    for (const patch of [
+      { version: null },
+      { can_reset: 'yes' },
+      { posted_before: 1 },
+      { allocations: [false] },
+      { allocations: [{ ...review.allocations[0], amount: Infinity }] },
+      { allocations: [{ ...review.allocations[0], amount: -1 }] },
+      { allocations: [{ ...review.allocations[0], currency: false }] },
+    ]) {
+      reply({ result: { ...review, ...patch } });
+      await expect(getCorrectionWorkflow(7)).rejects.toThrow(
+        'Invalid correction review',
+      );
+    }
+    reply({ result: { ...review, invoice: { ...review.invoice, id: 8 } } });
+    await expect(getCorrectionWorkflow(7)).rejects.toThrow('another invoice');
+    reply({ result: { ...invoiceWorkflowFixture(), id: 8 } });
+    await expect(runCorrectionWorkflow(review, 'reset')).rejects.toThrow(
+      'another invoice',
+    );
+  });
   it('uses only named credit actions and passes the selected line and version', async () => {
     const credit = creditWorkflowFixture();
     reply({ result: credit });

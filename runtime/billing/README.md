@@ -101,6 +101,28 @@ Balanced-ledger checks run before and after the action. Direct native removal
 methods remain blocked at the gateway; uncertain replies require status read-back.
 Bank-statement matching is a separate unfinished workflow.
 
+## Reviewed invoice reset and draft cancellation
+
+The named `qorlia_correction_load` and `qorlia_correction_run` actions review
+and delegate to native `button_draft` or `button_cancel`. Reset can release
+allocations and remove analytic entries, while native accounting handles
+exchange/cash-basis effects. Existing posted receipts and credit notes are not
+deleted or automatically reapplied. Cancellation is restricted to draft state
+and disables scheduled posting. Cancelled documents can be restored to draft
+where native permissions and journal configuration allow it.
+
+The version includes invoice state, connected reconciliation, analytic entries,
+company lock dates and protected-journal configuration. Native ACLs/record rules,
+deterministic move/line/partial locks, post-lock version checks and balanced-ledger
+guards remain active without `sudo`. Protected journals and native fiscal/tax
+period checks are not bypassed. Reviews above 1,000 connected journal lines or
+200 allocations require native Billing instead of partial display.
+
+The React UI requires a separate review/confirmation, shows reset consequences
+and current allocations, and never retries uncertain writes. Reset/cancel does
+not issue a refund, transfer money, return stock or cancel a sales order.
+Credit-note creation/reversal and editable draft corrections remain unfinished.
+
 ## Verification and scope
 
 The `tests` package covers native draft/order workflows and customer posting,
@@ -116,11 +138,17 @@ read-only version stability and unbalanced-source rejection. Removal checks cove
 partial/full allocations, retained posted receipts and unrelated allocations,
 cashier rights, credit-note perspective, currency conversion, exchange/cash-basis
 reversals and stale/repeated/unauthorized requests.
+Correction checks cover reset/cancel/restore/repost, scheduled posting, retained
+receipts and unrelated allocations, foreign-currency exchange reversal, protected
+journals, locked periods, cashier/read-only/company boundaries, stale/repeated
+requests and unbalanced-ledger rejection. HTTP and hosted browser checks verify
+state read-back, retained receipts, no automatic reallocation and duplicate
+request rejection on isolated synthetic records.
 Tests require an isolated company with a chart, shop and synthetic data.
 
 Provider/check/PDC payments, statement reconciliation,
 partial/down-payment invoice allocation, stock/batch acceptance, POS, printouts
 and Clinical-to-ERP synchronization still
-require integration and end-to-end acceptance. Native reversal/reset tests are
-not proof that those actions are available in the React UI. Do not use this review
+require integration and end-to-end acceptance. Native reversal tests are not
+proof of a React credit-note creation workflow. Do not use this review
 build for real patients or accounting.

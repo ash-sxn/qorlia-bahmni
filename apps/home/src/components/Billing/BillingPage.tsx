@@ -25,6 +25,7 @@ import {
   signInToBilling,
 } from './billingService';
 import { ChargeOrdersPanel } from './ChargeOrdersPanel';
+import { CorrectionWorkflowModal } from './CorrectionWorkflowModal';
 import { CreditWorkflowModal } from './CreditWorkflowModal';
 import { InvoiceWorkflowModal } from './InvoiceWorkflowModal';
 import { PaymentWorkflowModal } from './PaymentWorkflowModal';
@@ -51,6 +52,9 @@ export function BillingPage() {
   const [reviewInvoice, setReviewInvoice] = useState<number | null>(null);
   const [paymentInvoice, setPaymentInvoice] = useState<number | null>(null);
   const [creditInvoice, setCreditInvoice] = useState<number | null>(null);
+  const [correctionInvoice, setCorrectionInvoice] = useState<number | null>(
+    null,
+  );
   const [invoiceNotice, setInvoiceNotice] = useState('');
   const session = useQuery({
     queryKey: ['billing', 'session'],
@@ -110,6 +114,7 @@ export function BillingPage() {
       setReviewInvoice(null);
       setPaymentInvoice(null);
       setCreditInvoice(null);
+      setCorrectionInvoice(null);
       setInvoiceNotice('');
       setOffset(0);
     } catch (error) {
@@ -468,6 +473,12 @@ export function BillingPage() {
                       </Button>
                       <Button
                         kind="tertiary"
+                        onClick={() => setCorrectionInvoice(selected.id)}
+                      >
+                        Review invoice correction
+                      </Button>
+                      <Button
+                        kind="tertiary"
                         onClick={() => setPaymentInvoice(selected.id)}
                       >
                         Review payments
@@ -602,6 +613,32 @@ export function BillingPage() {
                   setSelected(null);
                   setInvoiceNotice(
                     `${result.invoice.name || 'Invoice'} payment recorded. Native status: ${result.invoice.payment_state.replaceAll('_', ' ')}. Open amount: ${money(result.invoice.open_amount, result.invoice.currency[1])}. Check linked payments for the saved entry.`,
+                  );
+                  void queryClient.invalidateQueries({
+                    predicate: (query) =>
+                      query.queryKey[0] === 'billing' &&
+                      query.queryKey[1] !== 'session',
+                  });
+                }}
+              />
+            ) : null}
+            {correctionInvoice !== null ? (
+              <CorrectionWorkflowModal
+                uid={session.data!.uid as number}
+                invoiceId={correctionInvoice}
+                close={() => setCorrectionInvoice(null)}
+                reconnect={() => {
+                  setCorrectionInvoice(null);
+                  setSelected(null);
+                  setInvoiceNotice('');
+                  queryClient.removeQueries({ queryKey: ['billing'] });
+                  void session.refetch();
+                }}
+                completed={(invoice, action) => {
+                  setCorrectionInvoice(null);
+                  setSelected(null);
+                  setInvoiceNotice(
+                    `${invoice.name || 'Invoice'} ${action === 'reset' ? 'reset to draft' : 'cancelled'}. Current status: ${invoice.state}. No money was transferred. Check allocations before reposting or payment.`,
                   );
                   void queryClient.invalidateQueries({
                     predicate: (query) =>

@@ -1,5 +1,32 @@
 # Qorlia React frontend backend readiness
 
+## Latest reviewed invoice correction verification (9 October 2026)
+
+The React Billing workspace now uses named review/run adapter methods for
+native invoice/credit-note reset and draft cancellation. Native accounting
+permissions, protected journals and period locks still apply. Connected move,
+line and reconciliation locks plus fresh versions reject concurrent/stale
+requests; balances are checked before and after. Separate review/confirmation
+and read-only recovery prevent an uncertain reply becoming an automatic retry.
+No receipt deletion, refund, bank transfer, stock return or sales-order
+cancellation is implied. Credit-note creation/reversal remains separate work.
+
+All 63 native adapter tests pass with zero failures/errors/skips, Home 101 tests
+in 12 suites, gateway/webpack seven checks, types/lint/formatting/diff and
+development build. Actual native HTTP concurrent resets yielded one success and
+one rejection. Hosted browser INV/2026/00025 was reviewed/closed without change,
+reset, cancelled, restored and reposted through the React controls. Independent
+reads verified retained posted INR 100 receipt 219, no extra payments, balanced
+journals and unrelated INV/2026/00022 unchanged at INR 400. Full browser reload
+shows INR 500 open and its released credit, not automatic reallocation.
+
+The protected tester build retains the existing access code, expiry and native
+session boundaries. Raw reset/cancel/write/delete routes stay blocked and the
+matching source archive includes the LGPL adapter and license/notice files.
+Production and the shared demo are unchanged. Remaining Billing gates include
+credit-note creation/edit/reversal, statements, provider/check/PDC, printing,
+down payments, POS, stock/batch acceptance and Clinical-to-ERP synchronization.
+
 ## Latest reviewed reconciliation removal verification (9 October 2026)
 
 The credit dialog now exposes a separate review of one reconciled allocation
