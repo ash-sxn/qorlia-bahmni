@@ -28,6 +28,7 @@ import { ChargeOrdersPanel } from './ChargeOrdersPanel';
 import { CorrectionWorkflowModal } from './CorrectionWorkflowModal';
 import { CreditWorkflowModal } from './CreditWorkflowModal';
 import { CustomerStatementModal } from './CustomerStatementModal';
+import { InvoiceConversationModal } from './InvoiceConversationModal';
 import { InvoiceDraftEditor } from './InvoiceDraftEditor';
 import { InvoiceReportsModal } from './InvoiceReportsModal';
 import { InvoiceWorkflowModal } from './InvoiceWorkflowModal';
@@ -51,6 +52,9 @@ export function BillingPage() {
   const [tab, setTab] = useState(0);
   const [reviewInvoice, setReviewInvoice] = useState<number | null>(null);
   const [reportInvoice, setReportInvoice] = useState<number | null>(null);
+  const [conversationInvoice, setConversationInvoice] = useState<number | null>(
+    null,
+  );
   const [statementInvoice, setStatementInvoice] = useState<number | null>(null);
   const [editInvoice, setEditInvoice] = useState<number | false | null>(null);
   const [paymentInvoice, setPaymentInvoice] = useState<number | null>(null);
@@ -117,6 +121,7 @@ export function BillingPage() {
       setSelected(null);
       setReviewInvoice(null);
       setReportInvoice(null);
+      setConversationInvoice(null);
       setStatementInvoice(null);
       setEditInvoice(null);
       setPaymentInvoice(null);
@@ -225,6 +230,7 @@ export function BillingPage() {
                     setSelected(null);
                     setReviewInvoice(null);
                     setStatementInvoice(null);
+                    setConversationInvoice(null);
                     setPaymentInvoice(null);
                     setCreditInvoice(null);
                     setInvoiceNotice('');
@@ -487,6 +493,12 @@ export function BillingPage() {
                       </Button>
                       <Button
                         kind="tertiary"
+                        onClick={() => setConversationInvoice(selected.id)}
+                      >
+                        Invoice conversation
+                      </Button>
+                      <Button
+                        kind="tertiary"
                         onClick={() => setReviewInvoice(selected.id)}
                       >
                         Review invoice posting
@@ -649,6 +661,20 @@ export function BillingPage() {
                 close={() => setStatementInvoice(null)}
                 reconnect={() => {
                   setStatementInvoice(null);
+                  setSelected(null);
+                  queryClient.removeQueries({ queryKey: ['billing'] });
+                  void session.refetch();
+                }}
+              />
+            ) : null}
+            {conversationInvoice !== null ? (
+              <InvoiceConversationModal
+                key={`${session.data!.uid}:${conversationInvoice}`}
+                uid={session.data!.uid as number}
+                invoiceId={conversationInvoice}
+                close={() => setConversationInvoice(null)}
+                reconnect={() => {
+                  setConversationInvoice(null);
                   setSelected(null);
                   queryClient.removeQueries({ queryKey: ['billing'] });
                   void session.refetch();

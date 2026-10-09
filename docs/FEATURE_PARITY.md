@@ -1,5 +1,41 @@
 # Bahmni workflow parity ledger
 
+## 10 October invoice conversation hosted checkpoint
+
+- Browser save creates native internal message #21100 on INV/2026/00032.
+  Full reload/reopen preserves it; back retains the invoice and INR 400 residual.
+  Unsaved-close, Keep editing and explicit draft-discard controls work. The editor
+  and save feedback appear before history, using the existing house design.
+- Independent native read confirms exactly one browser note and unchanged invoice,
+  journal, payments, followers and attachments, with no email queued for this
+  fixture. Native 135 tests and Home 180 tests cover this checkpoint.
+- The 83 hosted chunks and credential-free source/LICENSE/NOTICE archive match.
+  Tester gate, clinical session, secure cookies, robots and raw financial/mail/
+  arbitrary report denial checks pass. URL/code/expiry and production/demo remain
+  unchanged. Attachment delivery/upload, external email, followers/activities and
+  all remaining Billing/whole-product parity are still open.
+
+## 10 October invoice conversation backend checkpoint
+
+- Selected signed-in invoices connect to native message/change history with
+  30-row cursor pagination, currency-labelled changes, restricted-field filtering,
+  safe text and explicit long-body/attachment-delivery limits.
+- Internal notes preserve native author, internal subtype, roles and company/
+  record permissions. Native staff notifications are queued; customer/portal
+  followers are excluded. No arbitrary recipients/attachments or raw mail methods
+  are exposed through the protected gateway, which also rejects caller context.
+- Identical concurrent HTTP writes return one persisted note. Its request key
+  binds exact text, invoice and author. The UI retains that key after timeouts and
+  negative status checks, guards closing/duplicate clicks and never retries writes
+  automatically. Confirmed status can resolve a save without another post.
+- Native suite: 135 tests, no failures/errors/skips. Home: 180 tests/23 suites.
+  Types, lint, seven gateway/webpack checks and direct build pass. Actual HTTP
+  proves escaped text, native history/status read-back and unchanged financial,
+  payment, follower and attachment snapshots. Hosted browser verification remains
+  separate. Only the isolated synthetic QA author gained an `.invalid` email.
+- Attachment delivery/upload, external email, followers/activities and complete
+  Billing/whole-product parity remain unfinished. Production/demo are unchanged.
+
 ## 10 October customer statement PDF acceptance checkpoint
 
 - React connects the loaded statement period to a named, fixed QWeb PDF action.

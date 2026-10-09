@@ -1,5 +1,69 @@
 # Qorlia React frontend backend readiness
 
+## Invoice conversation: protected browser acceptance (10 October 2026)
+
+The existing protected tester link now includes the conversation action inside
+selected signed-in invoice details. The house note editor/save feedback precedes
+the timeline so older history does not bury the composer. Browser save created
+native internal message #21100 on synthetic invoice INV/2026/00032. Full-page
+reload and reopening retained that message; back navigation retained the selected
+invoice and INR 400 outstanding. Unsaved close warns; Keep editing preserves the
+draft and explicit discard closes without posting it.
+
+Independent native HTTP read confirms exactly one copy of that browser note and
+unchanged invoice/journal, payment count, followers and attachments. No outbound
+email was queued for this fixture. The 83 hosted JS/CSS chunks and secret-free
+source/LICENSE/NOTICE archive match the release. Tester gate, clinical-session
+requirement, Secure/HttpOnly cookie and robots exclusion remain verified. Raw
+financial, mail mutation and arbitrary report routes are blocked. URL, access
+code and expiry are unchanged. Native 135 tests and Home 180 tests remain the
+accepted counts for this checkpoint, not a whole-product completion percentage.
+
+Attachment delivery/upload, external email, follower/activity controls, full
+document reskin and the remaining financial/inventory/synchronisation workflows
+are not complete. No production/shared-public-demo redesign deployment occurred.
+
+## Invoice conversation and internal notes: isolated acceptance (10 October 2026)
+
+Signed-in selected invoices now have a Qorlia conversation modal backed by native
+Odoo messages and tracked changes. Thirty-message cursor pages retain older
+history. Native message formatting filters restricted tracked fields; monetary
+changes include their currency. Plain text is rendered safely, long messages are
+explicitly shortened, and attachment names remain visible without claiming that
+attachment delivery is implemented.
+
+Internal notes use native `mail.mt_note`, the authenticated author and native
+invoice write/accounting roles. Company/record rules also apply to reads and
+status checks. The fixed endpoint accepts no recipients, author, subtype or
+attachments. Existing internal followers can receive native notifications;
+external/portal followers cannot receive the internal note. Notifications are
+queued, not immediately sent by this endpoint. Odoo requires an author email:
+only the isolated synthetic QA user received an `.invalid` address for testing.
+
+Canonical request keys bind the invoice, author and exact text. Identical retries
+return one saved native message, including concurrent repeatable-read requests.
+The UI performs no automatic write retry. Unconfirmed text stays frozen with its
+original key even when a status check finds no message: absence in a transaction
+snapshot does not disprove a delayed save. Explicit same-request retry or confirmed
+native status resolves it. Closing/reconnecting warns before discarding text.
+
+The exact installed adapter passes 135 native tests, zero failures/errors/skips.
+Actual concurrent HTTP saves persisted one note, read back by status and history.
+Changed text/recipient/author arguments were rejected. Financial invoice/journal
+snapshots, payments, followers and attachments were unchanged; this fixture queued
+no email. Native tests separately prove internal-follower queued notification,
+portal/company/read-only denial and tracking field-group filtering. The tester
+gateway, not Odoo's generic JSON-RPC dispatcher, rejects caller context overrides.
+Home passes 180 tests/23 suites, types and changed-source lint; seven gateway/
+webpack checks and the direct development build pass. Hosted browser acceptance
+is a separate pending check. Existing pandas startup, bundle, stale browser data
+and Nx-cycle limitations remain as recorded below.
+
+This is internal-note/history progress, not full chatter parity. Attachment
+download/upload, external email, follower management, activities, complete
+document reskin and the remaining Billing/wider-product workflows remain open.
+Production and the shared public demo are unchanged.
+
 ## Customer statement PDF: hosted and isolated acceptance (10 October 2026)
 
 The signed-in statement modal now downloads the loaded accounting period using

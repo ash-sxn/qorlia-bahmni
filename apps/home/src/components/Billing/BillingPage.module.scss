@@ -129,3 +129,15 @@
     font-weight: 600;
   }
 }
+.conversation {
+  list-style: none;
+  padding: 0;
+  > li {
+    border-top: 1px solid $border-subtle-01;
+    padding: 1rem 0;
+  }
+}
+.messageBody {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

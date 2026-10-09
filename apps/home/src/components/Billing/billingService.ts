@@ -732,6 +732,150 @@ const invoiceDraftCall = <T>(method: string, kwargs: object) =>
     kwargs,
   });
 
+export interface InvoiceMessage {
+  id: number;
+  date: string;
+  author: string;
+  subject: string;
+  kind: string;
+  body: string;
+  body_truncated: boolean;
+  changes: { id: number; field: string; old: string; new: string }[];
+  attachments: { id: number; name: string }[];
+}
+export interface InvoiceConversation {
+  invoice_id: number;
+  can_note: boolean;
+  messages: InvoiceMessage[];
+  next_before: number | false;
+}
+
+function checkedMessage(value: InvoiceMessage): InvoiceMessage {
+  if (
+    !value ||
+    !Number.isInteger(value.id) ||
+    value.id <= 0 ||
+    typeof value.date !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value.date) ||
+    !validDate(value.date.slice(0, 10)) ||
+    !Number.isFinite(Date.parse(value.date.replace(' ', 'T') + 'Z')) ||
+    !['author', 'subject', 'kind', 'body'].every(
+      (key) => typeof value[key as 'body'] === 'string',
+    ) ||
+    value.body.length > 20000 ||
+    typeof value.body_truncated !== 'boolean' ||
+    !Array.isArray(value.changes) ||
+    value.changes.length > 200 ||
+    value.changes.some(
+      (change) =>
+        !change ||
+        !Number.isInteger(change.id) ||
+        change.id <= 0 ||
+        !['field', 'old', 'new'].every(
+          (key) => typeof change[key as 'field'] === 'string',
+        ),
+    ) ||
+    !Array.isArray(value.attachments) ||
+    value.attachments.length > 200 ||
+    value.attachments.some(
+      (file) =>
+        !file ||
+        !Number.isInteger(file.id) ||
+        file.id <= 0 ||
+        typeof file.name !== 'string',
+    )
+  )
+    throw new Error('Invalid invoice conversation response.');
+  return value;
+}
+
+export async function getInvoiceConversation(
+  invoiceId: number,
+  before: number | false = false,
+) {
+  if (
+    !Number.isInteger(invoiceId) ||
+    invoiceId <= 0 ||
+    (before !== false && (!Number.isInteger(before) || before <= 0))
+  )
+    throw new Error('Select a saved invoice and valid conversation cursor.');
+  const result = await invoiceDraftCall<InvoiceConversation>(
+    'qorlia_invoice_messages',
+    { invoice_id: invoiceId, before },
+  );
+  if (
+    result?.invoice_id !== invoiceId ||
+    typeof result.can_note !== 'boolean' ||
+    !Array.isArray(result.messages) ||
+    result.messages.length > 30
+  )
+    throw new Error('Invalid invoice conversation response.');
+  result.messages.forEach(checkedMessage);
+  if (
+    result.messages.some(
+      (message, index) =>
+        (before !== false && message.id >= before) ||
+        (index > 0 && message.id >= result.messages[index - 1].id),
+    ) ||
+    (result.next_before !== false &&
+      (result.messages.length !== 30 ||
+        result.next_before !== result.messages[29].id))
+  )
+    throw new Error('Invalid invoice conversation response.');
+  return result;
+}
+
+async function invoiceNoteRequest(
+  action: 'note' | 'note_status',
+  invoiceId: number,
+  requestKey: string,
+  body: string,
+) {
+  if (
+    !Number.isInteger(invoiceId) ||
+    invoiceId <= 0 ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+      requestKey,
+    ) ||
+    typeof body !== 'string' ||
+    !body.trim() ||
+    body.length > 5000 ||
+    body.includes('\0')
+  )
+    throw new Error('Enter a valid internal note of 1 to 5,000 characters.');
+  const result = await invoiceDraftCall<{
+    invoice_id: number;
+    request_key: string;
+    message: InvoiceMessage | false;
+  }>(`qorlia_invoice_${action}`, {
+    invoice_id: invoiceId,
+    request_key: requestKey,
+    body,
+  });
+  if (
+    result?.invoice_id !== invoiceId ||
+    result.request_key !== requestKey ||
+    (result.message === false && action === 'note')
+  )
+    throw new Error('Invalid saved internal note response.');
+  if (result.message !== false) {
+    checkedMessage(result.message);
+    if (result.message.kind !== 'note')
+      throw new Error('Invalid saved internal note response.');
+  }
+  return result.message;
+}
+export const postInvoiceNote = (
+  invoiceId: number,
+  requestKey: string,
+  body: string,
+) => invoiceNoteRequest('note', invoiceId, requestKey, body);
+export const checkInvoiceNote = (
+  invoiceId: number,
+  requestKey: string,
+  body: string,
+) => invoiceNoteRequest('note_status', invoiceId, requestKey, body);
+
 export type InvoiceReportKey = 'invoice' | 'invoice_without_payments';
 export interface InvoiceReport {
   key: InvoiceReportKey;

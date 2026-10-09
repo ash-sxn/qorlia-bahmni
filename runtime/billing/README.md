@@ -3,6 +3,37 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+## Invoice conversation and internal notes
+
+`account.move.qorlia_invoice_messages` returns native invoice messages/change
+history in descending 30-row cursor pages. Reads require an internal account,
+native invoice/message permissions and company/record rules. Native formatting
+filters restricted tracked fields. Returned message bodies are plain text, with
+explicit shortening above 20,000 characters. Attachment names are metadata, not
+implemented delivery controls.
+
+`qorlia_invoice_note` posts a fixed internal `mail.mt_note` using the authenticated
+author and native invoicing write rights. Notes accept 1-5,000 plain-text characters
+and a canonical UUID key; no author, recipients, attachments or subtype override
+is accepted. Native internal followers may receive queued notifications, but
+external/portal followers do not. A real deployment must configure authorised
+authors' native email addresses. The isolated QA address is deliberately `.invalid`.
+
+Identical keys/text/invoice/author return the same message. PostgreSQL uniqueness
+and native serialization retry protect concurrent saves. `qorlia_invoice_note_status`
+returns a matching saved note when visible. A negative status is not proof that
+a delayed save cannot finish, so React keeps the original key/text frozen and
+offers explicit same-request retry rather than generating a replacement request.
+No automatic write retry, silent draft discard or accounting mutation occurs.
+
+The independent native suite passes 135 tests; Home passes 180. Actual concurrent
+HTTP writes persist one note and preserve invoice/journal/payment/follower/
+attachment state. Native tests cover company, portal, read-only and restricted
+tracking permissions plus queued staff notifications. The review gateway blocks
+raw mail methods and context overrides. Hosted browser acceptance is separately
+recorded in the readiness ledger. Attachments, external email, followers/activities
+and full chatter/Billing parity are still pending.
+
 ## Customer account statement
 
 `account.move.qorlia_customer_statement` accepts only a saved customer invoice

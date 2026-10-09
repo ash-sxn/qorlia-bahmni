@@ -8,3 +8,4 @@ from . import test_invoice_drafts
 from . import test_invoice_reports
 from . import test_document_reports
 from . import test_customer_statement
+from . import test_invoice_messages

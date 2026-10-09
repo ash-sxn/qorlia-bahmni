@@ -31,10 +31,13 @@ import {
   getInvoiceReports,
   downloadInvoiceReport,
   getCustomerStatement,
+  getInvoiceConversation,
+  postInvoiceNote,
 } from '../billingService';
 import { correctionWorkflowFixture } from './correctionWorkflowFixture';
 import { creditWorkflowFixture } from './creditWorkflowFixture';
 import { customerStatementFixture } from './customerStatementFixture';
+import { invoiceConversationFixture } from './invoiceConversationFixture';
 import { invoiceDraftFixture } from './invoiceDraftFixture';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
 import { paymentWorkflowFixture } from './paymentWorkflowFixture';
@@ -71,6 +74,8 @@ jest.mock('../billingService', () => ({
   getInvoiceReports: jest.fn(),
   downloadInvoiceReport: jest.fn(),
   getCustomerStatement: jest.fn(),
+  getInvoiceConversation: jest.fn(),
+  postInvoiceNote: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({
   useUserPrivilege: jest.fn(),
@@ -129,6 +134,27 @@ describe('Billing workspace', () => {
     (getInvoiceReports as jest.Mock).mockResolvedValue([
       { key: 'invoice', name: 'Invoices' },
     ]);
+  });
+  it('opens native conversation only from a selected signed-in invoice without posting automatically', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([invoice]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    (getInvoiceConversation as jest.Mock).mockResolvedValue(
+      invoiceConversationFixture(),
+    );
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Invoice conversation' }),
+    );
+    await screen.findByText('QorliaQA Checked invoice');
+    expect(getInvoiceConversation).toHaveBeenCalledWith(7, false);
+    expect(postInvoiceNote).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to invoices' }));
+    expect(
+      screen.getByRole('button', { name: 'Invoice conversation' }),
+    ).toBeInTheDocument();
   });
   it('opens native report choices from a selected invoice without generating or posting automatically', async () => {
     (getInvoices as jest.Mock).mockResolvedValue([invoice]);

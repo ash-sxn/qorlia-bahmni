@@ -11,3 +11,4 @@ from . import invoice_report
 from . import order_report
 from . import payment_report
 from . import customer_statement
+from . import invoice_messages
