@@ -1,7 +1,7 @@
 import { Button, TextInput } from '@bahmni/design-system';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { money } from './billingFormat';
+import { invoiceName, money } from './billingFormat';
 import styles from './BillingPage.module.scss';
 import {
   BillingSessionExpired,
@@ -134,7 +134,7 @@ export function ChargeOrdersPanel({
             setSearch(result.name);
             setSubmittedSearch(result.name);
             setNotice(
-              `${result.name} updated. Current status: ${result.state === 'sale' ? 'Confirmed' : result.state === 'done' ? 'Locked' : result.state}. Linked invoices: ${result.invoices.map((invoice) => `${invoice.name || 'Draft invoice'} (${invoice.state})`).join(', ') || 'None'}. No payment was recorded.`,
+              `${result.name} updated. Current status: ${result.state === 'sale' ? 'Confirmed' : result.state === 'done' ? 'Locked' : result.state}. Linked invoices: ${result.invoices.map((invoice) => `${invoiceName(invoice)} (${invoice.state})`).join(', ') || 'None'}. No payment was recorded.`,
             );
             void queryClient.invalidateQueries({
               predicate: ({ queryKey }) =>
@@ -483,7 +483,7 @@ export function ChargeOrdersPanel({
               {invoices.data?.slice(0, 25).map((invoice) => (
                 <p key={invoice.id}>
                   <Button kind="ghost" onClick={() => openInvoice(invoice)}>
-                    Open {invoice.name || invoice.ref || 'Draft invoice'}
+                    Open {invoiceName(invoice)}
                   </Button>
                   {invoice.move_type === 'out_refund'
                     ? 'Credit note'

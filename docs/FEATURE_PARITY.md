@@ -1,5 +1,52 @@
 # Bahmni workflow parity ledger
 
+## 9 October reviewed credit-note creation and reversal checkpoint
+
+- Signed-in Billing now loads, previews and confirms the pinned native
+  `account.move.reversal` workflow. The native choices are editable draft credit,
+  full reversal and full reversal with a separate replacement draft. Full
+  reversal posts/reconciles the credit and releases existing allocations, but
+  retains posted receipts. Future dates schedule native posting without reducing
+  the invoice balance now. Fully allocated invoices retain the native
+  editable-credit-only restriction. Journal/period rules remain native.
+- No caller accounting context, arbitrary wizard writes or `sudo` is exposed.
+  Native ACLs/rules, balanced-ledger checks, deterministic connected-document
+  locks and post-lock version checks apply. Versions include existing reversal
+  history, reconciliation and relevant accounting configuration. A reused or
+  stale review cannot create another credit. Read-only preview persists no wizard.
+- The Qorlia modal requires separate preview/confirmation, invalidates an edited
+  review, prevents duplicate clicks and closing during saves, and uses read-only
+  recovery after uncertain replies. It explains that credit creation does not
+  refund money, return stock or cancel a sales order. Unnumbered drafts now have
+  distinct record-ID labels throughout Billing instead of multiple `/` labels.
+- All 73 native adapter tests pass with zero failures/errors/skips. The new
+  tests cover all native reversal modes, future/original-entry dates, retained
+  partial receipts, fully allocated restrictions, discount/rounding/foreign
+  currency, ordinary cashier and company/read-only boundaries, stale/invalid
+  reviews and unbalanced-source rejection. Home passes 113 tests in 14 suites,
+  gateway/webpack seven checks, types/lint/formatting/diff and development build.
+- Actual native HTTP tests created one draft credit and rejected a concurrent
+  duplicate. Full reversals, replacement drafts and a scheduled credit read
+  back correctly with balanced journals and no new payment. Hosted browser
+  INV/2026/00030 was first reviewed for future posting and closed: independent
+  reads proved no document, timestamp or persistent-wizard mutation. Its
+  explicitly confirmed immediate reversal then created RINV/2026/00014 (posted,
+  fully allocated) and replacement draft 1819 (INR 500), leaving the original
+  at INR 0. Independent native reads proved balance, no additional payment and
+  unrelated INV/2026/00022 unchanged at INR 400. Full reload retained history,
+  restrictions and the distinct replacement draft label.
+- Only isolated synthetic staging and the protected tester review changed.
+  Gate code/expiry, session boundaries and blocked raw financial routes remain
+  unchanged. Matching source and licenses are available with the review build;
+  tester secrets are absent. Production and the shared demo are unchanged.
+
+Editable invoice/credit draft corrections, statement matching, provider/check/
+PDC payments, printing, down payments, POS, stock/batch fulfillment and
+Clinical-to-ERP synchronization remain unfinished or unverified. This supersedes
+the credit-note creation/reversal gaps below, not full Billing or whole-product
+parity. The 100-credit/1,000-connected-line review limits require native Billing
+for larger cases, rather than silently truncating accounting evidence.
+
 ## 9 October reviewed invoice reset/cancellation checkpoint
 
 - Signed-in Billing now reviews invoice/credit-note reset to draft and draft

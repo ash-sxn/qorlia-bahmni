@@ -1,7 +1,7 @@
 import { Button, Modal } from '@bahmni/design-system';
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
-import { money } from './billingFormat';
+import { invoiceName, money } from './billingFormat';
 import styles from './BillingPage.module.scss';
 import {
   BillingSessionExpired,
@@ -166,7 +166,7 @@ export function OrderWorkflowModal({
               <ul>
                 {order.invoices.map((invoice) => (
                   <li key={invoice.id}>
-                    {invoice.name || 'Draft invoice'}: {invoice.state},{' '}
+                    {invoiceName(invoice)}: {invoice.state},{' '}
                     {money(invoice.total, invoice.currency[1])}
                   </li>
                 ))}

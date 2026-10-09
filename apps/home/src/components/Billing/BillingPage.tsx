@@ -13,7 +13,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HomePageHeader } from '../HomePageHeader';
-import { money } from './billingFormat';
+import { invoiceName, money } from './billingFormat';
 import styles from './BillingPage.module.scss';
 import {
   BillingSessionExpired,
@@ -29,12 +29,9 @@ import { CorrectionWorkflowModal } from './CorrectionWorkflowModal';
 import { CreditWorkflowModal } from './CreditWorkflowModal';
 import { InvoiceWorkflowModal } from './InvoiceWorkflowModal';
 import { PaymentWorkflowModal } from './PaymentWorkflowModal';
+import { ReversalWorkflowModal } from './ReversalWorkflowModal';
 
 const label = (value: string) => value.replaceAll('_', ' ');
-const invoiceName = (invoice: Invoice) =>
-  invoice.name ||
-  invoice.ref ||
-  (invoice.move_type === 'out_refund' ? 'Draft credit note' : 'Draft invoice');
 
 export function BillingPage() {
   const { userPrivileges, error: privilegeError } = useUserPrivilege();
@@ -52,6 +49,7 @@ export function BillingPage() {
   const [reviewInvoice, setReviewInvoice] = useState<number | null>(null);
   const [paymentInvoice, setPaymentInvoice] = useState<number | null>(null);
   const [creditInvoice, setCreditInvoice] = useState<number | null>(null);
+  const [reversalInvoice, setReversalInvoice] = useState<number | null>(null);
   const [correctionInvoice, setCorrectionInvoice] = useState<number | null>(
     null,
   );
@@ -477,6 +475,15 @@ export function BillingPage() {
                       >
                         Review invoice correction
                       </Button>
+                      {selected.move_type === 'out_invoice' &&
+                      selected.state === 'posted' ? (
+                        <Button
+                          kind="tertiary"
+                          onClick={() => setReversalInvoice(selected.id)}
+                        >
+                          Create credit note
+                        </Button>
+                      ) : null}
                       <Button
                         kind="tertiary"
                         onClick={() => setPaymentInvoice(selected.id)}
@@ -586,7 +593,7 @@ export function BillingPage() {
                   setReviewInvoice(null);
                   setSelected(null);
                   setInvoiceNotice(
-                    `${invoice.name || 'Invoice'} updated. Current status: ${invoice.state}. Open amount: ${money(invoice.open_amount, invoice.currency[1])}. No payment was recorded.`,
+                    `${invoiceName(invoice)} updated. Current status: ${invoice.state}. Open amount: ${money(invoice.open_amount, invoice.currency[1])}. No payment was recorded.`,
                   );
                   void queryClient.invalidateQueries({
                     predicate: (query) =>
@@ -612,7 +619,33 @@ export function BillingPage() {
                   setPaymentInvoice(null);
                   setSelected(null);
                   setInvoiceNotice(
-                    `${result.invoice.name || 'Invoice'} payment recorded. Native status: ${result.invoice.payment_state.replaceAll('_', ' ')}. Open amount: ${money(result.invoice.open_amount, result.invoice.currency[1])}. Check linked payments for the saved entry.`,
+                    `${invoiceName(result.invoice)} payment recorded. Native status: ${result.invoice.payment_state.replaceAll('_', ' ')}. Open amount: ${money(result.invoice.open_amount, result.invoice.currency[1])}. Check linked payments for the saved entry.`,
+                  );
+                  void queryClient.invalidateQueries({
+                    predicate: (query) =>
+                      query.queryKey[0] === 'billing' &&
+                      query.queryKey[1] !== 'session',
+                  });
+                }}
+              />
+            ) : null}
+            {reversalInvoice !== null ? (
+              <ReversalWorkflowModal
+                uid={session.data!.uid as number}
+                invoiceId={reversalInvoice}
+                close={() => setReversalInvoice(null)}
+                reconnect={() => {
+                  setReversalInvoice(null);
+                  setSelected(null);
+                  setInvoiceNotice('');
+                  queryClient.removeQueries({ queryKey: ['billing'] });
+                  void session.refetch();
+                }}
+                completed={(result) => {
+                  setReversalInvoice(null);
+                  setSelected(null);
+                  setInvoiceNotice(
+                    `${invoiceName(result.credits[0])} created. Status: ${result.credits[0].state}.${result.scheduled ? ` Scheduled for ${result.effective_date}; the invoice balance is not reduced now.` : ''}${result.replacements.length ? ` Replacement ${invoiceName(result.replacements[0])} is available.` : ''} No money was transferred.`,
                   );
                   void queryClient.invalidateQueries({
                     predicate: (query) =>
@@ -638,7 +671,7 @@ export function BillingPage() {
                   setCorrectionInvoice(null);
                   setSelected(null);
                   setInvoiceNotice(
-                    `${invoice.name || 'Invoice'} ${action === 'reset' ? 'reset to draft' : 'cancelled'}. Current status: ${invoice.state}. No money was transferred. Check allocations before reposting or payment.`,
+                    `${invoiceName(invoice)} ${action === 'reset' ? 'reset to draft' : 'cancelled'}. Current status: ${invoice.state}. No money was transferred. Check allocations before reposting or payment.`,
                   );
                   void queryClient.invalidateQueries({
                     predicate: (query) =>
@@ -664,7 +697,7 @@ export function BillingPage() {
                   setCreditInvoice(null);
                   setSelected(null);
                   setInvoiceNotice(
-                    `${invoice.name || 'Invoice'} allocation ${action === 'removed' ? 'removed' : 'saved'}. Native status: ${invoice.payment_state.replaceAll('_', ' ')}. Open amount: ${money(invoice.open_amount, invoice.currency[1])}. No new payment was created.`,
+                    `${invoiceName(invoice)} allocation ${action === 'removed' ? 'removed' : 'saved'}. Native status: ${invoice.payment_state.replaceAll('_', ' ')}. Open amount: ${money(invoice.open_amount, invoice.currency[1])}. No new payment was created.`,
                   );
                   void queryClient.invalidateQueries({
                     predicate: (query) =>

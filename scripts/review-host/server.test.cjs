@@ -83,6 +83,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
   }
   for (const method of ['qorlia_invoice_workflow_load', 'qorlia_invoice_workflow_post',
     'qorlia_correction_load', 'qorlia_correction_run',
+    'qorlia_reversal_load', 'qorlia_reversal_preview', 'qorlia_reversal_run',
     'qorlia_payment_load', 'qorlia_payment_preview', 'qorlia_payment_record', 'qorlia_credit_load', 'qorlia_credit_apply', 'qorlia_credit_remove']) {
     const path = `/web/dataset/call_kw/account.move/${method}`;
     const params = { model: 'account.move', method, args: [], kwargs: {} };
@@ -95,8 +96,8 @@ test('review gate protects UI, clinical API and named Billing actions with isola
   }
   for (const method of ['action_post', 'button_draft', 'button_cancel', 'write', 'unlink', 'js_assign_outstanding_line', 'js_remove_outstanding_partial'])
     assert.equal((await rpc(`/web/dataset/call_kw/account.move/${method}`, allCookies, { model: 'account.move', method })).status, 404);
-  for (const model of ['account.payment', 'account.payment.register'])
-    for (const method of ['create', 'write', 'action_post', 'action_create_payments', '_create_payments', 'unlink'])
+  for (const model of ['account.payment', 'account.payment.register', 'account.move.reversal'])
+    for (const method of ['create', 'write', 'action_post', 'action_create_payments', '_create_payments', 'reverse_moves', 'unlink'])
       assert.equal((await rpc(`/web/dataset/call_kw/${model}/${method}`, allCookies, { model, method })).status, 404);
   await request('/openmrs/ws/rest/v1/session', { headers: { Cookie: allCookies } });
   assert.equal(seenClinical, 'JSESSIONID=valid; reporting_session=report');

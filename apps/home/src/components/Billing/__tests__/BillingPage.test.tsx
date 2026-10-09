@@ -21,11 +21,18 @@ import {
   removeCreditWorkflow,
   getCorrectionWorkflow,
   runCorrectionWorkflow,
+  getReversalWorkflow,
+  previewReversalWorkflow,
+  runReversalWorkflow,
 } from '../billingService';
 import { correctionWorkflowFixture } from './correctionWorkflowFixture';
 import { creditWorkflowFixture } from './creditWorkflowFixture';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
 import { paymentWorkflowFixture } from './paymentWorkflowFixture';
+import {
+  reversalWorkflowFixture,
+  reversalResultFixture,
+} from './reversalWorkflowFixture';
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
@@ -45,6 +52,9 @@ jest.mock('../billingService', () => ({
   removeCreditWorkflow: jest.fn(),
   getCorrectionWorkflow: jest.fn(),
   runCorrectionWorkflow: jest.fn(),
+  getReversalWorkflow: jest.fn(),
+  previewReversalWorkflow: jest.fn(),
+  runReversalWorkflow: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({ useUserPrivilege: jest.fn() }));
 jest.mock('../../HomePageHeader', () => ({
@@ -189,14 +199,14 @@ describe('Billing workspace', () => {
     expect(screen.queryByText('₹500.00')).not.toBeInTheDocument();
     expect(screen.getAllByText('Not posted').length).toBeGreaterThan(0);
   });
-  it('shows a draft credit note with its reference when Odoo has not assigned a number', async () => {
+  it('distinguishes a draft credit note when Odoo has not assigned a number', async () => {
     (getInvoices as jest.Mock).mockResolvedValue([
       { ...invoice, name: false, move_type: 'out_refund' },
     ]);
     (getInvoiceLines as jest.Mock).mockResolvedValue([]);
     show();
     fireEvent.click(
-      await screen.findByRole('button', { name: 'View QORLIAQA-INVOICE' }),
+      await screen.findByRole('button', { name: 'View Draft credit note #7' }),
     );
     expect(screen.getByText('Unapplied credit')).toBeInTheDocument();
     expect(screen.getAllByText('Credit note').length).toBeGreaterThan(0);
@@ -324,6 +334,43 @@ describe('Billing workspace', () => {
       ),
     ).toBeInTheDocument();
     expect(getCorrectionWorkflow).toHaveBeenCalledWith(7);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Invoice details' }),
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(getInvoices).toHaveBeenCalledTimes(2));
+  });
+  it('creates a reviewed credit note from a posted invoice and refreshes the invoice list', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([
+      { ...invoice, state: 'posted' },
+    ]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    (getReversalWorkflow as jest.Mock).mockResolvedValue(
+      reversalWorkflowFixture(),
+    );
+    (previewReversalWorkflow as jest.Mock).mockResolvedValue(
+      reversalWorkflowFixture(),
+    );
+    (runReversalWorkflow as jest.Mock).mockResolvedValue(
+      reversalResultFixture(),
+    );
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Create credit note' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Review credit note' }),
+    );
+    expect(runReversalWorkflow).not.toHaveBeenCalled();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: /Confirm credit-note creation/,
+      }),
+    );
+    await screen.findByText(/created.*No money was transferred/);
+    expect(getReversalWorkflow).toHaveBeenCalledWith(7);
+    expect(runReversalWorkflow).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('region', { name: 'Invoice details' }),

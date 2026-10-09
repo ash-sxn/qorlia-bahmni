@@ -22,12 +22,19 @@ import {
   removeCreditWorkflow,
   getCorrectionWorkflow,
   runCorrectionWorkflow,
+  getReversalWorkflow,
+  previewReversalWorkflow,
+  runReversalWorkflow,
 } from '../billingService';
 import { correctionWorkflowFixture } from './correctionWorkflowFixture';
 import { creditWorkflowFixture } from './creditWorkflowFixture';
 import { draftFixture } from './draftFixture';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
 import { paymentWorkflowFixture } from './paymentWorkflowFixture';
+import {
+  reversalResultFixture,
+  reversalWorkflowFixture,
+} from './reversalWorkflowFixture';
 import { workflowFixture } from './workflowFixture';
 
 describe('billing API', () => {
@@ -67,6 +74,57 @@ describe('billing API', () => {
       args: [],
       kwargs: { invoice_id: 7, version: review.version, action: 'reset' },
     });
+  });
+  it('uses only named reversal actions with source and confirmation versions', async () => {
+    const review = reversalWorkflowFixture();
+    reply({ result: review });
+    expect(await getReversalWorkflow(7)).toEqual(review);
+    await previewReversalWorkflow(
+      review,
+      review.values as Exclude<typeof review.values, false>,
+    );
+    reply({ result: reversalResultFixture() });
+    expect(await runReversalWorkflow(review)).toEqual(reversalResultFixture());
+    const calls = (fetch as jest.Mock).mock.calls;
+    expect(calls[1][0]).toContain('/account.move/qorlia_reversal_preview');
+    expect(JSON.parse(calls[1][1].body).params.kwargs).toEqual({
+      invoice_id: 7,
+      source_version: review.source_version,
+      values: review.values,
+    });
+    expect(calls[2][0]).toContain('/account.move/qorlia_reversal_run');
+    expect(JSON.parse(calls[2][1].body).params.kwargs).toEqual({
+      invoice_id: 7,
+      version: review.version,
+      values: review.values,
+    });
+  });
+  it('rejects invalid reversal options, financial history and results', async () => {
+    const review = reversalWorkflowFixture();
+    for (const patch of [
+      { version: null },
+      { scheduled: 'yes' },
+      { journals: [[false, 'No']] },
+      { methods: [['delete', 'Delete']] },
+      { values: { ...(review.values as object), refund_method: 'delete' } },
+      { history: [false] },
+      { can_reverse: true, values: false },
+    ]) {
+      reply({ result: { ...review, ...patch } });
+      await expect(getReversalWorkflow(7)).rejects.toThrow();
+    }
+    reply({ result: { ...review, invoice: { ...review.invoice, id: 8 } } });
+    await expect(getReversalWorkflow(7)).rejects.toThrow('another invoice');
+    for (const patch of [
+      { credits: [] },
+      { credits: [false] },
+      { replacements: [review.invoice] },
+      { invoice: { ...review.invoice, id: 8 } },
+      { credits: [{ ...review.invoice, total: Infinity }] },
+    ]) {
+      reply({ result: { ...reversalResultFixture(), ...patch } });
+      await expect(runReversalWorkflow(review)).rejects.toThrow();
+    }
   });
   it('rejects malformed correction financial data and wrong-invoice reviews', async () => {
     const review = correctionWorkflowFixture();

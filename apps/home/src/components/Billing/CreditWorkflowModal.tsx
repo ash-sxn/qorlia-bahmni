@@ -1,7 +1,7 @@
 import { Button, Modal } from '@bahmni/design-system';
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
-import { money } from './billingFormat';
+import { invoiceName, money } from './billingFormat';
 import styles from './BillingPage.module.scss';
 import {
   applyCreditWorkflow,
@@ -107,7 +107,7 @@ export function CreditWorkflowModal({
         ) : review ? (
           <>
             <p className={styles.eyebrow}>NATIVE BILLING WORKFLOW</p>
-            <h2>{review.invoice.name || 'Invoice'}</h2>
+            <h2>{invoiceName(review.invoice)}</h2>
             <p>
               Customer: {review.invoice.customer || 'Not set'} · Company:{' '}
               {review.invoice.company}

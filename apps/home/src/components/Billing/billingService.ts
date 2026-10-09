@@ -587,6 +587,184 @@ export const runCorrectionWorkflow = async (
   return result;
 };
 
+export interface ReversalValues {
+  date_mode: 'custom' | 'entry';
+  date: string | false;
+  reason: string | false;
+  refund_method: 'refund' | 'cancel' | 'modify';
+  journal_id: number | false;
+}
+
+export interface ReversalWorkflow {
+  invoice: InvoiceWorkflow;
+  can_reverse: boolean;
+  reason: string | false;
+  values: ReversalValues | false;
+  source_version: string | false;
+  version: string | false;
+  journals: [number, string][];
+  methods: [ReversalValues['refund_method'], string][];
+  effective_date: string | false;
+  scheduled: boolean;
+  history: InvoiceWorkflow[];
+}
+
+export interface ReversalResult {
+  invoice: InvoiceWorkflow;
+  credits: InvoiceWorkflow[];
+  replacements: InvoiceWorkflow[];
+  scheduled: boolean;
+  effective_date: string;
+}
+
+const reversalCall = <T>(method: string, kwargs: object) =>
+  rpc<T>(`/web/dataset/call_kw/account.move/${method}`, {
+    model: 'account.move',
+    method,
+    args: [],
+    kwargs,
+  });
+
+function checkedReversal(value: ReversalWorkflow, invoiceId: number) {
+  const version = (input: unknown) =>
+    input === false ||
+    (typeof input === 'string' && /^[a-f0-9]{64}$/.test(input));
+  const text = (input: unknown) => input === false || typeof input === 'string';
+  if (
+    !value ||
+    typeof value.can_reverse !== 'boolean' ||
+    !text(value.reason) ||
+    !version(value.version) ||
+    !version(value.source_version) ||
+    !text(value.effective_date) ||
+    typeof value.scheduled !== 'boolean' ||
+    !Array.isArray(value.journals) ||
+    !value.journals.every((row) => Array.isArray(row) && validRelation(row)) ||
+    !Array.isArray(value.methods) ||
+    !value.methods.every(
+      (row) =>
+        Array.isArray(row) &&
+        row.length === 2 &&
+        ['refund', 'cancel', 'modify'].includes(row[0]) &&
+        typeof row[1] === 'string',
+    ) ||
+    !Array.isArray(value.history) ||
+    value.history.length > 100
+  )
+    throw new Error('Invalid credit-note review. Reload the current status.');
+  checkedInvoiceWorkflow(value.invoice);
+  if (value.invoice.id !== invoiceId)
+    throw new Error('The credit-note review belongs to another invoice.');
+  value.history.forEach(checkedInvoiceWorkflow);
+  if (
+    value.values !== false &&
+    (!value.values ||
+      !['custom', 'entry'].includes(value.values.date_mode) ||
+      !['refund', 'cancel', 'modify'].includes(value.values.refund_method) ||
+      !text(value.values.date) ||
+      !text(value.values.reason) ||
+      !(
+        value.values.journal_id === false ||
+        (Number.isInteger(value.values.journal_id) &&
+          value.values.journal_id > 0)
+      ))
+  )
+    throw new Error(
+      'Invalid native credit-note options. Reload the current status.',
+    );
+  if (
+    value.can_reverse &&
+    (!value.values ||
+      !value.version ||
+      !value.source_version ||
+      !value.effective_date ||
+      !value.journals.some(
+        ([id]) => value.values && id === value.values.journal_id,
+      ) ||
+      !value.methods.some(
+        ([method]) => value.values && method === value.values.refund_method,
+      ))
+  )
+    throw new Error('The credit-note review has no eligible native options.');
+  return value;
+}
+
+export const getReversalWorkflow = async (invoiceId: number) =>
+  checkedReversal(
+    await reversalCall<ReversalWorkflow>('qorlia_reversal_load', {
+      invoice_id: invoiceId,
+    }),
+    invoiceId,
+  );
+
+export const previewReversalWorkflow = async (
+  review: ReversalWorkflow,
+  values: ReversalValues,
+) =>
+  checkedReversal(
+    await reversalCall<ReversalWorkflow>('qorlia_reversal_preview', {
+      invoice_id: review.invoice.id,
+      source_version: review.source_version,
+      values,
+    }),
+    review.invoice.id,
+  );
+
+export const runReversalWorkflow = async (review: ReversalWorkflow) => {
+  const result = await reversalCall<ReversalResult>('qorlia_reversal_run', {
+    invoice_id: review.invoice.id,
+    version: review.version,
+    values: review.values,
+  });
+  if (
+    !result ||
+    !Array.isArray(result.credits) ||
+    result.credits.length !== 1 ||
+    !Array.isArray(result.replacements) ||
+    result.replacements.length !==
+      (review.values && review.values.refund_method === 'modify' ? 1 : 0) ||
+    typeof result.scheduled !== 'boolean' ||
+    typeof result.effective_date !== 'string'
+  )
+    throw new Error(
+      'Invalid credit-note result. Reload Billing before trying again.',
+    );
+  checkedInvoiceWorkflow(result.invoice);
+  result.credits.forEach(checkedInvoiceWorkflow);
+  result.replacements.forEach(checkedInvoiceWorkflow);
+  if (
+    result.invoice.id !== review.invoice.id ||
+    result.credits.some((move) => move.move_type !== 'out_refund') ||
+    result.replacements.some((move) => move.move_type !== 'out_invoice')
+  )
+    throw new Error(
+      'The credit-note result has unexpected documents. Reload Billing before trying again.',
+    );
+  const expectedState =
+    result.scheduled ||
+    (review.values && review.values.refund_method === 'refund')
+      ? 'draft'
+      : 'posted';
+  if (
+    result.scheduled !== review.scheduled ||
+    result.effective_date !== review.effective_date ||
+    !result.invoice.ledger_balanced ||
+    result.credits.some(
+      (move) =>
+        move.id === review.invoice.id ||
+        move.state !== expectedState ||
+        !move.ledger_balanced,
+    ) ||
+    result.replacements.some(
+      (move) => move.state !== 'draft' || !move.ledger_balanced,
+    )
+  )
+    throw new Error(
+      'The saved credit-note status differs from the review. Reload Billing before trying again.',
+    );
+  return result;
+};
+
 export interface CreditWorkflow {
   invoice: InvoiceWorkflow;
   version: string;

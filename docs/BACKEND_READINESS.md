@@ -1,5 +1,40 @@
 # Qorlia React frontend backend readiness
 
+## Latest reviewed credit-note creation/reversal verification (9 October 2026)
+
+Named adapter load/preview/run methods now delegate to the pinned native
+`account.move.reversal` wizard. Editable draft credits, immediate full reversal,
+replacement drafts and future scheduled posting preserve native accounting
+behavior. Fully allocated invoices retain editable credit creation only.
+ACLs/rules, current versions, connected move/line/partial locks, period/journal
+rules and balanced-ledger checks remain enforced without `sudo` or caller context.
+Existing credit history is versioned so even draft-credit creation invalidates
+the previous review. Preview creates no persistent wizard or financial record.
+
+React uses the existing design system, separate preview/confirmation, edit
+invalidation, duplicate-click protection and read-only recovery after ambiguous
+responses. Date consequences are explicit, and unissued native `/` names are
+replaced with distinct draft record-ID labels across Billing. No cash refund,
+stock return or sales-order cancellation is implied by a reversal.
+
+All 73 native adapter tests pass without failures/errors/skips, Home 113 tests
+in 14 suites and gateway/webpack seven checks. Types/lint/formatting/diff and
+development build pass with existing bundle/browser-data warnings. Native HTTP
+concurrent credit creation produced one success and one rejection. Full and
+scheduled modes read back correctly, with balanced journals and no new payments.
+Hosted browser INV/2026/00030 future preview/close changed no document/wizard;
+immediate full reversal then created posted RINV/2026/00014 and INR 500 replacement
+draft 1819. Independent reads verified original/credit residuals at zero, balanced
+journals, no new payments and unrelated INV/2026/00022 still INR 400. Full reload
+retained native history, action restrictions and draft identity.
+
+The existing protected tester gate, expiry and native session boundaries remain.
+Raw wizard/reversal/create/write/delete methods stay blocked. The review source
+archive matches and retains license/notice files without tester credentials.
+Production and the shared demo are unchanged. Editable draft corrections,
+statements, provider/check/PDC payments, printing, down payments, POS, stock/batch
+acceptance and Clinical-to-ERP synchronization remain separate unfinished gates.
+
 ## Latest reviewed invoice correction verification (9 October 2026)
 
 The React Billing workspace now uses named review/run adapter methods for

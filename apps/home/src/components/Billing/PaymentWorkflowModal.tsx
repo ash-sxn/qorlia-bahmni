@@ -1,7 +1,7 @@
 import { Button, Modal, TextInput } from '@bahmni/design-system';
 import { useQuery } from '@tanstack/react-query';
 import { FormEvent, useRef, useState } from 'react';
-import { money } from './billingFormat';
+import { invoiceName, money } from './billingFormat';
 import styles from './BillingPage.module.scss';
 import {
   BillingSessionExpired,
@@ -189,7 +189,7 @@ export function PaymentWorkflowModal({
         ) : payment ? (
           <>
             <p className={styles.eyebrow}>NATIVE BILLING WORKFLOW</p>
-            <h2>{payment.invoice.name || 'Invoice'}</h2>
+            <h2>{invoiceName(payment.invoice)}</h2>
             <p>Customer: {payment.invoice.customer || 'Not set'}</p>
             <p>Company: {payment.invoice.company}</p>
             <p>

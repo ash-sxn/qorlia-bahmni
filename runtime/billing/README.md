@@ -121,7 +121,35 @@ period checks are not bypassed. Reviews above 1,000 connected journal lines or
 The React UI requires a separate review/confirmation, shows reset consequences
 and current allocations, and never retries uncertain writes. Reset/cancel does
 not issue a refund, transfer money, return stock or cancel a sales order.
-Credit-note creation/reversal and editable draft corrections remain unfinished.
+Editable draft corrections remain unfinished.
+
+## Reviewed credit-note creation and reversal
+
+The named `qorlia_reversal_load`, `qorlia_reversal_preview` and
+`qorlia_reversal_run` methods use the pinned native `account.move.reversal`
+wizard and `reverse_moves`. An editable credit stays in draft. Full reversal
+posts/reconciles the credit with the original invoice and releases prior
+allocations, retaining posted receipts. The replacement option also copies a
+separate draft invoice. A future date schedules native posting and does not
+reduce the original invoice balance now. Original-entry date mode uses the
+native journal date. Accounting period rules can adjust the journal entry date
+when posting. Fully allocated invoices retain the native editable-credit-only
+choice. This workflow does not move/refund cash, return stock or cancel orders.
+
+Load/preview persist no wizard or financial record. Native access controls and
+company rules apply without `sudo` or caller context. Journal eligibility,
+balances, invoice and connected reconciliation state, previous credit notes and
+relevant company/tax/account/currency/payment-term configuration are reviewed.
+Deterministic move/line/partial locks and a fresh post-lock snapshot reject stale
+or repeated confirmations, including concurrent creation of an editable credit.
+Native creation and all affected ledgers are checked before returning success.
+
+The React form requires an explicit preview, clears it on edits, prevents
+duplicate saves/closing during writes and requires read-back after uncertain
+responses. Drafts have distinct record-ID labels until Odoo assigns a number.
+More than 100 linked credits or 1,000 connected journal lines requires native
+Billing review, rather than truncated evidence. Partial credit editing and
+replacement draft editing are separate unfinished workflows.
 
 ## Verification and scope
 
@@ -144,11 +172,17 @@ journals, locked periods, cashier/read-only/company boundaries, stale/repeated
 requests and unbalanced-ledger rejection. HTTP and hosted browser checks verify
 state read-back, retained receipts, no automatic reallocation and duplicate
 request rejection on isolated synthetic records.
+Credit-creation tests cover all native reversal choices, future/original-entry
+dates, retained partially allocated receipts, fully allocated restrictions,
+discount/rounding and foreign currency, cashier/read-only/company boundaries,
+stale/invalid reviews and unbalanced sources. HTTP concurrency creates one
+credit and rejects the duplicate. Hosted browser tests verify read-only preview,
+posted reversal, replacement draft, balanced journals, no new payment and reload.
 Tests require an isolated company with a chart, shop and synthetic data.
 
 Provider/check/PDC payments, statement reconciliation,
 partial/down-payment invoice allocation, stock/batch acceptance, POS, printouts
-and Clinical-to-ERP synchronization still
-require integration and end-to-end acceptance. Native reversal tests are not
-proof of a React credit-note creation workflow. Do not use this review
-build for real patients or accounting.
+and Clinical-to-ERP synchronization still require integration and end-to-end
+acceptance. Editable invoice/credit draft corrections remain unfinished.
+Selected native and browser checks are not full Billing acceptance. Do not use
+this review build for real patients or accounting.

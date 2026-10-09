@@ -80,6 +80,7 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
       ...['load', 'run'].map((action) => `/web/dataset/call_kw/sale.order/qorlia_order_workflow_${action}`),
       ...['load', 'post'].map((action) => `/web/dataset/call_kw/account.move/qorlia_invoice_workflow_${action}`),
       ...['load', 'run'].map((action) => `/web/dataset/call_kw/account.move/qorlia_correction_${action}`),
+      ...['load', 'preview', 'run'].map((action) => `/web/dataset/call_kw/account.move/qorlia_reversal_${action}`),
       ...['load', 'preview', 'record'].map((action) => `/web/dataset/call_kw/account.move/qorlia_payment_${action}`),
       ...['load', 'apply', 'remove'].map((action) => `/web/dataset/call_kw/account.move/qorlia_credit_${action}`)]);
     if (req.method !== 'POST' || !allowed.has(req.path)) return res.sendStatus(404);

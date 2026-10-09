@@ -1,7 +1,7 @@
 import { Button, Modal } from '@bahmni/design-system';
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
-import { money } from './billingFormat';
+import { invoiceName, money } from './billingFormat';
 import styles from './BillingPage.module.scss';
 import {
   BillingSessionExpired,
@@ -100,12 +100,7 @@ export function InvoiceWorkflowModal({
         ) : invoice ? (
           <>
             <p className={styles.eyebrow}>NATIVE BILLING WORKFLOW</p>
-            <h2>
-              {invoice.name ||
-                (invoice.move_type === 'out_refund'
-                  ? 'Draft credit note'
-                  : 'Draft invoice')}
-            </h2>
+            <h2>{invoiceName(invoice)}</h2>
             <p>Customer: {invoice.customer || 'Not set'}</p>
             <p>
               Company: {invoice.company} · Journal: {invoice.journal}
