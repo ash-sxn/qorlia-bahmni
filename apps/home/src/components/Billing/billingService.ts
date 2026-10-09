@@ -515,6 +515,7 @@ export interface OrderWorkflow {
   can_confirm: boolean;
   can_invoice: boolean;
   can_advance: boolean;
+  has_down_payments: boolean;
   automation: { delivery: boolean; invoice: boolean; legacy_delivery: boolean };
   invoices: {
     id: number;
@@ -542,6 +543,7 @@ function checkedWorkflow(value: OrderWorkflow): OrderWorkflow {
     typeof value.can_confirm !== 'boolean' ||
     typeof value.can_invoice !== 'boolean' ||
     typeof value.can_advance !== 'boolean' ||
+    typeof value.has_down_payments !== 'boolean' ||
     !value.automation ||
     !['delivery', 'invoice', 'legacy_delivery'].every(
       (key) =>
@@ -584,12 +586,16 @@ export const getOrderWorkflow = async (orderId: number) =>
 export const runOrderWorkflow = async (
   order: OrderWorkflow,
   action: 'confirm' | 'invoice',
+  deductDownPayments = true,
 ) =>
   checkedWorkflow(
     await draftCall<OrderWorkflow>('qorlia_order_workflow_run', {
       order_id: order.id,
       version: order.version,
       action,
+      ...(action === 'invoice'
+        ? { deduct_down_payments: deductDownPayments }
+        : {}),
     }),
   );
 

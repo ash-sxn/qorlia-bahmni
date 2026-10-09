@@ -27,6 +27,7 @@ export function OrderWorkflowModal({
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Error | null>(null);
   const [advance, setAdvance] = useState(false);
+  const [deductDownPayments, setDeductDownPayments] = useState(true);
   const busyRef = useRef(false);
   const current = useQuery({
     queryKey: ['billing', 'order-workflow', uid, orderId],
@@ -52,7 +53,10 @@ export function OrderWorkflowModal({
     busyRef.current = true;
     setBusy(true);
     try {
-      const result = await runOrderWorkflow(order, action);
+      const result =
+        action === 'invoice'
+          ? await runOrderWorkflow(order, action, deductDownPayments)
+          : await runOrderWorkflow(order, action);
       completed(result);
     } catch (error) {
       setFailure(
@@ -147,9 +151,28 @@ export function OrderWorkflowModal({
               <>
                 <p>
                   Create a regular invoice using native ordered or delivered
-                  quantities. Existing down payments are deducted by Billing.
-                  Negative balances may produce a credit note.
+                  quantities.
                 </p>
+                {order.has_down_payments ? (
+                  <>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={deductDownPayments}
+                        disabled={busy || !!failure}
+                        onChange={(event) =>
+                          setDeductDownPayments(event.target.checked)
+                        }
+                      />{' '}
+                      Deduct down payments
+                    </label>
+                    <p role={deductDownPayments ? undefined : 'alert'}>
+                      {deductDownPayments
+                        ? 'Billing deducts previously invoiced advances. A negative final balance may produce a credit note.'
+                        : 'Previously invoiced advances will not be deducted. This invoice can charge the full invoiceable amount again. Review the existing advances before continuing.'}
+                    </p>
+                  </>
+                ) : null}
                 <p>
                   {order.automation.invoice
                     ? 'Automatic posting is enabled. The native workflow will post the invoice.'
@@ -228,7 +251,10 @@ export function OrderWorkflowModal({
             disabled={busy || current.isFetching}
             onClick={async () => {
               const refreshed = await current.refetch();
-              if (!refreshed.isError && refreshed.data) setFailure(null);
+              if (!refreshed.isError && refreshed.data) {
+                setFailure(null);
+                setDeductDownPayments(true);
+              }
             }}
           >
             Reload current status

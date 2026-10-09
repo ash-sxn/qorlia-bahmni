@@ -1,5 +1,50 @@
 # Qorlia React frontend backend readiness
 
+## Regular invoice advance deduction: protected acceptance (10 October 2026)
+
+Protected browser saves explicitly exercise both native choices: INR 300 when
+deducting an existing INR 200 advance from an INR 500 order, and INR 500 when the
+user opts out. Full reload/reopen preserves both linked regular invoices and the
+original advances. Independent native reads confirm exactly two linked invoices
+per order, balanced entries, unpaid state, unchanged payment/stock counts and
+unchanged protected financial documents. Reload verification performs no writes.
+
+The 83 hosted JS/CSS chunks and secret-free source/LICENSE/NOTICE archive match
+the accepted build. Existing tester link/code/expiry, clinical-session gate, secure
+cookies, robots exclusion and blocked raw mutation/mail/report routes are unchanged.
+Source was packaged before this final browser acceptance note. Home 206 tests and
+native 157 tests cover this checkpoint; types, lint, gateway checks and build pass.
+
+Fault-injected browser uncertain-save recovery, first-use advance account/tax
+selection and attachment upload/save/reload remain separate pending proofs.
+Complete Billing, clinical and separate-product parity are not established.
+Production and the shared public demo remain untouched.
+
+## Regular invoice advance deduction: native and HTTP acceptance (10 October 2026)
+
+Order snapshots expose native down-payment presence and bind it into their status
+version. The house action modal offers the native deduction checkbox, checked by
+default, with a full-invoice warning when unchecked. Regular invoice calls send an
+explicit boolean; omitted values preserve the native true default. Invalid coercions
+are rejected before writes. Existing status locks, native ACLs and no-auto-retry
+handling remain in place. Reloading current status resets the checked default.
+
+The first actual HTTP test rolled back because the installed Bahmni copy of
+`_create_invoices` tried to repost an existing posted advance. The adapter now skips
+only that pinned copy, retains Odoo creation and Bahmni dynamic preparation hooks,
+and posts newly returned draft moves under the original caller. Tests verify that
+previous draft/posted advances remain unchanged. Upstream upgrades must revalidate
+this targeted override, including the existing discount, rounding and stock tests.
+
+Installed native code passes 157 tests without failures/errors/skips; Home passes
+206 tests in 26 suites. Types, lint, seven gateway/webpack checks and development
+build pass. Real HTTP regular invoices total INR 300 with deduction and INR 500
+without, against synthetic INR 500 orders and INR 200 posted advances. Configured
+automatic posting occurs, entries balance, stale replay and non-boolean inputs
+are rejected, and payment/stock/protected financial records stay unchanged.
+Protected build/browser acceptance remains pending. This is not full Billing or
+whole-product parity, and production/public demo deployments remain untouched.
+
 ## Advance invoices: protected browser acceptance (10 October 2026)
 
 The protected build shows percentage and fixed reviews in the house modal.

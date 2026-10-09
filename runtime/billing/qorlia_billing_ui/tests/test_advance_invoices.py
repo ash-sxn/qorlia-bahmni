@@ -230,3 +230,68 @@ class AdvanceInvoiceTest(TransactionCase):
         self.assertTrue(final.company_id.currency_id.is_zero(sum(final.line_ids.mapped('balance'))))
         self.assertEqual(len(result['invoices']), 2)
         self.assertFalse(final._get_reconciled_payments())
+
+    def test_regular_invoice_can_leave_advance_undeducted_then_settle_it_natively(self):
+        order = self.order()
+        self.assertFalse(self.orders.qorlia_order_workflow_load(order.id)['has_down_payments'])
+        review, key, saved = self.save(order)
+        advance = self.env['account.move'].browse(saved['invoice']['id'])
+        advance.action_post()
+        workflow = self.orders.qorlia_order_workflow_load(order.id)
+        self.assertTrue(workflow['has_down_payments'])
+        payments = self.env['account.payment'].search_count([])
+        pickings = self.env['stock.picking'].search_count([])
+        result = self.orders.qorlia_order_workflow_run(order.id, workflow['version'], 'invoice', False)
+        regular = order.invoice_ids - advance
+        self.assertEqual(len(regular), 1)
+        self.assertEqual(regular.invoice_total, 500)
+        self.assertEqual(regular.state, 'draft')
+        self.assertFalse(regular.invoice_line_ids.sale_line_ids.filtered('is_downpayment'))
+        self.assertTrue(regular.currency_id.is_zero(sum(regular.line_ids.mapped('balance'))))
+        with self.assertRaises(UserError), self.env.cr.savepoint():
+            self.orders.qorlia_order_workflow_run(order.id, workflow['version'], 'invoice', True)
+        self.assertEqual(len(order.invoice_ids), 2)
+        self.orders.qorlia_order_workflow_run(order.id, result['version'], 'invoice', True)
+        refund = order.invoice_ids - advance - regular
+        self.assertEqual(len(refund), 1)
+        self.assertEqual(refund.move_type, 'out_refund')
+        self.assertEqual(refund.invoice_total, 250)
+        self.assertTrue(refund.currency_id.is_zero(sum(refund.line_ids.mapped('balance'))))
+        self.assertEqual(self.env['account.payment'].search_count([]), payments)
+        self.assertEqual(self.env['stock.picking'].search_count([]), pickings)
+
+    def test_regular_invoice_deduction_rejects_coerced_values_without_writes(self):
+        order = self.order()
+        workflow = self.orders.qorlia_order_workflow_load(order.id)
+        counts = {name: self.env[name].search_count([]) for name in ('account.move', 'sale.advance.payment.inv')}
+        for invalid in (None, 0, 1, 'false', 'true', [], {}):
+            with self.assertRaises(ValidationError), self.env.cr.savepoint():
+                self.orders.qorlia_order_workflow_run(order.id, workflow['version'], 'invoice', invalid)
+        for name, count in counts.items():
+            self.assertEqual(self.env[name].search_count([]), count)
+        self.assertFalse(order.invoice_ids)
+
+    def test_automatic_posting_only_posts_new_regular_invoice_not_existing_advances(self):
+        for deduct in (True, False):
+            self.env['ir.config_parameter'].set_param('bahmni_sale.is_invoice_automated', False)
+            order = self.order()
+            review, key, saved = self.save(order)
+            posted = self.env['account.move'].browse(saved['invoice']['id'])
+            posted.action_post()
+            posted_stamp = posted.write_date
+            other_review, other_key, other_saved = self.save(order, self.values(advance_payment_method='fixed', fixed_amount=10))
+            draft = self.env['account.move'].browse(other_saved['invoice']['id'])
+            draft_stamp = draft.write_date
+            self.env['ir.config_parameter'].set_param('bahmni_sale.is_invoice_automated', True)
+            workflow = self.orders.qorlia_order_workflow_load(order.id)
+            self.orders.qorlia_order_workflow_run(order.id, workflow['version'], 'invoice', deduct)
+            new = order.invoice_ids - posted - draft
+            self.assertEqual(len(new), 1)
+            self.assertEqual(new.state, 'posted')
+            self.assertEqual(new.invoice_total, 240 if deduct else 500)
+            self.assertTrue(new.currency_id.is_zero(sum(new.line_ids.mapped('balance'))))
+            self.assertEqual(posted.state, 'posted')
+            self.assertEqual(posted.write_date, posted_stamp)
+            self.assertEqual(draft.state, 'draft')
+            self.assertEqual(draft.write_date, draft_stamp)
+            self.assertFalse(new._get_reconciled_payments())

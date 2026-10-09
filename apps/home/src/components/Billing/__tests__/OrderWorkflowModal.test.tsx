@@ -148,8 +148,77 @@ describe('Native order action review', () => {
       expect(runOrderWorkflow).toHaveBeenCalledWith(
         expect.objectContaining({ state: 'sale' }),
         'invoice',
+        true,
       ),
     );
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+  it('defaults to native advance deduction and submits the explicit unchecked choice', async () => {
+    (getOrderWorkflow as jest.Mock).mockResolvedValue(
+      workflowFixture({
+        state: 'sale',
+        can_confirm: false,
+        can_invoice: true,
+        has_down_payments: true,
+      }),
+    );
+    let resolve!: (value: ReturnType<typeof workflowFixture>) => void;
+    (runOrderWorkflow as jest.Mock).mockReturnValue(
+      new Promise((r) => {
+        resolve = r;
+      }),
+    );
+    show();
+    const choice = await screen.findByRole('checkbox', {
+      name: 'Deduct down payments',
+    });
+    expect(choice).toBeChecked();
+    expect(runOrderWorkflow).not.toHaveBeenCalled();
+    fireEvent.click(choice);
+    expect(choice).not.toBeChecked();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'can charge the full invoiceable amount again',
+    );
+    const save = screen.getByRole('button', { name: 'Create regular invoice' });
+    fireEvent.click(save);
+    fireEvent.click(save);
+    expect(runOrderWorkflow).toHaveBeenCalledTimes(1);
+    expect(runOrderWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({ has_down_payments: true }),
+      'invoice',
+      false,
+    );
+    expect(choice).toBeDisabled();
+    await act(async () => resolve(workflowFixture({ state: 'sale' })));
+  });
+  it('requires a fresh status read after an uncertain regular-invoice result and resets deduction safely', async () => {
+    (getOrderWorkflow as jest.Mock).mockResolvedValue(
+      workflowFixture({
+        state: 'sale',
+        can_confirm: false,
+        can_invoice: true,
+        has_down_payments: true,
+      }),
+    );
+    (runOrderWorkflow as jest.Mock).mockRejectedValue(
+      new Error('Response unavailable'),
+    );
+    show();
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'Deduct down payments' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Create regular invoice' }),
+    );
+    await screen.findByText('Response unavailable');
+    expect(screen.getByRole('checkbox')).toBeDisabled();
+    expect(runOrderWorkflow).toHaveBeenCalledTimes(1);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reload current status' }),
+    );
+    await waitFor(() => expect(screen.getByRole('checkbox')).toBeEnabled());
+    expect(screen.getByRole('checkbox')).toBeChecked();
+    expect(runOrderWorkflow).toHaveBeenCalledTimes(1);
   });
   it('distinguishes failed reads and expired sessions from orders without available actions', async () => {
     (getOrderWorkflow as jest.Mock).mockRejectedValueOnce(

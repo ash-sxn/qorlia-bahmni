@@ -286,6 +286,8 @@ describe('billing API', () => {
   it('rejects malformed workflow eligibility, automation and financial responses', async () => {
     for (const broken of [
       { can_confirm: 'yes' },
+      { has_down_payments: 1 },
+      { has_down_payments: undefined },
       { version: 'old' },
       { automation: {} },
       { amount_total: Infinity },
@@ -296,6 +298,23 @@ describe('billing API', () => {
       await expect(getOrderWorkflow(18)).rejects.toThrow(
         'Invalid order status response',
       );
+    }
+  });
+  it('sends the selected native deduction boolean only for regular invoices', async () => {
+    const workflow = workflowFixture({
+      state: 'sale',
+      has_down_payments: true,
+    });
+    for (const choice of [true, false]) {
+      reply({ result: workflow });
+      await runOrderWorkflow(workflow, 'invoice', choice);
+      const options = (fetch as jest.Mock).mock.calls.at(-1)[1];
+      expect(JSON.parse(options.body).params.kwargs).toEqual({
+        order_id: 18,
+        version: workflow.version,
+        action: 'invoice',
+        deduct_down_payments: choice,
+      });
     }
   });
   it('uses the native ERP session without storing credentials', async () => {

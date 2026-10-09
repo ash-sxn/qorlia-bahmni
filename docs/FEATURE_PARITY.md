@@ -1,5 +1,49 @@
 # Bahmni workflow parity ledger
 
+## 10 October regular-invoice deduction protected acceptance
+
+- Explicit protected browser saves produced INR 300 with deduction enabled and
+  INR 500 with it disabled, each against an INR 500 synthetic order with an
+  existing INR 200 posted advance. Full reload/reopen retains both results.
+- Independent native reads confirm exactly two linked invoices per order,
+  balanced journal entries and unpaid invoices. Payment/stock counts and protected
+  existing financial documents remain unchanged. No further invoice was created
+  during reload verification.
+- All 83 hosted JS/CSS chunks and the secret-free source/LICENSE/NOTICE archive
+  match the accepted build. Tester gate, clinical session, secure cookies, robots
+  exclusion and raw mutation/mail/report denial remain intact. The archive was
+  packaged before this final browser acceptance note.
+- Home 206 tests and native 157 tests cover this checkpoint. Fault-injected
+  browser uncertain-save recovery, first-use advance account/tax selection and
+  attachment upload/save/reload still require browser acceptance. Full Billing,
+  clinical and separate-product parity remain incomplete. Production and the
+  shared public demo have not received the redesign.
+
+## 10 October regular-invoice advance deduction checkpoint
+
+- Orders with native down-payment lines now show the native deduction checkbox,
+  checked by default. Unchecking explicitly warns that the new invoice can charge
+  the full invoiceable amount again. Failed/uncertain saves freeze the selection
+  until a successful explicit status read resets the safe default. No automatic
+  financial write retry is introduced.
+- The adapter passes only a strict boolean to the native regular-invoice wizard.
+  Odoo still selects invoiceable ordered/delivered quantities and handles negative
+  final balances as credit notes. Existing callers retain default deduction.
+- Actual HTTP testing exposed the installed Bahmni invoice-creation copy reposting
+  every linked invoice, failing on an already-posted advance. A targeted pinned
+  override retains Odoo creation and Bahmni preparation hooks, but posts only new
+  drafts under the caller's identity. Existing draft/posted advances stay untouched.
+  Revalidate this override before changing upstream module versions.
+- Home 206 tests/26 suites, native 157 tests (zero failures/errors/skips), types,
+  lint, seven gateway/webpack checks and the development build pass. Native tests
+  cover opted-out full invoicing, later advance credit-note settlement, strict input,
+  stale versions and automated posting with existing draft/posted advances.
+- Actual HTTP saves persist balanced invoices of INR 300 (deduction enabled) and
+  INR 500 (disabled) against INR 500 orders with INR 200 advances. Configured native
+  automatic posting is retained. Stale replay is rejected; payments, stock and
+  protected documents are unchanged. Protected release/browser acceptance is
+  pending separately. Production/public demo and full-product completion unchanged.
+
 ## 10 October advance invoice protected browser checkpoint
 
 - Protected browser calculation shows 40 percent of INR 500 as INR 200 and
