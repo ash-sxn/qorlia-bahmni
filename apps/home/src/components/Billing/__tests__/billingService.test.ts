@@ -302,6 +302,26 @@ describe('billing API', () => {
       'Invalid billing choices',
     );
   });
+  it('accepts native unset currency only for an empty zero-value draft', async () => {
+    const empty = {
+      ...draftFixture(),
+      lines: [],
+      labels: {},
+      totals: {
+        amount_untaxed: 0,
+        amount_tax: 0,
+        amount_total: 0,
+        round_off_amount: 0,
+        currency_id: false,
+      },
+    };
+    reply({ result: empty });
+    expect(await getBillingDraft()).toEqual(empty);
+    reply({
+      result: { ...empty, totals: { ...empty.totals, amount_total: 500 } },
+    });
+    await expect(getBillingDraft()).rejects.toThrow('Invalid draft response');
+  });
   it('shows native safe validation messages but never private tracebacks', async () => {
     reply({
       error: {

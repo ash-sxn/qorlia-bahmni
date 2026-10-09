@@ -7,6 +7,7 @@ import {
   within,
 } from '@testing-library/react';
 import {
+  BillingDraft,
   BillingSessionExpired,
   ChargeOrder,
   getChargeOrderLines,
@@ -20,6 +21,13 @@ jest.mock('../billingService', () => ({
   getChargeOrders: jest.fn(),
   getChargeOrderLines: jest.fn(),
   getInvoices: jest.fn(),
+}));
+jest.mock('../DraftOrderEditor', () => ({
+  DraftOrderEditor: ({ saved }: { saved: (draft: BillingDraft) => void }) => (
+    <button onClick={() => saved({ name: 'QORLIAQA-SAVED' } as BillingDraft)}>
+      Test save draft
+    </button>
+  ),
 }));
 const order: ChargeOrder = {
   id: 9,
@@ -64,13 +72,13 @@ const line = {
 };
 const openInvoice = jest.fn();
 const reconnect = jest.fn();
-const show = () =>
+const show = (
+  client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  }),
+) =>
   render(
-    <QueryClientProvider
-      client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      }
-    >
+    <QueryClientProvider client={client}>
       <ChargeOrdersPanel
         uid={3}
         openInvoice={openInvoice}
@@ -240,5 +248,32 @@ describe('Charge orders workspace', () => {
       screen.queryByRole('region', { name: 'Charge order details' }),
     ).not.toBeInTheDocument();
     await waitFor(() => expect(getChargeOrders).toHaveBeenCalledTimes(2));
+  });
+  it('refreshes saved drafts without invalidating the login or losing the save notice', async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    client.setQueryData(['billing', 'session'], { uid: 3 });
+    client.setQueryData(['billing', 'draft', 3, 9], { name: 'QORLIAQA-ORDER' });
+    client.setQueryData(['billing', 'charge-lines', 3, 9], [line]);
+    show(client);
+    await screen.findByRole('button', { name: 'View order QORLIAQA-ORDER' });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'New draft quotation' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Test save draft' }));
+    expect(
+      await screen.findByText('QORLIAQA-SAVED saved as a draft quotation.'),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(getChargeOrders).toHaveBeenCalledTimes(2));
+    expect(client.getQueryState(['billing', 'session'])?.isInvalidated).toBe(
+      false,
+    );
+    expect(
+      client.getQueryState(['billing', 'draft', 3, 9])?.isInvalidated,
+    ).toBe(true);
+    expect(
+      client.getQueryState(['billing', 'charge-lines', 3, 9])?.isInvalidated,
+    ).toBe(true);
   });
 });

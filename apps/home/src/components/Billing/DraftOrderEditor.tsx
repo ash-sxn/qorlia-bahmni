@@ -85,7 +85,9 @@ function DraftForm({
   }, [dirty]);
   const label = (model: string, id: number | false) =>
     id ? draft.labels[`${model}:${id}`] : '';
-  const currency = draft.labels[`res.currency:${draft.totals.currency_id}`];
+  const currency = draft.totals.currency_id
+    ? draft.labels[`res.currency:${draft.totals.currency_id}`]
+    : 'Currency not set';
   const edited = (next: BillingDraft, change: Change) => {
     setDraft(next);
     setDirty(true);
@@ -577,7 +579,12 @@ function DraftForm({
             onChange={(event) => header('note', event.target.value)}
             onBlur={blur}
           />
-          {pendingChange ? (
+          {!draft.totals.currency_id ? (
+            <p>
+              Select a customer and shop to calculate amounts in their pricelist
+              currency.
+            </p>
+          ) : pendingChange ? (
             <p role="status">Totals need recalculation before saving.</p>
           ) : (
             <dl className={styles.totals}>

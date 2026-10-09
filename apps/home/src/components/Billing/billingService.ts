@@ -190,7 +190,7 @@ export interface BillingDraft {
     amount_tax: number;
     amount_total: number;
     round_off_amount: number;
-    currency_id: number;
+    currency_id: number | false;
   };
   labels: Record<string, string>;
   warning: { title?: string; message: string } | false;
@@ -310,11 +310,18 @@ function checkedDraft(value: BillingDraft): BillingDraft {
       value.totals.amount_total,
       value.totals.round_off_amount,
     ].every(Number.isFinite) ||
-    !Number.isInteger(value.totals.currency_id) ||
-    value.totals.currency_id <= 0 ||
+    !validId(value.totals.currency_id) ||
     !value.labels ||
     typeof value.labels !== 'object' ||
-    !value.labels[`res.currency:${value.totals.currency_id}`] ||
+    (value.totals.currency_id &&
+      !value.labels[`res.currency:${value.totals.currency_id}`]) ||
+    (!value.totals.currency_id &&
+      [
+        value.totals.amount_untaxed,
+        value.totals.amount_tax,
+        value.totals.amount_total,
+        value.totals.round_off_amount,
+      ].some((amount) => amount !== 0)) ||
     !Object.values(value.labels).every((label) => typeof label === 'string') ||
     !(
       value.warning === false ||

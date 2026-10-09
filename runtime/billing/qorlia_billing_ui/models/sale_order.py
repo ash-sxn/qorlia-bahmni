@@ -94,6 +94,7 @@ class SaleOrder(models.Model):
             for name in names:
                 if record._fields[name].type in ('many2one', 'many2many'):
                     for relation in record[name]:
+                        relation = relation._origin or relation
                         relation.check_access_rights('read')
                         relation.check_access_rule('read')
                         labels['%s:%s' % (relation._name, relation.id)] = relation.display_name
@@ -189,7 +190,12 @@ class SaleOrder(models.Model):
             seen.add(line_id) if line_id else None
             item = self._qorlia_values(self.env['sale.order.line'], line.get('values'), ITEMS)
             if line_id:
-                commands.append((1, line_id, item))
+                if operation == 'write':
+                    previous = self._qorlia_read_fields(origin.order_line.browse(line_id), ITEMS)
+                    item = {name: value for name, value in item.items()
+                            if line['values'][name] != previous[name]}
+                if item:
+                    commands.append((1, line_id, item))
             else:
                 commands.append((0, 0, item))
         commands.extend((2, line.id, 0) for line in origin.order_line if line.id not in seen)
@@ -306,7 +312,13 @@ class SaleOrder(models.Model):
             # Linked invoices or fulfilment need their own correction workflow, not a quotation overwrite.
             if origin.invoice_ids or origin.picking_ids or any(origin.order_line.mapped('dispensed')):
                 raise UserError('This quotation has billing or stock activity. Use its native correction workflow.')
-            origin.write(values)
+            # Native forms write changed fields only; resending dependencies resets manually selected taxes.
+            previous = self._qorlia_read_fields(origin, HEADERS)
+            changed = {name: value for name, value in values.items()
+                       if name != 'order_line' and payload['values'][name] != previous[name]}
+            if values['order_line']:
+                changed['order_line'] = values['order_line']
+            origin.write(changed)
         else:
             # Serialize retries of the same creation without relying on browser state.
             lock_key = int.from_bytes(hashlib.sha256(request_key.encode()).digest()[:8], 'big', signed=True)

@@ -84,6 +84,27 @@ class DraftAdapterTest(TransactionCase):
         with self.assertRaises(UserError):
             self.orders.qorlia_draft_save(self.payload(fresh), str(uuid.uuid4()))
 
+    def test_metadata_edit_preserves_manual_tax_and_price(self):
+        tax = self.env['account.tax'].create({'name': 'QorliaQA Adapter sales tax',
+            'amount': 5, 'type_tax_use': 'sale', 'company_id': self.env.company.id})
+        draft = self.draft()
+        draft['lines'][0]['values']['price_unit'] = 650
+        draft = self.orders.qorlia_draft_preview(self.payload(draft), {'field': 'price_unit', 'line': 0})
+        draft['lines'][0]['values']['tax_id'] = tax.ids
+        draft = self.orders.qorlia_draft_preview(self.payload(draft), {'field': 'tax_id', 'line': 0})
+        saved = self.orders.qorlia_draft_save(self.payload(draft), str(uuid.uuid4()))
+        self.assertEqual(saved['totals']['amount_tax'], 32.5)
+        saved['values']['provider_name'] = 'QorliaQA Changed provider'
+        preview = self.orders.qorlia_draft_preview(self.payload(saved), {'field': 'provider_name'})
+        self.assertEqual(preview['lines'][0]['values']['price_unit'], 650)
+        self.assertEqual(preview['lines'][0]['values']['tax_id'], tax.ids)
+        self.assertEqual(preview['totals']['amount_tax'], 32.5)
+        self.assertIn('account.tax:%s' % tax.id, preview['labels'])
+        updated = self.orders.qorlia_draft_save(self.payload(preview), str(uuid.uuid4()))
+        self.assertEqual(updated['lines'][0]['values']['tax_id'], tax.ids)
+        self.assertEqual(updated['totals']['amount_tax'], 32.5)
+        self.assertEqual(updated['totals']['amount_total'], saved['totals']['amount_total'])
+
     def test_rejects_foreign_items_and_unsafe_fields(self):
         first = self.orders.qorlia_draft_save(self.payload(self.draft()), str(uuid.uuid4()))
         second = self.orders.qorlia_draft_save(self.payload(self.draft()), str(uuid.uuid4()))

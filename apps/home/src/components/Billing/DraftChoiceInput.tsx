@@ -52,6 +52,7 @@ export function DraftChoiceInput({
         items={choices.data ?? []}
         itemToString={(item) => item?.[1] ?? ''}
         selectedItem={selected}
+        clearSelectedOnChange={kind === 'tax'}
         shouldFilterItem={() => true}
         onInputChange={setSearch}
         onChange={({ selectedItem }) => onChange(selectedItem?.[0] ?? false)}

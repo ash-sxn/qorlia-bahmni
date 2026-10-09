@@ -104,7 +104,13 @@ export function ChargeOrdersPanel({
           setSearch('');
           setStatus('draft');
           setNotice(`${draft.name} saved as a draft quotation.`);
-          void queryClient.invalidateQueries({ queryKey: ['billing'] });
+          void queryClient.invalidateQueries({
+            predicate: ({ queryKey }) =>
+              queryKey[0] === 'billing' &&
+              ['charge-orders', 'charge-lines', 'draft'].includes(
+                String(queryKey[1]),
+              ),
+          });
         }}
       />
     );
