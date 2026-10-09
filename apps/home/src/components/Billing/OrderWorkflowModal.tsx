@@ -1,6 +1,7 @@
 import { Button, Modal } from '@bahmni/design-system';
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
+import { AdvanceInvoiceModal } from './AdvanceInvoiceModal';
 import { invoiceName, money } from './billingFormat';
 import styles from './BillingPage.module.scss';
 import {
@@ -25,6 +26,7 @@ export function OrderWorkflowModal({
 }) {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Error | null>(null);
+  const [advance, setAdvance] = useState(false);
   const busyRef = useRef(false);
   const current = useQuery({
     queryKey: ['billing', 'order-workflow', uid, orderId],
@@ -63,6 +65,16 @@ export function OrderWorkflowModal({
       setBusy(false);
     }
   };
+  if (advance)
+    return (
+      <AdvanceInvoiceModal
+        uid={uid}
+        orderId={orderId}
+        close={() => setAdvance(false)}
+        completed={completed}
+        reconnect={reconnect}
+      />
+    );
   return (
     <Modal
       open
@@ -161,6 +173,15 @@ export function OrderWorkflowModal({
               These actions do not record a payment. Posted invoices and stock
               movements are financial records, not just preview changes.
             </p>
+            {order.can_advance ? (
+              <Button
+                kind="tertiary"
+                disabled={busy || !!failure}
+                onClick={() => setAdvance(true)}
+              >
+                Create advance invoice
+              </Button>
+            ) : null}
             <h3>Existing invoices</h3>
             {order.invoices.length ? (
               <ul>

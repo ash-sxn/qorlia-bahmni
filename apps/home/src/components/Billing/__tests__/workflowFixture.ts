@@ -12,6 +12,7 @@ export const workflowFixture = (
   amount_total: 500,
   can_confirm: true,
   can_invoice: false,
+  can_advance: false,
   automation: { delivery: true, invoice: true, legacy_delivery: false },
   invoices: [],
   pickings: [],

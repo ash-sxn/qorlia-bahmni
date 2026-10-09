@@ -9,14 +9,17 @@ import {
 import {
   BillingSessionExpired,
   getOrderWorkflow,
+  getAdvanceInvoice,
   runOrderWorkflow,
 } from '../billingService';
 import { OrderWorkflowModal } from '../OrderWorkflowModal';
+import { advanceFixture } from './advanceInvoiceFixture';
 import { workflowFixture } from './workflowFixture';
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
   getOrderWorkflow: jest.fn(),
+  getAdvanceInvoice: jest.fn(),
   runOrderWorkflow: jest.fn(),
 }));
 const close = jest.fn();
@@ -168,5 +171,28 @@ describe('Native order action review', () => {
     );
     expect(reconnect).toHaveBeenCalledTimes(1);
     expect(runOrderWorkflow).not.toHaveBeenCalled();
+  });
+  it('opens advances from eligible confirmed orders even with no regular invoiceable quantities', async () => {
+    (getOrderWorkflow as jest.Mock).mockResolvedValue(
+      workflowFixture({
+        state: 'sale',
+        can_confirm: false,
+        can_invoice: false,
+        can_advance: true,
+      }),
+    );
+    (getAdvanceInvoice as jest.Mock).mockResolvedValue(advanceFixture());
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create advance invoice' }),
+    );
+    await screen.findByLabelText('Advance percentage');
+    expect(getAdvanceInvoice).toHaveBeenCalledWith(18);
+    expect(runOrderWorkflow).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Back to order actions' }),
+    );
+    await screen.findByRole('button', { name: 'Create advance invoice' });
+    expect(close).not.toHaveBeenCalled();
   });
 });

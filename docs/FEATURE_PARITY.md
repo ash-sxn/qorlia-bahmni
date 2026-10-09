@@ -1,5 +1,49 @@
 # Bahmni workflow parity ledger
 
+## 10 October advance invoice protected browser checkpoint
+
+- Protected browser calculation shows 40 percent of INR 500 as INR 200 and
+  a fixed INR 80 review. Changing the type clears the earlier review. Unsaved
+  close warns; Keep editing retains the percentage and requires review again.
+- Explicit browser save creates one INR 200 draft. Full reload/reopen retains
+  the linked draft on its confirmed order. Independent native read confirms
+  one linked invoice, balanced entries, not paid, unchanged protected financial
+  documents and unchanged payment/stock counts.
+- All 83 hosted JS/CSS chunks and the secret-free source/LICENSE/NOTICE archive
+  match the build. Tester gate, clinical session, secure cookies, robots exclusion
+  and blocked raw wizard/mutation routes pass. Link, code, expiry and production/
+  public demo are unchanged. Source was packaged before this acceptance note.
+- Same-tab uncertain-save recovery and first-use manager/tax selections have
+  native/API and mocked UI coverage, not fault-injected browser acceptance yet.
+  Optional regular-invoice advance deduction and complete Billing remain open.
+
+## 10 October advance invoice native and API checkpoint
+
+- Confirmed signed-in charge orders now offer percentage/fixed advance invoices
+  in the Qorlia action modal. Native Odoo deposit products, taxes, fiscal mapping,
+  journals and balanced Bahmni adjustments calculate the reviewed draft totals.
+  The action creates a draft, not a posted invoice, payment or stock delivery.
+- First-use deposit account/tax settings are scoped to the order company. Only
+  accounting managers may override the income account. Review uses virtual native
+  records without consuming IDs; first save creates the native global default.
+  Serialised setup prevents another order saving an obsolete first-use review.
+- Exact canonical request identity supports explicit retry/status recovery. The
+  UI retains uncertain requests in same-tab, user/order-scoped session storage
+  across reload/sign-in, freezes edits and never retries financial writes itself.
+  Missing status is inconclusive; a confirmed native rejection requires review.
+- Native 154 tests, Home 203 tests/26 suites, types, lint, seven gateway/webpack
+  checks and the development build pass. The native limited-role test uncovered
+  and fixed a restricted system-setting read without expanding financial access.
+- Actual concurrent HTTP saves persist one balanced INR 250 draft; exact status
+  and retry return that invoice. Fixed INR 123.45 saves separately. Changed request
+  values are rejected. Preview counts and existing protected financial records,
+  payments and stock stay unchanged. Native first advance adds both a section
+  and a deposit order line; the verifier was corrected, not that native behaviour.
+- Protected release/browser acceptance remains a separate pending gate. Native
+  regular invoicing currently deducts advances; its optional deduction selector,
+  bank/provider/check/PDC, POS, stock/batch, cross-module sync and full Billing/
+  clinical/separate-product parity remain open. Production/public demo unchanged.
+
 ## 10 October invoice attachment native and protected download checkpoint
 
 - Conversation file selection/removal and attachment-only notes now use native

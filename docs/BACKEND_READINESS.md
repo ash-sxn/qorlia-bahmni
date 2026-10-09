@@ -1,5 +1,62 @@
 # Qorlia React frontend backend readiness
 
+## Advance invoices: protected browser acceptance (10 October 2026)
+
+The protected build shows percentage and fixed reviews in the house modal.
+Forty percent of INR 500 calculates INR 200; the fixed INR 80 calculation also
+matches native Billing. Changing type removes the earlier review. Unsaved close
+warns and Keep editing preserves the entered percentage for a new review.
+
+Explicit browser save created one INR 200 draft, retained after full reload and
+reopening its confirmed order. An independent native read verifies exactly one
+linked advance, balanced entries, not paid, unchanged protected financial records
+and unchanged payment/stock counts. Hosted 83 JS/CSS chunks and the secret-free
+source/LICENSE/NOTICE archive match the build. Source was packaged before this
+acceptance note. Existing tester link/code/expiry, session requirement, secure
+cookie boundary, robots exclusion and raw mutation/wizard denial are unchanged.
+
+Fault-injected browser uncertain-save recovery and first-use account/tax selectors
+still need populated browser testing; they have native/API and mocked UI coverage.
+The optional regular-invoice advance deduction control and full Billing/product
+parity remain open. Production and the shared public demo are untouched.
+
+## Advance invoices: native and HTTP acceptance (10 October 2026)
+
+Confirmed charge orders connect to a percentage/fixed advance editor through five
+named order methods: load, choices, preview, save and status. Native Odoo computes
+the deposit line, tax/fiscal mapping and journal; existing balanced Qorlia invoice
+adjustments remain applied. Review is virtual and read-only. Save uses the native
+down-payment wizard and produces one draft invoice, with no payment or delivery.
+First use creates the native shared default product and down-payment section as
+well as its deposit line. Serialised setup rejects stale reviews from other orders.
+
+Native ACLs, order rules, company scope and invoice creation/write roles apply.
+Only an accounting manager may choose the first-use income account. Reading the
+three required automation settings uses narrowly scoped elevated reads; financial
+actions never acquire those elevated permissions. Raw wizard/financial methods
+and caller context are still blocked by the protected gateway.
+
+Exact request identity binds the order, author, values and reviewed configuration.
+Concurrent native HTTP saves returned one balanced INR 250 draft, and status/
+exact retry read it back. A fixed INR 123.45 draft also persisted. Changed identity
+was rejected. Preview did not change model counts. Payments, stock and three
+protected financial documents stayed unchanged. The first HTTP verifier expected
+only a deposit line; native Odoo also adds its section. That verifier was corrected
+using a separate synthetic order, leaving the first successful draft intact.
+
+Home has 203 passing tests/26 suites; installed native code has 154 passing tests
+with no failures/errors/skips. Types, lint, seven gateway/webpack checks and the
+development build pass. Uncertain UI saves remain frozen with their exact request
+in same-tab session storage, including reconnect/reload. Recovery fails closed if
+storage is unavailable. Only explicit status or identical retry can resolve them.
+Native UserError/ValidationError rejects a transaction and enables fresh review.
+
+Protected release and populated browser acceptance are not inferred from these
+checks. The regular-invoice wizard deducts advances, but its optional deduction
+selector is still missing. Bank/provider/check/PDC, POS, stock/batch, clinical/ERP
+sync, wider products and complete parity remain unfinished. No production/shared
+public-demo redesign deployment occurred.
+
 ## Invoice attachments: native acceptance and protected downloads (10 October 2026)
 
 The conversation composer now supports local file selection/removal and

@@ -7,6 +7,7 @@ import {
   DraftChoiceKind,
   getDraftChoices,
   getInvoiceDraftChoices,
+  getAdvanceChoices,
   InvoiceDraftChoiceKind,
 } from './billingService';
 
@@ -20,6 +21,7 @@ export function DraftChoiceInput({
   shopId = false,
   productId = false,
   invoiceId,
+  advanceOrderId,
   disabled,
   onChange,
   reconnect,
@@ -32,11 +34,16 @@ export function DraftChoiceInput({
   shopId?: number | false;
   productId?: number | false;
   disabled?: boolean;
-  onChange: (value: number | false) => void;
+  onChange: (value: number | false, name?: string) => void;
   reconnect: () => void;
 } & (
-  | { invoiceId: number | false; kind: InvoiceDraftChoiceKind }
-  | { invoiceId?: undefined; kind: DraftChoiceKind }
+  | {
+      invoiceId: number | false;
+      advanceOrderId?: undefined;
+      kind: InvoiceDraftChoiceKind;
+    }
+  | { invoiceId?: undefined; advanceOrderId?: undefined; kind: DraftChoiceKind }
+  | { invoiceId?: undefined; advanceOrderId: number; kind: 'account' | 'tax' }
 )) {
   const [search, setSearch] = useState('');
   const term = useDebounce(search, 250);
@@ -46,15 +53,18 @@ export function DraftChoiceInput({
       'draft-choices',
       uid,
       invoiceId,
+      advanceOrderId,
       kind,
       term,
       shopId,
       productId,
     ],
     queryFn: () =>
-      invoiceId !== undefined
-        ? getInvoiceDraftChoices(invoiceId, kind, term, productId)
-        : getDraftChoices(kind as DraftChoiceKind, term, shopId, productId),
+      advanceOrderId !== undefined
+        ? getAdvanceChoices(advanceOrderId, kind as 'account' | 'tax', term)
+        : invoiceId !== undefined
+          ? getInvoiceDraftChoices(invoiceId, kind, term, productId)
+          : getDraftChoices(kind as DraftChoiceKind, term, shopId, productId),
     enabled: !disabled,
     retry: false,
   });
@@ -72,7 +82,9 @@ export function DraftChoiceInput({
         clearSelectedOnChange={kind === 'tax'}
         shouldFilterItem={() => true}
         onInputChange={setSearch}
-        onChange={({ selectedItem }) => onChange(selectedItem?.[0] ?? false)}
+        onChange={({ selectedItem }) =>
+          onChange(selectedItem?.[0] ?? false, selectedItem?.[1])
+        }
         disabled={disabled}
         invalid={choices.isError}
         invalidText={choices.error?.message}

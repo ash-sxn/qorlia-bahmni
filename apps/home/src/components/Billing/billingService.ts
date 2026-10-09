@@ -4,6 +4,8 @@ export class BillingSessionExpired extends Error {
   readonly billingSessionExpired = true;
 }
 
+export class BillingActionRejected extends Error {}
+
 export interface BillingSession {
   uid: number | false;
   name?: string;
@@ -256,7 +258,7 @@ async function rpc<T>(path: string, params: object): Promise<T> {
       ) &&
       typeof body.error.data?.arguments?.[0] === 'string'
     )
-      throw new Error(body.error.data.arguments[0]);
+      throw new BillingActionRejected(body.error.data.arguments[0]);
     throw new Error(
       'Billing access failed. Check your billing account permissions.',
     );
@@ -512,6 +514,7 @@ export interface OrderWorkflow {
   amount_total: number;
   can_confirm: boolean;
   can_invoice: boolean;
+  can_advance: boolean;
   automation: { delivery: boolean; invoice: boolean; legacy_delivery: boolean };
   invoices: {
     id: number;
@@ -538,6 +541,7 @@ function checkedWorkflow(value: OrderWorkflow): OrderWorkflow {
     !Number.isFinite(value.amount_total) ||
     typeof value.can_confirm !== 'boolean' ||
     typeof value.can_invoice !== 'boolean' ||
+    typeof value.can_advance !== 'boolean' ||
     !value.automation ||
     !['delivery', 'invoice', 'legacy_delivery'].every(
       (key) =>
@@ -588,6 +592,209 @@ export const runOrderWorkflow = async (
       action,
     }),
   );
+
+export interface AdvanceValues {
+  advance_payment_method: 'percentage' | 'fixed';
+  amount: number;
+  fixed_amount: number;
+  deposit_account_id: number | false;
+  deposit_taxes_id: number[];
+}
+
+export interface AdvanceInvoice {
+  order: OrderWorkflow;
+  values: AdvanceValues;
+  product: Relation;
+  can_set_account: boolean;
+}
+
+export interface AdvanceReview extends AdvanceInvoice {
+  review_version: string;
+  invoice: {
+    company: string;
+    journal: string;
+    currency: [number, string];
+    totals: InvoiceDraft['totals'];
+    lines: { key: string; name: string; subtotal: number; total: number }[];
+  };
+}
+
+export interface SavedAdvance {
+  order: OrderWorkflow;
+  invoice: InvoiceWorkflow;
+}
+
+export interface AdvanceRequest {
+  order_id: number;
+  values: AdvanceValues;
+  review_version: string;
+  request_key: string;
+}
+
+function checkedAdvanceValues(value: AdvanceValues): AdvanceValues {
+  if (
+    !value ||
+    Object.keys(value).sort().join(',') !==
+      'advance_payment_method,amount,deposit_account_id,deposit_taxes_id,fixed_amount' ||
+    !['percentage', 'fixed'].includes(value.advance_payment_method) ||
+    ![value.amount, value.fixed_amount].every(Number.isFinite) ||
+    !validId(value.deposit_account_id) ||
+    !Array.isArray(value.deposit_taxes_id) ||
+    value.deposit_taxes_id.length > 100 ||
+    value.deposit_taxes_id.some((id) => !Number.isInteger(id) || id <= 0) ||
+    new Set(value.deposit_taxes_id).size !== value.deposit_taxes_id.length
+  )
+    throw new Error('Invalid advance invoice values. Reload the form.');
+  return value;
+}
+
+function checkedAdvance(value: AdvanceInvoice, orderId: number) {
+  if (
+    !value ||
+    checkedWorkflow(value.order).id !== orderId ||
+    !validRelation(value.product) ||
+    typeof value.can_set_account !== 'boolean'
+  )
+    throw new Error('Invalid advance invoice response. Reload the form.');
+  checkedAdvanceValues(value.values);
+  return value;
+}
+
+export const getAdvanceInvoice = async (orderId: number) =>
+  checkedAdvance(
+    await draftCall<AdvanceInvoice>('qorlia_advance_load', {
+      order_id: orderId,
+    }),
+    orderId,
+  );
+
+export const getAdvanceChoices = async (
+  orderId: number,
+  kind: 'account' | 'tax',
+  search: string,
+) => {
+  const result = await draftCall<[number, string][]>('qorlia_advance_choices', {
+    order_id: orderId,
+    kind,
+    search,
+  });
+  if (
+    !Array.isArray(result) ||
+    result.length > 26 ||
+    result.some((row) => !Array.isArray(row) || !validRelation(row))
+  )
+    throw new Error('Invalid advance setting choices. Search again.');
+  return result;
+};
+
+export const previewAdvanceInvoice = async (
+  orderId: number,
+  values: AdvanceValues,
+) => {
+  checkedAdvanceValues(values);
+  const result = await draftCall<AdvanceReview>('qorlia_advance_preview', {
+    order_id: orderId,
+    values,
+  });
+  checkedAdvance(result, orderId);
+  const invoice = result.invoice;
+  if (
+    typeof result.review_version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(result.review_version) ||
+    (Object.keys(values) as (keyof AdvanceValues)[]).some(
+      (field) =>
+        JSON.stringify(result.values[field]) !== JSON.stringify(values[field]),
+    ) ||
+    !invoice ||
+    typeof invoice.company !== 'string' ||
+    typeof invoice.journal !== 'string' ||
+    !Array.isArray(invoice.currency) ||
+    !validRelation(invoice.currency) ||
+    invoice.currency[0] !== result.order.currency[0] ||
+    !invoice.totals ||
+    ![
+      'qorlia_item_subtotal',
+      'amount_tax',
+      'amount_total',
+      'invoice_total',
+      'round_off_amount',
+    ].every((key) =>
+      Number.isFinite(invoice.totals[key as keyof InvoiceDraft['totals']]),
+    ) ||
+    !Array.isArray(invoice.lines) ||
+    !invoice.lines.length ||
+    invoice.lines.length > 500 ||
+    new Set(invoice.lines.map((line) => line?.key)).size !==
+      invoice.lines.length ||
+    invoice.lines.some(
+      (line) =>
+        !line ||
+        typeof line.key !== 'string' ||
+        !line.key ||
+        typeof line.name !== 'string' ||
+        ![line.subtotal, line.total].every(Number.isFinite),
+    )
+  )
+    throw new Error('Invalid advance invoice calculation. Review again.');
+  return result;
+};
+
+export function checkedAdvanceRequest(request: AdvanceRequest): AdvanceRequest {
+  checkedAdvanceValues(request?.values);
+  if (
+    Object.keys(request).sort().join(',') !==
+      'order_id,request_key,review_version,values' ||
+    !Number.isInteger(request.order_id) ||
+    request.order_id <= 0 ||
+    typeof request.review_version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(request.review_version) ||
+    typeof request.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      request.request_key,
+    )
+  )
+    throw new Error(
+      'Review the advance and use a valid save request identifier.',
+    );
+  return request;
+}
+
+function checkedSavedAdvance(result: SavedAdvance, orderId: number) {
+  if (!result || checkedWorkflow(result.order).id !== orderId)
+    throw new Error('Invalid saved advance order. Check its current status.');
+  const invoice = checkedInvoiceWorkflow(result.invoice);
+  const linked = result.order.invoices.find((item) => item.id === invoice.id);
+  if (
+    !linked ||
+    invoice.move_type !== 'out_invoice' ||
+    !invoice.ledger_balanced ||
+    invoice.currency[0] !== result.order.currency[0] ||
+    linked.total !== invoice.total ||
+    linked.state !== invoice.state ||
+    linked.currency[0] !== invoice.currency[0]
+  )
+    throw new Error('Invalid saved advance invoice. Check its current status.');
+  return result;
+}
+
+export const saveAdvanceInvoice = async (request: AdvanceRequest) =>
+  checkedSavedAdvance(
+    await draftCall<SavedAdvance>(
+      'qorlia_advance_save',
+      checkedAdvanceRequest(request),
+    ),
+    request.order_id,
+  );
+
+export const getAdvanceInvoiceStatus = async (request: AdvanceRequest) => {
+  const result = await draftCall<SavedAdvance | false>(
+    'qorlia_advance_status',
+    checkedAdvanceRequest(request),
+  );
+  return result === false
+    ? false
+    : checkedSavedAdvance(result, request.order_id);
+};
 
 function checkedInvoiceWorkflow(value: InvoiceWorkflow): InvoiceWorkflow {
   if (

@@ -70,7 +70,8 @@ test('review gate protects UI, clinical API and named Billing actions with isola
       assert.equal((await rpc(`/web/dataset/call_kw/${model}/${method}`, allCookies, { model, method })).status, 404);
   }
   for (const method of ['load', 'preview', 'save', 'choices'].map((action) => `qorlia_draft_${action}`)
-    .concat(['qorlia_order_workflow_load', 'qorlia_order_workflow_run', 'qorlia_order_report_list', 'qorlia_order_report_download'])) {
+    .concat(['qorlia_order_workflow_load', 'qorlia_order_workflow_run', 'qorlia_order_report_list', 'qorlia_order_report_download'])
+    .concat(['load', 'choices', 'preview', 'save', 'status'].map((action) => `qorlia_advance_${action}`))) {
     const path = `/web/dataset/call_kw/sale.order/${method}`;
     const params = { model: 'sale.order', method, args: [], kwargs: {} };
     assert.equal((await rpc(path, cookie, params)).status, 401);
@@ -122,7 +123,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     { model: 'ir.actions.report', method: '_render_qweb_pdf' })).status, 404);
   assert.equal((await request('/openmrs/qorlia-billing-api/report/pdf/account.report_invoice/7',
     { headers: { Cookie: allCookies } })).status, 404);
-  for (const model of ['account.payment', 'account.payment.register', 'account.move.reversal'])
+  for (const model of ['account.payment', 'account.payment.register', 'account.move.reversal', 'sale.advance.payment.inv'])
     for (const method of ['create', 'write', 'action_post', 'action_create_payments', '_create_payments', 'reverse_moves', 'unlink'])
       assert.equal((await rpc(`/web/dataset/call_kw/${model}/${method}`, allCookies, { model, method })).status, 404);
   await request('/openmrs/ws/rest/v1/session', { headers: { Cookie: allCookies } });

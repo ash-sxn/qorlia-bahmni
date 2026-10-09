@@ -156,6 +156,7 @@ export function ChargeOrdersPanel({
                   'charge-lines',
                   'draft',
                   'order-workflow',
+                  'advance-invoice',
                   'order-invoices',
                   'invoices',
                   'invoice-lines',

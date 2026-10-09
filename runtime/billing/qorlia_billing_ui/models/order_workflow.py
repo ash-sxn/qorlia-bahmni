@@ -17,7 +17,7 @@ class SaleOrderWorkflow(models.Model):
             # Match Bahmni's installed action_confirm/_create_invoices semantics.
             'delivery': bool(parameters.get_param('bahmni_sale.is_delivery_automated')),
             'invoice': bool(parameters.get_param('bahmni_sale.is_invoice_automated')),
-            'legacy_delivery': self.env.ref('bahmni_sale.validate_delivery_when_order_confirmed').value == '1',
+            'legacy_delivery': self.env.ref('bahmni_sale.validate_delivery_when_order_confirmed').sudo().value == '1',
         }
 
     def _qorlia_workflow_snapshot(self):
@@ -49,6 +49,9 @@ class SaleOrderWorkflow(models.Model):
             'can_confirm': bool(writable and self.state in ('draft', 'sent')
                                 and self.order_line.filtered(lambda line: not line.display_type)),
             'can_invoice': bool(writable and self.state in ('sale', 'done') and invoiceable),
+            'can_advance': bool(writable and self.state in ('sale', 'done')
+                                and self.env.user.has_group('account.group_account_invoice')
+                                and self.env['account.move'].check_access_rights('create', raise_exception=False)),
             'automation': automation,
             'invoices': [{'id': invoice.id, 'name': invoice.name or False, 'state': invoice.state,
                           'total': invoice.invoice_total, 'currency': [invoice.currency_id.id, invoice.currency_id.name]}
