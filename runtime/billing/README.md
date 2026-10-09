@@ -355,6 +355,43 @@ Actual native HTTP and hosted browser files cover drafts, posted invoices and
 credit reports, with financial state unchanged. Native PDF layout is retained;
 quotation, receipt/statement printing and complete layout reskin remain.
 
+## Advance invoices and regular-invoice deduction
+
+Confirmed charge orders expose the native percentage/fixed down-payment wizard
+through `qorlia_advance_load`, `choices`, `preview`, `save` and `status`. Preview
+uses virtual native records; explicit save creates a draft advance invoice, not
+a payment or delivery. Native product/tax/fiscal mapping and balanced document
+adjustments apply. First-use account/tax choices are company-scoped; selecting
+the deposit income account requires an accounting manager. Existing deposit
+products retain their configured account/taxes instead of accepting overrides.
+
+Each reviewed save has an exact request key and payload hash. The native unique
+key, order locks and serialised first-use configuration prevent duplicate or stale
+saves. The frontend keeps uncertain requests in same-tab storage scoped to Billing
+user and order across reload/sign-in. Status checks are read-only; a missing result
+is inconclusive. Explicit same-request retry is available, never automatic retry.
+
+Regular invoicing offers native `deduct_down_payments`, checked by default when
+down-payment lines exist. Unchecking warns that advances will not be deducted.
+Only a strict boolean is accepted, and order status versions bind down-payment
+presence. Native ordered/delivered quantities and negative-balance credit notes
+are retained. Creating an advance invoice is distinct from paying or allocating it.
+
+The pinned Bahmni `_create_invoices` copy attempts to post every linked invoice,
+including already-posted advances. The adapter skips that copy while retaining
+native Odoo creation and Bahmni preparation hooks. Configured automatic posting
+applies only to newly returned draft invoices under the caller's identity.
+Existing draft/posted advances remain unchanged. Revalidate this override against
+upstream source and the accounting/discount/rounding/stock suite before upgrades.
+
+The 10 October checkpoint has 157 native tests and 206 Home tests. Actual HTTP
+and protected browser saves produce INR 300 with deduction and INR 500 without
+against INR 500 synthetic orders with INR 200 posted advances. Browser reload
+retains both results; independent native reads confirm balanced entries, no
+duplicates and unchanged payments, stock and protected financial documents.
+Fault-injected browser recovery and first-use account/tax browser acceptance
+remain pending. These selected checks do not establish complete Billing parity.
+
 ## Verification and scope
 
 The `tests` package covers native draft/order workflows and customer posting,
