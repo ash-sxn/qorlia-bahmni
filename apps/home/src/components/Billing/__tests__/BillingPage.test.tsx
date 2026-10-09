@@ -37,12 +37,19 @@ const show = () =>
 const invoice = {
   id: 7,
   name: 'QorliaQA invoice',
+  ref: 'QORLIAQA-INVOICE',
+  move_type: 'out_invoice',
   partner_id: [8, 'QorliaQA Customer'],
   invoice_date: '2026-10-08',
   invoice_date_due: false,
   state: 'draft',
   payment_state: 'not_paid',
   amount_total: 500,
+  amount_untaxed: 480,
+  amount_tax: 20,
+  discount: 25.5,
+  round_off_amount: 0.25,
+  invoice_total: 474.75,
   amount_residual: 500,
   currency_id: [1, 'INR'],
 };
@@ -121,6 +128,8 @@ describe('Billing workspace', () => {
           quantity: 1,
           price_unit: 500,
           price_subtotal: 500,
+          discount: 0,
+          price_total: 500,
         },
       ]);
     show();
@@ -134,6 +143,32 @@ describe('Billing workspace', () => {
     expect(getInvoiceLines).toHaveBeenNthCalledWith(2, 7);
     fireEvent.click(screen.getByRole('button', { name: 'Close details' }));
     expect(screen.queryByText('QA Consultation')).not.toBeInTheDocument();
+  });
+  it('uses the native Bahmni final total and never labels a draft as outstanding debt', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([invoice]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    expect(screen.getAllByText('₹474.75')).toHaveLength(2);
+    expect(screen.getByText('Document discount')).toBeInTheDocument();
+    expect(screen.getByText('₹25.50')).toBeInTheDocument();
+    expect(screen.getByText('₹0.25')).toBeInTheDocument();
+    expect(screen.queryByText('₹500.00')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Not posted').length).toBeGreaterThan(0);
+  });
+  it('shows a draft credit note with its reference when Odoo has not assigned a number', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([
+      { ...invoice, name: false, move_type: 'out_refund' },
+    ]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QORLIAQA-INVOICE' }),
+    );
+    expect(screen.getByText('Unapplied credit')).toBeInTheDocument();
+    expect(screen.getAllByText('Credit note').length).toBeGreaterThan(0);
   });
   it('hides invoices and requests reconnection when ERP access expires', async () => {
     (getInvoices as jest.Mock).mockRejectedValue(new BillingSessionExpired());

@@ -10,13 +10,20 @@ export interface BillingSession {
 
 export interface Invoice {
   id: number;
-  name: string;
+  name: string | false;
+  ref: string | false;
+  move_type: 'out_invoice' | 'out_refund';
   partner_id: [number, string] | false;
   invoice_date: string | false;
   invoice_date_due: string | false;
   state: string;
   payment_state: string;
   amount_total: number;
+  amount_untaxed: number;
+  amount_tax: number;
+  discount: number;
+  round_off_amount: number;
+  invoice_total: number;
   amount_residual: number;
   currency_id: [number, string];
 }
@@ -27,6 +34,8 @@ export interface InvoiceLine {
   quantity: number;
   price_unit: number;
   price_subtotal: number;
+  discount: number;
+  price_total: number;
 }
 
 async function rpc<T>(path: string, params: object): Promise<T> {
@@ -77,18 +86,31 @@ export const getInvoices = async (search: string, offset: number) => {
         domain: [
           ['move_type', 'in', ['out_invoice', 'out_refund']],
           ...(search
-            ? ['|', ['name', 'ilike', search], ['partner_id', 'ilike', search]]
+            ? [
+                '|',
+                '|',
+                ['name', 'ilike', search],
+                ['partner_id', 'ilike', search],
+                ['ref', 'ilike', search],
+              ]
             : []),
         ],
         fields: [
           'id',
           'name',
+          'ref',
+          'move_type',
           'partner_id',
           'invoice_date',
           'invoice_date_due',
           'state',
           'payment_state',
           'amount_total',
+          'amount_untaxed',
+          'amount_tax',
+          'discount',
+          'round_off_amount',
+          'invoice_total',
           'amount_residual',
           'currency_id',
         ],
@@ -105,15 +127,28 @@ export const getInvoices = async (search: string, offset: number) => {
         row &&
         Number.isInteger(row.id) &&
         row.id > 0 &&
-        typeof row.name === 'string' &&
+        (row.name === false || typeof row.name === 'string') &&
+        (row.ref === false || typeof row.ref === 'string') &&
+        ['out_invoice', 'out_refund'].includes(row.move_type) &&
         typeof row.state === 'string' &&
         typeof row.payment_state === 'string' &&
-        Number.isFinite(row.amount_total) &&
-        Number.isFinite(row.amount_residual) &&
+        [
+          'amount_total',
+          'amount_untaxed',
+          'amount_tax',
+          'discount',
+          'round_off_amount',
+          'invoice_total',
+          'amount_residual',
+        ].every((field) => Number.isFinite(row[field as keyof Invoice])) &&
         Array.isArray(row.currency_id) &&
+        Number.isInteger(row.currency_id[0]) &&
+        row.currency_id[0] > 0 &&
         typeof row.currency_id[1] === 'string' &&
         (row.partner_id === false ||
           (Array.isArray(row.partner_id) &&
+            Number.isInteger(row.partner_id[0]) &&
+            row.partner_id[0] > 0 &&
             typeof row.partner_id[1] === 'string')) &&
         (row.invoice_date === false || typeof row.invoice_date === 'string') &&
         (row.invoice_date_due === false ||
@@ -136,7 +171,15 @@ export const getInvoiceLines = async (invoiceId: number) => {
           ['move_id', '=', invoiceId],
           ['display_type', '=', 'product'],
         ],
-        fields: ['id', 'name', 'quantity', 'price_unit', 'price_subtotal'],
+        fields: [
+          'id',
+          'name',
+          'quantity',
+          'price_unit',
+          'price_subtotal',
+          'discount',
+          'price_total',
+        ],
         limit: 501,
         order: 'sequence, id',
       },
@@ -152,7 +195,9 @@ export const getInvoiceLines = async (invoiceId: number) => {
         typeof row.name === 'string' &&
         Number.isFinite(row.quantity) &&
         Number.isFinite(row.price_unit) &&
-        Number.isFinite(row.price_subtotal),
+        Number.isFinite(row.price_subtotal) &&
+        Number.isFinite(row.discount) &&
+        Number.isFinite(row.price_total),
     )
   )
     throw new Error('Invalid invoice detail response.');

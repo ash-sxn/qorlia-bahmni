@@ -61,10 +61,47 @@ describe('billing API', () => {
       domain: [
         ['move_type', 'in', ['out_invoice', 'out_refund']],
         '|',
+        '|',
         ['name', 'ilike', 'QA'],
         ['partner_id', 'ilike', 'QA'],
+        ['ref', 'ilike', 'QA'],
       ],
     });
+    expect(params.kwargs.fields).toEqual(
+      expect.arrayContaining([
+        'invoice_total',
+        'discount',
+        'round_off_amount',
+        'move_type',
+      ]),
+    );
+  });
+  it('accepts native draft numbers and rejects a missing Bahmni financial total', async () => {
+    const invoice = {
+      id: 7,
+      name: false,
+      ref: 'QA draft',
+      move_type: 'out_invoice',
+      partner_id: [1, 'QA'],
+      currency_id: [2, 'INR'],
+      invoice_date: false,
+      invoice_date_due: false,
+      state: 'draft',
+      payment_state: 'not_paid',
+      amount_untaxed: 900,
+      amount_tax: 45,
+      amount_total: 945,
+      discount: 25.5,
+      round_off_amount: 0.25,
+      invoice_total: 919.75,
+      amount_residual: 945,
+    };
+    reply({ result: [invoice] });
+    expect(await getInvoices('', 0)).toEqual([invoice]);
+    reply({ result: [{ ...invoice, invoice_total: undefined }] });
+    await expect(getInvoices('', 0)).rejects.toThrow(
+      'Invalid invoice response.',
+    );
   });
   it('reads only the selected invoice items, never writes or posts it', async () => {
     reply({ result: [] });

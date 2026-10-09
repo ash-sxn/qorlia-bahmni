@@ -26,6 +26,10 @@ const money = (value: number, currency: string) => {
   }
 };
 const label = (value: string) => value.replaceAll('_', ' ');
+const invoiceName = (invoice: Invoice) =>
+  invoice.name ||
+  invoice.ref ||
+  (invoice.move_type === 'out_refund' ? 'Draft credit note' : 'Draft invoice');
 
 export function BillingPage() {
   const { userPrivileges, error: privilegeError } = useUserPrivilege();
@@ -124,9 +128,9 @@ export function BillingPage() {
           Review invoices, balances and bill details in your Qorlia workspace.
         </p>
         <p className={styles.note}>
-          Connected to the shared billing demo. Clinical uses separate isolated
-          staging data. This review screen does not collect payments or change
-          invoices.
+          This review screen does not collect payments or change invoices.
+          Clinical and Billing have separate test datasets. No patient or order
+          synchronization is enabled between them yet.
         </p>
         {session.isFetching ? (
           <p role="status">Connecting to Billing...</p>
@@ -217,7 +221,13 @@ export function BillingPage() {
                   onChange={(event) => setSearch(event.target.value)}
                 />
                 <Button type="submit">Search</Button>
-                <Button kind="tertiary" onClick={() => void invoices.refetch()}>
+                <Button
+                  kind="tertiary"
+                  onClick={() => {
+                    setSelected(null);
+                    void invoices.refetch();
+                  }}
+                >
                   Refresh
                 </Button>
               </form>
@@ -241,17 +251,18 @@ export function BillingPage() {
               ) : (
                 <div className={styles.tableScroll}>
                   <table>
-                    <caption>Customer invoices</caption>
+                    <caption>Customer invoices and credit notes</caption>
                     <thead>
                       <tr>
                         {[
                           'Invoice',
+                          'Type',
                           'Customer',
                           'Date',
                           'Status',
                           'Payment',
                           'Total',
-                          'Balance',
+                          'Open amount',
                           'Details',
                         ].map((title) => (
                           <th key={title} scope="col">
@@ -263,7 +274,12 @@ export function BillingPage() {
                     <tbody>
                       {invoices.data?.slice(0, 25).map((invoice) => (
                         <tr key={invoice.id}>
-                          <td>{invoice.name}</td>
+                          <td>{invoiceName(invoice)}</td>
+                          <td>
+                            {invoice.move_type === 'out_refund'
+                              ? 'Credit note'
+                              : 'Invoice'}
+                          </td>
                           <td>
                             {invoice.partner_id
                               ? invoice.partner_id[1]
@@ -271,25 +287,31 @@ export function BillingPage() {
                           </td>
                           <td>{invoice.invoice_date || 'Not set'}</td>
                           <td>{label(invoice.state)}</td>
-                          <td>{label(invoice.payment_state)}</td>
+                          <td>
+                            {invoice.state === 'posted'
+                              ? label(invoice.payment_state)
+                              : 'Not posted'}
+                          </td>
                           <td>
                             {money(
-                              invoice.amount_total,
+                              invoice.invoice_total,
                               invoice.currency_id[1],
                             )}
                           </td>
                           <td>
-                            {money(
-                              invoice.amount_residual,
-                              invoice.currency_id[1],
-                            )}
+                            {invoice.state === 'posted'
+                              ? money(
+                                  invoice.amount_residual,
+                                  invoice.currency_id[1],
+                                )
+                              : 'Not posted'}
                           </td>
                           <td>
                             <Button
                               kind="ghost"
                               onClick={() => setSelected(invoice)}
                             >
-                              View {invoice.name}
+                              View {invoiceName(invoice)}
                             </Button>
                           </td>
                         </tr>
@@ -325,15 +347,54 @@ export function BillingPage() {
                   Next
                 </Button>
               </div>
+              <p className={styles.note}>
+                Drafts are not posted balances. Credit notes reduce billed
+                charges.
+              </p>
             </section>
             {selected ? (
               <section className={styles.card} aria-label="Invoice details">
-                <h2>{selected.name}</h2>
+                <h2>{invoiceName(selected)}</h2>
+                <p>
+                  {selected.move_type === 'out_refund'
+                    ? 'Credit note'
+                    : 'Invoice'}{' '}
+                  · {label(selected.state)}
+                </p>
                 <p>
                   Customer:{' '}
                   {selected.partner_id ? selected.partner_id[1] : 'Not set'} ·
                   Due: {selected.invoice_date_due || 'Not set'}
                 </p>
+                {selected.ref ? <p>Reference: {selected.ref}</p> : null}
+                <dl className={styles.totals}>
+                  <dt>Items after line discounts</dt>
+                  <dd>
+                    {money(selected.amount_untaxed, selected.currency_id[1])}
+                  </dd>
+                  <dt>Taxes</dt>
+                  <dd>{money(selected.amount_tax, selected.currency_id[1])}</dd>
+                  <dt>Document discount</dt>
+                  <dd>{money(selected.discount, selected.currency_id[1])}</dd>
+                  <dt>Rounding adjustment</dt>
+                  <dd>
+                    {money(selected.round_off_amount, selected.currency_id[1])}
+                  </dd>
+                  <dt>Final total</dt>
+                  <dd>
+                    {money(selected.invoice_total, selected.currency_id[1])}
+                  </dd>
+                  <dt>
+                    {selected.move_type === 'out_refund'
+                      ? 'Unapplied credit'
+                      : 'Outstanding amount'}
+                  </dt>
+                  <dd>
+                    {selected.state === 'posted'
+                      ? money(selected.amount_residual, selected.currency_id[1])
+                      : 'Not posted'}
+                  </dd>
+                </dl>
                 <Button kind="tertiary" onClick={() => setSelected(null)}>
                   Close details
                 </Button>
@@ -360,7 +421,9 @@ export function BillingPage() {
                           <th scope="col">Item</th>
                           <th scope="col">Quantity</th>
                           <th scope="col">Unit price</th>
+                          <th scope="col">Line discount</th>
                           <th scope="col">Subtotal</th>
+                          <th scope="col">Including tax</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -371,11 +434,15 @@ export function BillingPage() {
                             <td>
                               {money(line.price_unit, selected.currency_id[1])}
                             </td>
+                            <td>{line.discount}%</td>
                             <td>
                               {money(
                                 line.price_subtotal,
                                 selected.currency_id[1],
                               )}
+                            </td>
+                            <td>
+                              {money(line.price_total, selected.currency_id[1])}
                             </td>
                           </tr>
                         ))}
