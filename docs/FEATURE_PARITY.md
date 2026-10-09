@@ -1,5 +1,40 @@
 # Bahmni workflow parity ledger
 
+## 10 October customer statement hosted acceptance checkpoint
+
+- Actual hosted browser statement matches invoice INV/2026/00032's ledger:
+  0 opening, 500 debits, 100 credits, 400 closing. A one-day period correctly
+  shows 500 opening/100 credits/400 closing. Date edits do not relabel old results
+  before submission; manual reload, retained invoice and explicit reopen pass.
+- Fixed the modal's missing table spacing by sharing the house table rules with
+  scroll wrappers. Narrow-width ledger amounts remain unwrapped; the focused
+  region supports keyboard horizontal scrolling. The 83 hosted chunks and
+  secret-free source/LICENSE/NOTICE archive match; gate/session/secure-cookie,
+  robots and blocked raw mutation/report routes pass independently.
+- Existing tester link/code/expiry and production/shared demo remain unchanged.
+  This accepts the interactive customer ledger, not statement PDF printing,
+  full report styling, complete Billing or whole-product parity.
+
+## 10 October customer statement backend checkpoint
+
+- Signed-in invoice details connect the Qorlia customer statement modal to a
+  named read-only Odoo adapter. Explicit period loading, manual reload, session
+  recovery and preserved invoice selection reuse the house controls.
+- Posted native receivables supply opening/debit/credit/running/closing balances,
+  including paid bills, credits and unallocated receipts. Company-currency
+  totals and original document-currency amounts remain distinct. Native roles,
+  ACL/company rules, strict dates and balanced journals are enforced. More than
+  2,000 entries fails explicitly, never silently truncates financial history.
+- Native suite: 116 tests, zero failures/errors/skips. Home: 159 tests/21 suites.
+  Seven gateway/webpack checks and Home types pass. Actual HTTP independently
+  verifies four accounting periods against native journal entries, including
+  500 invoiced/100 credited/400 closing, opening balances and an empty period.
+  Financial snapshots/payment counts remain unchanged. Only isolated QA gained
+  the native Accounting Readonly role needed for this ledger view.
+- Hosted UI acceptance is not inferred from code tests. Statement PDF/full
+  document styling and remaining financial/inventory/integration modules, plus
+  full clinical and separate-product parity, remain unfinished.
+
 ## 10 October order/payment report hosted acceptance checkpoint
 
 - Protected browser downloads delivered the actual S00147 quotation/discount

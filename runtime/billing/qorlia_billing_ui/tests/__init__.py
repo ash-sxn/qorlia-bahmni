@@ -7,3 +7,4 @@ from . import test_reversals
 from . import test_invoice_drafts
 from . import test_invoice_reports
 from . import test_document_reports
+from . import test_customer_statement

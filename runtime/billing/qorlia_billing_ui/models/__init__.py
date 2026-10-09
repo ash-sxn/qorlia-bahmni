@@ -10,3 +10,4 @@ from . import invoice_draft
 from . import invoice_report
 from . import order_report
 from . import payment_report
+from . import customer_statement

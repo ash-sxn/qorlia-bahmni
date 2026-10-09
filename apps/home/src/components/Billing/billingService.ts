@@ -112,6 +112,111 @@ const validRelation = (value: unknown) =>
     value[0] > 0 &&
     typeof value[1] === 'string');
 
+export interface CustomerStatement {
+  invoice_id: number;
+  customer: string;
+  company: string;
+  currency: [number, string];
+  date_from: string;
+  date_to: string;
+  opening: number;
+  debit: number;
+  credit: number;
+  closing: number;
+  rows: {
+    id: number;
+    move_id: number;
+    date: string;
+    document: string;
+    move_type: string;
+    reference: string | false;
+    label: string | false;
+    journal: string;
+    account: string;
+    debit: number;
+    credit: number;
+    balance: number;
+    currency: [number, string];
+    amount_currency: number;
+  }[];
+}
+
+const validDate = (value: unknown): value is string => {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value))
+    return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return (
+    Number.isFinite(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
+  );
+};
+
+export async function getCustomerStatement(
+  invoiceId: number,
+  dateFrom: string,
+  dateTo: string,
+) {
+  if (
+    !Number.isInteger(invoiceId) ||
+    invoiceId <= 0 ||
+    !validDate(dateFrom) ||
+    !validDate(dateTo) ||
+    dateFrom > dateTo
+  )
+    throw new Error('Select a saved invoice and valid statement date range.');
+  const method = 'qorlia_customer_statement';
+  const result = await rpc<CustomerStatement>(
+    `/web/dataset/call_kw/account.move/${method}`,
+    {
+      model: 'account.move',
+      method,
+      args: [],
+      kwargs: { invoice_id: invoiceId, date_from: dateFrom, date_to: dateTo },
+    },
+  );
+  const finite = (value: unknown) =>
+    typeof value === 'number' && Number.isFinite(value);
+  const text = (value: unknown) => typeof value === 'string';
+  if (
+    result?.invoice_id !== invoiceId ||
+    result.date_from !== dateFrom ||
+    result.date_to !== dateTo ||
+    !text(result.customer) ||
+    !text(result.company) ||
+    !result.currency ||
+    !validRelation(result.currency) ||
+    ![result.opening, result.debit, result.credit, result.closing].every(
+      finite,
+    ) ||
+    !Array.isArray(result.rows) ||
+    result.rows.length > 2000 ||
+    new Set(result.rows.map((row) => row?.id)).size !== result.rows.length ||
+    result.rows.some(
+      (row) =>
+        !row ||
+        !Number.isInteger(row.id) ||
+        row.id <= 0 ||
+        !Number.isInteger(row.move_id) ||
+        row.move_id <= 0 ||
+        !validDate(row.date) ||
+        row.date < dateFrom ||
+        row.date > dateTo ||
+        ![row.document, row.move_type, row.journal, row.account].every(text) ||
+        !(row.reference === false || text(row.reference)) ||
+        !(row.label === false || text(row.label)) ||
+        !row.currency ||
+        !validRelation(row.currency) ||
+        ![row.debit, row.credit, row.balance, row.amount_currency].every(
+          finite,
+        ) ||
+        row.debit < 0 ||
+        row.credit < 0,
+    )
+  )
+    throw new Error('Invalid customer statement response.');
+  return result;
+}
+
 async function rpc<T>(path: string, params: object): Promise<T> {
   const response = await fetch(`${API}${path}`, {
     method: 'POST',

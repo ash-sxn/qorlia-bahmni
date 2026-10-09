@@ -27,6 +27,7 @@ import {
 import { ChargeOrdersPanel } from './ChargeOrdersPanel';
 import { CorrectionWorkflowModal } from './CorrectionWorkflowModal';
 import { CreditWorkflowModal } from './CreditWorkflowModal';
+import { CustomerStatementModal } from './CustomerStatementModal';
 import { InvoiceDraftEditor } from './InvoiceDraftEditor';
 import { InvoiceReportsModal } from './InvoiceReportsModal';
 import { InvoiceWorkflowModal } from './InvoiceWorkflowModal';
@@ -50,6 +51,7 @@ export function BillingPage() {
   const [tab, setTab] = useState(0);
   const [reviewInvoice, setReviewInvoice] = useState<number | null>(null);
   const [reportInvoice, setReportInvoice] = useState<number | null>(null);
+  const [statementInvoice, setStatementInvoice] = useState<number | null>(null);
   const [editInvoice, setEditInvoice] = useState<number | false | null>(null);
   const [paymentInvoice, setPaymentInvoice] = useState<number | null>(null);
   const [creditInvoice, setCreditInvoice] = useState<number | null>(null);
@@ -115,6 +117,7 @@ export function BillingPage() {
       setSelected(null);
       setReviewInvoice(null);
       setReportInvoice(null);
+      setStatementInvoice(null);
       setEditInvoice(null);
       setPaymentInvoice(null);
       setCreditInvoice(null);
@@ -221,6 +224,7 @@ export function BillingPage() {
                     queryClient.removeQueries({ queryKey: ['billing'] });
                     setSelected(null);
                     setReviewInvoice(null);
+                    setStatementInvoice(null);
                     setPaymentInvoice(null);
                     setCreditInvoice(null);
                     setInvoiceNotice('');
@@ -487,6 +491,12 @@ export function BillingPage() {
                       >
                         Review invoice posting
                       </Button>
+                      <Button
+                        kind="tertiary"
+                        onClick={() => setStatementInvoice(selected.id)}
+                      >
+                        Customer account statement
+                      </Button>
                       {selected.state === 'draft' ? (
                         <Button
                           kind="tertiary"
@@ -629,6 +639,19 @@ export function BillingPage() {
                       query.queryKey[0] === 'billing' &&
                       query.queryKey[1] !== 'session',
                   });
+                }}
+              />
+            ) : null}
+            {statementInvoice !== null ? (
+              <CustomerStatementModal
+                uid={session.data!.uid as number}
+                invoiceId={statementInvoice}
+                close={() => setStatementInvoice(null)}
+                reconnect={() => {
+                  setStatementInvoice(null);
+                  setSelected(null);
+                  queryClient.removeQueries({ queryKey: ['billing'] });
+                  void session.refetch();
                 }}
               />
             ) : null}

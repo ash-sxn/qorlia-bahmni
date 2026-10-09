@@ -20,6 +20,9 @@
     outline: 2px solid $focus;
     outline-offset: 3px;
   }
+}
+.page,
+.tableScroll {
   table {
     width: 100%;
     border-collapse: collapse;
@@ -70,6 +73,13 @@
 }
 .tableScroll {
   overflow-x: auto;
+}
+.statementTable {
+  min-width: 60rem;
+  td:nth-child(n + 4) {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
 }
 .select {
   display: grid;

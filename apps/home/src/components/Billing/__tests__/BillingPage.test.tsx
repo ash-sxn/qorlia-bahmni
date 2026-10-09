@@ -30,9 +30,11 @@ import {
   getInvoiceDraftChoices,
   getInvoiceReports,
   downloadInvoiceReport,
+  getCustomerStatement,
 } from '../billingService';
 import { correctionWorkflowFixture } from './correctionWorkflowFixture';
 import { creditWorkflowFixture } from './creditWorkflowFixture';
+import { customerStatementFixture } from './customerStatementFixture';
 import { invoiceDraftFixture } from './invoiceDraftFixture';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
 import { paymentWorkflowFixture } from './paymentWorkflowFixture';
@@ -68,6 +70,7 @@ jest.mock('../billingService', () => ({
   getInvoiceDraftChoices: jest.fn(),
   getInvoiceReports: jest.fn(),
   downloadInvoiceReport: jest.fn(),
+  getCustomerStatement: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({
   useUserPrivilege: jest.fn(),
@@ -140,6 +143,23 @@ describe('Billing workspace', () => {
     await screen.findByRole('button', { name: 'Download Invoices' });
     expect(getInvoiceReports).toHaveBeenCalledWith(7);
     expect(downloadInvoiceReport).not.toHaveBeenCalled();
+    expect(postInvoiceWorkflow).not.toHaveBeenCalled();
+  });
+  it('opens the selected customer account statement only after signed-in invoice selection', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([invoice]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    (getCustomerStatement as jest.Mock).mockResolvedValue(
+      customerStatementFixture(),
+    );
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Customer account statement' }),
+    );
+    await screen.findByRole('heading', { name: 'Customer account statement' });
+    expect(getCustomerStatement).not.toHaveBeenCalled();
     expect(postInvoiceWorkflow).not.toHaveBeenCalled();
   });
   it('opens new customer invoice creation only within the signed-in Billing workspace', async () => {

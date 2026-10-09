@@ -3,6 +3,29 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+## Customer account statement
+
+`account.move.qorlia_customer_statement` accepts only a saved customer invoice
+ID and exact ISO accounting dates. The invoice fixes the commercial customer
+and company; no caller context, partner or company override is accepted.
+Native posted receivable journal lines supply dated opening, debit, credit and
+running/closing balances. Original document-currency amounts are retained
+beside company-currency totals. Drafts/future entries are excluded; paid bills,
+credits and unallocated receipts remain visible. This is not bank reconciliation.
+
+Native Accounting Readonly access, read ACLs and company/record rules apply.
+Billing Administrator in the pinned invoicing-only image does not imply that
+read role. Deployment operators must assign it deliberately to authorised
+accounting users, not weaken the endpoint. Related unbalanced journals and
+histories above 2,000 entries fail explicitly. There is no silent truncation or
+write. The React modal loads only on request and keeps submitted period labels
+separate from subsequent, not-yet-loaded date edits.
+
+Independent native tests: 116, zero failures/errors/skips. Home: 159 tests.
+Actual HTTP verifies four periods against journal entries, including opening
+500, credit 100 and closing 400, without changing financial snapshots/payment
+count. Statement PDF printing and complete report-layout reskin remain open.
+
 ## Standalone customer invoice creation
 
 The signed-in Invoices panel's New invoice action uses the same editor and four

@@ -1,5 +1,52 @@
 # Qorlia React frontend backend readiness
 
+## Customer account statements: hosted browser acceptance (10 October 2026)
+
+The protected build's selected invoice INV/2026/00032 loads its real posted
+receivable ledger: INR 0 opening, 500 debits, 100 credits and 400 closing.
+Changing the accounting start date does not relabel old results until loading;
+the one-day statement correctly shows opening 500, credits 100 and closing 400.
+Manual reload works. Back retains the invoice and reopening requires an explicit
+load. These actions do not post, pay, allocate or otherwise edit financial data.
+
+Browser inspection caught missing table styles because the modal is portalled
+outside the page. Shared house table styles now also apply inside scroll wrappers.
+Amounts do not wrap and the ledger supports focused keyboard horizontal scrolling
+at the narrow review viewport. All 83 hosted JS/CSS chunks and the credential-free
+source/LICENSE/NOTICE archive match the release artifacts. Tester gate, hospital
+session enforcement, Secure/HttpOnly cookie, robots exclusion and raw mutation/
+report blocking remain verified. The URL, access code and expiry are unchanged.
+Production/shared demo are unchanged; statement PDF and full parity remain open.
+
+## Customer account statements: isolated backend verified (10 October 2026)
+
+Selected signed-in invoices now offer an explicitly loaded customer statement
+for a chosen accounting period. It uses native posted receivable journal lines
+for the invoice's commercial customer and company, with opening balance,
+period debits/credits, running balance and document-currency amounts. Paid
+invoices, credit notes and unallocated receipts are included; drafts and future
+entries are excluded. This is visible ledger history, not a current unpaid list
+or bank-clearance assertion. No financial record is changed by loading it.
+
+The named adapter preserves native read ACLs, record/company rules and requires
+Odoo's accounting-read role. Strict dates, balanced related journals and a
+2,000-entry fail-closed limit prevent invalid or silently truncated statements.
+Native Billing Administrator does not imply Accounting Readonly in this pinned
+invoicing-only image. The isolated QA administrator received that native read
+role; write roles and production/shared-demo permissions remain unchanged.
+
+The independent native suite passes 116 tests with zero failures/errors/skips.
+Home passes 159 tests in 21 suites, Home types and seven gateway/webpack checks
+pass. Actual HTTP read-back matches native entries for four date ranges:
+INR 500 invoiced/100 credited/400 closing; a preceding period with 500 closing;
+a one-day period with 500 opening/100 credited/400 closing; and an empty period.
+Invalid dates are rejected. Invoice/journal snapshots and payment count remain
+unchanged. Protected release and browser acceptance are separate checks.
+
+Statement PDF printing, complete document reskin, email/chatter, arbitrary
+journal editing, bank/provider/check/PDC, down payments, POS, stock/batch,
+Clinical-to-ERP sync and full wider-product parity are still unfinished.
+
 ## Order and payment reports: hosted browser acceptance (10 October 2026)
 
 The protected tester build now contains the order/payment report controls.
