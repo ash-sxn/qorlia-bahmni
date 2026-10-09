@@ -1,5 +1,30 @@
 # Qorlia React frontend backend readiness
 
+## Latest reviewed reconciliation removal verification (9 October 2026)
+
+The credit dialog now exposes a separate review of one reconciled allocation
+and a named native removal action. Native Odoo determines residuals and handles
+exchange/cash-basis reversal, while the adapter preserves native permissions,
+record rules, deterministic graph locks, stale-version rejection and balanced
+journal checks. The UI requires explicit review and never retries an uncertain
+write. This is allocation removal, not receipt deletion, refund or bank transfer.
+
+All 54 native adapter tests pass with zero failures/errors/skips; Home passes
+92 tests in 11 suites, gateway/webpack seven checks, types/lint/formatting/diff
+and development build pass. Existing native HTTP evidence proves concurrent
+duplicate rejection and reallocation. Hosted browser INV/2026/00023 retained
+INR 400 when review was closed, then reopened to INR 500 after one explicit
+removal. Independent native reads confirmed RINV/2026/00011 reopened to INR 100,
+no partial reconciliation, balanced ledgers and no payment record. Full browser
+reload retained that state. Separate INV/2026/00022 remains INR 400 allocated.
+
+The protected review source archive and license files match the updated build;
+raw financial mutation remains blocked. Gate code, access expiry and session
+boundaries are unchanged. Production and the shared demo were not deployed.
+Still needed: remaining correction/refund controls, statements, provider/check/
+PDC, printing, down payments, POS, stock/batch acceptance and clinical feed sync.
+This checkpoint supersedes the reconciliation-removal gap below, not those gates.
+
 ## Latest native credit allocation verification (9 October 2026)
 
 The reviewed existing-credit workflow delegates to the pinned Odoo native

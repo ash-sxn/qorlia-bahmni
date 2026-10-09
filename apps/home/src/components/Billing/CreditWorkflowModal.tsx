@@ -8,6 +8,7 @@ import {
   BillingSessionExpired,
   getCreditWorkflow,
   InvoiceWorkflow,
+  removeCreditWorkflow,
 } from './billingService';
 
 export function CreditWorkflowModal({
@@ -20,10 +21,11 @@ export function CreditWorkflowModal({
   uid: number;
   invoiceId: number;
   close: () => void;
-  completed: (invoice: InvoiceWorkflow) => void;
+  completed: (invoice: InvoiceWorkflow, action: 'applied' | 'removed') => void;
   reconnect: () => void;
 }) {
   const [selected, setSelected] = useState<number | null>(null);
+  const [removing, setRemoving] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Error | null>(null);
   const busyRef = useRef(false);
@@ -37,13 +39,14 @@ export function CreditWorkflowModal({
   });
   const review = current.data;
   const item = review?.credits.find((credit) => credit.id === selected);
+  const removal = review?.history.find((row) => row.id === removing);
   const expired =
     failure instanceof BillingSessionExpired ||
     current.error instanceof BillingSessionExpired;
-  const apply = async () => {
+  const save = async (action: 'applied' | 'removed') => {
     if (
       !review ||
-      !item?.can_apply ||
+      (action === 'applied' ? !item?.can_apply : !removal?.can_remove) ||
       busyRef.current ||
       failure ||
       current.isFetching ||
@@ -53,7 +56,11 @@ export function CreditWorkflowModal({
     busyRef.current = true;
     setBusy(true);
     try {
-      completed((await applyCreditWorkflow(review, item.id)).invoice);
+      const result =
+        action === 'applied'
+          ? await applyCreditWorkflow(review, item!.id)
+          : await removeCreditWorkflow(review, removal!.id);
+      completed(result.invoice, action);
     } catch (error) {
       setFailure(
         error instanceof Error
@@ -134,7 +141,10 @@ export function CreditWorkflowModal({
                     <Button
                       kind="tertiary"
                       disabled={busy || !!failure || !credit.can_apply}
-                      onClick={() => setSelected(credit.id)}
+                      onClick={() => {
+                        setRemoving(null);
+                        setSelected(credit.id);
+                      }}
                     >
                       Review {credit.name}
                     </Button>
@@ -164,7 +174,7 @@ export function CreditWorkflowModal({
                 </p>
                 <Button
                   disabled={busy || !!failure}
-                  onClick={() => void apply()}
+                  onClick={() => void save('applied')}
                 >
                   Apply reviewed item
                 </Button>
@@ -177,16 +187,52 @@ export function CreditWorkflowModal({
                   <li key={`${row.id}-${row.is_exchange}`}>
                     {row.name}: {money(row.amount, row.currency[1])}, {row.date}
                     {row.is_exchange ? ', currency exchange entry' : ''}
+                    {row.can_remove ? (
+                      <Button
+                        kind="tertiary"
+                        disabled={busy || !!failure}
+                        onClick={() => {
+                          setSelected(null);
+                          setRemoving(row.id);
+                        }}
+                      >
+                        Review removal of {row.name}
+                      </Button>
+                    ) : null}
                   </li>
                 ))}
               </ul>
             ) : (
               <p>No reconciled items.</p>
             )}
+            {removal?.can_remove ? (
+              <section aria-label="Reviewed allocation removal">
+                <h3>Check before removing</h3>
+                <p>
+                  Remove the allocation from {removal.name}:{' '}
+                  {money(removal.amount, removal.currency[1])}. This reopens the
+                  affected balance. The receipt or credit note stays in Billing.
+                </p>
+                <p>
+                  This does not refund or move money. Native accounting reverses
+                  linked currency-exchange and cash-basis tax entries where
+                  required. Other allocations are not selected for removal.
+                </p>
+                <Button
+                  kind="danger"
+                  disabled={busy || !!failure}
+                  onClick={() => void save('removed')}
+                >
+                  Remove reviewed allocation
+                </Button>
+              </section>
+            ) : null}
           </>
         ) : null}
         {busy ? (
-          <p role="status">Applying in native Billing. Please wait...</p>
+          <p role="status">
+            Saving allocation in native Billing. Please wait...
+          </p>
         ) : null}
         {failure && !expired ? (
           <div role="alert">
@@ -204,6 +250,7 @@ export function CreditWorkflowModal({
             disabled={busy || current.isFetching}
             onClick={async () => {
               setSelected(null);
+              setRemoving(null);
               const result = await current.refetch();
               if (!result.isError) setFailure(null);
             }}

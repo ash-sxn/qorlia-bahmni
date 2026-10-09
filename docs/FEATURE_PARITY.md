@@ -1,5 +1,39 @@
 # Bahmni workflow parity ledger
 
+## 9 October reviewed reconciliation removal checkpoint
+
+- The existing-credit dialog now reviews and removes one native reconciled item
+  through `js_remove_outstanding_partial`. It does not delete the invoice,
+  credit note or receipt, create a refund or transfer funds. Exchange rows
+  cannot be selected directly; native reversal handles related exchange and
+  cash-basis entries.
+- The named adapter action checks native access rights and record rules,
+  balances and a fresh reconciliation-graph snapshot. Deterministic document
+  and journal-line locks plus a post-lock version check reject stale or repeated
+  requests. Raw reconciliation removal remains blocked at the review gateway.
+- Native tests cover partial/full removal, preservation of other allocations
+  and posted receipts, ordinary cashier rights, credit-note perspective,
+  foreign currency and exchange/cash-basis reversals. All 54 adapter tests pass
+  without failures, errors or skips. Home passes 92 tests in 11 suites;
+  gateway/webpack pass seven checks. Home types, targeted lint/formatting,
+  whitespace checks and development build pass.
+- Existing native HTTP evidence proves that duplicate concurrent removals yield
+  one successful removal and one rejection, followed by successful reallocation.
+  Hosted browser INV/2026/00023 was reviewed and closed without changing its
+  INR 400 balance. An explicit removal of its INR 100 allocation returned native
+  `not_paid` and INR 500 open. Independent native reads found INR 100 reopened
+  on RINV/2026/00011, no reconciliation, balanced journals and no payments.
+  Full browser reload retained the restored outstanding credit and no history.
+  Separate INV/2026/00022 stayed INR 400 with its original allocation.
+- Only the isolated synthetic backend and protected tester review are involved.
+  The hosted source archive matches, tester secrets are absent, and existing
+  gate code, session boundaries, expiry and production services are unchanged.
+
+Remaining Billing gates include statement matching, correction/refund UI,
+provider/check/PDC workflows, printouts, down payments, POS, stock/batch
+fulfillment and Clinical-to-ERP synchronization. Native tests are not browser
+acceptance of every accounting configuration or proof of full module parity.
+
 ## 9 October native credit allocation checkpoint
 
 - The signed-in Billing workspace now includes an explicit review for existing

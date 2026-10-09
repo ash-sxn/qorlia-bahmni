@@ -18,10 +18,11 @@ import {
   recordPaymentWorkflow,
   getCreditWorkflow,
   applyCreditWorkflow,
+  removeCreditWorkflow,
 } from '../billingService';
+import { creditWorkflowFixture } from './creditWorkflowFixture';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
 import { paymentWorkflowFixture } from './paymentWorkflowFixture';
-import { creditWorkflowFixture } from './creditWorkflowFixture';
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
@@ -38,6 +39,7 @@ jest.mock('../billingService', () => ({
   recordPaymentWorkflow: jest.fn(),
   getCreditWorkflow: jest.fn(),
   applyCreditWorkflow: jest.fn(),
+  removeCreditWorkflow: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({ useUserPrivilege: jest.fn() }));
 jest.mock('../../HomePageHeader', () => ({
@@ -371,6 +373,59 @@ describe('Billing workspace', () => {
     ).toBeVisible();
     expect(getCreditWorkflow).toHaveBeenCalledWith(7);
     expect(applyCreditWorkflow).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(getInvoices).toHaveBeenCalledTimes(2));
+  });
+  it('removes only the reviewed allocation and refreshes the reopened balance', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([
+      { ...invoice, state: 'posted' },
+    ]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    (getCreditWorkflow as jest.Mock).mockResolvedValue(
+      creditWorkflowFixture({
+        history: [
+          {
+            id: 23,
+            name: 'QorliaQA Receipt',
+            date: '2026-10-09',
+            amount: 100,
+            currency: [3, 'INR'],
+            is_exchange: false,
+            can_remove: true,
+          },
+        ],
+      }),
+    );
+    (removeCreditWorkflow as jest.Mock).mockResolvedValue(
+      creditWorkflowFixture({
+        invoice: invoiceWorkflowFixture({
+          state: 'posted',
+          can_post: false,
+          open_amount: 500,
+        }),
+      }),
+    );
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review credit allocation' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Review removal of QorliaQA Receipt',
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Remove reviewed allocation/ }),
+    );
+    expect(
+      await screen.findByText(
+        /allocation removed.*Open amount: ₹500.00.*No new payment/,
+      ),
+    ).toBeVisible();
+    expect(removeCreditWorkflow).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => expect(getInvoices).toHaveBeenCalledTimes(2));
   });

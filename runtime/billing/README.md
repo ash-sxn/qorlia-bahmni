@@ -83,9 +83,23 @@ uncertain replies require a fresh status read, never an automatic write retry.
 The read uses Odoo's compute protection: directly invoking its widget compute
 method outside that protection changes `write_date` and invalidates a review.
 
-More than 200 outstanding items requires native Billing instead of truncating
-the choices. Undoing reconciliation and bank-statement matching remain separate,
-unfinished workflows. This adapter is not a substitute for accountant review.
+More than 200 outstanding or reconciled items requires native Billing instead
+of truncating the choices. This adapter is not a substitute for accountant review.
+
+## Reviewed reconciliation removal
+
+The named `qorlia_credit_remove` action delegates one reviewed history item to
+native `js_remove_outstanding_partial`. It reopens affected residuals without
+deleting invoices, credit notes or posted receipts, creating payments or moving
+real money. Native unlink/reversal handles full reconciliation, related exchange
+and cash-basis entries. Currency-exchange history rows cannot be selected directly.
+
+The review version includes the connected reconciliation graph and accounting
+configuration. Native ACLs/record rules, deterministic document/line locks and
+a post-lock snapshot reject stale, unrelated, unauthorized and repeated requests.
+Balanced-ledger checks run before and after the action. Direct native removal
+methods remain blocked at the gateway; uncertain replies require status read-back.
+Bank-statement matching is a separate unfinished workflow.
 
 ## Verification and scope
 
@@ -98,10 +112,13 @@ currency conversion, write-off accounting, excess credit, ordinary cashier
 rights, separate bank matching and rejection of stale/repeated requests.
 Credit checks cover credit-note/debit allocation, excess receipt credit, native
 foreign-currency conversion, ordinary cashier rights, source/target staleness,
-read-only version stability and unbalanced-source rejection.
+read-only version stability and unbalanced-source rejection. Removal checks cover
+partial/full allocations, retained posted receipts and unrelated allocations,
+cashier rights, credit-note perspective, currency conversion, exchange/cash-basis
+reversals and stale/repeated/unauthorized requests.
 Tests require an isolated company with a chart, shop and synthetic data.
 
-Provider/check/PDC payments, statement reconciliation, reconciliation removal,
+Provider/check/PDC payments, statement reconciliation,
 partial/down-payment invoice allocation, stock/batch acceptance, POS, printouts
 and Clinical-to-ERP synchronization still
 require integration and end-to-end acceptance. Native reversal/reset tests are

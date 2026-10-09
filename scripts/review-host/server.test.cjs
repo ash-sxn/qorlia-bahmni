@@ -82,7 +82,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     assert.equal((await rpc(path, allCookies, { ...params, kwargs: { context: { uid: 1 } } })).status, 400);
   }
   for (const method of ['qorlia_invoice_workflow_load', 'qorlia_invoice_workflow_post',
-    'qorlia_payment_load', 'qorlia_payment_preview', 'qorlia_payment_record', 'qorlia_credit_load', 'qorlia_credit_apply']) {
+    'qorlia_payment_load', 'qorlia_payment_preview', 'qorlia_payment_record', 'qorlia_credit_load', 'qorlia_credit_apply', 'qorlia_credit_remove']) {
     const path = `/web/dataset/call_kw/account.move/${method}`;
     const params = { model: 'account.move', method, args: [], kwargs: {} };
     assert.equal((await rpc(path, cookie, params)).status, 401);

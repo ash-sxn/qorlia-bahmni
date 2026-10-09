@@ -623,11 +623,11 @@ export function BillingPage() {
                   queryClient.removeQueries({ queryKey: ['billing'] });
                   void session.refetch();
                 }}
-                completed={(invoice) => {
+                completed={(invoice, action) => {
                   setCreditInvoice(null);
                   setSelected(null);
                   setInvoiceNotice(
-                    `${invoice.name || 'Invoice'} allocation saved. Native status: ${invoice.payment_state.replaceAll('_', ' ')}. Open amount: ${money(invoice.open_amount, invoice.currency[1])}. No new payment was created.`,
+                    `${invoice.name || 'Invoice'} allocation ${action === 'removed' ? 'removed' : 'saved'}. Native status: ${invoice.payment_state.replaceAll('_', ' ')}. Open amount: ${money(invoice.open_amount, invoice.currency[1])}. No new payment was created.`,
                   );
                   void queryClient.invalidateQueries({
                     predicate: (query) =>

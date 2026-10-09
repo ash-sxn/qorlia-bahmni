@@ -534,6 +534,7 @@ export interface CreditWorkflow {
     amount: number;
     currency: [number, string];
     is_exchange: boolean;
+    can_remove: boolean;
   }[];
 }
 
@@ -564,7 +565,7 @@ const creditCall = async (method: string, kwargs: object) => {
     !Array.isArray(value.history) ||
     !value.credits.every(
       (row) =>
-        validRow({ ...row, is_exchange: false }) &&
+        validRow({ ...row, is_exchange: false, can_remove: false }) &&
         Number.isInteger(row.source_id) &&
         row.source_id > 0 &&
         typeof row.can_apply === 'boolean' &&
@@ -574,7 +575,14 @@ const creditCall = async (method: string, kwargs: object) => {
             value.invoice.open_amount > 0)),
     ) ||
     !value.history.every(
-      (row) => validRow(row) && typeof row.is_exchange === 'boolean',
+      (row) =>
+        validRow(row) &&
+        typeof row.is_exchange === 'boolean' &&
+        typeof row.can_remove === 'boolean' &&
+        (!row.can_remove ||
+          (!row.is_exchange &&
+            value.invoice.ledger_balanced &&
+            value.invoice.state === 'posted')),
     )
   )
     throw new Error(
@@ -590,6 +598,16 @@ export const applyCreditWorkflow = (review: CreditWorkflow, lineId: number) =>
   creditCall('qorlia_credit_apply', {
     invoice_id: review.invoice.id,
     line_id: lineId,
+    version: review.version,
+  });
+
+export const removeCreditWorkflow = (
+  review: CreditWorkflow,
+  partialId: number,
+) =>
+  creditCall('qorlia_credit_remove', {
+    invoice_id: review.invoice.id,
+    partial_id: partialId,
     version: review.version,
   });
 

@@ -19,16 +19,30 @@ import {
   recordPaymentWorkflow,
   getCreditWorkflow,
   applyCreditWorkflow,
+  removeCreditWorkflow,
 } from '../billingService';
+import { creditWorkflowFixture } from './creditWorkflowFixture';
 import { draftFixture } from './draftFixture';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
 import { paymentWorkflowFixture } from './paymentWorkflowFixture';
 import { workflowFixture } from './workflowFixture';
-import { creditWorkflowFixture } from './creditWorkflowFixture';
 
 describe('billing API', () => {
   beforeEach(() => {
     global.fetch = jest.fn();
+  });
+  it('uses only the named removal action with the reviewed invoice, partial and version', async () => {
+    const credit = creditWorkflowFixture();
+    reply({ result: credit });
+    await removeCreditWorkflow(credit, 23);
+    const [url, options] = (fetch as jest.Mock).mock.calls[0];
+    expect(url).toContain('/account.move/qorlia_credit_remove');
+    expect(JSON.parse(options.body).params).toEqual({
+      model: 'account.move',
+      method: 'qorlia_credit_remove',
+      args: [],
+      kwargs: { invoice_id: 7, partial_id: 23, version: credit.version },
+    });
   });
   const reply = (body: unknown) =>
     (fetch as jest.Mock).mockResolvedValue({
@@ -58,6 +72,32 @@ describe('billing API', () => {
       { credits: [{ ...credit.credits[0], source_id: false }] },
       { credits: [{ ...credit.credits[0], can_apply: 'yes' }] },
       { history: [{ id: 1, amount: 100 }] },
+      {
+        history: [
+          {
+            id: 1,
+            name: 'Exchange',
+            date: '2026-10-09',
+            amount: 10,
+            currency: [3, 'INR'],
+            is_exchange: true,
+            can_remove: true,
+          },
+        ],
+      },
+      {
+        history: [
+          {
+            id: 1,
+            name: 'Receipt',
+            date: '2026-10-09',
+            amount: 100,
+            currency: [3, 'INR'],
+            is_exchange: false,
+            can_remove: 'yes',
+          },
+        ],
+      },
       { invoice: { ...credit.invoice, ledger_balanced: false } },
     ]) {
       reply({ result: { ...credit, ...patch } });

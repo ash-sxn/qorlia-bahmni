@@ -10,13 +10,16 @@ import {
   applyCreditWorkflow,
   BillingSessionExpired,
   getCreditWorkflow,
+  removeCreditWorkflow,
 } from '../billingService';
 import { CreditWorkflowModal } from '../CreditWorkflowModal';
 import { creditWorkflowFixture } from './creditWorkflowFixture';
+
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
   getCreditWorkflow: jest.fn(),
   applyCreditWorkflow: jest.fn(),
+  removeCreditWorkflow: jest.fn(),
 }));
 const close = jest.fn(),
   completed = jest.fn(),
@@ -77,7 +80,10 @@ describe('Reviewed native credit allocation', () => {
       creditWorkflowFixture(),
       12,
     );
-    expect(completed).toHaveBeenCalledWith(creditWorkflowFixture().invoice);
+    expect(completed).toHaveBeenCalledWith(
+      creditWorkflowFixture().invoice,
+      'applied',
+    );
     expect(applyCreditWorkflow).toHaveBeenCalledTimes(1);
   });
   it('blocks duplicate submits and close during allocation', async () => {
@@ -126,6 +132,7 @@ describe('Reviewed native credit allocation', () => {
             amount: 100,
             currency: [3, 'INR'],
             is_exchange: false,
+            can_remove: true,
           },
         ],
       }),
@@ -138,12 +145,133 @@ describe('Reviewed native credit allocation', () => {
       ),
     );
     expect(
-      await screen.findByText(/QorliaQA Saved credit/),
+      await screen.findByRole('button', {
+        name: 'Review removal of QorliaQA Saved credit',
+      }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Apply reviewed item' }),
     ).not.toBeInTheDocument();
     expect(applyCreditWorkflow).toHaveBeenCalledTimes(1);
+  });
+  it('requires review before removal and sends only the chosen partial', async () => {
+    const review = creditWorkflowFixture({
+      credits: [],
+      history: [
+        {
+          id: 3,
+          name: 'QorliaQA Receipt',
+          date: '2026-10-09',
+          amount: 100,
+          currency: [3, 'INR'],
+          is_exchange: false,
+          can_remove: true,
+        },
+      ],
+    });
+    (getCreditWorkflow as jest.Mock).mockResolvedValue(review);
+    (removeCreditWorkflow as jest.Mock).mockResolvedValue(
+      creditWorkflowFixture(),
+    );
+    show();
+    const button = await screen.findByRole('button', {
+      name: 'Review removal of QorliaQA Receipt',
+    });
+    expect(
+      screen.queryByRole('button', { name: /Remove reviewed allocation/ }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(button);
+    expect(
+      screen.getByRole('region', { name: 'Reviewed allocation removal' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/does not refund or move money/),
+    ).toBeInTheDocument();
+    await act(async () =>
+      fireEvent.click(
+        screen.getByRole('button', { name: /Remove reviewed allocation/ }),
+      ),
+    );
+    expect(removeCreditWorkflow).toHaveBeenCalledWith(review, 3);
+    expect(completed).toHaveBeenCalledWith(
+      creditWorkflowFixture().invoice,
+      'removed',
+    );
+    expect(applyCreditWorkflow).not.toHaveBeenCalled();
+  });
+  it('requires a fresh review after an uncertain removal and blocks duplicates and close', async () => {
+    const history = [
+      {
+        id: 3,
+        name: 'QorliaQA Receipt',
+        date: '2026-10-09',
+        amount: 100,
+        currency: [3, 'INR'] as [number, string],
+        is_exchange: false,
+        can_remove: true,
+      },
+    ];
+    (getCreditWorkflow as jest.Mock).mockResolvedValue(
+      creditWorkflowFixture({ history }),
+    );
+    let reject!: (error: Error) => void;
+    (removeCreditWorkflow as jest.Mock).mockImplementation(
+      () =>
+        new Promise((_resolve, failure) => {
+          reject = failure;
+        }),
+    );
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Review removal of QorliaQA Receipt',
+      }),
+    );
+    const button = screen.getByRole('button', {
+      name: /Remove reviewed allocation/,
+    });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(close).not.toHaveBeenCalled();
+    expect(removeCreditWorkflow).toHaveBeenCalledTimes(1);
+    await act(async () => reject(new Error('Response lost')));
+    expect(
+      screen.getByRole('button', { name: /Remove reviewed allocation/ }),
+    ).toBeDisabled();
+    await act(async () =>
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Reload current allocation status',
+        }),
+      ),
+    );
+    expect(
+      screen.queryByRole('button', { name: /Remove reviewed allocation/ }),
+    ).not.toBeInTheDocument();
+    expect(removeCreditWorkflow).toHaveBeenCalledTimes(1);
+  });
+  it('does not offer removal for exchange entries or denied rights', async () => {
+    (getCreditWorkflow as jest.Mock).mockResolvedValue(
+      creditWorkflowFixture({
+        history: [
+          {
+            id: 3,
+            name: 'QorliaQA Exchange',
+            date: '2026-10-09',
+            amount: 10,
+            currency: [3, 'INR'],
+            is_exchange: true,
+            can_remove: false,
+          },
+        ],
+      }),
+    );
+    show();
+    await screen.findByText(/QorliaQA Exchange/);
+    expect(
+      screen.queryByRole('button', { name: /Review removal/ }),
+    ).not.toBeInTheDocument();
   });
   it('hides financial data when the native session expires', async () => {
     (applyCreditWorkflow as jest.Mock).mockRejectedValue(
