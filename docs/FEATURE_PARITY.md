@@ -1,5 +1,43 @@
 # Bahmni workflow parity ledger
 
+## 9 October Billing order confirmation and invoicing checkpoint
+
+- Billing is part of the signed-in React workspace. The shared design-system
+  review dialog reads the current native order state and exposes only actions
+  allowed by that state and the signed-in ERP account. It describes configured
+  automatic stock delivery and invoice posting before confirmation. Saving a
+  draft remains separate from confirming it, creating an invoice or payment.
+- The original LGPL-3.0 adapter delegates confirmation to native Bahmni/Odoo
+  `action_confirm` and regular invoicing to Odoo's sales invoice wizard. Native
+  ACLs, record rules, order/line locks and fresh version checks precede writes.
+  A version includes the configured automation and linked invoice/delivery
+  states. Repeating an old confirmation is rejected instead of creating another
+  invoice. Uncertain replies require an explicit status read, never an automatic
+  mutation replay. The gateway allows named adapter actions, not raw financial
+  create/write/confirmation calls or arbitrary adapter context overrides.
+- Isolated native HTTP testing confirmed synthetic S00054 and produced one
+  posted INV/2026/00002. Hosted browser testing reviewed and then confirmed
+  synthetic S00055, producing one posted INV/2026/00003. Independent native reads
+  confirm INR 45 tax, INR 25 document discount, INR 920 total and INR 920 unpaid
+  balance. These service-only orders have no stock picking. The unchanged draft
+  fixture S00028 remains available for draft-edit testing.
+- All eight Home suites pass 57 tests; gateway/webpack guards pass seven tests;
+  native adapter tests pass eight tests with no failures, errors or skips.
+  Home library types, changed-source lint, diff checks and the development build
+  pass. Native tests also cover manual regular invoicing when automatic invoicing
+  is disabled, stale order/configuration versions and a role without Billing
+  access. Hosted browser error logs were empty for the verified flow.
+
+This is not complete Billing acceptance. Payments, reconciliation, refunds,
+standalone posting/cancellation, down payments, POS, stock/batch delivery and
+returns, the full role/company matrix, and Clinical-to-ERP synchronization remain
+unfinished. The ERP has separate synthetic data and no public ports or outbound
+network access. Automatic stock delivery was disclosed but not verified by these
+service-only fixtures. The test chart and tax are arithmetic fixtures, not an
+Indian healthcare accounting setup. The protected VPS tester release changed;
+production and the existing public demo did not. Large development bundles and
+Quick Tunnel availability remain limitations.
+
 ## 7 October visit creation and uncertain-reply recovery checkpoint
 
 - Visit entry now waits for a fresh patient/location-scoped read instead of

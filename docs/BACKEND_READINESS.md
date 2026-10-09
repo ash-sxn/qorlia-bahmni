@@ -1,5 +1,57 @@
 # Qorlia React frontend backend readiness
 
+## Latest Billing order workflow verification (9 October 2026)
+
+The original LGPL-3.0 adapter in
+`runtime/billing/qorlia_billing_ui/models/order_workflow.py` provides a bounded
+native workflow snapshot and two reviewed actions: quotation confirmation and
+regular invoice creation. Confirmation uses Bahmni/Odoo `action_confirm` with
+native analytic validation. Regular invoices use the native
+`sale.advance.payment.inv` wizard with down-payment deduction, matching
+[Odoo 16 invoicing](https://www.odoo.com/documentation/16.0/applications/sales/sales/invoicing/down_payment.html).
+The adapter does not replace native stock, accounting, tax or rounding logic.
+
+The isolated ERP's automatic delivery and invoicing settings are enabled.
+Therefore confirming an eligible order can perform stock delivery and create
+and post its invoices. The React review dialog displays those actual settings
+before the action. A posted invoice is not a payment. No payment request is
+issued by this workflow. Draft save is still draft-only.
+
+Native ACLs and record rules apply at the adapter boundary. Order and line locks
+plus a current version reject stale or repeated actions. Automation settings,
+linked invoices/deliveries and native invoicing quantities participate in the
+version. Only named adapter methods are exposed through the tester gateway,
+behind the tester gate, hospital session, same-origin checks and native ERP
+authentication. Raw financial methods and browser-supplied adapter context
+overrides remain blocked. Row locks serialize this adapter's callers; they are
+not a claim of universal race prevention across every native client.
+
+Actual HTTP testing confirmed synthetic order 54, S00054, and created posted
+invoice 5, INV/2026/00002. The hosted React browser confirmed order 55, S00055,
+after reviewing the consequences, and linked posted invoice 6, INV/2026/00003.
+Independent native reads verify INR 45 tax, INR 920 invoice total, INR 920 residual
+and `not_paid`. Both orders used two service units at INR 500, a 10% line
+discount and INR 25 document discount. Each has exactly one invoice and zero
+stock pickings. Reusing S00054's old confirmation version was rejected without
+another invoice. The browser linked-invoice view shows the actual posted status,
+discount, tax and outstanding amount. No browser error logs were captured for
+that verified flow.
+
+Eight Home suites pass 57 tests; gateway/webpack guards pass seven tests; eight
+native adapter tests pass without failures/errors/skips. Native tests also cover
+regular invoicing with automation disabled, stale configuration/order versions
+and access denial without Billing permissions. Home library types, targeted lint,
+diff checks and the development webpack build pass. Screenshots and the private
+tester guide are retained in the staging evidence directory.
+
+Remaining: payments/reconciliation, refunds, standalone posting/cancellation,
+down-payment creation, POS, real stock/batch delivery and returns, full role/company
+checks, printouts and Clinical-to-ERP synchronization. Clinical and ERP use
+separate synthetic datasets. The ERP remains internal-only with outbound access
+disabled. Its test chart/tax is not Indian healthcare accounting acceptance.
+The updated protected tester build is a development release, not a production
+release or performance sign-off. Production and the public demo are unchanged.
+
 ## Latest visit creation and recovery verification (7 October 2026)
 
 The entry flow retains the existing native FHIR Encounter creation API. It now
