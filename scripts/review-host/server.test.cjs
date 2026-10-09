@@ -70,7 +70,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
       assert.equal((await rpc(`/web/dataset/call_kw/${model}/${method}`, allCookies, { model, method })).status, 404);
   }
   for (const method of ['load', 'preview', 'save', 'choices'].map((action) => `qorlia_draft_${action}`)
-    .concat(['qorlia_order_workflow_load', 'qorlia_order_workflow_run'])) {
+    .concat(['qorlia_order_workflow_load', 'qorlia_order_workflow_run', 'qorlia_order_report_list', 'qorlia_order_report_download'])) {
     const path = `/web/dataset/call_kw/sale.order/${method}`;
     const params = { model: 'sale.order', method, args: [], kwargs: {} };
     assert.equal((await rpc(path, cookie, params)).status, 401);
@@ -98,6 +98,15 @@ test('review gate protects UI, clinical API and named Billing actions with isola
   }
   for (const method of ['action_post', 'button_draft', 'button_cancel', 'write', 'unlink', 'js_assign_outstanding_line', 'js_remove_outstanding_partial'])
     assert.equal((await rpc(`/web/dataset/call_kw/account.move/${method}`, allCookies, { model: 'account.move', method })).status, 404);
+  for (const method of ['qorlia_payment_report_list', 'qorlia_payment_report_download']) {
+    const path = `/web/dataset/call_kw/account.payment/${method}`;
+    const params = { model: 'account.payment', method, args: [], kwargs: { payment_id: 1 } };
+    assert.equal((await rpc(path, cookie, params)).status, 401);
+    assert.equal((await rpc(path, allCookies, params)).status, 200);
+    assert.equal(seenBilling, 'session_id=erp-current');
+    for (const change of [{ method: 'write' }, { model: 'account.move' }, { args: [1] }, { kwargs: { context: { uid: 1 } } }])
+      assert.equal((await rpc(path, allCookies, { ...params, ...change })).status, 400);
+  }
   assert.equal((await rpc('/web/dataset/call_kw/ir.actions.report/_render_qweb_pdf', allCookies,
     { model: 'ir.actions.report', method: '_render_qweb_pdf' })).status, 404);
   assert.equal((await request('/openmrs/qorlia-billing-api/report/pdf/account.report_invoice/7',

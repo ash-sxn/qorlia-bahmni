@@ -8,3 +8,5 @@ from . import correction_workflow
 from . import reversal_workflow
 from . import invoice_draft
 from . import invoice_report
+from . import order_report
+from . import payment_report

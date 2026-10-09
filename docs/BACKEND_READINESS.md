@@ -1,5 +1,61 @@
 # Qorlia React frontend backend readiness
 
+## Order and payment reports: hosted browser acceptance (10 October 2026)
+
+The protected tester build now contains the order/payment report controls.
+Actual browser clicks downloaded quotation S00147, its discount summary, and
+detailed/summary receipts for payment PQR10/2026/00001. Delivered local PDFs,
+not the success notice alone, confirmed the saved INR 920 quotation and the
+receipt's INR 500 billed, INR 100 allocated and INR 400 remaining. Returning
+from either report preserved the selected order/payment; no payment was
+recorded or order confirmed by these actions.
+
+The hosted source/license archive and all 83 frontend JS/CSS chunks match the
+review artifacts. The archive contains no tester code or QA password. Tester
+access, hospital-session enforcement, Secure/HttpOnly gate cookie, robots
+exclusion and raw mutation/renderer blocking pass independent release checks.
+The existing access code, expiry and tunnel URL are unchanged. Only isolated
+Billing staging and the protected tester artifacts changed. Native PDF company
+layout remains; this is not complete Billing or whole-product acceptance.
+
+## Order and payment reports: code and isolated backend verified (10 October 2026)
+
+The React Billing code now connects saved orders to the native quotation,
+permitted pro-forma and discount-summary reports. Posted customer payments and
+refunds expose native Payment Receipt, detailed Receipt and Receipt Summary.
+Named adapter routes enforce saved-record/report ACLs, company boundaries,
+fixed templates and balanced journals; no raw renderer or caller context is
+exposed. The report modal reuses the Qorlia controls, with explicit downloads,
+bounded PDF validation, session recovery and preserved parent selection.
+
+Actual PDF inspection exposed two upstream mismatches, corrected in the adapter:
+sale tax totals omitted Bahmni document discounts, while the hospital receipts
+selected the latest same-day invoice and unset outstanding-balance fields.
+Quotation/pro-forma now print saved order totals with discount and rounding while
+retaining native line/tax/terms rendering. Hospital receipts use only reconciled
+invoice/credit records, native partial allocations in each document's currency,
+actual item/batch references and current residuals. They do not invent a prior
+customer balance. Detailed and summary variants remain distinct. Versioned,
+reconciliation-sensitive archive names preserve old files without reusing a
+pre-fix or financially outdated PDF.
+
+All 110 native tests pass with zero failures/errors/skips, including actual HTML
+rendering, discounts/chargeable overrides/rounding, partial/multi-invoice/refund
+and foreign-currency allocations. Actual HTTP downloaded ten PDFs: two saved
+orders and two payments across their permitted variants. Text and visual checks
+verify order INR 920, receipt INR 500 billed/100 allocated/400 remaining and
+refund INR 475 credited/100 allocated/375 remaining. Financial records, journal
+lines and payment counts remained unchanged. QA's native role does not permit
+pro-forma downloads; actual template tests use an authorised test environment.
+Home has 149 passing tests; seven gateway/webpack checks and Home types pass.
+
+These changes are verified in isolated synthetic Billing staging. The protected
+frontend release/browser acceptance is recorded separately when completed.
+Production/shared demo remain unchanged. This is not complete Billing: customer
+statements, full document styling, email/chatter, journal editing, bank/provider/
+check/PDC, down payments, POS, stock/batch fulfilment and Clinical-to-ERP sync,
+plus the remaining separate products and full clinical parity, are still open.
+
 ## Customer invoice PDF reports hosted and browser verified (10 October 2026)
 
 Signed-in invoice details now offer Invoice PDF reports, with the two installed

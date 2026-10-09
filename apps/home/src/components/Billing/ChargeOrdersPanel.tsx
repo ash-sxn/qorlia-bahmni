@@ -12,6 +12,7 @@ import {
   Invoice,
 } from './billingService';
 import { DraftOrderEditor } from './DraftOrderEditor';
+import { BillingReportsModal } from './InvoiceReportsModal';
 import { OrderWorkflowModal } from './OrderWorkflowModal';
 
 const orderState = {
@@ -45,6 +46,7 @@ export function ChargeOrdersPanel({
   const [editing, setEditing] = useState<number | false | null>(null);
   const [notice, setNotice] = useState('');
   const [workflow, setWorkflow] = useState<number | null>(null);
+  const [reportOrder, setReportOrder] = useState<number | null>(null);
   const queryClient = useQueryClient();
   const orders = useQuery({
     queryKey: [
@@ -90,6 +92,16 @@ export function ChargeOrdersPanel({
           Reconnect Billing
         </Button>
       </section>
+    );
+  if (reportOrder !== null)
+    return (
+      <BillingReportsModal
+        uid={uid}
+        kind="order"
+        recordId={reportOrder}
+        close={() => setReportOrder(null)}
+        reconnect={reconnect}
+      />
     );
   if (editing !== null)
     return (
@@ -366,6 +378,9 @@ export function ChargeOrdersPanel({
           </Button>
           <Button kind="tertiary" onClick={() => setWorkflow(selected.id)}>
             Review order actions
+          </Button>
+          <Button kind="tertiary" onClick={() => setReportOrder(selected.id)}>
+            Quotation and order PDF reports
           </Button>
           {['draft', 'sent'].includes(selected.state) &&
           !selected.invoice_ids.length ? (

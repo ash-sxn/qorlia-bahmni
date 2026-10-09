@@ -110,6 +110,41 @@ Keep a database and addon backup. If rolling back the frontend, retain the
 accounting adapter on databases containing posted adjustment lines: reverting
 the old invoice-total formula would subtract those discounts twice.
 
+## Saved order and posted payment PDF reports
+
+`sale.order.qorlia_order_report_list/download` expose the installed quotation,
+pro-forma and discount-summary variants, subject to their native report groups.
+`account.payment.qorlia_payment_report_list/download` expose Payment Receipt,
+Receipt and Receipt Summary for posted customer payments/refunds only. Fixed
+report/template maps, record ACLs/company rules, balanced journals, applied
+invoice adjustments, safe filenames and a 10 MiB PDF bound remain enforced.
+No arbitrary report IDs, raw financial mutations or caller context are accepted.
+
+The adapter inherits native sale tax totals to include saved Bahmni document
+discount/chargeable overrides and rounding in quotation/pro-forma totals. It
+replaces the hospital receipts' unrelated latest-invoice/unset-balance lookup
+with actual reconciled invoices/credits and native per-invoice-currency partial
+amounts. Detailed receipts retain item/batch/expiry/quantity/price/discount/tax
+information; summaries identify recorded services without pretending that every
+generic care category was billed. Company layout and native report actions are
+retained. Remaining balances are current document residuals, not a reconstructed
+historical customer statement or bank-clearance assertion.
+
+Hospital receipt archives retain native reuse with versioned snapshot filenames
+that change when payment/document/reconciliation metadata changes. Pre-fix and
+earlier balance snapshots are preserved but not reused for current reports.
+Printing may create a PDF attachment but must not confirm/post/pay/move stock.
+This module explicitly depends on the installed reconciliation add-on and loads
+its inherited report views via the normal native module upgrade.
+
+Verification on 10 October: 110 independent native tests with zero errors,
+failures or skips, actual HTML templates and ten HTTP PDFs with saved totals and
+residual checks. Order INR 920, receipt INR 500/100/400 and refund INR 475/100/375
+match native records; financial snapshots/payment counts unchanged. React Home
+149 tests and seven gateway/webpack checks pass. This does not establish full
+print-layout reskin, statements, bank matching, stock/feed or whole Billing
+acceptance. Production/shared demo are unchanged.
+
 ## Reviewed payment registration
 
 The three named `account.move.qorlia_payment_*` actions load, preview and record

@@ -2,15 +2,22 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import {
   BillingSessionExpired,
+  downloadDocumentReport,
+  getDocumentReports,
   downloadInvoiceReport,
   getInvoiceReports,
 } from '../billingService';
-import { InvoiceReportsModal } from '../InvoiceReportsModal';
+import {
+  BillingReportsModal,
+  InvoiceReportsModal,
+} from '../InvoiceReportsModal';
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
   downloadInvoiceReport: jest.fn(),
   getInvoiceReports: jest.fn(),
+  downloadDocumentReport: jest.fn(),
+  getDocumentReports: jest.fn(),
 }));
 const close = jest.fn(),
   reconnect = jest.fn();
@@ -131,4 +138,63 @@ describe('Invoice PDF reports', () => {
     await screen.findByText('Report list unavailable');
     expect(downloadInvoiceReport).not.toHaveBeenCalled();
   });
+  it.each([
+    [
+      'order',
+      'quotation',
+      'Quotation and order PDF reports',
+      'Back to order details',
+    ],
+    [
+      'payment',
+      'receipt',
+      'Payment receipt PDF reports',
+      'Back to payment details',
+    ],
+  ] as const)(
+    'uses the selected %s identity and keeps report navigation separate from financial actions',
+    async (kind, key, heading, back) => {
+      (getDocumentReports as jest.Mock).mockResolvedValue([
+        { key, name: 'Native report' },
+      ]);
+      (downloadDocumentReport as jest.Mock).mockResolvedValue({
+        filename: 'Native_9.pdf',
+        blob: new Blob(['%PDF-']),
+      });
+      render(
+        <QueryClientProvider
+          client={
+            new QueryClient({ defaultOptions: { queries: { retry: false } } })
+          }
+        >
+          <BillingReportsModal
+            uid={3}
+            recordId={9}
+            kind={kind}
+            close={close}
+            reconnect={reconnect}
+          />
+        </QueryClientProvider>,
+      );
+      const button = await screen.findByRole('button', {
+        name: 'Download Native report',
+      });
+      expect(screen.getByRole('region', { name: heading })).toBeInTheDocument();
+      expect(getDocumentReports).toHaveBeenCalledWith(kind, 9);
+      expect(downloadDocumentReport).not.toHaveBeenCalled();
+      fireEvent.click(button);
+      await screen.findByText(/PDF download requested/);
+      expect(downloadDocumentReport).toHaveBeenCalledWith(kind, 9, key);
+      expect(downloadInvoiceReport).not.toHaveBeenCalled();
+      expect(
+        screen.getByText(
+          kind === 'payment'
+            ? /earlier archives are retained/
+            : /pro-forma is not a posted invoice/,
+        ),
+      ).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: back }));
+      expect(close).toHaveBeenCalledTimes(1);
+    },
+  );
 });

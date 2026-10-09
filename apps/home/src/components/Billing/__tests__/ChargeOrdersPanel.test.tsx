@@ -13,6 +13,7 @@ import {
   getChargeOrderLines,
   getChargeOrders,
   getInvoices,
+  getDocumentReports,
   OrderWorkflow,
 } from '../billingService';
 import { ChargeOrdersPanel } from '../ChargeOrdersPanel';
@@ -23,6 +24,7 @@ jest.mock('../billingService', () => ({
   getChargeOrders: jest.fn(),
   getChargeOrderLines: jest.fn(),
   getInvoices: jest.fn(),
+  getDocumentReports: jest.fn(),
 }));
 jest.mock('../DraftOrderEditor', () => ({
   DraftOrderEditor: ({ saved }: { saved: (draft: BillingDraft) => void }) => (
@@ -119,6 +121,27 @@ const show = (
   );
 
 describe('Charge orders workspace', () => {
+  it('opens saved order reports and returns to the same selected order', async () => {
+    (getDocumentReports as jest.Mock).mockResolvedValue([
+      { key: 'quotation', name: 'Quotation / Order' },
+    ]);
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: /QORLIAQA-ORDER/ }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Quotation and order PDF reports',
+      }),
+    );
+    await screen.findByRole('button', { name: 'Download Quotation / Order' });
+    expect(getDocumentReports).toHaveBeenCalledWith('order', 9);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Back to order details' }),
+    );
+    await screen.findByRole('button', { name: 'Review order actions' });
+    expect(openInvoice).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     jest.clearAllMocks();
     (getChargeOrders as jest.Mock).mockResolvedValue([order]);

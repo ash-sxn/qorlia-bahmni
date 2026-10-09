@@ -11,6 +11,7 @@ import {
   previewPaymentWorkflow,
   recordPaymentWorkflow,
 } from './billingService';
+import { BillingReportsModal } from './InvoiceReportsModal';
 
 export function PaymentWorkflowModal({
   uid,
@@ -31,6 +32,7 @@ export function PaymentWorkflowModal({
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Error | null>(null);
   const [uncertain, setUncertain] = useState(false);
+  const [receipt, setReceipt] = useState<number | null>(null);
   const busyRef = useRef(false);
   const current = useQuery({
     queryKey: ['billing', 'payment-workflow', uid, invoiceId],
@@ -154,6 +156,16 @@ export function PaymentWorkflowModal({
         </select>
       </label>
     ) : null;
+  if (receipt !== null)
+    return (
+      <BillingReportsModal
+        uid={uid}
+        kind="payment"
+        recordId={receipt}
+        close={() => setReceipt(null)}
+        reconnect={reconnect}
+      />
+    );
   return (
     <Modal
       open
@@ -395,6 +407,15 @@ export function PaymentWorkflowModal({
                         ? ', bank matching complete'
                         : ', bank matching pending'
                       : null}
+                    {item.state === 'posted' ? (
+                      <Button
+                        kind="tertiary"
+                        disabled={busy || uncertain || current.isFetching}
+                        onClick={() => setReceipt(item.id)}
+                      >
+                        PDF receipts for {item.name}
+                      </Button>
+                    ) : null}
                   </li>
                 ))}
               </ul>

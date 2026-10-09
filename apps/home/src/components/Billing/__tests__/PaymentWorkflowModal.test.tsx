@@ -8,6 +8,7 @@ import {
 } from '@testing-library/react';
 import {
   BillingSessionExpired,
+  getDocumentReports,
   getPaymentWorkflow,
   previewPaymentWorkflow,
   recordPaymentWorkflow,
@@ -23,6 +24,7 @@ jest.mock('../billingService', () => ({
   getPaymentWorkflow: jest.fn(),
   previewPaymentWorkflow: jest.fn(),
   recordPaymentWorkflow: jest.fn(),
+  getDocumentReports: jest.fn(),
 }));
 const close = jest.fn(),
   completed = jest.fn(),
@@ -178,11 +180,29 @@ describe('Native payment recording review', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Reload current payment status' }),
     );
-    await screen.findByText(/QA Payment 99/);
+    await screen.findByRole('button', {
+      name: 'PDF receipts for QA Payment 99',
+    });
     expect(screen.getByText(/bank matching pending/)).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Record payment' }),
     ).not.toBeInTheDocument();
+    expect(recordPaymentWorkflow).toHaveBeenCalledTimes(1);
+    (getDocumentReports as jest.Mock).mockResolvedValue([
+      { key: 'receipt', name: 'Receipt' },
+    ]);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'PDF receipts for QA Payment 99' }),
+    );
+    await screen.findByRole('button', { name: 'Download Receipt' });
+    expect(getDocumentReports).toHaveBeenCalledWith('payment', 99);
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Back to payment details' }),
+    );
+    await screen.findByRole('button', {
+      name: 'PDF receipts for QA Payment 99',
+    });
     expect(recordPaymentWorkflow).toHaveBeenCalledTimes(1);
   });
   it('shows outbound refund wording and requires explicit difference accounting', async () => {

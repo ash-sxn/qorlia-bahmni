@@ -1,5 +1,45 @@
 # Bahmni workflow parity ledger
 
+## 10 October order/payment report hosted acceptance checkpoint
+
+- Protected browser downloads delivered the actual S00147 quotation/discount
+  PDFs and PQR10/2026/00001 detailed/summary receipts. PDF text confirmed INR
+  920 and INR 500/100/400 respectively. Back-navigation retained the selected
+  order/payment without financial mutation.
+- All 83 hosted JS/CSS chunks and the secret-free source/license archive match
+  local review artifacts. Gate/session/secure-cookie checks pass; raw financial
+  mutations and arbitrary report rendering remain blocked. Existing tester
+  code, expiry, tunnel and production/shared demo remain unchanged.
+- This accepts these report connections only. Full PDF styling, statements,
+  financial/inventory extensions, cross-module synchronisation and the wider
+  requested redesign remain unfinished.
+
+## 10 October order/payment report backend checkpoint
+
+- Saved quotation/order PDF actions and posted customer payment/refund PDF
+  actions are connected through the existing Qorlia report modal. Three native
+  variants exist per document kind, filtered by native permissions. Parent
+  selection, explicit retry/session recovery and bounded/safe PDF checks remain.
+- Corrected actual native quotation total mismatch (INR 945 vs saved INR 920)
+  and hospital receipts' latest-invoice/unset-balance binding. Detailed/summary
+  receipts now show only reconciled documents, native per-document-currency
+  allocations, item/batch details and actual current residuals. No guessed
+  historic customer balance or unrelated/latest invoice is printed. Existing
+  report actions/company layout/permissions remain; versioned archive snapshots
+  prevent stale financial reuse while retaining old files.
+- Independent native suite: 110 tests, zero failures/errors/skips. Actual HTML
+  tests cover order discounts/chargeable overrides/rounding, receipt allocations,
+  refunds, multiple invoices, currency differences, archive refresh and guards.
+  Home: 149 tests/19 suites; gateway/webpack: seven checks; Home types pass.
+- Ten actual HTTP PDFs verified saved order INR 920, receipt INR 500/100/400
+  and refund INR 475/100/375. Financial snapshots/payment count unchanged.
+  Pro-forma is excluded from QA's permitted menu and direct access is denied;
+  its actual template is tested under authorised native test permissions.
+- Protected frontend browser release acceptance is a separate gate, not inferred
+  from these tests. Production/shared demo unchanged. Statements, full document
+  reskin, bank/provider/check/PDC, down payments, POS, stock/batch, Clinical-to-ERP
+  sync, wider products and complete clinical parity remain unfinished.
+
 ## 10 October native customer invoice PDF release checkpoint
 
 - Signed-in invoice details now expose a Qorlia report modal with the installed

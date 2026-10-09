@@ -665,8 +665,19 @@ export async function downloadInvoiceReport(
     invoice_id: invoiceId,
     report_key: reportKey,
   });
+  return checkedPdf(result, result?.invoice_id === invoiceId, 'invoice');
+}
+
+interface PdfResponse {
+  filename: string;
+  mimetype: string;
+  byte_count: number;
+  content: string;
+}
+
+function checkedPdf(result: PdfResponse, matchingId: boolean, label: string) {
   if (
-    result?.invoice_id !== invoiceId ||
+    !matchingId ||
     result.mimetype !== 'application/pdf' ||
     typeof result.filename !== 'string' ||
     !/^[A-Za-z0-9_-]{1,160}\.pdf$/.test(result.filename) ||
@@ -677,19 +688,19 @@ export async function downloadInvoiceReport(
     result.content.length !== 4 * Math.ceil(result.byte_count / 3) ||
     !/^[A-Za-z0-9+/]+={0,2}$/.test(result.content)
   )
-    throw new Error('Invalid invoice PDF response.');
+    throw new Error(`Invalid ${label} PDF response.`);
   let binary: string;
   try {
     binary = atob(result.content);
   } catch {
-    throw new Error('Invalid invoice PDF response.');
+    throw new Error(`Invalid ${label} PDF response.`);
   }
   if (
     binary.length !== result.byte_count ||
     !binary.startsWith('%PDF-') ||
     btoa(binary) !== result.content
   )
-    throw new Error('Invalid invoice PDF response.');
+    throw new Error(`Invalid ${label} PDF response.`);
   return {
     filename: result.filename,
     blob: new Blob(
@@ -697,6 +708,96 @@ export async function downloadInvoiceReport(
       { type: 'application/pdf' },
     ),
   };
+}
+
+export type DocumentReportKind = 'order' | 'payment';
+export type DocumentReportKey =
+  | 'quotation'
+  | 'proforma'
+  | 'discount_summary'
+  | 'payment_receipt'
+  | 'receipt'
+  | 'receipt_summary';
+export interface DocumentReport {
+  key: DocumentReportKey;
+  name: string;
+}
+
+function documentReportConfig(kind: DocumentReportKind) {
+  if (kind === 'order')
+    return {
+      model: 'sale.order',
+      field: 'order_id',
+      keys: ['quotation', 'proforma', 'discount_summary'],
+    };
+  if (kind === 'payment')
+    return {
+      model: 'account.payment',
+      field: 'payment_id',
+      keys: ['payment_receipt', 'receipt', 'receipt_summary'],
+    };
+  throw new Error('Select an available Billing report.');
+}
+
+async function documentReportCall<T>(
+  kind: DocumentReportKind,
+  id: number,
+  action: 'list' | 'download',
+  key?: DocumentReportKey,
+): Promise<T> {
+  const config = documentReportConfig(kind);
+  if (!Number.isInteger(id) || id <= 0)
+    throw new Error('Select a saved Billing document before printing.');
+  if (action === 'download' && (!key || !config.keys.includes(key)))
+    throw new Error('Select an available Billing report.');
+  const method = `qorlia_${kind}_report_${action}`;
+  return rpc<T>(`/web/dataset/call_kw/${config.model}/${method}`, {
+    model: config.model,
+    method,
+    args: [],
+    kwargs: {
+      [config.field]: id,
+      ...(action === 'download' ? { report_key: key } : {}),
+    },
+  });
+}
+
+export async function getDocumentReports(
+  kind: DocumentReportKind,
+  id: number,
+): Promise<DocumentReport[]> {
+  const config = documentReportConfig(kind);
+  const result = await documentReportCall<
+    Record<string, unknown> & { reports: DocumentReport[] }
+  >(kind, id, 'list');
+  if (
+    result?.[config.field] !== id ||
+    !Array.isArray(result.reports) ||
+    result.reports.length > config.keys.length ||
+    result.reports.some(
+      (report) =>
+        !config.keys.includes(report?.key) ||
+        typeof report.name !== 'string' ||
+        !report.name.trim() ||
+        report.name.length > 200,
+    ) ||
+    new Set(result.reports.map((report) => report.key)).size !==
+      result.reports.length
+  )
+    throw new Error(`Invalid ${kind} report list.`);
+  return result.reports;
+}
+
+export async function downloadDocumentReport(
+  kind: DocumentReportKind,
+  id: number,
+  key: DocumentReportKey,
+) {
+  const config = documentReportConfig(kind);
+  const result = await documentReportCall<
+    PdfResponse & Record<string, unknown>
+  >(kind, id, 'download', key);
+  return checkedPdf(result, result?.[config.field] === id, kind);
 }
 
 const hashVersion = (value: unknown) =>
