@@ -1,9 +1,9 @@
 {
     'name': 'Qorlia Billing UI adapter',
-    'version': '16.0.1.3.0',
+    'version': '16.0.1.4.0',
     'license': 'LGPL-3',
     'depends': ['bahmni_sale', 'bahmni_auto_payment_reconciliation'],
-    'data': ['report/document_reports.xml'],
+    'data': ['report/document_reports.xml', 'report/customer_statement.xml'],
     'installable': True,
     'application': False,
 }

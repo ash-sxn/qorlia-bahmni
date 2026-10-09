@@ -4,10 +4,24 @@ from datetime import date
 
 from odoo import api, models
 from odoo.exceptions import AccessError, UserError, ValidationError
+from .native_reports import native_report, report_pdf
+
+REPORTS = {'statement': ('qorlia_billing_ui.action_customer_statement',
+                         'qorlia_billing_ui.customer_statement_document')}
 
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
+
+    @api.model
+    def qorlia_customer_statement_download(self, invoice_id, date_from, date_to):
+        self.qorlia_customer_statement(invoice_id, date_from, date_to)
+        invoice = self._qorlia_invoice(invoice_id)
+        report = native_report(self.env, 'statement', REPORTS, 'account.move', 'customer statement')
+        result = report_pdf(report, invoice, 'statement', 'invoice_id',
+            'Customer_statement_%s_%s' % (date_from, date_to),
+            data={'date_from': date_from, 'date_to': date_to})
+        return dict(result, date_from=date_from, date_to=date_to)
 
     @api.model
     def qorlia_customer_statement(self, invoice_id, date_from, date_to):
@@ -64,3 +78,25 @@ class AccountMove(models.Model):
             'date_from': date_from, 'date_to': date_to, 'opening': opening,
             'debit': currency.round(sum(row['debit'] for row in rows)),
             'credit': currency.round(sum(row['credit'] for row in rows)), 'closing': balance, 'rows': rows}
+
+
+class CustomerStatementReport(models.AbstractModel):
+    _name = 'report.qorlia_billing_ui.customer_statement_document'
+    _description = 'Qorlia dated customer receivable statement'
+
+    @api.model
+    def _get_report_values(self, docids, data=None):
+        if (type(docids) is not list or len(docids) != 1 or type(docids[0]) is not int
+                or docids[0] <= 0 or type(data) is not dict
+                or not {'date_from', 'date_to'}.issubset(data)
+                or set(data) - {'date_from', 'date_to', 'report_type'}):
+            raise ValidationError('Print one saved invoice customer with an explicit statement date range.')
+        # Rebuild from permitted journals, never accept caller-supplied balances or report rows.
+        statement = self.env['account.move'].qorlia_customer_statement(
+            docids[0], data['date_from'], data['date_to'])
+        invoice = self.env['account.move']._qorlia_invoice(docids[0])
+        currencies = {row['currency'][0]: self.env['res.currency'].browse(row['currency'][0])
+                      for row in statement['rows']}
+        return {'doc_ids': docids, 'doc_model': 'account.move', 'docs': invoice,
+                'statement': statement, 'currency': invoice.company_id.currency_id,
+                'document_currencies': currencies}

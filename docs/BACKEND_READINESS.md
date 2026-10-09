@@ -1,5 +1,41 @@
 # Qorlia React frontend backend readiness
 
+## Customer statement PDF: hosted and isolated acceptance (10 October 2026)
+
+The signed-in statement modal now downloads the loaded accounting period using
+one fixed native QWeb report. Edited but unsubmitted dates cannot change the PDF
+request. The report rebuilds permitted posted receivables, preserves hospital
+company layout, prints company-currency totals and original document amounts,
+and does not cache an attachment or accept caller-supplied balances/context.
+Read roles, company/record rules, strict dates and the 2,000-entry limit remain.
+
+Actual HTTP generated four PDFs, including prior, one-day opening-balance and
+empty periods. Their text and rendered pages match independently read native
+journals: 0/500/100/400 for the full period, 500 closing before the receipt,
+500 opening/100 credits/400 closing for the receipt day, and an empty zero
+period. Financial snapshots, payment counts and invoice attachments are unchanged.
+The independent native rerun passes 124 tests with zero failures/errors/skips.
+Home passes 165 tests in 21 suites, types, changed-source lint, seven gateway/
+webpack checks and the development build. The existing upstream startup attempts
+to install pandas on the isolated network and warns when DNS is denied; this
+does not establish that upstream reporting dependency as ready. Large development
+bundles/stale browser data and the existing Nx-cycle workaround remain.
+
+Protected browser clicks delivered the full-period PDF with INR 0/500/100/400.
+Edited dates retained the previously loaded result until submission; the one-day
+view and delivered one-day PDF showed INR 500 opening/100 credits/400 closing.
+Back retained INV/2026/00032 and its INR 400 outstanding amount.
+All 83 hosted JS/CSS chunks
+and the credential-free source/LICENSE/NOTICE archive match. The access code,
+expiry and tunnel URL are unchanged. Gate/session/secure-cookie, robots and
+blocked raw mutation/report checks pass independently. Browser delivery is
+verified from the actual downloaded file, not its success notice. Long-ledger
+PDF pagination and other hospital header/logo configurations remain review gates.
+
+No production/shared-demo deployment occurred. Full document reskin, email/
+chatter, journal editing, bank/provider/check/PDC, down payments, POS, stock/batch,
+Clinical-to-ERP synchronisation and wider-product parity remain incomplete.
+
 ## Customer account statements: hosted browser acceptance (10 October 2026)
 
 The protected build's selected invoice INV/2026/00032 loads its real posted

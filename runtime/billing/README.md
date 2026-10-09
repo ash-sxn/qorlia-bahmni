@@ -21,10 +21,19 @@ histories above 2,000 entries fail explicitly. There is no silent truncation or
 write. The React modal loads only on request and keeps submitted period labels
 separate from subsequent, not-yet-loaded date edits.
 
-Independent native tests: 116, zero failures/errors/skips. Home: 159 tests.
-Actual HTTP verifies four periods against journal entries, including opening
-500, credit 100 and closing 400, without changing financial snapshots/payment
-count. Statement PDF printing and complete report-layout reskin remain open.
+`account.move.qorlia_customer_statement_download` adds a fixed, non-cached QWeb
+PDF for the explicitly loaded period. The template rechecks ledger permissions
+and scope, prints company-currency totals and original document amounts, and
+retains the native hospital header/footer. Caller rows, balances, report names
+and context are not accepted. PDF bytes are bounded at 10 MiB and validated.
+
+Native suite: 124 tests with zero failures/errors/skips. Home: 165 tests.
+Actual HTTP/text/visual checks verify four PDF periods against
+journal entries, including opening 500, credit 100 and closing 400, without
+changing financial snapshots/payment count or caching an invoice attachment.
+Protected browser delivery and artifact/security checks are recorded in the
+readiness ledger. Long-ledger pagination, other hospital layouts, complete
+report-layout reskin and wider Billing parity remain open.
 
 ## Standalone customer invoice creation
 

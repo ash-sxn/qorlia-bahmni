@@ -1,5 +1,27 @@
 # Bahmni workflow parity ledger
 
+## 10 October customer statement PDF acceptance checkpoint
+
+- React connects the loaded statement period to a named, fixed QWeb PDF action.
+  House modal/download controls retain explicit retry, session recovery,
+  duplicate-click and close guards, bounded PDF validation and invoice selection.
+- The native report rebuilds the posted ledger within the user's accounting
+  permissions and company. Caller balances/context are rejected; original
+  document currencies remain separate. No statement attachment is cached.
+- Actual HTTP/text/visual checks pass for four periods and independently read
+  balances, including INR 500 opening/100 credits/400 closing and an empty period.
+  Invoice/journal snapshots, payment counts and attachments remain unchanged.
+- Independent native rerun: 124 tests, zero failures/errors/skips. Home: 165
+  tests/21 suites. Types, lint, seven gateway/webpack checks and direct build pass.
+- Protected browser full-period download delivered a PDF with INR 0/500/100/400.
+  Edited dates retained the loaded period until submission; the one-day ledger
+  and delivered PDF showed 500 opening/100 credits/400 closing. Back retained
+  the same invoice and outstanding amount. All 83 chunks and secret-free
+  source/licenses match; gate/session/secure-cookie, robots and blocked raw
+  mutation/report checks pass. URL/code/expiry and production/demo are unchanged.
+- Long-ledger PDF pagination/other hospital layout configurations, complete
+  document styling, full Billing and wider-product parity remain unfinished.
+
 ## 10 October customer statement hosted acceptance checkpoint
 
 - Actual hosted browser statement matches invoice INV/2026/00032's ledger:

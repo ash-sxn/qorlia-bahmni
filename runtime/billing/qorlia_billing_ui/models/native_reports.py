@@ -34,9 +34,12 @@ def report_menu(env, reports, model, label):
     return result
 
 
-def report_pdf(report, record, key, id_field, label):
+def report_pdf(report, record, key, id_field, label, data=None):
     # Preserve installed layout and native archive behavior, without caller-selected templates or context.
-    pdf, output_type = record.env['ir.actions.report']._render_qweb_pdf(report.id, res_ids=record.ids)
+    values = {'res_ids': record.ids}
+    if data is not None:
+        values['data'] = data
+    pdf, output_type = record.env['ir.actions.report']._render_qweb_pdf(report.id, **values)
     if output_type != 'pdf' or not isinstance(pdf, bytes) or not pdf.startswith(b'%PDF-'):
         raise UserError('Native Billing did not produce a PDF. Ask your Billing administrator to check reporting.')
     if len(pdf) > MAX_PDF_BYTES:

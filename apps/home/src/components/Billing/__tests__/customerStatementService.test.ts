@@ -1,4 +1,8 @@
-import { BillingSessionExpired, getCustomerStatement } from '../billingService';
+import {
+  BillingSessionExpired,
+  downloadCustomerStatement,
+  getCustomerStatement,
+} from '../billingService';
 import { customerStatementFixture } from './customerStatementFixture';
 
 const reply = (result: unknown) =>
@@ -67,5 +71,62 @@ describe('Customer statement API', () => {
       getCustomerStatement(7, '2026-01-01', '2026-01-31'),
     ).rejects.toBeInstanceOf(BillingSessionExpired);
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  const pdf = {
+    invoice_id: 7,
+    date_from: '2026-01-01',
+    date_to: '2026-01-31',
+    filename: 'Statement_7.pdf',
+    mimetype: 'application/pdf',
+    byte_count: 9,
+    content: btoa('%PDF-test'),
+  };
+  it('downloads only a fixed dated statement and validates the PDF bytes', async () => {
+    reply(pdf);
+    const result = await downloadCustomerStatement(
+      7,
+      '2026-01-01',
+      '2026-01-31',
+    );
+    expect(result.filename).toBe('Statement_7.pdf');
+    expect(result.blob.size).toBe(9);
+    expect(result.blob.type).toBe('application/pdf');
+    expect(
+      JSON.parse((fetch as jest.Mock).mock.calls[0][1].body).params,
+    ).toEqual({
+      model: 'account.move',
+      method: 'qorlia_customer_statement_download',
+      args: [],
+      kwargs: { invoice_id: 7, date_from: '2026-01-01', date_to: '2026-01-31' },
+    });
+  });
+  it('rejects invalid download ranges before making requests', async () => {
+    for (const [id, start, end] of [
+      [0, '2026-01-01', '2026-01-31'],
+      [7, '2026-02-30', '2026-03-01'],
+      [7, '2026-02-01', '2026-01-01'],
+    ] as const)
+      await expect(downloadCustomerStatement(id, start, end)).rejects.toThrow(
+        'valid statement',
+      );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('rejects mismatched dates, identity, unsafe names and corrupt PDFs', async () => {
+    for (const patch of [
+      { invoice_id: 8 },
+      { date_from: '2025-01-01' },
+      { date_to: '2026-02-01' },
+      { filename: '../Statement.pdf' },
+      { content: btoa('not a pdf') },
+      { byte_count: 8 },
+      { byte_count: 11 * 1024 * 1024 },
+      { mimetype: 'text/html' },
+      { content: '%%%invalid%%%' },
+    ]) {
+      reply({ ...pdf, ...patch });
+      await expect(
+        downloadCustomerStatement(7, '2026-01-01', '2026-01-31'),
+      ).rejects.toThrow('Invalid customer statement PDF');
+    }
   });
 });

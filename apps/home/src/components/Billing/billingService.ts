@@ -156,14 +156,7 @@ export async function getCustomerStatement(
   dateFrom: string,
   dateTo: string,
 ) {
-  if (
-    !Number.isInteger(invoiceId) ||
-    invoiceId <= 0 ||
-    !validDate(dateFrom) ||
-    !validDate(dateTo) ||
-    dateFrom > dateTo
-  )
-    throw new Error('Select a saved invoice and valid statement date range.');
+  checkedStatementRange(invoiceId, dateFrom, dateTo);
   const method = 'qorlia_customer_statement';
   const result = await rpc<CustomerStatement>(
     `/web/dataset/call_kw/account.move/${method}`,
@@ -174,6 +167,30 @@ export async function getCustomerStatement(
       kwargs: { invoice_id: invoiceId, date_from: dateFrom, date_to: dateTo },
     },
   );
+  return checkedCustomerStatement(result, invoiceId, dateFrom, dateTo);
+}
+
+function checkedStatementRange(
+  invoiceId: number,
+  dateFrom: string,
+  dateTo: string,
+) {
+  if (
+    !Number.isInteger(invoiceId) ||
+    invoiceId <= 0 ||
+    !validDate(dateFrom) ||
+    !validDate(dateTo) ||
+    dateFrom > dateTo
+  )
+    throw new Error('Select a saved invoice and valid statement date range.');
+}
+
+function checkedCustomerStatement(
+  result: CustomerStatement,
+  invoiceId: number,
+  dateFrom: string,
+  dateTo: string,
+) {
   const finite = (value: unknown) =>
     typeof value === 'number' && Number.isFinite(value);
   const text = (value: unknown) => typeof value === 'string';
@@ -778,6 +795,28 @@ interface PdfResponse {
   mimetype: string;
   byte_count: number;
   content: string;
+}
+
+export async function downloadCustomerStatement(
+  invoiceId: number,
+  dateFrom: string,
+  dateTo: string,
+) {
+  checkedStatementRange(invoiceId, dateFrom, dateTo);
+  const result = await invoiceDraftCall<
+    PdfResponse & { invoice_id: number; date_from: string; date_to: string }
+  >('qorlia_customer_statement_download', {
+    invoice_id: invoiceId,
+    date_from: dateFrom,
+    date_to: dateTo,
+  });
+  return checkedPdf(
+    result,
+    result?.invoice_id === invoiceId &&
+      result?.date_from === dateFrom &&
+      result?.date_to === dateTo,
+    'customer statement',
+  );
 }
 
 function checkedPdf(result: PdfResponse, matchingId: boolean, label: string) {

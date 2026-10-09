@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
+import base64
 from unittest.mock import patch
+from lxml import html
 from odoo import Command, fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
@@ -12,6 +14,7 @@ class CustomerStatementTest(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.payments = cls.env['account.payment']
+        cls.reports = cls.env['ir.actions.report']
         cls.customer = cls.env['res.partner'].create({'name': 'QorliaQA Statement customer', 'is_company': True})
         cls.journal = cls.env['account.journal'].create({'name': 'QorliaQA Statement cash', 'code': 'QSTM',
             'type': 'cash', 'company_id': cls.env.company.id})
@@ -22,6 +25,113 @@ class CustomerStatementTest(TransactionCase):
     payment = report_tests.DocumentReportTest.payment
     reader = report_tests.DocumentReportTest.reader
     allocate = report_tests.DocumentReportTest.allocate
+    money = report_tests.DocumentReportTest.money
+
+    def rendered_statement(self, invoice, start, end, user=None):
+        result = self.reports.with_user(user or self.reader())._render_qweb_html(
+            'qorlia_billing_ui.action_customer_statement', [invoice.id],
+            data={'date_from': start, 'date_to': end})[0]
+        return html.fromstring(result)
+
+    def test_statement_report_uses_requested_period_not_current_residuals(self):
+        self.invoice(200, invoice_date='2026-01-01', date='2026-01-01')
+        invoice = self.invoice(500, invoice_date='2026-01-02', date='2026-01-02')
+        payment = self.payment(amount=100, date='2026-01-03')
+        self.allocate(payment, invoice)
+        future = self.invoice(999, invoice_date='2026-02-01', date='2026-02-01')
+        before = (invoice | payment.move_id).read(['write_date', 'state', 'amount_residual'])
+        document = self.rendered_statement(invoice, '2026-01-02', '2026-01-31')
+        text = document.text_content().replace('\xa0', ' ')
+        for value in ['2026-01-02 to 2026-01-31', self.customer.display_name,
+                      invoice.name, payment.move_id.name, self.money(invoice, 200), self.money(invoice, 600)]:
+            self.assertIn(value, text)
+        self.assertNotIn(future.name, text)
+        table = document.xpath("//table[@aria-label='Posted customer receivable entries']")[0]
+        self.assertEqual(len(table.xpath('./tbody/tr')), 4)
+        self.assertIn(self.money(invoice, 600), table.xpath('./tbody/tr[last()]/td[4]')[0].text_content().replace('\xa0', ' '))
+        self.assertEqual((invoice | payment.move_id).read(['write_date', 'state', 'amount_residual']), before)
+
+    def test_statement_report_keeps_opening_and_empty_period(self):
+        invoice = self.invoice(500, invoice_date='2026-01-01', date='2026-01-01')
+        document = self.rendered_statement(invoice, '2026-02-01', '2026-02-28')
+        text = document.text_content().replace('\xa0', ' ')
+        self.assertIn('No posted receivable entries in this period', text)
+        self.assertIn(self.money(invoice, 500), text)
+        self.assertNotIn(invoice.name, document.xpath("//table[@aria-label='Posted customer receivable entries']")[0].text_content())
+
+    def test_statement_report_foreign_amount_does_not_change_company_totals(self):
+        currency = self.env['res.currency'].create({'name': 'QSP', 'symbol': 'QP', 'rounding': 0.01,
+            'rate_ids': [Command.create({'name': fields.Date.today(), 'rate': 2, 'company_id': self.env.company.id})]})
+        invoice = self.invoice(500, currency_id=currency.id)
+        document = self.rendered_statement(invoice, str(fields.Date.today()), str(fields.Date.today()))
+        row = document.xpath("//table[@aria-label='Posted customer receivable entries']/tbody/tr[2]/td")
+        self.assertIn('QSP', row[6].text_content())
+        self.assertIn('500.00', row[6].text_content())
+        self.assertIn('250.00', row[5].text_content())
+
+    def test_statement_pdf_fixed_template_identity_and_date_data(self):
+        invoice = self.invoice()
+        reader = self.reader()
+        moves = self.env['account.move'].with_user(reader)
+        pdf = b'%PDF-1.4\nQorlia statement'
+        with patch.object(type(self.reports), '_render_qweb_pdf', return_value=(pdf, 'pdf')) as render:
+            result = moves.qorlia_customer_statement_download(invoice.id, '2026-01-01', '2026-01-31')
+        self.assertEqual(render.call_args.args, (self.env.ref('qorlia_billing_ui.action_customer_statement').id,))
+        self.assertEqual(render.call_args.kwargs, {'res_ids': invoice.ids, 'data': {'date_from': '2026-01-01', 'date_to': '2026-01-31'}})
+        self.assertEqual(result['invoice_id'], invoice.id)
+        self.assertEqual(result['date_from'], '2026-01-01')
+        self.assertEqual(result['date_to'], '2026-01-31')
+        self.assertEqual(base64.b64decode(result['content']), pdf)
+        self.assertIn('2026-01-01_2026-01-31', result['filename'])
+        report = self.env.ref('qorlia_billing_ui.action_customer_statement')
+        self.assertFalse(report.attachment_use)
+        self.assertFalse(report.attachment)
+
+    def test_statement_pdf_rejects_permissions_and_invalid_range_before_render(self):
+        invoice = self.invoice()
+        reader = self.reader()
+        with patch.object(type(self.reports), '_render_qweb_pdf') as render:
+            with self.assertRaises(ValidationError):
+                self.env['account.move'].with_user(reader).qorlia_customer_statement_download(invoice.id, '2026-02-02', '2026-02-01')
+            reader.groups_id = [Command.set(self.env.ref('base.group_user').ids)]
+            with self.assertRaises(AccessError):
+                self.env['account.move'].with_user(reader).qorlia_customer_statement_download(invoice.id, '2026-01-01', '2026-01-31')
+            render.assert_not_called()
+
+    def test_direct_report_revalidates_scope_and_rejects_caller_rows(self):
+        invoice = self.invoice()
+        reader = self.reader()
+        report = self.env['report.qorlia_billing_ui.customer_statement_document'].with_user(reader)
+        data = {'date_from': '2026-01-01', 'date_to': '2026-01-31'}
+        for ids, values in [([], data), ([True], data), (invoice.ids * 2, data),
+                            (invoice.ids, {}), (invoice.ids, dict(data, statement={'closing': 0}))]:
+            with self.assertRaises(ValidationError):
+                report._get_report_values(ids, values)
+        other = self.env['res.company'].create({'name': 'QorliaQA Denied statement report company'})
+        reader.write({'company_id': other.id, 'company_ids': [Command.set(other.ids)]})
+        with self.assertRaises(AccessError):
+            report._get_report_values(invoice.ids, data)
+
+    def test_statement_pdf_output_validation(self):
+        invoice = self.invoice()
+        moves = self.env['account.move'].with_user(self.reader())
+        for output in [(b'not PDF', 'pdf'), (b'%PDF-test', 'html'), (b'%PDF-' + b'0' * (10 * 1024 * 1024), 'pdf')]:
+            with patch.object(type(self.reports), '_render_qweb_pdf', return_value=output):
+                with self.assertRaises(UserError):
+                    moves.qorlia_customer_statement_download(invoice.id, '2026-01-01', '2026-01-31')
+
+    def test_statement_report_escapes_reference_and_honours_hidden_lines(self):
+        invoice = self.invoice(ref='<script>QorliaQA</script>')
+        reader = self.reader()
+        day = str(fields.Date.today())
+        document = self.rendered_statement(invoice, day, day, reader)
+        self.assertFalse(document.xpath("//script[contains(text(), 'QorliaQA')]"))
+        self.assertIn('<script>QorliaQA</script>', document.text_content())
+        self.env['ir.rule'].create({'name': 'QorliaQA statement PDF hidden entry',
+            'model_id': self.env['ir.model']._get_id('account.move.line'),
+            'domain_force': "[('move_id', '!=', %s)]" % invoice.id})
+        document = self.rendered_statement(invoice, day, day, reader)
+        self.assertIn('No posted receivable entries in this period', document.text_content())
 
     def statement(self, invoice, start='2026-01-02', end='2026-01-31', user=None):
         return self.env['account.move'].with_user(user or self.reader()).qorlia_customer_statement(invoice.id, start, end)

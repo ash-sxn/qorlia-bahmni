@@ -1,9 +1,13 @@
 import { Button, Modal, TextInput } from '@bahmni/design-system';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { money } from './billingFormat';
 import styles from './BillingPage.module.scss';
-import { BillingSessionExpired, getCustomerStatement } from './billingService';
+import {
+  BillingSessionExpired,
+  downloadCustomerStatement,
+  getCustomerStatement,
+} from './billingService';
 
 const today = () => {
   const date = new Date();
@@ -26,6 +30,10 @@ export function CustomerStatementModal({
   const [range, setRange] = useState<{ start: string; end: string } | null>(
     null,
   );
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const [failure, setFailure] = useState<Error | null>(null);
+  const [notice, setNotice] = useState('');
   const statement = useQuery({
     queryKey: [
       'billing',
@@ -41,8 +49,55 @@ export function CustomerStatementModal({
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
-  const expired = statement.error instanceof BillingSessionExpired;
+  const expired =
+    statement.error instanceof BillingSessionExpired ||
+    failure instanceof BillingSessionExpired;
   const data = statement.data;
+  const download = async () => {
+    if (
+      busyRef.current ||
+      statement.isFetching ||
+      statement.isError ||
+      expired ||
+      !data
+    )
+      return;
+    busyRef.current = true;
+    setBusy(true);
+    setFailure(null);
+    setNotice('');
+    try {
+      const { filename, blob } = await downloadCustomerStatement(
+        invoiceId,
+        data.date_from,
+        data.date_to,
+      );
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      try {
+        anchor.click();
+      } finally {
+        anchor.remove();
+        // Let the browser start downloading before releasing its object URL.
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      setNotice(
+        'PDF download requested. Open the downloaded file to view or print it.',
+      );
+    } catch (error) {
+      setFailure(
+        error instanceof Error
+          ? error
+          : new Error('Statement PDF download failed.'),
+      );
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  };
   return (
     <Modal
       open
@@ -50,9 +105,15 @@ export function CustomerStatementModal({
       size="lg"
       modalHeading="Customer account statement"
       preventCloseOnClickOutside
-      onRequestClose={close}
+      onRequestClose={() => {
+        if (!busyRef.current) close();
+      }}
     >
-      <section className={styles.card} aria-label="Customer account statement">
+      <section
+        className={styles.card}
+        aria-label="Customer account statement"
+        aria-busy={busy}
+      >
         <p>
           Posted receivable entries visible to your Billing account, for the
           invoice&apos;s commercial customer and company. Drafts are excluded.
@@ -67,6 +128,9 @@ export function CustomerStatementModal({
           className={styles.toolbar}
           onSubmit={(event) => {
             event.preventDefault();
+            if (busyRef.current || expired) return;
+            setFailure(null);
+            setNotice('');
             if (range?.start === start && range.end === end)
               void statement.refetch();
             else setRange({ start, end });
@@ -79,6 +143,7 @@ export function CustomerStatementModal({
             value={start}
             onChange={(event) => setStart(event.target.value)}
             required
+            disabled={busy}
           />
           <TextInput
             id="statement-end"
@@ -88,8 +153,12 @@ export function CustomerStatementModal({
             onChange={(event) => setEnd(event.target.value)}
             required
             min={start}
+            disabled={busy}
           />
-          <Button type="submit" disabled={statement.isFetching || expired}>
+          <Button
+            type="submit"
+            disabled={statement.isFetching || expired || busy}
+          >
             Load statement
           </Button>
         </form>
@@ -107,7 +176,15 @@ export function CustomerStatementModal({
         ) : statement.isError ? (
           <div role="alert">
             <p>{statement.error.message}</p>
-            <Button kind="tertiary" onClick={() => void statement.refetch()}>
+            <Button
+              kind="tertiary"
+              disabled={busy}
+              onClick={() => {
+                setFailure(null);
+                setNotice('');
+                void statement.refetch();
+              }}
+            >
               Reload statement
             </Button>
           </div>
@@ -183,14 +260,41 @@ export function CustomerStatementModal({
                 is still included.
               </p>
             )}
-            <Button kind="tertiary" onClick={() => void statement.refetch()}>
+            <p>
+              Download a current ledger snapshot for the displayed period.
+              Edited dates are not printed until loaded.
+            </p>
+            <Button
+              kind="tertiary"
+              disabled={busy}
+              onClick={() => void download()}
+            >
+              Download statement PDF
+            </Button>
+            <Button
+              kind="tertiary"
+              disabled={busy}
+              onClick={() => {
+                setFailure(null);
+                setNotice('');
+                void statement.refetch();
+              }}
+            >
               Reload statement
             </Button>
           </>
         ) : (
           <p>Select the accounting period, then load the statement.</p>
         )}
-        <Button kind="tertiary" onClick={close}>
+        {busy ? <p role="status">Generating statement PDF...</p> : null}
+        {failure && !expired ? (
+          <p role="alert">
+            {failure.message} No automatic retry was made. You can request the
+            download again.
+          </p>
+        ) : null}
+        {notice && !expired ? <p role="status">{notice}</p> : null}
+        <Button kind="tertiary" onClick={close} disabled={busy}>
           Back to invoices
         </Button>
       </section>
