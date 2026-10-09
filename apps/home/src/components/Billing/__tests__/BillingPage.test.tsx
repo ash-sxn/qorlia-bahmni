@@ -24,9 +24,14 @@ import {
   getReversalWorkflow,
   previewReversalWorkflow,
   runReversalWorkflow,
+  getInvoiceDraft,
+  previewInvoiceDraft,
+  saveInvoiceDraft,
+  getInvoiceDraftChoices,
 } from '../billingService';
 import { correctionWorkflowFixture } from './correctionWorkflowFixture';
 import { creditWorkflowFixture } from './creditWorkflowFixture';
+import { invoiceDraftFixture } from './invoiceDraftFixture';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
 import { paymentWorkflowFixture } from './paymentWorkflowFixture';
 import {
@@ -55,8 +60,15 @@ jest.mock('../billingService', () => ({
   getReversalWorkflow: jest.fn(),
   previewReversalWorkflow: jest.fn(),
   runReversalWorkflow: jest.fn(),
+  getInvoiceDraft: jest.fn(),
+  previewInvoiceDraft: jest.fn(),
+  saveInvoiceDraft: jest.fn(),
+  getInvoiceDraftChoices: jest.fn(),
 }));
-jest.mock('@bahmni/widgets', () => ({ useUserPrivilege: jest.fn() }));
+jest.mock('@bahmni/widgets', () => ({
+  useUserPrivilege: jest.fn(),
+  useDebounce: (value: string) => value,
+}));
 jest.mock('../../HomePageHeader', () => ({
   HomePageHeader: () => <header>Qorlia</header>,
 }));
@@ -106,6 +118,43 @@ describe('Billing workspace', () => {
     (getInvoices as jest.Mock).mockResolvedValue([]);
     (getChargeOrders as jest.Mock).mockResolvedValue([]);
     (getChargeOrderLines as jest.Mock).mockResolvedValue([]);
+    (getInvoiceDraftChoices as jest.Mock).mockResolvedValue([]);
+  });
+  it('opens existing invoice editing inside the signed-in workspace and refreshes after saving', async () => {
+    Object.defineProperty(crypto, 'randomUUID', {
+      configurable: true,
+      value: () => 'test-line',
+    });
+    (getInvoices as jest.Mock).mockResolvedValue([invoice]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    (getInvoiceDraft as jest.Mock).mockResolvedValue(invoiceDraftFixture());
+    (previewInvoiceDraft as jest.Mock).mockImplementation(async (draft) => ({
+      ...draft,
+      review_version: 'b'.repeat(64),
+    }));
+    (saveInvoiceDraft as jest.Mock).mockResolvedValue(invoiceDraftFixture());
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Edit draft invoice' }));
+    const reference = await screen.findByLabelText('Reference');
+    expect(getInvoiceDraft).toHaveBeenCalledWith(7);
+    fireEvent.change(reference, { target: { value: 'QorliaQA Review' } });
+    fireEvent.blur(reference);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Save draft invoice' }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft invoice' }));
+    await screen.findByText(/Draft invoice #7 draft saved/);
+    expect(
+      screen.queryByRole('dialog', { name: 'Draft invoice editor' }),
+    ).not.toBeInTheDocument();
+    expect(postInvoiceWorkflow).not.toHaveBeenCalled();
+    expect(recordPaymentWorkflow).not.toHaveBeenCalled();
+    expect(getInvoices).toHaveBeenCalledTimes(2);
   });
   it('does not contact Billing before hospital sign-in is verified', () => {
     (useUserPrivilege as jest.Mock).mockReturnValue({

@@ -50,7 +50,7 @@ class AccountMove(models.Model):
                 invoice.discount = invoice.currency_id.round(
                     (invoice.qorlia_item_subtotal + invoice.amount_tax) * invoice.discount_percentage / 100)
 
-    def _qorlia_prepare_adjustment_lines(self):
+    def _qorlia_adjustment_values(self):
         self.ensure_one()
         gross = self.qorlia_item_subtotal + self.amount_tax
         if (not all(math.isfinite(amount) for amount in (self.discount, self.discount_percentage, self.round_off_amount))
@@ -58,7 +58,7 @@ class AccountMove(models.Model):
             raise ValidationError('The document discount must be between zero and the invoice total before adjustments.')
         if self.round_off_amount and self.invoice_cash_rounding_id:
             raise ValidationError('Use either Bahmni rounding or native cash rounding, not both.')
-        commands = [Command.delete(line.id) for line in self.invoice_line_ids.filtered('qorlia_adjustment_kind')]
+        values = []
         for kind, name, amount, account in (
             ('discount', 'Document discount', -self.discount, self.disc_acc_id),
             ('rounding', 'Rounding adjustment', self.round_off_amount, self.company_id.qorlia_rounding_account_id),
@@ -71,9 +71,14 @@ class AccountMove(models.Model):
                 raise ValidationError('The %s account must be an income or expense adjustment account.' % kind)
             account.check_access_rights('read')
             account.check_access_rule('read')
-            commands.append(Command.create({'name': name, 'qorlia_adjustment_kind': kind,
+            values.append({'name': name, 'qorlia_adjustment_kind': kind,
                 'account_id': account.id, 'quantity': 1, 'price_unit': amount,
-                'discount': 0, 'tax_ids': [Command.clear()], 'sequence': 9999}))
+                'discount': 0, 'tax_ids': [Command.clear()], 'sequence': 9999})
+        return values
+
+    def _qorlia_prepare_adjustment_lines(self):
+        commands = [Command.delete(line.id) for line in self.invoice_line_ids.filtered('qorlia_adjustment_kind')]
+        commands.extend(Command.create(values) for values in self._qorlia_adjustment_values())
         if commands:
             self.write({'invoice_line_ids': commands})
 

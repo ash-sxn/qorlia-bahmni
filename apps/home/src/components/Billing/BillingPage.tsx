@@ -27,6 +27,7 @@ import {
 import { ChargeOrdersPanel } from './ChargeOrdersPanel';
 import { CorrectionWorkflowModal } from './CorrectionWorkflowModal';
 import { CreditWorkflowModal } from './CreditWorkflowModal';
+import { InvoiceDraftEditor } from './InvoiceDraftEditor';
 import { InvoiceWorkflowModal } from './InvoiceWorkflowModal';
 import { PaymentWorkflowModal } from './PaymentWorkflowModal';
 import { ReversalWorkflowModal } from './ReversalWorkflowModal';
@@ -47,6 +48,7 @@ export function BillingPage() {
   const [selected, setSelected] = useState<Invoice | null>(null);
   const [tab, setTab] = useState(0);
   const [reviewInvoice, setReviewInvoice] = useState<number | null>(null);
+  const [editInvoice, setEditInvoice] = useState<number | null>(null);
   const [paymentInvoice, setPaymentInvoice] = useState<number | null>(null);
   const [creditInvoice, setCreditInvoice] = useState<number | null>(null);
   const [reversalInvoice, setReversalInvoice] = useState<number | null>(null);
@@ -110,6 +112,7 @@ export function BillingPage() {
       queryClient.setQueryData(['billing', 'session'], result);
       setSelected(null);
       setReviewInvoice(null);
+      setEditInvoice(null);
       setPaymentInvoice(null);
       setCreditInvoice(null);
       setCorrectionInvoice(null);
@@ -469,6 +472,17 @@ export function BillingPage() {
                       >
                         Review invoice posting
                       </Button>
+                      {selected.state === 'draft' ? (
+                        <Button
+                          kind="tertiary"
+                          onClick={() => setEditInvoice(selected.id)}
+                        >
+                          Edit draft{' '}
+                          {selected.move_type === 'out_refund'
+                            ? 'credit note'
+                            : 'invoice'}
+                        </Button>
+                      ) : null}
                       <Button
                         kind="tertiary"
                         onClick={() => setCorrectionInvoice(selected.id)}
@@ -577,6 +591,32 @@ export function BillingPage() {
                 </TabPanel>
               </TabPanels>
             </Tabs>
+            {editInvoice !== null ? (
+              <InvoiceDraftEditor
+                uid={session.data!.uid as number}
+                invoiceId={editInvoice}
+                close={() => setEditInvoice(null)}
+                reconnect={() => {
+                  setEditInvoice(null);
+                  setSelected(null);
+                  setInvoiceNotice('');
+                  queryClient.removeQueries({ queryKey: ['billing'] });
+                  void session.refetch();
+                }}
+                saved={(draft) => {
+                  setEditInvoice(null);
+                  setSelected(null);
+                  setInvoiceNotice(
+                    `${invoiceName(draft)} draft saved. No payment or credit allocation was recorded.`,
+                  );
+                  void queryClient.invalidateQueries({
+                    predicate: (query) =>
+                      query.queryKey[0] === 'billing' &&
+                      query.queryKey[1] !== 'session',
+                  });
+                }}
+              />
+            ) : null}
             {reviewInvoice !== null ? (
               <InvoiceWorkflowModal
                 uid={session.data!.uid as number}

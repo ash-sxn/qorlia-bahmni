@@ -1,5 +1,74 @@
 # Bahmni workflow parity ledger
 
+## 9 October invoice and credit-draft UI release checkpoint
+
+This supersedes the earlier backend-only checkpoint below. The protected tester
+build now exposes the named native draft load/preview/save/choices routes and
+the signed-in invoice editor. The existing Qorlia controls cover customer and
+dates, terms/currency/journal, product or manual lines, prices/quantities/taxes,
+analytics, sections/notes, document discount/rounding and native invoice settings.
+Native Billing calculates all previews. Saving does not post, pay or allocate.
+Edits invalidate the reviewed totals; failed previews/saves preserve entries;
+dirty-close confirmation and duplicate-save guards remain in place.
+
+Hosted browser save/reload verified synthetic draft #2735: quantity 1.5, reference
+and note persisted, total INR 750. Editable credit #1808 persisted quantity 0.5
+and total INR 250 while remaining unposted. Independent native read-back confirms
+both balanced journals, unchanged payment count, original/source records and
+unrelated INV/2026/00022. No cash refund or credit allocation occurred.
+
+The browser also exposed a shared expired-session redirect loop: app settings
+returned 401 while already on login, repeatedly reloading the page. The shared
+API interceptor now preserves the login form on that route; authenticated routes
+still redirect. Actual staging sign-in and work-location selection succeeded.
+Home passes 126 tests in 16 suites; API/authentication passes 52 tests; seven
+gateway/webpack checks, types, changed-source lint, formatting and build pass.
+The prior 86-test native suite remains the backend evidence for this adapter.
+Hosted gate, session boundary, robots exclusion and matching source/license
+archive are verified. Existing bundle/browser-data warnings remain.
+
+Production/shared demo are unchanged. This is existing-draft editing acceptance,
+not complete Billing or product parity. Standalone invoice creation, journal
+items, print/email/chatter, bank/provider/stock/feed and wider modules remain.
+
+## 9 October invoice and credit-draft backend checkpoint
+
+- Added named native draft load/preview/save/choices methods for existing customer
+  invoices, editable credits and replacement drafts. Header settings, product or
+  manual service lines, quantities/prices, taxes, analytic allocations, sections
+  and notes reuse Odoo's field/onchange behavior. Company and document type stay
+  immutable; previously posted drafts retain their journal. Generated discount
+  and rounding rows cannot be supplied or edited by callers.
+- Preview uses the pinned native form tax engine rather than the old stored
+  journal totals of a virtual draft. The regression that showed an unchanged
+  header total after editing quantity is covered. Percentage discounts recompute
+  against edited items; adjustment values are shared with native posting and
+  applied once. Save writes changed fields only, preserves manually selected
+  taxes and validates the saved total against the reviewed native calculation.
+- Native ACLs, company rules, record ownership, bounded payloads, locks, source
+  and calculation/configuration versions, balanced-ledger checks and explicit
+  stale-review rejection apply. No generic write, posting, payment or stock
+  action is exposed by these methods. Searches use company/native field domains.
+- All 86 native tests pass with zero failures/errors/skips, including the 73
+  existing tests. New coverage includes read-only preview, partial credits,
+  replacement corrections, duplicate/stale saves, configuration changes,
+  permissions, sections/notes/manual services, included taxes, cash/global
+  rounding, early discounts, installments and foreign currency. Seven existing
+  gateway/webpack checks pass. No React files changed in this checkpoint.
+- Actual isolated staging HTTP preview changed neither timestamps nor document/
+  journal counts. Two simultaneous saves of draft 2735 produced one successful
+  correction and one rejection. New source 2736 retained INR 1,000 open after
+  its credit 2737 was reduced to INR 250 and separately posted. All three journals
+  balance; no payment was created; unrelated INV/2026/00022 remains INR 400 open.
+
+This is a backend milestone, not an accepted Qorlia editor release. The React
+editor, named review-gateway allowlist, matching tester release and browser save/
+reload verification still need implementation. The tester frontend is unchanged;
+only the isolated Billing staging backend was restarted. New methods remain
+blocked at the current review gateway. Direct creation of new invoice drafts,
+journal-item editing, print/email/chatter and remaining full Billing gates are
+not covered by this existing-draft adapter. Production/shared demo are unchanged.
+
 ## 9 October reviewed credit-note creation and reversal checkpoint
 
 - Signed-in Billing now loads, previews and confirms the pinned native

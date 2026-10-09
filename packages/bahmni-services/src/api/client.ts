@@ -42,7 +42,9 @@ client.interceptors.response.use(
   },
   async function (error) {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
-      globalThis.location.href = LOGIN_PATH;
+      // Login also loads public app settings. An expired session must not reload it forever.
+      if (globalThis.location.pathname.replace(/\/$/, '') !== LOGIN_PATH)
+        globalThis.location.href = LOGIN_PATH;
       throw error;
     }
     if (axios.isAxiosError(error) && error.response?.data instanceof Blob) {

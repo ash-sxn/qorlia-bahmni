@@ -4,3 +4,4 @@ from . import test_payments
 from . import test_credits
 from . import test_corrections
 from . import test_reversals
+from . import test_invoice_drafts

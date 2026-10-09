@@ -1,5 +1,52 @@
 # Qorlia React frontend backend readiness
 
+## Existing invoice draft UI hosted and browser verified (9 October 2026)
+
+The protected signed-in tester build now contains the React invoice/credit draft
+editor and four named native routes. It reuses the Qorlia design system and
+native calculation engine, with validated complete snapshots, reviewed-save
+tokens, dirty-entry recovery and no raw financial writes exposed at the gateway.
+The earlier backend-only checkpoint below is historical, not current UI status.
+
+Hosted browser save/reload persisted draft #2735 at INR 750 (quantity 1.5,
+reference and note) and draft credit #1808 at INR 250 (quantity 0.5). Independent
+native read-back confirms unposted state, balanced journals, unchanged payments,
+original/source records and unrelated INV/2026/00022 at INR 400 open.
+An expired-session settings request no longer reloads the login route forever;
+actual native sign-in and location selection work on the new release.
+
+Verification: Home 126 tests/16 suites, API/authentication 52 tests, seven gateway/
+webpack checks, types/lint/format/diff and build. Native adapter coverage remains
+86 successful tests from the backend checkpoint. Hosted access gate, session
+requirement, robots exclusion and matching secret-free source/licenses pass.
+Only the protected review container was replaced. Production/shared demo and
+the existing tunnel URL are unchanged. This does not establish whole Billing
+acceptance or clinical-to-ERP synchronization.
+
+## Existing invoice and credit-draft adapter verified (9 October 2026)
+
+Native draft load/preview/save/choices now support existing invoices, partial
+editable credits and replacement drafts. The pinned Odoo form/onchange and tax
+engine calculates previews without persisting records. Native posting and draft
+preview share adjustment values. Saves preserve unchanged manual taxes, validate
+reviewed financial results and keep the journal balanced. Source/configuration
+versions and invoice/line locks reject stale and simultaneous duplicate edits.
+Native permissions, company/line ownership, field validation and generated-row
+protection remain enforced without caller fields for state/company/type.
+
+All 86 native adapter tests pass (zero failures/errors/skips), including all 73
+previous tests. Seven gateway/webpack checks pass. Actual isolated native HTTP
+verified an untouched preview, one success/one rejection under concurrent saves,
+an INR 250 partial credit with its original INR 1,000 source still open, no new
+payment, balanced ledgers and unrelated INV/2026/00022 unchanged at INR 400.
+
+Only isolated Billing staging was restarted; production/shared demo and protected
+review frontend are unchanged. The React draft editor, review-gateway allowlist
+and browser acceptance remain pending, so this is not a released UI capability.
+New methods remain unavailable through the current protected review gateway.
+This does not prove direct invoice creation, journal editing, printing/email,
+bank/provider/stock/feed acceptance or whole-product parity.
+
 ## Latest reviewed credit-note creation/reversal verification (9 October 2026)
 
 Named adapter load/preview/run methods now delegate to the pinned native

@@ -515,6 +515,298 @@ export const postInvoiceWorkflow = (invoice: InvoiceWorkflow) =>
     version: invoice.version,
   });
 
+export interface InvoiceDraftLine {
+  id: number | false;
+  values: {
+    product_id: number | false;
+    name: string | false;
+    display_type: 'product' | 'line_section' | 'line_note';
+    sequence: number;
+    account_id: number | false;
+    product_uom_id: number | false;
+    quantity: number;
+    price_unit: number;
+    discount: number;
+    tax_ids: number[];
+    analytic_distribution: Record<string, number> | false;
+  };
+  totals: { price_subtotal: number; price_total: number };
+}
+
+export interface InvoiceDraft {
+  id: number;
+  name: string | false;
+  move_type: 'out_invoice' | 'out_refund';
+  company: [number, string];
+  version: string;
+  review_version?: string;
+  values: {
+    partner_id: number | false;
+    partner_shipping_id: number | false;
+    ref: string | false;
+    payment_reference: string | false;
+    invoice_date: string | false;
+    date: string | false;
+    invoice_date_due: string | false;
+    invoice_payment_term_id: number | false;
+    journal_id: number | false;
+    currency_id: number | false;
+    fiscal_position_id: number | false;
+    invoice_user_id: number | false;
+    partner_bank_id: number | false;
+    invoice_incoterm_id: number | false;
+    narration: string | false;
+    discount_type: 'none' | 'fixed' | 'percentage';
+    discount: number;
+    discount_percentage: number;
+    disc_acc_id: number | false;
+    invoice_cash_rounding_id: number | false;
+    auto_post: 'no' | 'at_date' | 'monthly' | 'quarterly' | 'yearly';
+    auto_post_until: string | false;
+    to_check: boolean;
+  };
+  lines: InvoiceDraftLine[];
+  totals: {
+    qorlia_item_subtotal: number;
+    amount_tax: number;
+    amount_total: number;
+    invoice_total: number;
+    round_off_amount: number;
+  };
+  labels: Record<string, string>;
+  warning: { title?: string; message: string } | false;
+  generated_adjustments: { kind: string; name: string; amount: number }[];
+  selections: {
+    discount_type: [string, string][];
+    auto_post: [string, string][];
+  };
+  journal_locked: boolean;
+  can_edit: boolean;
+}
+
+export type InvoiceDraftChoiceKind =
+  | 'customer'
+  | 'shipping'
+  | 'product'
+  | 'journal'
+  | 'currency'
+  | 'account'
+  | 'discount_account'
+  | 'tax'
+  | 'payment_term'
+  | 'fiscal_position'
+  | 'bank'
+  | 'incoterm'
+  | 'cash_rounding'
+  | 'salesperson'
+  | 'analytic'
+  | 'unit';
+
+const invoiceDraftCall = <T>(method: string, kwargs: object) =>
+  rpc<T>(`/web/dataset/call_kw/account.move/${method}`, {
+    model: 'account.move',
+    method,
+    args: [],
+    kwargs,
+  });
+const hashVersion = (value: unknown) =>
+  typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+const dateOrFalse = (value: unknown) =>
+  value === false ||
+  (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value));
+
+function checkedInvoiceDraft(
+  value: InvoiceDraft,
+  invoiceId: number,
+  reviewed = false,
+): InvoiceDraft {
+  const header = value?.values;
+  const selection = (rows: unknown) =>
+    Array.isArray(rows) &&
+    rows.length > 0 &&
+    rows.every(
+      (row) =>
+        Array.isArray(row) &&
+        row.length === 2 &&
+        row.every((part) => typeof part === 'string'),
+    );
+  const stringOrFalse = (text: unknown) =>
+    text === false || typeof text === 'string';
+  if (
+    !value ||
+    !validId(value.id) ||
+    !value.id ||
+    value.id !== invoiceId ||
+    !stringOrFalse(value.name) ||
+    !['out_invoice', 'out_refund'].includes(value.move_type) ||
+    !value.company ||
+    !validRelation(value.company) ||
+    !hashVersion(value.version) ||
+    (reviewed && !hashVersion(value.review_version)) ||
+    (value.review_version !== undefined &&
+      !hashVersion(value.review_version)) ||
+    !header ||
+    ![
+      header.partner_id,
+      header.partner_shipping_id,
+      header.invoice_payment_term_id,
+      header.journal_id,
+      header.currency_id,
+      header.fiscal_position_id,
+      header.invoice_user_id,
+      header.partner_bank_id,
+      header.invoice_incoterm_id,
+      header.disc_acc_id,
+      header.invoice_cash_rounding_id,
+    ].every(validId) ||
+    ![header.ref, header.payment_reference, header.narration].every(
+      stringOrFalse,
+    ) ||
+    ![
+      header.invoice_date,
+      header.date,
+      header.invoice_date_due,
+      header.auto_post_until,
+    ].every(dateOrFalse) ||
+    !['none', 'fixed', 'percentage'].includes(header.discount_type) ||
+    !['no', 'at_date', 'monthly', 'quarterly', 'yearly'].includes(
+      header.auto_post,
+    ) ||
+    ![header.discount, header.discount_percentage].every(Number.isFinite) ||
+    typeof header.to_check !== 'boolean' ||
+    !Array.isArray(value.lines) ||
+    value.lines.length > 500 ||
+    !value.lines.every(
+      (line) =>
+        line &&
+        validId(line.id) &&
+        line.values &&
+        [
+          line.values.product_id,
+          line.values.account_id,
+          line.values.product_uom_id,
+        ].every(validId) &&
+        stringOrFalse(line.values.name) &&
+        ['product', 'line_section', 'line_note'].includes(
+          line.values.display_type,
+        ) &&
+        [
+          line.values.sequence,
+          line.values.quantity,
+          line.values.price_unit,
+          line.values.discount,
+        ].every(Number.isFinite) &&
+        Array.isArray(line.values.tax_ids) &&
+        line.values.tax_ids.every((id) => Number.isInteger(id) && id > 0) &&
+        (line.values.analytic_distribution === false ||
+          (line.values.analytic_distribution &&
+            typeof line.values.analytic_distribution === 'object' &&
+            !Array.isArray(line.values.analytic_distribution) &&
+            Object.entries(line.values.analytic_distribution).every(
+              ([key, percentage]) =>
+                /^\d+(,\d+)*$/.test(key) && Number.isFinite(percentage),
+            ))) &&
+        line.totals &&
+        [line.totals.price_subtotal, line.totals.price_total].every(
+          Number.isFinite,
+        ),
+    ) ||
+    !value.totals ||
+    ![
+      value.totals.qorlia_item_subtotal,
+      value.totals.amount_tax,
+      value.totals.amount_total,
+      value.totals.invoice_total,
+      value.totals.round_off_amount,
+    ].every(Number.isFinite) ||
+    !value.labels ||
+    typeof value.labels !== 'object' ||
+    Array.isArray(value.labels) ||
+    !Object.values(value.labels).every((label) => typeof label === 'string') ||
+    !header.currency_id ||
+    !value.labels[`res.currency:${header.currency_id}`] ||
+    !(
+      value.warning === false ||
+      (value.warning && typeof value.warning.message === 'string')
+    ) ||
+    !Array.isArray(value.generated_adjustments) ||
+    !value.generated_adjustments.every(
+      (row) =>
+        row &&
+        typeof row.kind === 'string' &&
+        typeof row.name === 'string' &&
+        Number.isFinite(row.amount),
+    ) ||
+    !value.selections ||
+    !selection(value.selections.discount_type) ||
+    !selection(value.selections.auto_post) ||
+    typeof value.journal_locked !== 'boolean' ||
+    typeof value.can_edit !== 'boolean'
+  )
+    throw new Error('Invalid invoice draft response. Reload the editor.');
+  return value;
+}
+
+const invoiceDraftPayload = ({ id, version, values, lines }: InvoiceDraft) => ({
+  id,
+  version,
+  values,
+  lines,
+});
+export const getInvoiceDraft = async (invoiceId: number) =>
+  checkedInvoiceDraft(
+    await invoiceDraftCall<InvoiceDraft>('qorlia_invoice_draft_load', {
+      invoice_id: invoiceId,
+    }),
+    invoiceId,
+  );
+export const previewInvoiceDraft = async (
+  draft: InvoiceDraft,
+  change: { field: string; line?: number },
+) =>
+  checkedInvoiceDraft(
+    await invoiceDraftCall<InvoiceDraft>('qorlia_invoice_draft_preview', {
+      payload: invoiceDraftPayload(draft),
+      change,
+    }),
+    draft.id,
+    true,
+  );
+export const saveInvoiceDraft = async (draft: InvoiceDraft) => {
+  if (!hashVersion(draft.review_version))
+    throw new Error('Recalculate this draft before saving.');
+  return checkedInvoiceDraft(
+    await invoiceDraftCall<InvoiceDraft>('qorlia_invoice_draft_save', {
+      payload: invoiceDraftPayload(draft),
+      review_version: draft.review_version,
+    }),
+    draft.id,
+  );
+};
+export const getInvoiceDraftChoices = async (
+  invoiceId: number,
+  kind: InvoiceDraftChoiceKind,
+  search: string,
+  productId: number | false = false,
+) => {
+  const result = await invoiceDraftCall<[number, string][]>(
+    'qorlia_invoice_draft_choices',
+    {
+      invoice_id: invoiceId,
+      kind,
+      search,
+      product_id: productId,
+    },
+  );
+  if (
+    !Array.isArray(result) ||
+    result.length > 26 ||
+    !result.every((row) => row && validRelation(row))
+  )
+    throw new Error('Invalid invoice choices response.');
+  return result;
+};
+
 export interface CorrectionWorkflow {
   invoice: InvoiceWorkflow;
   version: string;

@@ -6,6 +6,8 @@ import {
   BillingSessionExpired,
   DraftChoiceKind,
   getDraftChoices,
+  getInvoiceDraftChoices,
+  InvoiceDraftChoiceKind,
 } from './billingService';
 
 export function DraftChoiceInput({
@@ -17,13 +19,13 @@ export function DraftChoiceInput({
   name,
   shopId = false,
   productId = false,
+  invoiceId,
   disabled,
   onChange,
   reconnect,
 }: {
   id: string;
   label: string;
-  kind: DraftChoiceKind;
   uid: number;
   value: number | false;
   name?: string;
@@ -32,12 +34,27 @@ export function DraftChoiceInput({
   disabled?: boolean;
   onChange: (value: number | false) => void;
   reconnect: () => void;
-}) {
+} & (
+  | { invoiceId: number; kind: InvoiceDraftChoiceKind }
+  | { invoiceId?: undefined; kind: DraftChoiceKind }
+)) {
   const [search, setSearch] = useState('');
   const term = useDebounce(search, 250);
   const choices = useQuery({
-    queryKey: ['billing', 'draft-choices', uid, kind, term, shopId, productId],
-    queryFn: () => getDraftChoices(kind, term, shopId, productId),
+    queryKey: [
+      'billing',
+      'draft-choices',
+      uid,
+      invoiceId,
+      kind,
+      term,
+      shopId,
+      productId,
+    ],
+    queryFn: () =>
+      invoiceId !== undefined
+        ? getInvoiceDraftChoices(invoiceId, kind, term, productId)
+        : getDraftChoices(kind as DraftChoiceKind, term, shopId, productId),
     enabled: !disabled,
     retry: false,
   });

@@ -3,6 +3,49 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+## Existing invoice and credit-note draft editing
+
+`account.move.qorlia_invoice_draft_load`, `preview`, `save` and `choices` are
+verified backend methods for existing customer invoice and credit drafts,
+including credits and replacement invoices produced by the reversal workflow.
+Their React editor and named review-gateway exposure are now released to the
+protected tester build, not production. Select an existing draft invoice or
+credit in signed-in Billing, then use its Edit draft action. The editor reuses
+Qorlia controls and displays native preview totals before enabling save.
+
+Hosted save/reload verified synthetic draft #2735 at INR 750 with reference/note
+and draft credit #1808 at INR 250. Native read-back confirms both remain drafts
+with balanced journals, no new payments and unchanged original/unrelated bills.
+Home has 126 passing tests, with 52 shared API/authentication tests and seven
+gateway/webpack checks. The native adapter suite has 86 successful tests.
+
+The adapter uses native onchanges and the pinned Odoo tax-total form widget for
+virtual preview. A virtual invoice's old journal lines must not supply its
+preview total: changing quantity otherwise displays an obsolete grand total.
+Native included/global tax rounding, cash rounding, early discounts, currency,
+payment terms and account mapping remain Odoo responsibilities. The preview
+does not persist drafts, journal lines or wizards. The saved native totals are
+checked against the reviewed preview and balanced-ledger invariants.
+
+Generated discount/rounding rows are excluded from caller-editable lines and
+rebuilt through shared adjustment values. Editable manual service lines are
+allowed without inventing a product, matching the native invoice form. Writes
+send changed fields only so metadata edits do not reset manual taxes or prices.
+Company/type cannot be changed; a previously posted draft retains its journal.
+The native `round_off_amount` remains inherited and read-only in this editor.
+
+Native groups, ACLs/rules, source ownership, payload limits, source/configuration
+versions and move/line locks protect saves. Choice searches use the invoice
+company and native field domains. A used source version must be reloaded;
+uncertain replies must not automatically retry a save. More than 500 editable
+lines or 1,000 journal lines requires native Billing review, not truncation.
+Saving a draft does not post it, issue a refund, create a payment or return stock.
+Native scheduled posting settings remain explicit document fields, not a promise
+that a save immediately affects a posted customer balance.
+
+This adapter does not yet create standalone new invoice drafts, edit arbitrary
+journal entries or cover native print/email/chatter. Those remain parity work.
+
 ## Discount and rounding accounting
 
 The pinned Bahmni Odoo 16 image rewrites the full customer receivable for discount
