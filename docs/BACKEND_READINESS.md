@@ -1,5 +1,49 @@
 # Qorlia React frontend backend readiness
 
+## Invoice attachments: native acceptance and protected downloads (10 October 2026)
+
+The conversation composer now supports local file selection/removal and
+attachment-only internal notes. Up to five files totalling 10 MiB save atomically
+through native Odoo message posting. Original image bytes are preserved by a
+fixed native context. The request identity binds exact text, file names, order
+and byte hashes; uncertain retries retain the same payload and key. Native
+attachment creation permissions are checked before native posting. No arbitrary
+attachment IDs, author, recipients, model, company or subtype can be supplied.
+
+Named downloads recheck invoice, message, attachment membership, native file
+permissions and invoice parent association. Binary content is bounded at 10 MiB
+and delivered as a download, not an inline active-content preview. Native HTTP/
+HTTPS URL attachments return a validated link without a server fetch. These
+external destinations have independent access/privacy rules. Invalid/path/bidi
+file names are rejected on upload or replaced on download. This does not scan
+file contents for malware; production needs an agreed scanning/quarantine policy.
+
+Home passes 189 tests across 24 suites; types, changed-source lint, seven gateway/
+webpack checks and development build pass. The exact installed native adapter
+passes 143 tests with zero failures/errors/skips. Actual concurrent HTTP testing
+exposed unstable native attachment order; output is now explicitly ID-sorted.
+Concurrent requests persist one message with one copy of each file, and status
+read-back returns the same response. Native downloads preserve the original bytes.
+Invoice/journal balances, payments and followers are unchanged, with no outbound
+email queued for this synthetic fixture.
+
+The protected tester build has matching 83 JS/CSS chunks and a credential-free
+source/LICENSE/NOTICE archive. Gate, clinical-session requirement, isolated secure
+cookies, robots exclusion and blocked raw mutation/file routes pass independently.
+Browser clicks downloaded the 40,065-byte synthetic text file and zero-byte file;
+both actual downloaded files match the native originals exactly. The browser
+automation file-chooser event is unavailable, so browser selection/save/reload
+acceptance remains pending. Local reading and uncertain file-save recovery have
+mocked UI tests, not a substitute for that missing populated browser check.
+Only the isolated backend was upgraded, with a database/adapter backup. Production
+and the shared public demo are unchanged. Native staff notification behaviour
+remains unchanged; no patient email is sent by this internal-note action.
+
+Attachment deletion, files larger than the download bound, external email,
+followers/activities, complete document reskin and remaining financial/inventory/
+synchronisation workflows remain open. Earlier dated checkpoint descriptions
+below describe their own release state, not the current attachment implementation.
+
 ## Invoice conversation: protected browser acceptance (10 October 2026)
 
 The existing protected tester link now includes the conversation action inside

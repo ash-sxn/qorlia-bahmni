@@ -9,30 +9,46 @@ This is not an Indian chart of accounts or healthcare tax configuration.
 history in descending 30-row cursor pages. Reads require an internal account,
 native invoice/message permissions and company/record rules. Native formatting
 filters restricted tracked fields. Returned message bodies are plain text, with
-explicit shortening above 20,000 characters. Attachment names are metadata, not
-implemented delivery controls.
+explicit shortening above 20,000 characters. Attachments have named download
+controls which recheck invoice/message/file membership, parent association and
+native attachment permissions. Binary content is downloaded as octet-stream,
+never previewed inline, up to 10 MiB; larger files require native Billing for now.
+Validated native HTTP/HTTPS URL attachments open externally, without server fetch.
 
 `qorlia_invoice_note` posts a fixed internal `mail.mt_note` using the authenticated
-author and native invoicing write rights. Notes accept 1-5,000 plain-text characters
-and a canonical UUID key; no author, recipients, attachments or subtype override
-is accepted. Native internal followers may receive queued notifications, but
+author and native invoicing write rights. Notes accept up to 5,000 plain-text
+characters, a canonical UUID key and optional `uploads` entries containing only
+`name` and canonical base64 `content`. Require text or at least one file. Up to five
+files/10 MiB total are checked and saved atomically using native posting, with
+original image bytes preserved. Native attachment create rights and invoice write
+rules are checked first. No author, recipients, existing attachment IDs, resource
+binding or subtype override is accepted. Native internal followers may receive queued notifications, but
 external/portal followers do not. A real deployment must configure authorised
 authors' native email addresses. The isolated QA address is deliberately `.invalid`.
 
-Identical keys/text/invoice/author return the same message. PostgreSQL uniqueness
+Identical keys/text/files/invoice/author return the same message. Names, order,
+byte count and SHA256 content digests bind uploads; old text-only hashes remain
+compatible. Native attachment metadata is ID-sorted for stable retry replies.
+PostgreSQL uniqueness
 and native serialization retry protect concurrent saves. `qorlia_invoice_note_status`
 returns a matching saved note when visible. A negative status is not proof that
 a delayed save cannot finish, so React keeps the original key/text frozen and
 offers explicit same-request retry rather than generating a replacement request.
 No automatic write retry, silent draft discard or accounting mutation occurs.
 
-The independent native suite passes 135 tests; Home passes 180. Actual concurrent
-HTTP writes persist one note and preserve invoice/journal/payment/follower/
-attachment state. Native tests cover company, portal, read-only and restricted
-tracking permissions plus queued staff notifications. The review gateway blocks
-raw mail methods and context overrides. Hosted browser acceptance is separately
-recorded in the readiness ledger. Attachments, external email, followers/activities
-and full chatter/Billing parity are still pending.
+Home passes 189 tests. The exact installed native attachment suite passes 143
+tests with zero failures/errors/skips. Concurrent HTTP save/status returns the
+same ID-sorted message/files without duplicate persistence or financial changes. Native
+tests cover atomic rollback, exact retry, original binary/empty files, unsafe
+links/names/base64, company/read-only denial and scope checks. The review gateway
+blocks raw mail/file methods and context overrides. Note/status requests alone
+have a 15 MiB JSON bound, after authentication; other calls retain 32 KiB.
+Protected browser downloads match the actual 40,065-byte and zero-byte native
+originals. Browser upload/save/reload acceptance remains pending because automation
+cannot complete the file chooser. The readiness ledger distinguishes this missing
+populated check from the passing mocked upload/recovery tests.
+Attachment deletion/large-file delivery, malware scanning, external email,
+followers/activities and full chatter/Billing parity remain pending.
 
 ## Customer account statement
 

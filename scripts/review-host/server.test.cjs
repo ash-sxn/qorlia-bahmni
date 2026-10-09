@@ -84,7 +84,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
   for (const method of ['qorlia_invoice_workflow_load', 'qorlia_invoice_workflow_post',
     'qorlia_invoice_draft_load', 'qorlia_invoice_draft_preview', 'qorlia_invoice_draft_save', 'qorlia_invoice_draft_choices',
     'qorlia_invoice_report_list', 'qorlia_invoice_report_download', 'qorlia_customer_statement', 'qorlia_customer_statement_download',
-    'qorlia_invoice_messages', 'qorlia_invoice_note', 'qorlia_invoice_note_status',
+    'qorlia_invoice_messages', 'qorlia_invoice_note', 'qorlia_invoice_note_status', 'qorlia_invoice_attachment_download',
     'qorlia_correction_load', 'qorlia_correction_run',
     'qorlia_reversal_load', 'qorlia_reversal_preview', 'qorlia_reversal_run',
     'qorlia_payment_load', 'qorlia_payment_preview', 'qorlia_payment_record', 'qorlia_credit_load', 'qorlia_credit_apply', 'qorlia_credit_remove']) {
@@ -99,6 +99,16 @@ test('review gate protects UI, clinical API and named Billing actions with isola
   }
   for (const method of ['action_post', 'button_draft', 'button_cancel', 'write', 'unlink', 'message_post', 'message_subscribe', 'js_assign_outstanding_line', 'js_remove_outstanding_partial'])
     assert.equal((await rpc(`/web/dataset/call_kw/account.move/${method}`, allCookies, { model: 'account.move', method })).status, 404);
+  for (const method of ['qorlia_invoice_note', 'qorlia_invoice_note_status']) {
+    const params = { model: 'account.move', method, args: [], kwargs: { uploads: [{ name: 'QorliaQA.txt', content: 'x'.repeat(40000) }] } };
+    assert.equal((await rpc(`/web/dataset/call_kw/account.move/${method}`, allCookies, params)).status, 200);
+    assert.equal((await rpc(`/web/dataset/call_kw/account.move/${method}`, cookie, params)).status, 401);
+    params.kwargs.uploads[0].content = 'x'.repeat(16 * 1024 * 1024);
+    assert.equal((await rpc(`/web/dataset/call_kw/account.move/${method}`, allCookies, params)).status, 400);
+  }
+  assert.equal((await rpc('/web/dataset/call_kw/account.move/qorlia_invoice_attachment_download', allCookies,
+    { model: 'account.move', method: 'qorlia_invoice_attachment_download', args: [], kwargs: { content: 'x'.repeat(40000) } })).status, 400);
+  assert.equal((await request('/openmrs/qorlia-billing-api/web/content/1', { headers: { Cookie: allCookies } })).status, 404);
   for (const method of ['qorlia_payment_report_list', 'qorlia_payment_report_download']) {
     const path = `/web/dataset/call_kw/account.payment/${method}`;
     const params = { model: 'account.payment', method, args: [], kwargs: { payment_id: 1 } };

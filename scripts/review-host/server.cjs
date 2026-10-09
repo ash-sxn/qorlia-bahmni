@@ -86,6 +86,7 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
       '/web/dataset/call_kw/account.move/qorlia_customer_statement',
       '/web/dataset/call_kw/account.move/qorlia_customer_statement_download',
       ...['messages', 'note', 'note_status'].map((action) => `/web/dataset/call_kw/account.move/qorlia_invoice_${action}`),
+      '/web/dataset/call_kw/account.move/qorlia_invoice_attachment_download',
       ...['load', 'run'].map((action) => `/web/dataset/call_kw/account.move/qorlia_correction_${action}`),
       ...['load', 'preview', 'run'].map((action) => `/web/dataset/call_kw/account.move/qorlia_reversal_${action}`),
       ...['load', 'preview', 'record'].map((action) => `/web/dataset/call_kw/account.move/qorlia_payment_${action}`),
@@ -101,7 +102,12 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
         return res.status(401).json({ error: 'Sign in to Qorlia.' });
       next();
     } catch { res.status(503).json({ error: 'Hospital session verification is unavailable.' }); }
-  }, express.json({ limit: '32kb' }), (req, res, next) => {
+  }, (req, res, next) => {
+    // Only atomic note uploads need the larger bound; authentication runs first.
+    const upload = ['/web/dataset/call_kw/account.move/qorlia_invoice_note',
+      '/web/dataset/call_kw/account.move/qorlia_invoice_note_status'].includes(req.path);
+    express.json({ limit: upload ? '15mb' : '32kb' })(req, res, next);
+  }, (req, res, next) => {
     // Expose only named adapter actions, never raw financial create/write/confirm calls.
     const params = req.body?.params;
     const model = req.path.split('/')[4];

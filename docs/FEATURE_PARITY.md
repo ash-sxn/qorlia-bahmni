@@ -1,5 +1,30 @@
 # Bahmni workflow parity ledger
 
+## 10 October invoice attachment native and protected download checkpoint
+
+- Conversation file selection/removal and attachment-only notes now use native
+  atomic message posting with up to five files and 10 MiB total. Retry identity
+  includes text, file names/order and byte hashes; status uses the same payload.
+- Named download checks invoice/message/file membership, native attachment
+  permissions and invoice ownership. Binary download never previews active
+  content inline; validated native HTTP/HTTPS links are not fetched by the server.
+- Gateway upload parsing is bounded at 15 MiB only for note/save-status actions,
+  after the tester and clinical-session checks. Other Billing calls retain 32 KiB.
+  Raw attachment/content routes remain unavailable. No new public access is added.
+- Home 189 tests/24 suites, types/lint/build and seven gateway/webpack checks pass.
+  Exact installed native code passes 143 tests, no failures/errors/skips.
+  Concurrent HTTP save/status returns one message and one copy of each file,
+  with native ID-sorted metadata and unchanged financial/follower/payment state.
+- The protected build's 83 chunks and secret-free source archive match; existing
+  tester/session/cookie/robots and blocked raw-route checks pass. Actual browser
+  downloads match the original 40,065-byte and zero-byte native files. Browser
+  upload/save/reload acceptance is pending because automation cannot complete the
+  file chooser. Mocked upload/recovery tests do not establish that browser proof.
+  This is not full Billing parity.
+- Malware scanning/quarantine, attachment deletion/large-file delivery, external
+  email, followers/activities and remaining modules still require completion.
+  Production/shared-demo redesign deployments have not occurred.
+
 ## 10 October invoice conversation hosted checkpoint
 
 - Browser save creates native internal message #21100 on INV/2026/00032.

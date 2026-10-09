@@ -1,12 +1,15 @@
-import { Button, Modal, TextArea } from '@bahmni/design-system';
+import { Button, FileUploader, Modal, TextArea } from '@bahmni/design-system';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import styles from './BillingPage.module.scss';
 import {
   BillingSessionExpired,
   checkInvoiceNote,
+  downloadInvoiceAttachment,
   getInvoiceConversation,
+  InvoiceUpload,
   postInvoiceNote,
+  readInvoiceUploads,
 } from './billingService';
 
 export function InvoiceConversationModal({
@@ -32,15 +35,19 @@ export function InvoiceConversationModal({
     refetchOnReconnect: false,
   });
   const [body, setBody] = useState('');
-  const [pending, setPending] = useState<{ key: string; body: string } | null>(
-    null,
-  );
+  const [files, setFiles] = useState<{ id: string; file: File }[]>([]);
+  const [uploaderVersion, setUploaderVersion] = useState(0);
+  const [pending, setPending] = useState<{
+    key: string;
+    body: string;
+    uploads: InvoiceUpload[];
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [failure, setFailure] = useState<Error | null>(null);
   const [notice, setNotice] = useState('');
   const [discard, setDiscard] = useState<'close' | 'reconnect' | null>(null);
-  const dirty = Boolean(body.trim() || pending);
+  const dirty = Boolean(body.trim() || files.length || pending);
   const expired =
     history.error instanceof BillingSessionExpired ||
     failure instanceof BillingSessionExpired;
@@ -63,22 +70,32 @@ export function InvoiceConversationModal({
   };
   const send = async (checkOnly = false) => {
     if (busyRef.current || (checkOnly ? !pending || expired : !canNote)) return;
-    const request = pending ?? { key: crypto.randomUUID(), body };
-    if (!request.body.trim() || request.body.length > 5000) return;
+    if ((!body.trim() && !files.length && !pending) || body.length > 5000)
+      return;
     busyRef.current = true;
     setBusy(true);
     setFailure(null);
     setNotice('');
-    setPending(request);
     try {
+      const request = pending ?? {
+        key: crypto.randomUUID(),
+        body,
+        uploads: await readInvoiceUploads(files.map((entry) => entry.file)),
+      };
+      setPending(request);
       const message = await (checkOnly ? checkInvoiceNote : postInvoiceNote)(
         invoiceId,
         request.key,
         request.body,
+        ...(request.uploads.length
+          ? ([request.uploads] as [InvoiceUpload[]])
+          : []),
       );
       if (message) {
         setPending(null);
         setBody('');
+        setFiles([]);
+        setUploaderVersion((value) => value + 1);
         setNotice(
           `Internal note #${message.id} is saved in Billing. No invoice amounts were changed.`,
         );
@@ -92,6 +109,51 @@ export function InvoiceConversationModal({
         error instanceof Error
           ? error
           : new Error('Internal note could not be confirmed.'),
+      );
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  };
+  const download = async (messageId: number, attachmentId: number) => {
+    if (busyRef.current || !ready) return;
+    busyRef.current = true;
+    setBusy(true);
+    setFailure(null);
+    setNotice('');
+    try {
+      const file = await downloadInvoiceAttachment(
+        invoiceId,
+        messageId,
+        attachmentId,
+      );
+      const anchor = document.createElement('a');
+      const objectUrl =
+        file.kind === 'binary' ? URL.createObjectURL(file.blob) : null;
+      anchor.href = objectUrl ?? (file.kind === 'url' ? file.url : '');
+      if (file.kind === 'binary') anchor.download = file.filename;
+      else {
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+      }
+      document.body.appendChild(anchor);
+      try {
+        anchor.click();
+      } finally {
+        anchor.remove();
+        if (objectUrl)
+          window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      }
+      setNotice(
+        file.kind === 'binary'
+          ? 'Attachment download requested. Open the downloaded file to check it.'
+          : 'Attachment link opened separately. The external site has its own access and privacy rules.',
+      );
+    } catch (error) {
+      setFailure(
+        error instanceof Error
+          ? error
+          : new Error('Attachment download failed.'),
       );
     } finally {
       busyRef.current = false;
@@ -149,8 +211,49 @@ export function InvoiceConversationModal({
                   {body.length}/5,000 characters. Saved notes remain in the
                   invoice history.
                 </p>
+                <FileUploader
+                  key={uploaderVersion}
+                  labelTitle="Attach files to this internal note"
+                  labelDescription="Up to five files, 10 MiB total. Files save together with the note. Do not upload real patient information to this test environment."
+                  buttonLabel="Choose attachments"
+                  multiple
+                  filenameStatus="complete"
+                  disabled={!canNote || busy || Boolean(pending)}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                    setFiles((current) => [
+                      ...current,
+                      ...Array.from(event.target.files ?? []).map((file) => ({
+                        id: crypto.randomUUID(),
+                        file,
+                      })),
+                    ]);
+                    setUploaderVersion((value) => value + 1);
+                    setFailure(null);
+                  }}
+                />
+                {files.length ? (
+                  <ul aria-label="Unsent attachments">
+                    {files.map(({ id, file }) => (
+                      <li key={id}>
+                        {file.name} ({file.size.toLocaleString()} bytes){' '}
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          disabled={busy || Boolean(pending)}
+                          onClick={() =>
+                            setFiles((current) =>
+                              current.filter((entry) => entry.id !== id),
+                            )
+                          }
+                        >
+                          Remove {file.name}
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
                 <Button
-                  disabled={!canNote || busy || !body.trim()}
+                  disabled={!canNote || busy || (!body.trim() && !files.length)}
                   onClick={() => void send()}
                 >
                   {busy
@@ -225,10 +328,21 @@ export function InvoiceConversationModal({
                       ) : null}
                       {message.attachments.length ? (
                         <>
-                          <p>Attachments (open in native Billing):</p>
+                          <p>Attachments:</p>
                           <ul>
                             {message.attachments.map((file) => (
-                              <li key={file.id}>{file.name}</li>
+                              <li key={file.id}>
+                                <Button
+                                  kind="ghost"
+                                  size="sm"
+                                  disabled={busy || !ready}
+                                  onClick={() =>
+                                    void download(message.id, file.id)
+                                  }
+                                >
+                                  Download or open {file.name}
+                                </Button>
+                              </li>
                             ))}
                           </ul>
                         </>

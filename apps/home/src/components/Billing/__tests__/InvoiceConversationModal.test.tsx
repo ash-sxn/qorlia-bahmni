@@ -9,6 +9,7 @@ import {
 import {
   BillingSessionExpired,
   checkInvoiceNote,
+  downloadInvoiceAttachment,
   getInvoiceConversation,
   postInvoiceNote,
 } from '../billingService';
@@ -22,6 +23,7 @@ import {
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
   checkInvoiceNote: jest.fn(),
+  downloadInvoiceAttachment: jest.fn(),
   getInvoiceConversation: jest.fn(),
   postInvoiceNote: jest.fn(),
 }));
@@ -67,6 +69,11 @@ describe('Invoice conversation modal', () => {
       body: 'QorliaQA New note',
     });
     (checkInvoiceNote as jest.Mock).mockResolvedValue(false);
+    (downloadInvoiceAttachment as jest.Mock).mockResolvedValue({
+      kind: 'binary',
+      filename: 'QorliaQA.txt',
+      blob: new Blob(['ab']),
+    });
   });
   it('reads native history, changes and attachment labels as safe text, without posting', async () => {
     (getInvoiceConversation as jest.Mock).mockResolvedValue({
@@ -78,7 +85,11 @@ describe('Invoice conversation modal', () => {
     show();
     await screen.findByText('<img src=x onerror=alert(1)>');
     expect(screen.getByText('Reference: Before → After')).toBeInTheDocument();
-    expect(screen.getByText('QorliaQA Invoice.pdf')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: 'Download or open QorliaQA Invoice.pdf',
+      }),
+    ).toBeInTheDocument();
     expect(document.querySelector('img')).toBeNull();
     expect(postInvoiceNote).not.toHaveBeenCalled();
   });
@@ -240,6 +251,104 @@ describe('Invoice conversation modal', () => {
     expect(
       screen.queryByRole('button', { name: 'Load older messages' }),
     ).not.toBeInTheDocument();
+    expect(postInvoiceNote).not.toHaveBeenCalled();
+  });
+  it('saves chosen files together, freezes them after an uncertain save and retries exactly once', async () => {
+    (postInvoiceNote as jest.Mock).mockRejectedValueOnce(
+      new Error('Upload interrupted'),
+    );
+    show();
+    await screen.findByText('QorliaQA Checked invoice');
+    const input = document.querySelector('input[type=file]')!;
+    fireEvent.change(input, {
+      target: { files: [new File(['ab'], 'QorliaQA.txt')] },
+    });
+    expect(
+      screen.getByRole('button', { name: 'Remove QorliaQA.txt' }),
+    ).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Save internal note' }));
+    await screen.findByText('Upload interrupted');
+    expect(
+      screen.getByRole('button', { name: 'Remove QorliaQA.txt' }),
+    ).toBeDisabled();
+    const expected = [
+      7,
+      noteKey,
+      '',
+      [{ name: 'QorliaQA.txt', content: 'YWI=' }],
+    ];
+    expect((postInvoiceNote as jest.Mock).mock.calls).toEqual([expected]);
+    fireEvent.click(screen.getByRole('button', { name: 'Retry same note' }));
+    await screen.findByText(/Internal note #10 is saved/);
+    expect((postInvoiceNote as jest.Mock).mock.calls).toEqual([
+      expected,
+      expected,
+    ]);
+    expect(
+      screen.queryByRole('button', { name: 'Remove QorliaQA.txt' }),
+    ).not.toBeInTheDocument();
+  });
+  it('allows removing unsent files and warns before abandoning an attachment-only draft', async () => {
+    show();
+    await screen.findByText('QorliaQA Checked invoice');
+    fireEvent.change(document.querySelector('input[type=file]')!, {
+      target: { files: [new File(['ab'], 'QorliaQA.txt')] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Back to invoices' }));
+    expect(close).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Remove QorliaQA.txt' }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Save internal note' }),
+    ).toBeDisabled();
+    expect(postInvoiceNote).not.toHaveBeenCalled();
+  });
+  it('downloads on demand with a temporary blob URL, never automatically', async () => {
+    const create = jest.fn(() => 'blob:QorliaQA'),
+      revoke = jest.fn();
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: create,
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: revoke,
+    });
+    const click = jest
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
+    show();
+    const button = await screen.findByRole('button', {
+      name: 'Download or open QorliaQA Invoice.pdf',
+    });
+    expect(downloadInvoiceAttachment).not.toHaveBeenCalled();
+    fireEvent.click(button);
+    await screen.findByText(/Attachment download requested/);
+    expect(downloadInvoiceAttachment).toHaveBeenCalledWith(7, 9, 1);
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('a[download]')).toBeNull();
+    click.mockRestore();
+  });
+  it('hides attachment controls after native session expiry without repeating the download', async () => {
+    (downloadInvoiceAttachment as jest.Mock).mockRejectedValue(
+      new BillingSessionExpired(),
+    );
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Download or open QorliaQA Invoice.pdf',
+      }),
+    );
+    await screen.findByRole('button', { name: 'Reconnect Billing' });
+    expect(
+      screen.queryByRole('button', {
+        name: 'Download or open QorliaQA Invoice.pdf',
+      }),
+    ).not.toBeInTheDocument();
+    expect(downloadInvoiceAttachment).toHaveBeenCalledTimes(1);
     expect(postInvoiceNote).not.toHaveBeenCalled();
   });
 });

@@ -830,7 +830,9 @@ async function invoiceNoteRequest(
   invoiceId: number,
   requestKey: string,
   body: string,
+  uploads: InvoiceUpload[] = [],
 ) {
+  checkedUploads(uploads);
   if (
     !Number.isInteger(invoiceId) ||
     invoiceId <= 0 ||
@@ -838,7 +840,7 @@ async function invoiceNoteRequest(
       requestKey,
     ) ||
     typeof body !== 'string' ||
-    !body.trim() ||
+    (!body.trim() && !uploads.length) ||
     body.length > 5000 ||
     body.includes('\0')
   )
@@ -851,6 +853,7 @@ async function invoiceNoteRequest(
     invoice_id: invoiceId,
     request_key: requestKey,
     body,
+    ...(uploads.length ? { uploads } : {}),
   });
   if (
     result?.invoice_id !== invoiceId ||
@@ -869,12 +872,179 @@ export const postInvoiceNote = (
   invoiceId: number,
   requestKey: string,
   body: string,
-) => invoiceNoteRequest('note', invoiceId, requestKey, body);
+  uploads: InvoiceUpload[] = [],
+) => invoiceNoteRequest('note', invoiceId, requestKey, body, uploads);
 export const checkInvoiceNote = (
   invoiceId: number,
   requestKey: string,
   body: string,
-) => invoiceNoteRequest('note_status', invoiceId, requestKey, body);
+  uploads: InvoiceUpload[] = [],
+) => invoiceNoteRequest('note_status', invoiceId, requestKey, body, uploads);
+
+export interface InvoiceUpload {
+  name: string;
+  content: string;
+}
+export const INVOICE_ATTACHMENT_LIMIT = 10 * 1024 * 1024;
+const safeAttachmentName = (name: string) =>
+  typeof name === 'string' &&
+  name.length > 0 &&
+  name.length <= 160 &&
+  name.trim() === name &&
+  name !== '.' &&
+  name !== '..' &&
+  !/[\p{C}/\\]/u.test(name);
+
+function attachmentBytes(content: string, size: number) {
+  if (
+    !Number.isInteger(size) ||
+    size < 0 ||
+    size > INVOICE_ATTACHMENT_LIMIT ||
+    typeof content !== 'string' ||
+    content.length !== 4 * Math.ceil(size / 3) ||
+    !/^[A-Za-z0-9+/]*={0,2}$/.test(content)
+  )
+    throw new Error('Invalid attachment content or size.');
+  let raw: string;
+  try {
+    raw = atob(content);
+  } catch {
+    throw new Error('Invalid attachment content.');
+  }
+  if (raw.length !== size || btoa(raw) !== content)
+    throw new Error('Invalid attachment content or size.');
+  return Uint8Array.from(raw, (char) => char.charCodeAt(0));
+}
+function checkedUploads(uploads: InvoiceUpload[]) {
+  if (!Array.isArray(uploads) || uploads.length > 5)
+    throw new Error('Select up to five attachments, totalling at most 10 MiB.');
+  let total = 0;
+  for (const file of uploads) {
+    if (
+      !file ||
+      Object.keys(file).sort().join(',') !== 'content,name' ||
+      !safeAttachmentName(file.name) ||
+      typeof file.content !== 'string' ||
+      file.content.length > 4 * Math.ceil(INVOICE_ATTACHMENT_LIMIT / 3)
+    )
+      throw new Error('Invalid attachment name or content.');
+    const padding = file.content.endsWith('==')
+      ? 2
+      : file.content.endsWith('=')
+        ? 1
+        : 0;
+    total += attachmentBytes(
+      file.content,
+      (file.content.length / 4) * 3 - padding,
+    ).length;
+  }
+  if (total > INVOICE_ATTACHMENT_LIMIT)
+    throw new Error('Attachments may total at most 10 MiB.');
+}
+export async function readInvoiceUploads(
+  files: File[],
+): Promise<InvoiceUpload[]> {
+  if (
+    files.length > 5 ||
+    files.some((file) => !safeAttachmentName(file.name)) ||
+    files.reduce((sum, file) => sum + file.size, 0) > INVOICE_ATTACHMENT_LIMIT
+  )
+    throw new Error(
+      'Select up to five files with valid names, totalling at most 10 MiB.',
+    );
+  return Promise.all(
+    files.map(
+      (file) =>
+        new Promise<InvoiceUpload>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = reader.onabort = () =>
+            reject(
+              new Error(`Could not read ${file.name}. Select the file again.`),
+            );
+          reader.onload = () => {
+            if (
+              typeof reader.result !== 'string' ||
+              !reader.result.includes(';base64,')
+            )
+              return reject(new Error(`Could not read ${file.name}.`));
+            resolve({
+              name: file.name,
+              content: reader.result.split(';base64,')[1],
+            });
+          };
+          reader.readAsDataURL(file);
+        }),
+    ),
+  );
+}
+
+export async function downloadInvoiceAttachment(
+  invoiceId: number,
+  messageId: number,
+  attachmentId: number,
+): Promise<
+  | { kind: 'binary'; filename: string; blob: Blob }
+  | { kind: 'url'; url: string }
+> {
+  if (
+    [invoiceId, messageId, attachmentId].some(
+      (id) => !Number.isInteger(id) || id <= 0,
+    )
+  )
+    throw new Error('Select a saved invoice message and attachment.');
+  const result = await invoiceDraftCall<{
+    invoice_id: number;
+    message_id: number;
+    attachment_id: number;
+    kind: string;
+    filename: string;
+    mimetype: string;
+    byte_count: number;
+    content: string;
+    url: string;
+  }>('qorlia_invoice_attachment_download', {
+    invoice_id: invoiceId,
+    message_id: messageId,
+    attachment_id: attachmentId,
+  });
+  if (
+    result?.invoice_id !== invoiceId ||
+    result.message_id !== messageId ||
+    result.attachment_id !== attachmentId
+  )
+    throw new Error('Invalid invoice attachment response.');
+  if (result.kind === 'url') {
+    let url: URL;
+    try {
+      url = new URL(result.url);
+    } catch {
+      throw new Error('Invalid attachment link.');
+    }
+    if (
+      typeof result.url !== 'string' ||
+      /[\p{C}\s]/u.test(result.url) ||
+      !['https:', 'http:'].includes(url.protocol) ||
+      !url.hostname ||
+      url.username ||
+      url.password
+    )
+      throw new Error('Invalid attachment link.');
+    return { kind: 'url', url: result.url };
+  }
+  if (
+    result.kind !== 'binary' ||
+    !safeAttachmentName(result.filename) ||
+    result.mimetype !== 'application/octet-stream'
+  )
+    throw new Error('Invalid invoice attachment response.');
+  return {
+    kind: 'binary',
+    filename: result.filename,
+    blob: new Blob([attachmentBytes(result.content, result.byte_count)], {
+      type: 'application/octet-stream',
+    }),
+  };
+}
 
 export type InvoiceReportKey = 'invoice' | 'invoice_without_payments';
 export interface InvoiceReport {
