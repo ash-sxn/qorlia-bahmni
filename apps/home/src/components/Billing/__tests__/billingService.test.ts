@@ -17,11 +17,14 @@ import {
   getPaymentWorkflow,
   previewPaymentWorkflow,
   recordPaymentWorkflow,
+  getCreditWorkflow,
+  applyCreditWorkflow,
 } from '../billingService';
 import { draftFixture } from './draftFixture';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
 import { paymentWorkflowFixture } from './paymentWorkflowFixture';
 import { workflowFixture } from './workflowFixture';
+import { creditWorkflowFixture } from './creditWorkflowFixture';
 
 describe('billing API', () => {
   beforeEach(() => {
@@ -33,6 +36,36 @@ describe('billing API', () => {
       status: 200,
       json: async () => body,
     });
+  it('uses only named credit actions and passes the selected line and version', async () => {
+    const credit = creditWorkflowFixture();
+    reply({ result: credit });
+    expect(await getCreditWorkflow(7)).toEqual(credit);
+    await applyCreditWorkflow(credit, 12);
+    const [url, options] = (fetch as jest.Mock).mock.calls[1];
+    expect(url).toContain('/account.move/qorlia_credit_apply');
+    expect(JSON.parse(options.body).params).toEqual({
+      model: 'account.move',
+      method: 'qorlia_credit_apply',
+      args: [],
+      kwargs: { invoice_id: 7, line_id: 12, version: credit.version },
+    });
+  });
+  it('rejects invalid allocation amounts, sources, versions and history', async () => {
+    const credit = creditWorkflowFixture();
+    for (const patch of [
+      { version: 'old' },
+      { credits: [{ ...credit.credits[0], amount: Infinity }] },
+      { credits: [{ ...credit.credits[0], source_id: false }] },
+      { credits: [{ ...credit.credits[0], can_apply: 'yes' }] },
+      { history: [{ id: 1, amount: 100 }] },
+      { invoice: { ...credit.invoice, ledger_balanced: false } },
+    ]) {
+      reply({ result: { ...credit, ...patch } });
+      await expect(getCreditWorkflow(7)).rejects.toThrow(
+        'Invalid credit allocation response',
+      );
+    }
+  });
   it('uses named reviewed payment actions with version and native values, not arbitrary financial writes', async () => {
     const payment = paymentWorkflowFixture();
     reply({ result: payment });

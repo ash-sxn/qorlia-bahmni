@@ -515,6 +515,84 @@ export const postInvoiceWorkflow = (invoice: InvoiceWorkflow) =>
     version: invoice.version,
   });
 
+export interface CreditWorkflow {
+  invoice: InvoiceWorkflow;
+  version: string;
+  credits: {
+    id: number;
+    source_id: number;
+    name: string;
+    date: string;
+    amount: number;
+    currency: [number, string];
+    can_apply: boolean;
+  }[];
+  history: {
+    id: number;
+    name: string;
+    date: string;
+    amount: number;
+    currency: [number, string];
+    is_exchange: boolean;
+  }[];
+}
+
+const creditCall = async (method: string, kwargs: object) => {
+  const value = await rpc<CreditWorkflow>(
+    `/web/dataset/call_kw/account.move/${method}`,
+    { model: 'account.move', method, args: [], kwargs },
+  );
+  if (!value?.invoice)
+    throw new Error(
+      'Invalid credit allocation response. Reload current status.',
+    );
+  checkedInvoiceWorkflow(value.invoice);
+  const validRow = (row: CreditWorkflow['history'][number]) =>
+    row &&
+    Number.isInteger(row.id) &&
+    row.id > 0 &&
+    typeof row.name === 'string' &&
+    typeof row.date === 'string' &&
+    Number.isFinite(row.amount) &&
+    row.amount >= 0 &&
+    Array.isArray(row.currency) &&
+    validRelation(row.currency);
+  if (
+    typeof value.version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(value.version) ||
+    !Array.isArray(value.credits) ||
+    !Array.isArray(value.history) ||
+    !value.credits.every(
+      (row) =>
+        validRow({ ...row, is_exchange: false }) &&
+        Number.isInteger(row.source_id) &&
+        row.source_id > 0 &&
+        typeof row.can_apply === 'boolean' &&
+        (!row.can_apply ||
+          (value.invoice.ledger_balanced &&
+            value.invoice.state === 'posted' &&
+            value.invoice.open_amount > 0)),
+    ) ||
+    !value.history.every(
+      (row) => validRow(row) && typeof row.is_exchange === 'boolean',
+    )
+  )
+    throw new Error(
+      'Invalid credit allocation response. Reload current status.',
+    );
+  return value;
+};
+
+export const getCreditWorkflow = (invoiceId: number) =>
+  creditCall('qorlia_credit_load', { invoice_id: invoiceId });
+
+export const applyCreditWorkflow = (review: CreditWorkflow, lineId: number) =>
+  creditCall('qorlia_credit_apply', {
+    invoice_id: review.invoice.id,
+    line_id: lineId,
+    version: review.version,
+  });
+
 export interface PaymentValues {
   journal_id: number | false;
   payment_method_line_id: number | false;

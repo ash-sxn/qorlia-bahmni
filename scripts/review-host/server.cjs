@@ -79,7 +79,8 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
         `/web/dataset/call_kw/sale.order/qorlia_draft_${action}`),
       ...['load', 'run'].map((action) => `/web/dataset/call_kw/sale.order/qorlia_order_workflow_${action}`),
       ...['load', 'post'].map((action) => `/web/dataset/call_kw/account.move/qorlia_invoice_workflow_${action}`),
-      ...['load', 'preview', 'record'].map((action) => `/web/dataset/call_kw/account.move/qorlia_payment_${action}`)]);
+      ...['load', 'preview', 'record'].map((action) => `/web/dataset/call_kw/account.move/qorlia_payment_${action}`),
+      ...['load', 'apply'].map((action) => `/web/dataset/call_kw/account.move/qorlia_credit_${action}`)]);
     if (req.method !== 'POST' || !allowed.has(req.path)) return res.sendStatus(404);
     const clinicalCookie = cookieNamed(req.headers.cookie, 'JSESSIONID');
     if (!clinicalCookie) return res.status(401).json({ error: 'Sign in to Qorlia.' });

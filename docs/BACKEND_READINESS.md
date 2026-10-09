@@ -1,5 +1,45 @@
 # Qorlia React frontend backend readiness
 
+## Latest native credit allocation verification (9 October 2026)
+
+The reviewed existing-credit workflow delegates to the pinned Odoo native
+outstanding widget and `js_assign_outstanding_line`, not a custom allocation
+formula. Native currency, partial/full residuals and reconciliation history are
+retained. It creates no new payment and does not collect or transfer real funds.
+Native permissions, record rules, ledger balance and account eligibility apply.
+Both target/source moves and their journal lines are locked in deterministic
+order; current versions include source balances and accounting configuration.
+Raw native allocation/removal methods and caller context remain blocked by the
+tester gateway. React requires explicit review, prevents duplicate writes and
+uses read-only recovery after ambiguous failures or session expiry.
+
+The first actual HTTP pass caught direct compute calls updating `write_date`
+and invalidating every review. The fix reads the native widgets through Odoo's
+compute protection. Cache-reset native testing and repeated HTTP reads now prove
+stable versions and unchanged invoice timestamps. This is why the native
+transaction suite alone was not sufficient acceptance.
+
+All 46 native adapter tests pass without failures/errors/skips, including excess
+receipt credit, foreign currency and ordinary cashier permissions. Home passes
+87 tests in 11 suites; seven gateway/webpack checks, types, targeted lint,
+formatting, diff and development build pass. Real native HTTP INV/2026/00019
+received INR 100 then INR 400 credit allocation, leaving INR 400 then zero.
+Concurrent identical requests yielded one allocation and one rejection. The
+larger credit note retained INR 200; unrelated INV/2026/00020 stayed INR 500 open.
+Independent journal/history reads passed and no payment record was created.
+Hosted browser INV/2026/00021 was reviewed and closed first with unchanged INR
+500 balance and no history. One explicit INR 100 allocation from RINV/2026/00009
+left INR 400 and native partial status. Reopening shows the saved history with
+no available credit or repeat action. Independent reads verify one partial
+reconciliation linking only the two assigned documents, zero remaining source
+credit, balanced ledgers and no payments. Hosted gate/session/blocked-route and
+source/license checks pass. The shared code and access expiry are unchanged.
+
+Only isolated synthetic ERP and the protected review are in scope. Statement
+matching, reconciliation removal, correction UI, printouts, provider/check/PDC
+payments, down payments, POS, stock/batch acceptance and Clinical-to-ERP sync
+remain incomplete. This is not production accounting or full Billing parity.
+
 ## Latest Billing discount and rounding counterpart verification (9 October 2026)
 
 The earlier balance guard remains active, but discount/rounding posting is now

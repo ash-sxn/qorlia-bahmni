@@ -16,9 +16,12 @@ import {
   getPaymentWorkflow,
   previewPaymentWorkflow,
   recordPaymentWorkflow,
+  getCreditWorkflow,
+  applyCreditWorkflow,
 } from '../billingService';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
 import { paymentWorkflowFixture } from './paymentWorkflowFixture';
+import { creditWorkflowFixture } from './creditWorkflowFixture';
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
@@ -33,6 +36,8 @@ jest.mock('../billingService', () => ({
   getPaymentWorkflow: jest.fn(),
   previewPaymentWorkflow: jest.fn(),
   recordPaymentWorkflow: jest.fn(),
+  getCreditWorkflow: jest.fn(),
+  applyCreditWorkflow: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({ useUserPrivilege: jest.fn() }));
 jest.mock('../../HomePageHeader', () => ({
@@ -325,6 +330,77 @@ describe('Billing workspace', () => {
     expect(recordPaymentWorkflow).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => expect(getInvoices).toHaveBeenCalledTimes(2));
+  });
+  it('applies only the reviewed native credit and refreshes invoice balances', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([
+      { ...invoice, state: 'posted' },
+    ]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    (getCreditWorkflow as jest.Mock).mockResolvedValue(creditWorkflowFixture());
+    (applyCreditWorkflow as jest.Mock).mockResolvedValue(
+      creditWorkflowFixture({
+        invoice: invoiceWorkflowFixture({
+          state: 'posted',
+          name: 'INV/QA/7',
+          can_post: false,
+          open_amount: 400,
+          payment_state: 'partial',
+        }),
+        credits: [],
+      }),
+    );
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review credit allocation' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Review QorliaQA Credit note',
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Apply reviewed item' }),
+    );
+    expect(
+      await screen.findByText(
+        /allocation saved.*Open amount: ₹400.00.*No new payment/,
+      ),
+    ).toBeVisible();
+    expect(getCreditWorkflow).toHaveBeenCalledWith(7);
+    expect(applyCreditWorkflow).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(getInvoices).toHaveBeenCalledTimes(2));
+  });
+  it('clears invoice and credit data when a credit review requires Billing reconnection', async () => {
+    (getBillingSession as jest.Mock)
+      .mockResolvedValueOnce({ uid: 3, name: 'QA Cashier' })
+      .mockRejectedValue(new BillingSessionExpired());
+    (getInvoices as jest.Mock).mockResolvedValue([
+      { ...invoice, state: 'posted' },
+    ]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    (getCreditWorkflow as jest.Mock).mockRejectedValue(
+      new BillingSessionExpired(),
+    );
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review credit allocation' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Reconnect Billing' }),
+    );
+    expect(
+      await screen.findByText('Connect your billing account'),
+    ).toBeVisible();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText('QorliaQA Customer')).not.toBeInTheDocument();
+    expect(applyCreditWorkflow).not.toHaveBeenCalled();
   });
   it('opens a native linked invoice in the invoice tab without a legacy redirect', async () => {
     (getChargeOrders as jest.Mock).mockResolvedValue([

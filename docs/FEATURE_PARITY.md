@@ -1,5 +1,43 @@
 # Bahmni workflow parity ledger
 
+## 9 October native credit allocation checkpoint
+
+- The signed-in Billing workspace now includes an explicit review for existing
+  receipt credits and credit notes. It uses the native outstanding widget and
+  reconciliation action, with native history, currency conversion, residuals
+  and no additional payment creation. Outstanding debits on credit notes are
+  handled through the same native workflow.
+- Source/target ACLs, record rules, balanced ledgers, account eligibility,
+  deterministic document/line locks and fresh versions protect allocation.
+  The snapshot includes source balances, company locks and currency settings.
+  Reads use Odoo compute protection and do not change invoice timestamps.
+  Wrong-customer, stale, already-used and unbalanced sources are rejected.
+- The React review blocks duplicate writes and closing while saving. Uncertain
+  responses require a fresh status read and another explicit review. Session
+  recovery clears financial data. The gateway allows named adapter methods,
+  never raw native allocation/removal or caller accounting context.
+- Actual native HTTP INV/2026/00019 received a credit-note allocation of INR 100,
+  leaving INR 400. Two identical concurrent requests produced one allocation and
+  one rejection. A subsequent INR 600 credit settled the remaining INR 400 and
+  left INR 200 on its source. INV/2026/00020 stayed INR 500 open. Independent
+  reads verified balanced journals, native history and no additional payments.
+- Home: 87 tests in 11 suites. Native adapter: 46 tests with zero failures,
+  errors or skips, including excess receipts, foreign currency, cashier rights
+  and cache-reset/read-only stability. Gateway/webpack: seven checks. Types,
+  targeted lint, formatting, diff checks and development build pass.
+- Hosted browser INV/2026/00021 and source RINV/2026/00009 retained INR 500 and
+  INR 100 open respectively after reviewing and closing, verified independently.
+  Applying the INR 100 once left INR 400 on the invoice and zero on its source.
+  Reopening showed native history and no available source. Independent native
+  reads verified one partial reconciliation linking only those two documents,
+  balanced journals and no payment. The hosted source/licenses match and the
+  shared gate, hospital/ERP session boundaries and expiry remain unchanged.
+
+Billing remains incomplete: provider/check/PDC workflows, statement matching,
+removing reconciliation, printing, correction UI, down payments, POS, stock/batch
+fulfillment and Clinical-to-ERP synchronization. The 200 outstanding-item review
+limit requires the native screen for larger cases. Production is unchanged.
+
 ## 9 October reviewed native payment checkpoint
 
 - The common Qorlia Billing workspace now includes a payment review modal using

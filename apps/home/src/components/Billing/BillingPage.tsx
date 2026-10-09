@@ -25,6 +25,7 @@ import {
   signInToBilling,
 } from './billingService';
 import { ChargeOrdersPanel } from './ChargeOrdersPanel';
+import { CreditWorkflowModal } from './CreditWorkflowModal';
 import { InvoiceWorkflowModal } from './InvoiceWorkflowModal';
 import { PaymentWorkflowModal } from './PaymentWorkflowModal';
 
@@ -49,6 +50,7 @@ export function BillingPage() {
   const [tab, setTab] = useState(0);
   const [reviewInvoice, setReviewInvoice] = useState<number | null>(null);
   const [paymentInvoice, setPaymentInvoice] = useState<number | null>(null);
+  const [creditInvoice, setCreditInvoice] = useState<number | null>(null);
   const [invoiceNotice, setInvoiceNotice] = useState('');
   const session = useQuery({
     queryKey: ['billing', 'session'],
@@ -107,6 +109,7 @@ export function BillingPage() {
       setSelected(null);
       setReviewInvoice(null);
       setPaymentInvoice(null);
+      setCreditInvoice(null);
       setInvoiceNotice('');
       setOffset(0);
     } catch (error) {
@@ -210,6 +213,7 @@ export function BillingPage() {
                     setSelected(null);
                     setReviewInvoice(null);
                     setPaymentInvoice(null);
+                    setCreditInvoice(null);
                     setInvoiceNotice('');
                     await session.refetch();
                   } catch {
@@ -468,6 +472,12 @@ export function BillingPage() {
                       >
                         Review payments
                       </Button>
+                      <Button
+                        kind="tertiary"
+                        onClick={() => setCreditInvoice(selected.id)}
+                      >
+                        Review credit allocation
+                      </Button>
                       {lines.isFetching ? (
                         <p role="status">Loading bill details...</p>
                       ) : lines.isError ? (
@@ -592,6 +602,32 @@ export function BillingPage() {
                   setSelected(null);
                   setInvoiceNotice(
                     `${result.invoice.name || 'Invoice'} payment recorded. Native status: ${result.invoice.payment_state.replaceAll('_', ' ')}. Open amount: ${money(result.invoice.open_amount, result.invoice.currency[1])}. Check linked payments for the saved entry.`,
+                  );
+                  void queryClient.invalidateQueries({
+                    predicate: (query) =>
+                      query.queryKey[0] === 'billing' &&
+                      query.queryKey[1] !== 'session',
+                  });
+                }}
+              />
+            ) : null}
+            {creditInvoice !== null ? (
+              <CreditWorkflowModal
+                uid={session.data!.uid as number}
+                invoiceId={creditInvoice}
+                close={() => setCreditInvoice(null)}
+                reconnect={() => {
+                  setCreditInvoice(null);
+                  setSelected(null);
+                  setInvoiceNotice('');
+                  queryClient.removeQueries({ queryKey: ['billing'] });
+                  void session.refetch();
+                }}
+                completed={(invoice) => {
+                  setCreditInvoice(null);
+                  setSelected(null);
+                  setInvoiceNotice(
+                    `${invoice.name || 'Invoice'} allocation saved. Native status: ${invoice.payment_state.replaceAll('_', ' ')}. Open amount: ${money(invoice.open_amount, invoice.currency[1])}. No new payment was created.`,
                   );
                   void queryClient.invalidateQueries({
                     predicate: (query) =>

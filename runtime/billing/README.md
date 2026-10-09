@@ -64,7 +64,28 @@ History exposes native `is_matched` separately for bank journals.
 Provider transactions, checks and post-dated checks require additional native
 workflows and are explicitly unavailable in this form. Recording a payment
 does not charge a card or transfer money from a bank. Customer bank-statement
-matching and credit allocation controls are not implemented in the React UI.
+matching is not implemented in the React UI.
+
+## Reviewed outstanding credit allocation
+
+The named `qorlia_credit_load` and `qorlia_credit_apply` actions use Odoo's native
+outstanding-credit/debit widgets and `js_assign_outstanding_line` reconciliation.
+The React dialog requires an explicit source review and shows native reconciled
+history. Applying an existing receipt or credit note does not create another
+payment or move real money. Remaining amounts stay open under native accounting.
+
+Native ACLs and record rules apply without `sudo`. Both documents and journal
+lines are locked in deterministic order. Versions cover the target invoice,
+source ledger, account eligibility, company locks and currency configuration.
+Stale, wrong-customer, already-used and unbalanced sources are rejected. The
+gateway blocks direct native reconciliation and removal methods. Failed or
+uncertain replies require a fresh status read, never an automatic write retry.
+The read uses Odoo's compute protection: directly invoking its widget compute
+method outside that protection changes `write_date` and invalidates a review.
+
+More than 200 outstanding items requires native Billing instead of truncating
+the choices. Undoing reconciliation and bank-statement matching remain separate,
+unfinished workflows. This adapter is not a substitute for accountant review.
 
 ## Verification and scope
 
@@ -75,9 +96,12 @@ configuration, stale requests, unauthorized access and unbalanced history.
 Payment checks also cover partial/full receipts, refund direction, installments,
 currency conversion, write-off accounting, excess credit, ordinary cashier
 rights, separate bank matching and rejection of stale/repeated requests.
+Credit checks cover credit-note/debit allocation, excess receipt credit, native
+foreign-currency conversion, ordinary cashier rights, source/target staleness,
+read-only version stability and unbalanced-source rejection.
 Tests require an isolated company with a chart, shop and synthetic data.
 
-Provider/check/PDC payments, statement reconciliation, credit allocation,
+Provider/check/PDC payments, statement reconciliation, reconciliation removal,
 partial/down-payment invoice allocation, stock/batch acceptance, POS, printouts
 and Clinical-to-ERP synchronization still
 require integration and end-to-end acceptance. Native reversal/reset tests are

@@ -82,7 +82,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     assert.equal((await rpc(path, allCookies, { ...params, kwargs: { context: { uid: 1 } } })).status, 400);
   }
   for (const method of ['qorlia_invoice_workflow_load', 'qorlia_invoice_workflow_post',
-    'qorlia_payment_load', 'qorlia_payment_preview', 'qorlia_payment_record']) {
+    'qorlia_payment_load', 'qorlia_payment_preview', 'qorlia_payment_record', 'qorlia_credit_load', 'qorlia_credit_apply']) {
     const path = `/web/dataset/call_kw/account.move/${method}`;
     const params = { model: 'account.move', method, args: [], kwargs: {} };
     assert.equal((await rpc(path, cookie, params)).status, 401);
@@ -92,7 +92,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     assert.equal((await rpc(path, allCookies, { ...params, args: [1] })).status, 400);
     assert.equal((await rpc(path, allCookies, { ...params, kwargs: { context: { check_move_validity: false } } })).status, 400);
   }
-  for (const method of ['action_post', 'button_draft', 'button_cancel', 'write', 'unlink'])
+  for (const method of ['action_post', 'button_draft', 'button_cancel', 'write', 'unlink', 'js_assign_outstanding_line', 'js_remove_outstanding_partial'])
     assert.equal((await rpc(`/web/dataset/call_kw/account.move/${method}`, allCookies, { model: 'account.move', method })).status, 404);
   for (const model of ['account.payment', 'account.payment.register'])
     for (const method of ['create', 'write', 'action_post', 'action_create_payments', '_create_payments', 'unlink'])
