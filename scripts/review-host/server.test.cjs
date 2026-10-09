@@ -4,7 +4,7 @@ const http = require('node:http');
 const { resolve } = require('node:path');
 const { createReviewApp } = require('./server.cjs');
 
-test('review gate protects UI, clinical API and read-only Billing with isolated cookies', async (t) => {
+test('review gate protects UI, clinical API and named Billing actions with isolated cookies', async (t) => {
   let seenClinical = '';
   let seenBilling = '';
   let seenBillingAuth;
@@ -68,6 +68,18 @@ test('review gate protects UI, clinical API and read-only Billing with isolated 
     assert.equal((await rpc(path, allCookies, { model, method: 'write' })).status, 400);
     for (const method of ['create', 'write', 'action_confirm', 'unlink'])
       assert.equal((await rpc(`/web/dataset/call_kw/${model}/${method}`, allCookies, { model, method })).status, 404);
+  }
+  for (const action of ['load', 'preview', 'save', 'choices']) {
+    const method = `qorlia_draft_${action}`;
+    const path = `/web/dataset/call_kw/sale.order/${method}`;
+    const params = { model: 'sale.order', method, args: [], kwargs: {} };
+    assert.equal((await rpc(path, cookie, params)).status, 401);
+    assert.equal((await rpc(path, allCookies, params)).status, 200);
+    assert.equal(seenBilling, 'session_id=erp-current');
+    assert.equal((await rpc(path, allCookies, { ...params, method: 'write' })).status, 400);
+    assert.equal((await rpc(path, allCookies, { ...params, model: 'account.move' })).status, 400);
+    assert.equal((await rpc(path, allCookies, { ...params, args: [1] })).status, 400);
+    assert.equal((await rpc(path, allCookies, { ...params, kwargs: { context: { uid: 1 } } })).status, 400);
   }
   await request('/openmrs/ws/rest/v1/session', { headers: { Cookie: allCookies } });
   assert.equal(seenClinical, 'JSESSIONID=valid; reporting_session=report');

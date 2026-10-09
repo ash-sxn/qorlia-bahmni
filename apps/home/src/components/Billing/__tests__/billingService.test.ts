@@ -6,7 +6,12 @@ import {
   signInToBilling,
   getChargeOrders,
   getChargeOrderLines,
+  getBillingDraft,
+  previewBillingDraft,
+  saveBillingDraft,
+  getDraftChoices,
 } from '../billingService';
+import { draftFixture } from './draftFixture';
 
 describe('billing API', () => {
   beforeEach(() => {
@@ -253,5 +258,75 @@ describe('billing API', () => {
       ['move_type', 'in', ['out_invoice', 'out_refund']],
       ['id', 'in', [7, 8]],
     ]);
+  });
+  it('uses named draft actions and strips response-only fields from saves', async () => {
+    const draft = draftFixture();
+    reply({ result: draft });
+    expect(await getBillingDraft()).toEqual(draft);
+    await previewBillingDraft(draft, { field: 'discount', line: 0 });
+    await saveBillingDraft(draft, 'request-key');
+    const params = JSON.parse(
+      (fetch as jest.Mock).mock.calls[2][1].body,
+    ).params;
+    expect(params).toMatchObject({
+      model: 'sale.order',
+      method: 'qorlia_draft_save',
+      args: [],
+      kwargs: {
+        request_key: 'request-key',
+        payload: {
+          id: false,
+          version: false,
+          values: draft.values,
+          lines: draft.lines,
+        },
+      },
+    });
+    expect(params.kwargs.payload).not.toHaveProperty('labels');
+    expect(params.kwargs.payload).not.toHaveProperty('totals');
+  });
+  it('rejects malformed draft money, currency and choice responses', async () => {
+    for (const broken of [
+      {
+        ...draftFixture(),
+        totals: { ...draftFixture().totals, amount_total: '500' },
+      },
+      { ...draftFixture(), labels: {} },
+      { ...draftFixture(), version: true },
+    ]) {
+      reply({ result: broken });
+      await expect(getBillingDraft()).rejects.toThrow('Invalid draft response');
+    }
+    reply({ result: [[false, 'Invalid choice']] });
+    await expect(getDraftChoices('customer', '')).rejects.toThrow(
+      'Invalid billing choices',
+    );
+  });
+  it('shows native safe validation messages but never private tracebacks', async () => {
+    reply({
+      error: {
+        code: 200,
+        data: {
+          name: 'odoo.exceptions.UserError',
+          arguments: ['This charge order changed since you opened it.'],
+          debug: 'private secret',
+        },
+      },
+    });
+    await expect(saveBillingDraft(draftFixture(), 'key')).rejects.toThrow(
+      'changed since',
+    );
+    reply({
+      error: {
+        code: 200,
+        data: {
+          name: 'odoo.exceptions.AccessError',
+          arguments: ['private secret'],
+        },
+      },
+    });
+    await expect(getBillingDraft()).rejects.toThrow(
+      'Check your billing account permissions',
+    );
   });
 });

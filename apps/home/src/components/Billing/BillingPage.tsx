@@ -132,8 +132,8 @@ export function BillingPage() {
         <p className={styles.eyebrow}>HOSPITAL WORKSPACE</p>
         <h1>Billing</h1>
         <p>
-          Review charge orders, invoices and bill details in your Qorlia
-          workspace.
+          Create draft quotations and review invoices and bill details in your
+          Qorlia workspace.
         </p>
         <p className={styles.note}>
           This review screen does not collect payments or change invoices.

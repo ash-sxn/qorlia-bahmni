@@ -103,3 +103,19 @@
     font-variant-numeric: tabular-nums;
   }
 }
+.editorGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 1.25rem;
+  margin: 1rem 0;
+}
+.draftItem {
+  border: 1px solid $border-subtle-01;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin: 1.5rem 0;
+  legend {
+    padding: 0 0.5rem;
+    font-weight: 600;
+  }
+}

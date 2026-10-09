@@ -107,6 +107,13 @@ async function rpc<T>(path: string, params: object): Promise<T> {
   const body = await response.json();
   if (body.error) {
     if (body.error.code === 100) throw new BillingSessionExpired();
+    if (
+      ['odoo.exceptions.UserError', 'odoo.exceptions.ValidationError'].includes(
+        body.error.data?.name,
+      ) &&
+      typeof body.error.data?.arguments?.[0] === 'string'
+    )
+      throw new Error(body.error.data.arguments[0]);
     throw new Error(
       'Billing access failed. Check your billing account permissions.',
     );
@@ -127,6 +134,250 @@ export const signInToBilling = (login: string, password: string) =>
   });
 
 export const disconnectBilling = () => rpc('/web/session/destroy', {});
+
+export interface DraftLine {
+  id: number | false;
+  values: {
+    product_id: number | false;
+    name: string | false;
+    display_type: 'line_section' | 'line_note' | false;
+    sequence: number;
+    product_uom: number | false;
+    product_uom_qty: number;
+    price_unit: number;
+    discount: number;
+    tax_id: number[];
+    lot_id: number | false;
+    expiry_date: string | false;
+    analytic_distribution: Record<string, number> | false;
+  };
+  totals: { price_subtotal: number; price_tax: number; price_total: number };
+}
+
+export interface BillingDraft {
+  id: number | false;
+  name: string;
+  version: string | false;
+  values: {
+    partner_id: number | false;
+    partner_invoice_id: number | false;
+    partner_shipping_id: number | false;
+    shop_id: number | false;
+    care_setting: 'opd' | 'ipd' | false;
+    provider_name: string | false;
+    client_order_ref: string | false;
+    company_id: number;
+    pricelist_id: number | false;
+    warehouse_id: number | false;
+    location_id: number | false;
+    payment_term_id: number | false;
+    fiscal_position_id: number | false;
+    date_order: string | false;
+    discount_type: 'none' | 'fixed' | 'percentage';
+    discount: number;
+    discount_percentage: number;
+    chargeable_amount: number;
+    disc_acc_id: number | false;
+    note: string | false;
+    partner_village: number | false;
+    user_id: number | false;
+    team_id: number | false;
+    validity_date: string | false;
+  };
+  lines: DraftLine[];
+  totals: {
+    amount_untaxed: number;
+    amount_tax: number;
+    amount_total: number;
+    round_off_amount: number;
+    currency_id: number;
+  };
+  labels: Record<string, string>;
+  warning: { title?: string; message: string } | false;
+}
+
+export type DraftChoiceKind =
+  | 'customer'
+  | 'shop'
+  | 'product'
+  | 'pricelist'
+  | 'payment_term'
+  | 'discount_account'
+  | 'tax'
+  | 'unit'
+  | 'lot';
+
+const draftPayload = ({ id, version, values, lines }: BillingDraft) => ({
+  id,
+  version,
+  values,
+  lines,
+});
+
+const draftCall = <T>(method: string, kwargs: object) =>
+  rpc<T>(`/web/dataset/call_kw/sale.order/${method}`, {
+    model: 'sale.order',
+    method,
+    args: [],
+    kwargs,
+  });
+
+const validId = (id: unknown) =>
+  id === false || (Number.isInteger(id) && Number(id) > 0);
+
+function checkedDraft(value: BillingDraft): BillingDraft {
+  const stringOrFalse = (text: unknown) =>
+    text === false || typeof text === 'string';
+  if (
+    !value ||
+    !validId(value.id) ||
+    typeof value.name !== 'string' ||
+    !(
+      value.version === false ||
+      (typeof value.version === 'string' &&
+        /^[a-f0-9]{64}$/.test(value.version))
+    ) ||
+    !value.values ||
+    ![
+      'partner_id',
+      'partner_invoice_id',
+      'partner_shipping_id',
+      'shop_id',
+      'company_id',
+      'pricelist_id',
+      'warehouse_id',
+      'location_id',
+      'payment_term_id',
+      'fiscal_position_id',
+      'disc_acc_id',
+      'partner_village',
+      'user_id',
+      'team_id',
+    ].every((field) =>
+      validId(value.values[field as keyof BillingDraft['values']]),
+    ) ||
+    ![false, 'opd', 'ipd'].includes(value.values.care_setting) ||
+    !['none', 'fixed', 'percentage'].includes(value.values.discount_type) ||
+    ![
+      'provider_name',
+      'client_order_ref',
+      'note',
+      'date_order',
+      'validity_date',
+    ].every((field) =>
+      stringOrFalse(value.values[field as keyof BillingDraft['values']]),
+    ) ||
+    ![
+      value.values.discount,
+      value.values.discount_percentage,
+      value.values.chargeable_amount,
+    ].every(Number.isFinite) ||
+    !Array.isArray(value.lines) ||
+    !value.lines.every(
+      (line) =>
+        line &&
+        validId(line.id) &&
+        line.values &&
+        [
+          line.values.product_id,
+          line.values.product_uom,
+          line.values.lot_id,
+        ].every(validId) &&
+        stringOrFalse(line.values.name) &&
+        stringOrFalse(line.values.expiry_date) &&
+        [false, 'line_section', 'line_note'].includes(
+          line.values.display_type,
+        ) &&
+        [
+          line.values.sequence,
+          line.values.product_uom_qty,
+          line.values.price_unit,
+          line.values.discount,
+        ].every(Number.isFinite) &&
+        Array.isArray(line.values.tax_id) &&
+        line.values.tax_id.every((id) => Number.isInteger(id) && id > 0) &&
+        line.totals &&
+        [
+          line.totals.price_subtotal,
+          line.totals.price_tax,
+          line.totals.price_total,
+        ].every(Number.isFinite),
+    ) ||
+    !value.totals ||
+    ![
+      value.totals.amount_untaxed,
+      value.totals.amount_tax,
+      value.totals.amount_total,
+      value.totals.round_off_amount,
+    ].every(Number.isFinite) ||
+    !Number.isInteger(value.totals.currency_id) ||
+    value.totals.currency_id <= 0 ||
+    !value.labels ||
+    typeof value.labels !== 'object' ||
+    !value.labels[`res.currency:${value.totals.currency_id}`] ||
+    !Object.values(value.labels).every((label) => typeof label === 'string') ||
+    !(
+      value.warning === false ||
+      (value.warning && typeof value.warning.message === 'string')
+    )
+  )
+    throw new Error('Invalid draft response. Reload the editor.');
+  return value;
+}
+
+export const getBillingDraft = async (orderId: number | false = false) =>
+  checkedDraft(
+    await draftCall<BillingDraft>('qorlia_draft_load', { order_id: orderId }),
+  );
+
+export const previewBillingDraft = async (
+  draft: BillingDraft,
+  change: { field: string; line?: number },
+) =>
+  checkedDraft(
+    await draftCall<BillingDraft>('qorlia_draft_preview', {
+      payload: draftPayload(draft),
+      change,
+    }),
+  );
+
+export const saveBillingDraft = async (
+  draft: BillingDraft,
+  requestKey: string,
+) =>
+  checkedDraft(
+    await draftCall<BillingDraft>('qorlia_draft_save', {
+      payload: draftPayload(draft),
+      request_key: requestKey,
+    }),
+  );
+
+export const getDraftChoices = async (
+  kind: DraftChoiceKind,
+  search: string,
+  shopId: number | false = false,
+  productId: number | false = false,
+) => {
+  const result = await draftCall<[number, string][]>('qorlia_draft_choices', {
+    kind,
+    search,
+    shop_id: shopId,
+    product_id: productId,
+  });
+  if (
+    !Array.isArray(result) ||
+    !result.every(
+      (row) =>
+        Array.isArray(row) &&
+        row.length === 2 &&
+        Number.isInteger(row[0]) &&
+        row[0] > 0 &&
+        typeof row[1] === 'string',
+    )
+  )
+    throw new Error('Invalid billing choices response.');
+  return result;
+};
 
 export const getInvoices = async (
   search: string,

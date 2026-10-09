@@ -61,3 +61,13 @@ JasperReports 6.21.5, Apache POI 5.4.1 and matching dependencies. Downloaded JAR
 retain their own upstream licenses/notices and are not committed here. Original
 libraries remain recoverable; this compatibility check is not a completed
 production dependency or legal audit.
+
+## Billing draft UI adapter
+
+runtime/billing/qorlia_billing_ui is an original Qorlia Odoo 16 addon under
+LGPL 3.0 or later, included in runtime/billing/LICENSE and COPYING.GPL.
+It depends on the installed LGPL-3 Bahmni Sale addon and delegates defaults,
+onchange behavior, accounting computation and persistence to native Odoo.
+It adds draft state checks, optimistic edit versions and idempotent creation.
+It does not replace or remove notices in the upstream ERP image. Deployment
+credentials and private operations notes are not part of this source tree.

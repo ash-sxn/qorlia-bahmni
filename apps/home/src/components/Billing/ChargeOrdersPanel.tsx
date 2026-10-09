@@ -1,5 +1,5 @@
 import { Button, TextInput } from '@bahmni/design-system';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { money } from './billingFormat';
 import styles from './BillingPage.module.scss';
@@ -11,6 +11,7 @@ import {
   getInvoices,
   Invoice,
 } from './billingService';
+import { DraftOrderEditor } from './DraftOrderEditor';
 
 const orderState = {
   draft: 'Draft',
@@ -40,6 +41,9 @@ export function ChargeOrdersPanel({
   const [status, setStatus] = useState<'draft' | 'confirmed' | 'all'>('draft');
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<ChargeOrder | null>(null);
+  const [editing, setEditing] = useState<number | false | null>(null);
+  const [notice, setNotice] = useState('');
+  const queryClient = useQueryClient();
   const orders = useQuery({
     queryKey: [
       'billing',
@@ -85,6 +89,25 @@ export function ChargeOrdersPanel({
         </Button>
       </section>
     );
+  if (editing !== null)
+    return (
+      <DraftOrderEditor
+        uid={uid}
+        orderId={editing}
+        close={() => setEditing(null)}
+        reconnect={reconnect}
+        saved={(draft) => {
+          setEditing(null);
+          setSelected(null);
+          setOffset(0);
+          setSubmittedSearch('');
+          setSearch('');
+          setStatus('draft');
+          setNotice(`${draft.name} saved as a draft quotation.`);
+          void queryClient.invalidateQueries({ queryKey: ['billing'] });
+        }}
+      />
+    );
 
   return (
     <>
@@ -93,6 +116,15 @@ export function ChargeOrdersPanel({
         <p>
           A draft charge order is a quotation, not an issued invoice or payment.
         </p>
+        {notice ? <p role="status">{notice}</p> : null}
+        <Button
+          onClick={() => {
+            setNotice('');
+            setEditing(false);
+          }}
+        >
+          New draft quotation
+        </Button>
         <form
           className={styles.toolbar}
           onSubmit={(event) => {
@@ -291,6 +323,12 @@ export function ChargeOrdersPanel({
           <Button kind="tertiary" onClick={() => setSelected(null)}>
             Close order details
           </Button>
+          {['draft', 'sent'].includes(selected.state) &&
+          !selected.invoice_ids.length ? (
+            <Button kind="tertiary" onClick={() => setEditing(selected.id)}>
+              Edit draft quotation
+            </Button>
+          ) : null}
           {lines.isFetching ? (
             <p role="status">Loading order items...</p>
           ) : lines.isError ? (

@@ -74,7 +74,9 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
       '/web/session/destroy', '/web/dataset/call_kw/account.move/search_read',
       '/web/dataset/call_kw/account.move.line/search_read',
       '/web/dataset/call_kw/sale.order/search_read',
-      '/web/dataset/call_kw/sale.order.line/search_read']);
+      '/web/dataset/call_kw/sale.order.line/search_read',
+      ...['load', 'preview', 'save', 'choices'].map((action) =>
+        `/web/dataset/call_kw/sale.order/qorlia_draft_${action}`)]);
     if (req.method !== 'POST' || !allowed.has(req.path)) return res.sendStatus(404);
     const clinicalCookie = cookieNamed(req.headers.cookie, 'JSESSIONID');
     if (!clinicalCookie) return res.status(401).json({ error: 'Sign in to Qorlia.' });
@@ -87,11 +89,16 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
       next();
     } catch { res.status(503).json({ error: 'Hospital session verification is unavailable.' }); }
   }, express.json({ limit: '32kb' }), (req, res, next) => {
-    // The hosted adapter exposes only the read-only calls used by the Billing UI.
+    // Expose only named adapter actions, never raw financial create/write/confirm calls.
     const params = req.body?.params;
     const model = req.path.split('/')[4];
+    const method = req.path.split('/')[5];
     if (!params || req.body.method !== 'call' ||
-      (req.path.includes('/call_kw/') && (params.model !== model || params.method !== 'search_read')) ||
+      (req.path.includes('/call_kw/') && (params.model !== model || params.method !== method)) ||
+      (method?.startsWith('qorlia_draft_') &&
+        (!Array.isArray(params.args) || params.args.length || !params.kwargs ||
+          typeof params.kwargs !== 'object' || Array.isArray(params.kwargs) ||
+          Object.keys(params.kwargs).includes('context'))) ||
       (req.path.endsWith('/authenticate') && params.db !== 'odoo')) return res.sendStatus(400);
     next();
   }, createProxyMiddleware({
