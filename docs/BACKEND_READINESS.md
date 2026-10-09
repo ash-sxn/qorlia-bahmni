@@ -1,5 +1,41 @@
 # Qorlia React frontend backend readiness
 
+## Cheque and post-dated-cheque recording checkpoint (10 October 2026)
+
+The signed-in payment modal now records native manual, cheque and PDC methods
+using the installed `account.payment.register` wizard. Bank/cheque references
+and the effective date are reviewed before explicit recording; PDC requires an
+effective date. Invalid calendar dates, oversized text, foreign method lines,
+stale invoice/configuration reviews and unsupported provider methods fail closed.
+Native invoice/line locks, caller permissions and balanced-ledger checks remain
+in place. There is no financial `sudo` or automatic write retry.
+
+Installed native tests cover incoming PDCs, outgoing cheque/PDC refunds, cashier
+permissions and changed payment-method definitions. The native suite passes 192
+tests without failures/errors/skips; Home passes 243 tests across 31 suites.
+Types, lint, compilation, seven gateway/webpack checks and development build pass.
+The native suite runs with the isolated web service stopped and the browser-only
+mandatory analytic fixture temporarily optional, restored afterwards.
+
+Protected browser review/record, full-page reload/reopen and explicit status
+reload preserve one INR 100 PDC on synthetic invoice #14729 (INR 500 total,
+INR 400 remaining). Native readback independently confirms payment #2003,
+both references, effective date 2026-11-10, balanced journal entries, pending bank
+matching, exactly one new payment and unchanged stock/mail counts and protected
+documents. No additional payment is created during reload verification.
+
+The installed Odoo 16 path posts on payment date 2026-10-10, not the cheque
+effective date. The UI explicitly explains that the effective date does not
+schedule a deposit or confirm clearance. This preserves actual native behaviour,
+not future-date posting. Check printing/sent-state, bank matching, providers and
+remaining Billing/clinical/separate-product parity are still pending.
+
+All 83 protected JS/CSS chunks and the secret-free source/LICENSE/NOTICE archive
+match the tested cheque build. Tester code/expiry, secure cookies, clinical-session
+gate, robots exclusion and blocked raw mutation/mail/report routes are unchanged.
+Source was packaged before this final browser-acceptance note. Production and
+the shared public demo remain unchanged; full goal completion is not established.
+
 ## Named journal analytic allocation checkpoint (10 October 2026)
 
 The journal editor now uses native analytic plan/account labels instead of JSON.

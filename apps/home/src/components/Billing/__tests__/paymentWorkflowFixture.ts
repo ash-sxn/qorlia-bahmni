@@ -12,6 +12,9 @@ export const paymentValuesFixture = (): PaymentValues => ({
   payment_difference_handling: 'open',
   writeoff_account_id: false,
   writeoff_label: 'Write-Off',
+  bank_reference: false,
+  cheque_reference: false,
+  effective_date: false,
 });
 
 export const paymentWorkflowFixture = (
@@ -28,6 +31,7 @@ export const paymentWorkflowFixture = (
   reason: false,
   currency: [1, 'INR'],
   payment_type: 'inbound',
+  method_code: 'manual',
   difference: 0,
   journals: [[2, 'QA Cash']],
   methods: [[3, 'Manual']],

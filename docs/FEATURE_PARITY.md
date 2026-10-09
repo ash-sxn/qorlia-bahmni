@@ -1,5 +1,29 @@
 # Bahmni workflow parity ledger
 
+## 10 October cheque/PDC recording acceptance checkpoint
+
+- The Qorlia payment modal uses installed native manual, cheque and PDC methods.
+  Bank/cheque references and effective dates participate in explicit review;
+  PDC requires a valid effective date. Changing fields invalidates that review.
+- Native creation/posting/reconciliation, access rules, locks and balance checks
+  remain active. Payment-method definition changes also invalidate review.
+  Unsupported provider collection remains blocked; writes are never auto-retried.
+- Home: 243 tests/31 suites. Installed native adapter: 192 tests, zero failures,
+  errors or skips. Types, lint, compilation, seven gateway/webpack tests and build
+  pass. Native cases cover incoming PDC, outgoing cheque/PDC refunds, cashier
+  permission, malformed fields, foreign methods, stale review and replay denial.
+- Protected browser review/record, full reload/reopen and explicit status reload
+  preserve one INR 100 synthetic PDC on invoice #14729, leaving INR 400 open.
+  Independent native readback confirms #2003, references/effective date, balanced
+  entries, pending bank matching and unchanged stock/mail/protected documents.
+- The current native journal posts on the payment date, not the effective date;
+  the UI explains this and does not claim deferred posting or bank clearance.
+  Cheque printing/sent-state and matching remain separate required parity work.
+- Hosted source/license archive and all 83 JS/CSS chunks match the tested build;
+  authentication, expiry, robots exclusion and raw-route gates are unchanged.
+  Source precedes this final acceptance note. Production/shared demo are unchanged.
+  This is recording parity progress, not complete Billing or whole-product parity.
+
 ## 10 October named journal analytic allocation checkpoint
 
 The raw journal analytic JSON input has been replaced by native plan names,

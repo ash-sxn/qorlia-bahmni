@@ -173,6 +173,10 @@ describe('Native payment recording review', () => {
             state: 'posted',
             payment_type: 'inbound',
             ref: 'QA Memo',
+            bank_reference: false,
+            cheque_reference: false,
+            effective_date: false,
+            method_code: 'manual',
           },
         ],
       }),
@@ -251,6 +255,96 @@ describe('Native payment recording review', () => {
     );
     expect(reconnect).toHaveBeenCalledTimes(1);
     expect(screen.queryByLabelText('Amount')).not.toBeInTheDocument();
+  });
+  it('reviews native cheque references and effective date without implying deferred posting or clearance', async () => {
+    const pdc = paymentWorkflowFixture({
+      method_code: 'pdc',
+      methods: [[3, 'PDC']],
+      can_record: false,
+      reason:
+        'Enter the post-dated cheque effective date before recording payment.',
+    });
+    (getPaymentWorkflow as jest.Mock).mockResolvedValue(pdc);
+    show();
+    expect(
+      await screen.findByLabelText('Cheque effective date'),
+    ).toBeRequired();
+    expect(
+      screen.getByText(/posts on the payment date, not the effective date/),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Bank reference'), {
+      target: { value: 'QA Bank 001' },
+    });
+    fireEvent.change(screen.getByLabelText('Cheque reference'), {
+      target: { value: 'QA Cheque 002' },
+    });
+    fireEvent.change(screen.getByLabelText('Cheque effective date'), {
+      target: { value: '2026-11-09' },
+    });
+    const accepted = {
+      ...pdc,
+      can_record: true,
+      reason: false as const,
+      values: {
+        ...paymentValuesFixture(),
+        bank_reference: 'QA Bank 001',
+        cheque_reference: 'QA Cheque 002',
+        effective_date: '2026-11-09',
+      },
+    };
+    (previewPaymentWorkflow as jest.Mock).mockResolvedValue(accepted);
+    await review();
+    expect(previewPaymentWorkflow).toHaveBeenLastCalledWith(
+      pdc.invoice,
+      accepted.values,
+      false,
+    );
+    expect(await screen.findByText(/Cheque amount/)).toBeInTheDocument();
+    expect(
+      screen.getByText('Cheque reference: QA Cheque 002'),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Cheque reference'), {
+      target: { value: 'QA Changed' },
+    });
+    expect(
+      screen.queryByRole('button', { name: 'Record payment' }),
+    ).not.toBeInTheDocument();
+    expect(recordPaymentWorkflow).not.toHaveBeenCalled();
+  });
+  it('reloads saved cheque metadata with bank matching still pending', async () => {
+    (getPaymentWorkflow as jest.Mock).mockResolvedValue(
+      paymentWorkflowFixture({
+        can_record: false,
+        values: false,
+        method_code: false,
+        payments: [
+          {
+            id: 99,
+            name: 'QA PDC 99',
+            amount: 100,
+            currency_id: [1, 'INR'],
+            journal_id: [2, 'QA Bank'],
+            journal_type: 'bank',
+            is_matched: false,
+            date: '2026-10-09',
+            state: 'posted',
+            payment_type: 'inbound',
+            ref: false,
+            method_code: 'pdc',
+            bank_reference: 'QA Bank 001',
+            cheque_reference: 'QA Cheque 002',
+            effective_date: '2026-11-09',
+          },
+        ],
+      }),
+    );
+    show();
+    expect(
+      await screen.findByText(
+        /post-dated cheque.*QA Cheque 002.*2026-11-09.*bank matching pending/,
+      ),
+    ).toBeInTheDocument();
+    expect(recordPaymentWorkflow).not.toHaveBeenCalled();
   });
   it('does not offer recording for unbalanced or ineligible invoices', async () => {
     const fixture = paymentWorkflowFixture();

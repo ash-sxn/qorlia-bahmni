@@ -2578,6 +2578,9 @@ export interface PaymentValues {
   payment_difference_handling: 'open' | 'reconcile';
   writeoff_account_id: number | false;
   writeoff_label: string | false;
+  bank_reference: string | false;
+  cheque_reference: string | false;
+  effective_date: string | false;
 }
 
 export interface PaymentWorkflow {
@@ -2588,6 +2591,7 @@ export interface PaymentWorkflow {
   reason: string | false;
   currency: [number, string];
   payment_type: 'inbound' | 'outbound' | false;
+  method_code: string | false;
   difference: number;
   journals: [number, string][];
   methods: [number, string][];
@@ -2606,6 +2610,10 @@ export interface PaymentWorkflow {
     state: string;
     payment_type: 'inbound' | 'outbound';
     ref: string | false;
+    bank_reference: string | false;
+    cheque_reference: string | false;
+    effective_date: string | false;
+    method_code: string | false;
   }[];
 }
 
@@ -2633,6 +2641,7 @@ const paymentCall = async (method: string, kwargs: object) => {
     !validRelation(value.currency) ||
     !Array.isArray(value.currency) ||
     ![false, 'inbound', 'outbound'].includes(value.payment_type) ||
+    !(value.method_code === false || typeof value.method_code === 'string') ||
     !Number.isFinite(value.difference) ||
     !(
       value.version === false ||
@@ -2661,19 +2670,30 @@ const paymentCall = async (method: string, kwargs: object) => {
           );
         }) &&
         Number.isFinite(data.amount) &&
-        typeof data.payment_date === 'string' &&
+        validDate(data.payment_date) &&
+        (data.effective_date === false || validDate(data.effective_date)) &&
         ['open', 'reconcile'].includes(data.payment_difference_handling) &&
-        ['communication', 'writeoff_label'].every(
+        [
+          'communication',
+          'writeoff_label',
+          'bank_reference',
+          'cheque_reference',
+        ].every(
           (field) =>
             data[field as keyof PaymentValues] === false ||
-            typeof data[field as keyof PaymentValues] === 'string',
+            (typeof data[field as keyof PaymentValues] === 'string' &&
+              (data[field as keyof PaymentValues] as string).length <= 500),
         ))
     ) ||
     (value.can_record &&
       (!data ||
         !value.version ||
         !value.invoice.ledger_balanced ||
-        value.invoice.state !== 'posted')) ||
+        value.invoice.state !== 'posted' ||
+        !['manual', 'check_printing', 'pdc'].includes(
+          value.method_code || '',
+        ) ||
+        (value.method_code === 'pdc' && !data.effective_date))) ||
     !Array.isArray(value.payments) ||
     !value.payments.every(
       (payment) =>
@@ -2681,7 +2701,7 @@ const paymentCall = async (method: string, kwargs: object) => {
         Number.isInteger(payment.id) &&
         payment.id > 0 &&
         typeof payment.name === 'string' &&
-        typeof payment.date === 'string' &&
+        validDate(payment.date) &&
         Number.isFinite(payment.amount) &&
         validRelation(payment.currency_id) &&
         Array.isArray(payment.currency_id) &&
@@ -2691,7 +2711,15 @@ const paymentCall = async (method: string, kwargs: object) => {
         typeof payment.is_matched === 'boolean' &&
         typeof payment.state === 'string' &&
         ['inbound', 'outbound'].includes(payment.payment_type) &&
-        (payment.ref === false || typeof payment.ref === 'string'),
+        (payment.ref === false || typeof payment.ref === 'string') &&
+        (payment.method_code === false ||
+          typeof payment.method_code === 'string') &&
+        (payment.effective_date === false ||
+          validDate(payment.effective_date)) &&
+        ['bank_reference', 'cheque_reference'].every((field) => {
+          const text = payment[field as 'bank_reference' | 'cheque_reference'];
+          return text === false || typeof text === 'string';
+        }),
     )
   )
     throw new Error(

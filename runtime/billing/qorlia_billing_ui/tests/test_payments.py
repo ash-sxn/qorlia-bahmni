@@ -2,6 +2,7 @@
 from odoo import Command, fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
+from datetime import timedelta
 
 
 @tagged('post_install', '-at_install')
@@ -225,3 +226,118 @@ class PaymentWorkflowTest(TransactionCase):
         result = moves.qorlia_payment_record(invoice.id, review['version'], review['values'])
         self.assertEqual(result['invoice']['open_amount'], 0)
         self.assertEqual(len(result['payments']), 1)
+
+    def cheque_review(self, invoice, method_ref, journal_code='QCHQ', **values):
+        outstanding = self.env['account.account'].create({'name': 'QorliaQA Cheque outstanding',
+            'code': journal_code + 'OUT', 'account_type': 'asset_current', 'reconcile': True,
+            'company_id': self.env.company.id})
+        bank = self.env['account.journal'].create({'name': 'QorliaQA Cheque bank', 'code': journal_code,
+            'type': 'bank', 'company_id': self.env.company.id})
+        method = self.env.ref(method_ref)
+        line = self.env['account.payment.method.line'].create({'journal_id': bank.id,
+            'payment_method_id': method.id, 'payment_account_id': outstanding.id})
+        result = self.moves.qorlia_payment_load(invoice.id)
+        result['values']['journal_id'] = bank.id
+        result = self.moves.qorlia_payment_preview(invoice.id, result['invoice']['version'], result['values'], 'journal_id')
+        result['values'].update({'payment_method_line_id': line.id, **values})
+        return self.moves.qorlia_payment_preview(invoice.id, result['invoice']['version'], result['values'], 'payment_method_line_id')
+
+    def test_pdc_requires_effective_date_and_cannot_record_incomplete_review(self):
+        invoice = self.invoice()
+        review = self.cheque_review(invoice, 'base_accounting_kit.account_payment_method_pdc_in')
+        self.assertEqual(review['method_code'], 'pdc')
+        self.assertFalse(review['can_record'])
+        self.assertIn('effective date', review['reason'])
+        with self.assertRaises(UserError):
+            self.record(invoice, review)
+        self.assertFalse(invoice._get_reconciled_payments())
+
+    def test_inbound_pdc_records_native_references_without_deferring_posting(self):
+        invoice, unrelated = self.invoice(), self.invoice()
+        payment_date = fields.Date.today()
+        effective_date = payment_date + timedelta(days=30)
+        before = self.env['account.payment'].search_count([])
+        review = self.cheque_review(invoice, 'base_accounting_kit.account_payment_method_pdc_in',
+            amount=100, payment_date=str(payment_date), effective_date=str(effective_date),
+            cheque_reference='QorliaQA PDC 001', bank_reference='QorliaQA Bank reference')
+        self.assertTrue(review['can_record'])
+        self.assertEqual(self.env['account.payment'].search_count([]), before)
+        result = self.record(invoice, review)
+        payment = invoice._get_reconciled_payments()
+        self.assertEqual(payment.effective_date, effective_date)
+        self.assertEqual(payment.date, payment_date)
+        self.assertEqual(payment.move_id.date, payment_date)
+        self.assertEqual(payment.cheque_reference, 'QorliaQA PDC 001')
+        self.assertEqual(payment.bank_reference, 'QorliaQA Bank reference')
+        self.assertEqual(payment.state, 'posted')
+        self.assertFalse(payment.is_matched)
+        self.assertAlmostEqual(sum(payment.move_id.line_ids.mapped('balance')), 0)
+        self.assertEqual(result['invoice']['open_amount'], 375)
+        self.assertEqual(unrelated.amount_residual, 475)
+        self.assertFalse(unrelated._get_reconciled_payments())
+        saved = self.moves.qorlia_payment_load(invoice.id)['payments'][0]
+        for field in ('bank_reference', 'cheque_reference', 'effective_date'):
+            self.assertEqual(saved[field], review['values'][field])
+        self.assertEqual(saved['method_code'], 'pdc')
+        self.assertFalse(saved['is_matched'])
+        with self.assertRaises(UserError):
+            self.record(invoice, review)
+        self.assertEqual(self.env['account.payment'].search_count([]), before + 1)
+
+    def test_outbound_cheque_and_pdc_use_native_refund_method(self):
+        for index, method_ref in enumerate(('account_check_printing.account_payment_method_check',
+                           'base_accounting_kit.account_payment_method_pdc_out')):
+            with self.subTest(method=method_ref), self.cr.savepoint():
+                invoice = self.invoice(move_type='out_refund')
+                review = self.cheque_review(invoice, method_ref, journal_code='QCH%s' % index, amount=100,
+                    effective_date=str(fields.Date.today() + timedelta(days=30)),
+                    cheque_reference='QorliaQA Refund cheque', bank_reference='QorliaQA Refund bank')
+                self.assertTrue(review['can_record'])
+                self.assertEqual(review['payment_type'], 'outbound')
+                result = self.record(invoice, review)
+                payment = invoice._get_reconciled_payments()
+                self.assertEqual(payment.payment_method_id, self.env.ref(method_ref))
+                self.assertEqual(payment.cheque_reference, review['values']['cheque_reference'])
+                self.assertEqual(result['payments'][0]['method_code'], self.env.ref(method_ref).code)
+                self.assertEqual(result['invoice']['open_amount'], 375)
+                self.assertFalse(payment.is_matched)
+                self.assertAlmostEqual(sum(payment.move_id.line_ids.mapped('balance')), 0)
+
+    def test_cashier_records_pdc_with_native_rights_and_no_admin_escalation(self):
+        invoice = self.invoice()
+        review = self.cheque_review(invoice, 'base_accounting_kit.account_payment_method_pdc_in',
+            amount=100, effective_date=str(fields.Date.today() + timedelta(days=30)))
+        cashier = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'QorliaQA Cheque cashier', 'login': 'qorlia-qa-cheque-cashier',
+            'groups_id': [Command.set(self.env.ref('account.group_account_invoice').ids)],
+            'company_id': self.env.company.id, 'company_ids': [Command.set(self.env.company.ids)]})
+        moves = self.moves.with_user(cashier)
+        review = moves.qorlia_payment_preview(invoice.id, review['invoice']['version'], review['values'])
+        result = moves.qorlia_payment_record(invoice.id, review['version'], review['values'])
+        self.assertEqual(result['invoice']['open_amount'], 375)
+        self.assertEqual(result['payments'][0]['method_code'], 'pdc')
+
+    def test_cheque_metadata_rejects_invalid_dates_text_and_foreign_journal_method(self):
+        invoice = self.invoice()
+        review = self.cheque_review(invoice, 'base_accounting_kit.account_payment_method_pdc_in',
+            effective_date=str(fields.Date.today()))
+        for patch in ({'effective_date': '2026-02-30'}, {'effective_date': True},
+                      {'effective_date': ''}, {'cheque_reference': 123}, {'bank_reference': 'x' * 501},
+                      {'payment_method_line_id': self.journal.inbound_payment_method_line_ids[0].id}):
+            with self.assertRaises(ValidationError):
+                self.moves.qorlia_payment_preview(invoice.id, review['invoice']['version'], {**review['values'], **patch})
+        self.assertFalse(invoice._get_reconciled_payments())
+
+    def test_changed_method_code_invalidates_review_and_unsupported_method_cannot_record(self):
+        invoice = self.invoice()
+        review = self.review(invoice)
+        method = self.journal.inbound_payment_method_line_ids.payment_method_id
+        method.code = 'qorlia_unsupported'
+        with self.assertRaises(UserError):
+            self.record(invoice, review)
+        result = self.moves.qorlia_payment_preview(invoice.id, review['invoice']['version'], review['values'])
+        self.assertFalse(result['can_record'])
+        self.assertIn('separate collection workflow', result['reason'])
+        with self.assertRaises(UserError):
+            self.record(invoice, result)
+        self.assertFalse(invoice._get_reconciled_payments())

@@ -30,7 +30,10 @@ import { correctionWorkflowFixture } from './correctionWorkflowFixture';
 import { creditWorkflowFixture } from './creditWorkflowFixture';
 import { draftFixture } from './draftFixture';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
-import { paymentWorkflowFixture } from './paymentWorkflowFixture';
+import {
+  paymentValuesFixture,
+  paymentWorkflowFixture,
+} from './paymentWorkflowFixture';
 import {
   reversalResultFixture,
   reversalWorkflowFixture,
@@ -236,8 +239,57 @@ describe('billing API', () => {
       { values: false },
       { payments: [{ id: 2, amount: '500' }] },
       { values: { ...payment.values, amount: Infinity } },
+      { method_code: 'electronic' },
+      { method_code: 'pdc' },
+      { values: { ...payment.values, effective_date: '2026-02-30' } },
+      { values: { ...payment.values, bank_reference: 42 } },
+      { values: { ...payment.values, cheque_reference: 'x'.repeat(501) } },
     ]) {
       reply({ result: { ...payment, ...broken } });
+      await expect(getPaymentWorkflow(7)).rejects.toThrow(
+        'Invalid native payment response',
+      );
+    }
+  });
+  it('accepts reviewed PDC metadata and validates saved cheque history', async () => {
+    const pdc = paymentWorkflowFixture({
+      method_code: 'pdc',
+      values: {
+        ...paymentValuesFixture(),
+        effective_date: '2026-11-09',
+        cheque_reference: 'QA 001',
+        bank_reference: 'QA Bank',
+      },
+      payments: [
+        {
+          id: 99,
+          name: 'QA PDC',
+          date: '2026-10-09',
+          amount: 100,
+          currency_id: [1, 'INR'],
+          journal_id: [2, 'QA Bank'],
+          journal_type: 'bank',
+          is_matched: false,
+          state: 'posted',
+          payment_type: 'inbound',
+          ref: false,
+          method_code: 'pdc',
+          effective_date: '2026-11-09',
+          cheque_reference: 'QA 001',
+          bank_reference: 'QA Bank',
+        },
+      ],
+    });
+    reply({ result: pdc });
+    expect(await getPaymentWorkflow(7)).toEqual(pdc);
+    for (const patch of [
+      { effective_date: 'invalid' },
+      { bank_reference: [] },
+      { method_code: 3 },
+    ]) {
+      reply({
+        result: { ...pdc, payments: [{ ...pdc.payments[0], ...patch }] },
+      });
       await expect(getPaymentWorkflow(7)).rejects.toThrow(
         'Invalid native payment response',
       );

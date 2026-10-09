@@ -3,6 +3,13 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest recording checkpoint: 192 installed native adapter tests and 243 Home
+tests pass. Protected browser save/reload and independent native readback confirm
+one INR 100 synthetic PDC, INR 400 remaining, persisted references/effective date,
+balanced entries and unchanged protected records. See the readiness/parity ledgers
+for dated evidence and remaining gates. Older counts below describe earlier
+checkpoints, not current total coverage or a product completion percentage.
+
 ## Draft invoice journal details
 
 Six named `account.move.qorlia_journal_edit_*` methods provide `load`, `choices`,
@@ -311,10 +318,20 @@ automatic allocation to another invoice. Native invoice status is not bank
 clearance: Community Odoo can report `paid` with an unmatched bank payment.
 History exposes native `is_matched` separately for bank journals.
 
-Provider transactions, checks and post-dated checks require additional native
-workflows and are explicitly unavailable in this form. Recording a payment
-does not charge a card or transfer money from a bank. Customer bank-statement
-matching is not implemented in the React UI.
+Native cheque (`check_printing`) and post-dated-cheque (`pdc`) recording also
+use the installed wizard. Bank/cheque references and an optional effective date
+are editable; PDC requires that date. Dates and bounded text are server-validated.
+Native method definitions bind review so a changed method code rejects recording.
+The adapter explicitly depends on the installed `base_accounting_kit` extension
+for these fields and wizard hooks; it does not copy or replace its accounting.
+
+Installed Odoo 16 posts the journal on the payment date, not the effective date.
+The effective date is metadata here, not scheduled posting, deposit or clearance.
+The UI explains this and displays native method/references/effective date and
+pending bank matching in saved history. Printing/sent-state and bank-statement
+matching still need their separate native workflow integration. Provider
+transactions are unavailable. Recording does not charge a card, transfer bank
+funds or print a cheque.
 
 ## Reviewed outstanding credit allocation
 
@@ -490,7 +507,7 @@ credit and rejects the duplicate. Hosted browser tests verify read-only preview,
 posted reversal, replacement draft, balanced journals, no new payment and reload.
 Tests require an isolated company with a chart, shop and synthetic data.
 
-Provider/check/PDC payments, statement reconciliation,
+Provider collection, cheque printing/sent-state, deferred PDC posting and statement reconciliation,
 partial/down-payment invoice allocation, stock/batch acceptance, POS, remaining printouts
 and Clinical-to-ERP synchronization still require integration and end-to-end
 acceptance. Existing/new invoice and editable credit-draft workflows have the

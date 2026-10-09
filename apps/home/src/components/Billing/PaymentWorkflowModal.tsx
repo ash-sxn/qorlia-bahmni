@@ -210,9 +210,17 @@ export function PaymentWorkflowModal({
               · {payment.invoice.payment_state.replaceAll('_', ' ')}
             </p>
             <p>
-              Record money already received or sent. This form does not charge a
-              card or transfer money from a bank.
+              Record money or a cheque already received or issued. This form
+              does not charge a card or transfer money from a bank.
             </p>
+            {payment.method_code === 'pdc' ? (
+              <p role="status">
+                The effective date records when the post-dated cheque is due.
+                This Billing version posts on the payment date, not the
+                effective date. Recording does not schedule a bank deposit or
+                confirm clearance.
+              </p>
+            ) : null}
             {!payment.invoice.ledger_balanced ? (
               <p role="alert">
                 The invoice journal entries do not balance. Do not record a
@@ -282,6 +290,37 @@ export function PaymentWorkflowModal({
                   }}
                 />
                 <TextInput
+                  id="payment-bank-reference"
+                  labelText="Bank reference"
+                  value={values.bank_reference || ''}
+                  maxLength={500}
+                  disabled={busy || uncertain}
+                  onChange={(event) =>
+                    change('bank_reference', event.target.value)
+                  }
+                />
+                <TextInput
+                  id="payment-cheque-reference"
+                  labelText="Cheque reference"
+                  value={values.cheque_reference || ''}
+                  maxLength={500}
+                  disabled={busy || uncertain}
+                  onChange={(event) =>
+                    change('cheque_reference', event.target.value)
+                  }
+                />
+                <TextInput
+                  id="payment-effective-date"
+                  labelText="Cheque effective date"
+                  type="date"
+                  required={payment.method_code === 'pdc'}
+                  value={values.effective_date || ''}
+                  disabled={busy || uncertain}
+                  onChange={(event) =>
+                    change('effective_date', event.target.value || false)
+                  }
+                />
+                <TextInput
                   id="payment-memo"
                   labelText="Memo"
                   value={values.communication || ''}
@@ -348,9 +387,12 @@ export function PaymentWorkflowModal({
               <section aria-label="Reviewed payment">
                 <h3>Check before recording</h3>
                 <p>
-                  {review.payment_type === 'outbound'
-                    ? 'Money sent'
-                    : 'Money received'}
+                  {review.method_code === 'pdc' ||
+                  review.method_code === 'check_printing'
+                    ? 'Cheque amount'
+                    : review.payment_type === 'outbound'
+                      ? 'Money sent'
+                      : 'Money received'}
                   :{' '}
                   {money(
                     review.values ? review.values.amount : 0,
@@ -358,6 +400,31 @@ export function PaymentWorkflowModal({
                   )}
                 </p>
                 <p>Date: {review.values ? review.values.payment_date : ''}</p>
+                <p>
+                  Method:{' '}
+                  {review.methods.find(
+                    ([id]) =>
+                      id ===
+                      (review.values && review.values.payment_method_line_id),
+                  )?.[1] ?? 'Not selected'}
+                </p>
+                {review.values ? (
+                  <>
+                    <p>
+                      Bank reference:{' '}
+                      {review.values.bank_reference || 'Not set'}
+                    </p>
+                    <p>
+                      Cheque reference:{' '}
+                      {review.values.cheque_reference || 'Not set'}
+                    </p>
+                    {review.values.effective_date ? (
+                      <p>
+                        Cheque effective date: {review.values.effective_date}
+                      </p>
+                    ) : null}
+                  </>
+                ) : null}
                 <p>
                   Journal:{' '}
                   {review.values
@@ -402,6 +469,20 @@ export function PaymentWorkflowModal({
                     {item.name}: {money(item.amount, item.currency_id[1])},{' '}
                     {item.date}, {item.journal_id[1]}, {item.state}
                     {item.ref ? `, ${item.ref}` : ''}
+                    {item.method_code === 'pdc'
+                      ? ', post-dated cheque'
+                      : item.method_code === 'check_printing'
+                        ? ', cheque'
+                        : null}
+                    {item.bank_reference
+                      ? `, bank reference: ${item.bank_reference}`
+                      : null}
+                    {item.cheque_reference
+                      ? `, cheque reference: ${item.cheque_reference}`
+                      : null}
+                    {item.effective_date
+                      ? `, cheque effective date: ${item.effective_date}`
+                      : null}
                     {item.journal_type === 'bank'
                       ? item.is_matched
                         ? ', bank matching complete'

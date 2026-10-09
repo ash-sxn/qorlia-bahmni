@@ -10,7 +10,7 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 
 PAYMENT_FIELDS = ('journal_id', 'payment_method_line_id', 'currency_id', 'partner_bank_id',
                   'amount', 'payment_date', 'communication', 'payment_difference_handling',
-                  'writeoff_account_id', 'writeoff_label')
+                  'writeoff_account_id', 'writeoff_label', 'bank_reference', 'cheque_reference', 'effective_date')
 RELATIONS = ('journal_id', 'payment_method_line_id', 'currency_id', 'partner_bank_id', 'writeoff_account_id')
 
 
@@ -52,19 +52,20 @@ class PaymentWorkflow(models.Model):
             raise ValidationError('Enter a finite payment amount greater than zero.')
         if values.get('payment_difference_handling', 'open') not in ('open', 'reconcile'):
             raise ValidationError('Select how Billing should handle the payment difference.')
-        for field in ('communication', 'writeoff_label'):
+        for field in ('communication', 'writeoff_label', 'bank_reference', 'cheque_reference'):
             value = values.get(field, False)
             if value is not False and (not isinstance(value, str) or len(value) > 500):
                 raise ValidationError('Payment text must contain at most 500 characters.')
-        for field in ('payment_date',):
-            if field not in values:
+        for field in ('payment_date', 'effective_date'):
+            if field not in values or (field == 'effective_date' and values[field] is False):
                 continue
             try:
                 if not isinstance(values[field], str) or len(values[field]) != 10:
                     raise ValueError()
-                fields.Date.to_date(values[field])
+                if str(fields.Date.to_date(values[field])) != values[field]:
+                    raise ValueError()
             except (ValueError, TypeError):
-                raise ValidationError('Enter a valid payment date.')
+                raise ValidationError('Enter a valid %s.' % field.replace('_', ' '))
         wizard_model = self.env['account.payment.register'].with_context(active_model='account.move', active_ids=self.ids)
         defaults = wizard_model.default_get(['line_ids', 'payment_date', 'communication'])
         wizard = wizard_model.new({**defaults, **values, 'group_payment': True})
@@ -92,19 +93,26 @@ class PaymentWorkflow(models.Model):
         payments.check_access_rights('read')
         payments.check_access_rule('read')
         history = payments.sorted('id').read(['name', 'date', 'amount', 'currency_id', 'journal_id',
-                                              'state', 'payment_type', 'ref', 'is_matched'])
+                                              'state', 'payment_type', 'ref', 'is_matched',
+                                              'bank_reference', 'cheque_reference', 'effective_date'])
         for payment in history:
             payment['date'] = str(payment['date'])
-            payment['journal_type'] = payments.browse(payment['id']).journal_id.type
+            payment['effective_date'] = str(payment['effective_date']) if payment['effective_date'] else False
+            record = payments.browse(payment['id'])
+            record.payment_method_id.check_access_rights('read')
+            record.payment_method_id.check_access_rule('read')
+            payment['journal_type'] = record.journal_id.type
+            payment['method_code'] = record.payment_method_id.code or False
         result = {'invoice': invoice, 'payments': history, 'can_record': False, 'values': False,
                   'version': False, 'journals': [], 'methods': [], 'currencies': [], 'banks': [], 'accounts': [],
-                  'currency': invoice['currency'], 'payment_type': False, 'difference': 0, 'reason': False}
+                  'currency': invoice['currency'], 'payment_type': False, 'method_code': False,
+                  'difference': 0, 'reason': False}
         if not invoice['ledger_balanced'] or self.state != 'posted' or self.currency_id.is_zero(self.amount_residual):
             result['reason'] = 'A balanced posted invoice or credit note with an open amount is required.'
             return result
         wizard = self._qorlia_payment_wizard(values, changed)
         data = {field: wizard[field]._origin.id or False if field in RELATIONS else wizard[field] for field in PAYMENT_FIELDS}
-        for field in ('payment_date',):
+        for field in ('payment_date', 'effective_date'):
             data[field] = str(data[field]) if data[field] else False
         def choices(records):
             records = records._origin
@@ -114,17 +122,21 @@ class PaymentWorkflow(models.Model):
         currencies = self.env['res.currency'].search([('active', '=', True)])
         accounts = self.env['account.account'].search([('company_id', '=', self.company_id.id), ('deprecated', '=', False)])
         methods = wizard.available_payment_method_line_ids._origin
-        # shortcut: provider transactions need their own reviewed online-collection flow; this form records manual money movements.
-        manual = wizard.payment_method_line_id and wizard.payment_method_line_id.code == 'manual'
+        # shortcut: providers and check printing need separate native workflows; recording does not charge, print or defer posting.
+        method_code = wizard.payment_method_line_id.code or False
+        supported = method_code in ('manual', 'check_printing', 'pdc')
         reason = False
-        if not manual:
-            reason = 'Online providers, checks and post-dated checks require their own workflow. Select a manual recording method here.'
+        if not supported:
+            reason = 'This method requires a separate collection workflow. Select a manual, cheque or post-dated-cheque recording method here.'
+        elif method_code == 'pdc' and not wizard.effective_date:
+            reason = 'Enter the post-dated cheque effective date before recording payment.'
         elif wizard.payment_difference_handling == 'reconcile' and not wizard.early_payment_discount_mode and not wizard.currency_id.is_zero(wizard.payment_difference) and not wizard.writeoff_account_id:
             reason = 'Select the native difference account before marking a payment difference as settled.'
         elif wizard.require_partner_bank_account and not wizard.partner_bank_id:
             reason = 'The native payment method requires a recipient bank account.'
         config = {'journals': wizard.available_journal_ids._origin.read(['write_date', 'name', 'company_id', 'currency_id', 'default_account_id']),
                   'methods': methods.read(['write_date', 'payment_account_id', 'payment_method_id']),
+                  'method_definitions': methods.payment_method_id.read(['write_date', 'code', 'payment_type']),
                   'accounts': accounts.read(['write_date', 'deprecated', 'company_id']),
                   'currencies': currencies.read(['write_date', 'rounding']),
                   'rates': self.env['res.currency.rate'].search([('currency_id', 'in', currencies.ids),
@@ -137,8 +149,8 @@ class PaymentWorkflow(models.Model):
             'journals': choices(wizard.available_journal_ids), 'methods': choices(methods),
             'currencies': choices(currencies), 'banks': choices(wizard.available_partner_bank_ids), 'accounts': choices(accounts),
             'currency': [wizard.currency_id.id, wizard.currency_id.name] if wizard.currency_id else invoice['currency'],
-            'payment_type': wizard.payment_type, 'difference': wizard.payment_difference,
-            'can_record': bool(wizard.can_edit_wizard and wizard.journal_id and wizard.currency_id and manual
+            'payment_type': wizard.payment_type, 'method_code': method_code, 'difference': wizard.payment_difference,
+            'can_record': bool(wizard.can_edit_wizard and wizard.journal_id and wizard.currency_id and supported
                                and math.isfinite(wizard.amount) and wizard.amount > 0 and not reason), 'reason': reason})
         return result
 
