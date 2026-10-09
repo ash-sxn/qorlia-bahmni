@@ -218,6 +218,29 @@ More than 100 linked credits or 1,000 connected journal lines requires native
 Billing review, rather than truncated evidence. Partial credit editing and
 replacement draft editing are covered by the draft editor described above.
 
+## Native customer invoice PDF reports
+
+The named `qorlia_invoice_report_list` and `qorlia_invoice_report_download`
+methods expose only the installed Invoices and Invoices without Payment
+customer-report actions. Native invoice/report ACLs, report groups and company
+rules apply. Download locks the invoice and journal lines, verifies balanced
+accounting and saved document adjustments, then delegates to native
+`ir.actions.report._render_qweb_pdf`. No arbitrary report/template or caller
+accounting context is accepted. PDF bytes and filenames are bounded/validated.
+
+Printing does not post, pay, allocate or refund. The native report engine can
+create its standard PDF attachment. The React modal requires an explicit click,
+blocks duplicate downloads/closing during generation, preserves failures for
+explicit retry and reconnects an expired session. It prints the saved record,
+not unsaved draft-editor values. Raw rendering/report routes remain blocked.
+
+Staging needs `report.url` to address the native HTTP service from inside its
+container. This prevents the browser/forwarded QA-login host from becoming an
+unreachable asset base for wkhtmltopdf. No public native Billing port is needed.
+Actual native HTTP and hosted browser files cover drafts, posted invoices and
+credit reports, with financial state unchanged. Native PDF layout is retained;
+quotation, receipt/statement printing and complete layout reskin remain.
+
 ## Verification and scope
 
 The `tests` package covers native draft/order workflows and customer posting,
@@ -248,7 +271,7 @@ posted reversal, replacement draft, balanced journals, no new payment and reload
 Tests require an isolated company with a chart, shop and synthetic data.
 
 Provider/check/PDC payments, statement reconciliation,
-partial/down-payment invoice allocation, stock/batch acceptance, POS, printouts
+partial/down-payment invoice allocation, stock/batch acceptance, POS, remaining printouts
 and Clinical-to-ERP synchronization still require integration and end-to-end
 acceptance. Existing/new invoice and editable credit-draft workflows have the
 selected acceptance evidence above, not full native-form parity for every case.

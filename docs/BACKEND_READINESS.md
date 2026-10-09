@@ -1,5 +1,42 @@
 # Qorlia React frontend backend readiness
 
+## Customer invoice PDF reports hosted and browser verified (10 October 2026)
+
+Signed-in invoice details now offer Invoice PDF reports, with the two installed
+native customer-report variants: invoices with payment details and invoices
+without payment details. Credit notes use the same native reporting engine.
+The named report-list/download adapter routes enforce invoice and report read
+ACLs, company rules, fixed report/template keys, balanced journals and applied
+document adjustments. No arbitrary template, report ID or caller context is
+accepted. Raw report/render routes remain unavailable at the review gateway.
+
+The React modal loads only the permitted menu until an explicit download click.
+It blocks duplicate downloads and closing during generation, validates bounded
+PDF bytes and safe filenames, preserves failures without automatic retries and
+provides session-expiry recovery. Printing does not post, pay or allocate; the
+native engine may retain a PDF attachment. Unsaved edits are not printed.
+
+Actual native HTTP downloaded both variants for draft #4038, posted invoice
+INV/2026/00022 and draft credit #1808. Invoice/journal state and payment count
+were unchanged. Hosted browser clicks downloaded the draft and both posted
+variants into Downloads. Text and visual checks confirmed the draft's INR 1,150
+total, and the posted payment report's INR 500 total, INR 100 paid and INR 400 due.
+The alternative report correctly omits payment details. The browser download
+event hook timed out despite successful file delivery; actual downloaded files,
+not the UI notice alone, provide the acceptance evidence.
+
+Staging report.url now points to the native container's loopback HTTP service,
+so wkhtmltopdf can load report styling independently of the QA-login host.
+Only isolated synthetic Billing staging and protected review artifacts changed.
+The tester gate, expiry, tunnel URL and production/shared demo are unchanged.
+All 98 native adapter tests pass with zero failures/errors/skips; frontend,
+gateway and source-release checks are recorded in the corresponding parity
+checkpoint. Invoice PDFs retain the native layout; complete document-layout
+reskin, quotation/receipt/statement reports, email/chatter, journal-item editing,
+bank/provider/check/PDC, down payments, POS, stock/batch and Clinical-to-ERP
+synchronization remain unfinished or unverified. This is not complete Billing
+or whole-product acceptance.
+
 ## Standalone invoice creation hosted and browser verified (9 October 2026)
 
 Signed-in Billing now creates standalone customer invoice drafts through the

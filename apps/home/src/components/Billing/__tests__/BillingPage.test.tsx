@@ -28,6 +28,8 @@ import {
   previewInvoiceDraft,
   saveInvoiceDraft,
   getInvoiceDraftChoices,
+  getInvoiceReports,
+  downloadInvoiceReport,
 } from '../billingService';
 import { correctionWorkflowFixture } from './correctionWorkflowFixture';
 import { creditWorkflowFixture } from './creditWorkflowFixture';
@@ -64,6 +66,8 @@ jest.mock('../billingService', () => ({
   previewInvoiceDraft: jest.fn(),
   saveInvoiceDraft: jest.fn(),
   getInvoiceDraftChoices: jest.fn(),
+  getInvoiceReports: jest.fn(),
+  downloadInvoiceReport: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({
   useUserPrivilege: jest.fn(),
@@ -119,6 +123,24 @@ describe('Billing workspace', () => {
     (getChargeOrders as jest.Mock).mockResolvedValue([]);
     (getChargeOrderLines as jest.Mock).mockResolvedValue([]);
     (getInvoiceDraftChoices as jest.Mock).mockResolvedValue([]);
+    (getInvoiceReports as jest.Mock).mockResolvedValue([
+      { key: 'invoice', name: 'Invoices' },
+    ]);
+  });
+  it('opens native report choices from a selected invoice without generating or posting automatically', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([invoice]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Invoice PDF reports' }),
+    );
+    await screen.findByRole('button', { name: 'Download Invoices' });
+    expect(getInvoiceReports).toHaveBeenCalledWith(7);
+    expect(downloadInvoiceReport).not.toHaveBeenCalled();
+    expect(postInvoiceWorkflow).not.toHaveBeenCalled();
   });
   it('opens new customer invoice creation only within the signed-in Billing workspace', async () => {
     (getInvoiceDraft as jest.Mock).mockResolvedValue({

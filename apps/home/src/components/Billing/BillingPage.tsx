@@ -28,6 +28,7 @@ import { ChargeOrdersPanel } from './ChargeOrdersPanel';
 import { CorrectionWorkflowModal } from './CorrectionWorkflowModal';
 import { CreditWorkflowModal } from './CreditWorkflowModal';
 import { InvoiceDraftEditor } from './InvoiceDraftEditor';
+import { InvoiceReportsModal } from './InvoiceReportsModal';
 import { InvoiceWorkflowModal } from './InvoiceWorkflowModal';
 import { PaymentWorkflowModal } from './PaymentWorkflowModal';
 import { ReversalWorkflowModal } from './ReversalWorkflowModal';
@@ -48,6 +49,7 @@ export function BillingPage() {
   const [selected, setSelected] = useState<Invoice | null>(null);
   const [tab, setTab] = useState(0);
   const [reviewInvoice, setReviewInvoice] = useState<number | null>(null);
+  const [reportInvoice, setReportInvoice] = useState<number | null>(null);
   const [editInvoice, setEditInvoice] = useState<number | false | null>(null);
   const [paymentInvoice, setPaymentInvoice] = useState<number | null>(null);
   const [creditInvoice, setCreditInvoice] = useState<number | null>(null);
@@ -112,6 +114,7 @@ export function BillingPage() {
       queryClient.setQueryData(['billing', 'session'], result);
       setSelected(null);
       setReviewInvoice(null);
+      setReportInvoice(null);
       setEditInvoice(null);
       setPaymentInvoice(null);
       setCreditInvoice(null);
@@ -474,6 +477,12 @@ export function BillingPage() {
                       </Button>
                       <Button
                         kind="tertiary"
+                        onClick={() => setReportInvoice(selected.id)}
+                      >
+                        Invoice PDF reports
+                      </Button>
+                      <Button
+                        kind="tertiary"
                         onClick={() => setReviewInvoice(selected.id)}
                       >
                         Review invoice posting
@@ -750,6 +759,20 @@ export function BillingPage() {
                       query.queryKey[0] === 'billing' &&
                       query.queryKey[1] !== 'session',
                   });
+                }}
+              />
+            ) : null}
+            {reportInvoice !== null ? (
+              <InvoiceReportsModal
+                uid={session.data!.uid as number}
+                invoiceId={reportInvoice}
+                close={() => setReportInvoice(null)}
+                reconnect={() => {
+                  setReportInvoice(null);
+                  setSelected(null);
+                  setInvoiceNotice('');
+                  queryClient.removeQueries({ queryKey: ['billing'] });
+                  void session.refetch();
                 }}
               />
             ) : null}

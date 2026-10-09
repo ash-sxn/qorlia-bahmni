@@ -1,5 +1,39 @@
 # Bahmni workflow parity ledger
 
+## 10 October native customer invoice PDF release checkpoint
+
+- Signed-in invoice details now expose a Qorlia report modal with the installed
+  native Invoices and Invoices without Payment variants. Credit notes use the
+  same report engine. Only an explicit click generates/downloads a PDF.
+- Named list/download methods preserve native invoice/report read permissions,
+  company rules, fixed templates, journal-balance and applied-adjustment checks.
+  Arbitrary report IDs/templates, caller accounting context and raw report
+  routes remain blocked. Frontend checks reject malformed/oversized PDF
+  responses and unsafe filenames. Duplicate clicks/closing during generation,
+  session expiry and explicit retry paths have regression coverage.
+- The fresh native suite passes 98 tests with zero failures/errors/skips.
+  Home passes 142 tests in 18 suites; seven gateway/webpack checks, Home types,
+  changed-source lint and diff checks pass. Direct Jest uses
+  `TS_NODE_COMPILER_OPTIONS='{"moduleResolution":"node","customConditions":null}'`
+  because Jest's CommonJS config loader is incompatible with the base bundler
+  resolution. Type checking runs independently, not bypassed. The development
+  distro build retains the existing Nx-cycle workaround and bundle/data warnings.
+  Actual HTTP downloaded six PDFs across draft #4038, posted INV/2026/00022 and
+  draft credit #1808 without changing invoice/journal state or payment count.
+  Native styling now resolves through staging's internal report.url.
+- Hosted browser downloads and actual local files verified draft INR 1,150 and
+  both posted variants. The payment report shows INR 500 billed, INR 100 paid and
+  INR 400 due; the without-payment variant omits settlement details. PDF text
+  and rendered layout were checked. The browser event hook missed the download;
+  file delivery was verified independently rather than inferred from a notice.
+- Production/shared demo, access code/expiry and tunnel URL remain unchanged.
+
+This completes the selected customer-invoice PDF connection, not all report
+printing or document redesign. Native PDF layout remains. Quotation, receipt and
+statement reports, email/chatter, journal editing, bank/provider/check/PDC,
+down payments, POS, stock/batch, Clinical-to-ERP sync and wider-module parity
+remain. The full requested objective is still active and incomplete.
+
 ## 9 October standalone invoice creation release checkpoint
 
 - The authenticated Invoices panel now offers New invoice. It reuses the Qorlia

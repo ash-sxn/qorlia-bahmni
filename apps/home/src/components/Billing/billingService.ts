@@ -609,6 +609,96 @@ const invoiceDraftCall = <T>(method: string, kwargs: object) =>
     args: [],
     kwargs,
   });
+
+export type InvoiceReportKey = 'invoice' | 'invoice_without_payments';
+export interface InvoiceReport {
+  key: InvoiceReportKey;
+  name: string;
+}
+const isInvoiceReportKey = (key: unknown): key is InvoiceReportKey =>
+  key === 'invoice' || key === 'invoice_without_payments';
+const checkedReportInvoiceId = (id: number) => {
+  if (!Number.isInteger(id) || id <= 0)
+    throw new Error('Select a saved invoice before printing.');
+};
+
+export async function getInvoiceReports(
+  invoiceId: number,
+): Promise<InvoiceReport[]> {
+  checkedReportInvoiceId(invoiceId);
+  const result = await invoiceDraftCall<{
+    invoice_id: number;
+    reports: InvoiceReport[];
+  }>('qorlia_invoice_report_list', { invoice_id: invoiceId });
+  if (
+    result?.invoice_id !== invoiceId ||
+    !Array.isArray(result.reports) ||
+    result.reports.length > 2 ||
+    result.reports.some(
+      (report) =>
+        !isInvoiceReportKey(report?.key) ||
+        typeof report.name !== 'string' ||
+        !report.name.trim() ||
+        report.name.length > 200,
+    ) ||
+    new Set(result.reports.map((report) => report.key)).size !==
+      result.reports.length
+  )
+    throw new Error('Invalid invoice report list.');
+  return result.reports;
+}
+
+export async function downloadInvoiceReport(
+  invoiceId: number,
+  reportKey: InvoiceReportKey,
+): Promise<{ filename: string; blob: Blob }> {
+  checkedReportInvoiceId(invoiceId);
+  if (!isInvoiceReportKey(reportKey))
+    throw new Error('Select an available invoice report.');
+  const result = await invoiceDraftCall<{
+    invoice_id: number;
+    filename: string;
+    mimetype: string;
+    byte_count: number;
+    content: string;
+  }>('qorlia_invoice_report_download', {
+    invoice_id: invoiceId,
+    report_key: reportKey,
+  });
+  if (
+    result?.invoice_id !== invoiceId ||
+    result.mimetype !== 'application/pdf' ||
+    typeof result.filename !== 'string' ||
+    !/^[A-Za-z0-9_-]{1,160}\.pdf$/.test(result.filename) ||
+    !Number.isInteger(result.byte_count) ||
+    result.byte_count < 5 ||
+    result.byte_count > 10 * 1024 * 1024 ||
+    typeof result.content !== 'string' ||
+    result.content.length !== 4 * Math.ceil(result.byte_count / 3) ||
+    !/^[A-Za-z0-9+/]+={0,2}$/.test(result.content)
+  )
+    throw new Error('Invalid invoice PDF response.');
+  let binary: string;
+  try {
+    binary = atob(result.content);
+  } catch {
+    throw new Error('Invalid invoice PDF response.');
+  }
+  if (
+    binary.length !== result.byte_count ||
+    !binary.startsWith('%PDF-') ||
+    btoa(binary) !== result.content
+  )
+    throw new Error('Invalid invoice PDF response.');
+  return {
+    filename: result.filename,
+    blob: new Blob(
+      [Uint8Array.from(binary, (character) => character.charCodeAt(0))],
+      { type: 'application/pdf' },
+    ),
+  };
+}
+
 const hashVersion = (value: unknown) =>
   typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const dateOrFalse = (value: unknown) =>
