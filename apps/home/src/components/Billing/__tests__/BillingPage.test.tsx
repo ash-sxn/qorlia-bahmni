@@ -11,7 +11,10 @@ import {
   BillingSessionExpired,
   getChargeOrders,
   getChargeOrderLines,
+  getInvoiceWorkflow,
+  postInvoiceWorkflow,
 } from '../billingService';
+import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
@@ -21,6 +24,8 @@ jest.mock('../billingService', () => ({
   signInToBilling: jest.fn(),
   getChargeOrders: jest.fn(),
   getChargeOrderLines: jest.fn(),
+  getInvoiceWorkflow: jest.fn(),
+  postInvoiceWorkflow: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({ useUserPrivilege: jest.fn() }));
 jest.mock('../../HomePageHeader', () => ({
@@ -195,6 +200,39 @@ describe('Billing workspace', () => {
       await screen.findByText('Billing access failed.'),
     ).toBeInTheDocument();
     expect(screen.queryByText(/No invoices match/)).not.toBeInTheDocument();
+  });
+  it('reviews and posts only the selected invoice, then refreshes the real list and shows its result', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([invoice]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    (getInvoiceWorkflow as jest.Mock).mockResolvedValue(
+      invoiceWorkflowFixture(),
+    );
+    (postInvoiceWorkflow as jest.Mock).mockResolvedValue(
+      invoiceWorkflowFixture({
+        state: 'posted',
+        name: 'INV/QA/7',
+        can_post: false,
+      }),
+    );
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review invoice posting' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Post invoice' }),
+    );
+    expect(
+      await screen.findByText(/INV\/QA\/7 updated.*No payment was recorded/),
+    ).toBeInTheDocument();
+    expect(getInvoiceWorkflow).toHaveBeenCalledWith(7);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Invoice details' }),
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(getInvoices).toHaveBeenCalledTimes(2));
   });
   it('fetches charge orders only after that tab is opened', async () => {
     show();

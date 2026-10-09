@@ -195,3 +195,82 @@ class DraftAdapterTest(TransactionCase):
             self.orders.qorlia_order_workflow_run(saved['id'], fresh['version'], 'confirm')
         with self.assertRaises(ValidationError):
             self.orders.qorlia_order_workflow_run(saved['id'], fresh['version'], 'action_post')
+
+    def test_posting_rejects_unbalanced_document_discount_and_rolls_back_confirmation(self):
+        self.env['ir.config_parameter'].set_param('bahmni_sale.is_invoice_automated', True)
+        draft = self.draft()
+        draft['values']['discount_type'] = 'fixed'
+        draft = self.orders.qorlia_draft_preview(self.payload(draft), {'field': 'discount_type'})
+        draft['values']['discount'] = 25
+        draft = self.orders.qorlia_draft_preview(self.payload(draft), {'field': 'discount'})
+        draft['values']['disc_acc_id'] = self.env['account.account'].search([
+            ('account_type', '=', 'income_other'), ('company_id', '=', self.env.company.id)], limit=1).id
+        saved = self.orders.qorlia_draft_save(self.payload(draft), str(uuid.uuid4()))
+        ready = self.orders.qorlia_order_workflow_load(saved['id'])
+        with self.assertRaisesRegex(UserError, 'journal entries must balance'), self.env.cr.savepoint():
+            self.orders.qorlia_order_workflow_run(saved['id'], ready['version'], 'confirm')
+        order = self.orders.browse(saved['id'])
+        order.invalidate_recordset()
+        self.assertEqual(order.state, 'draft')
+        self.assertFalse(order.invoice_ids)
+
+    def test_posting_rejects_unbalanced_native_rounding(self):
+        self.env['ir.config_parameter'].set_param('bahmni_sale.is_invoice_automated', False)
+        saved = self.orders.qorlia_draft_save(self.payload(self.draft()), str(uuid.uuid4()))
+        ready = self.orders.qorlia_order_workflow_load(saved['id'])
+        confirmed = self.orders.qorlia_order_workflow_run(saved['id'], ready['version'], 'confirm')
+        invoiced = self.orders.qorlia_order_workflow_run(saved['id'], confirmed['version'], 'invoice')
+        invoice = self.env['account.move'].browse(invoiced['invoices'][0]['id'])
+        invoice.write({'round_off_amount': 0.25})
+        with self.assertRaisesRegex(UserError, 'journal entries must balance'), self.env.cr.savepoint():
+            invoice.action_post()
+        invoice.invalidate_recordset()
+        self.assertEqual(invoice.state, 'draft')
+        self.assertTrue(invoice.company_id.currency_id.is_zero(sum(invoice.line_ids.mapped('balance'))))
+
+    def test_invoice_workflow_posts_balanced_invoice_once_without_payment(self):
+        self.env['ir.config_parameter'].set_param('bahmni_sale.is_invoice_automated', False)
+        saved = self.orders.qorlia_draft_save(self.payload(self.draft()), str(uuid.uuid4()))
+        ready = self.orders.qorlia_order_workflow_load(saved['id'])
+        confirmed = self.orders.qorlia_order_workflow_run(saved['id'], ready['version'], 'confirm')
+        invoiced = self.orders.qorlia_order_workflow_run(saved['id'], confirmed['version'], 'invoice')
+        moves = self.env['account.move']
+        invoice_id = invoiced['invoices'][0]['id']
+        snapshot = moves.qorlia_invoice_workflow_load(invoice_id)
+        self.assertTrue(snapshot['can_post'])
+        self.assertTrue(snapshot['ledger_balanced'])
+        posted = moves.qorlia_invoice_workflow_post(invoice_id, snapshot['version'])
+        self.assertEqual(posted['state'], 'posted')
+        self.assertEqual(posted['total'], 500)
+        self.assertEqual(posted['open_amount'], 500)
+        self.assertEqual(posted['payment_state'], 'not_paid')
+        self.assertFalse(posted['can_post'])
+        self.assertTrue(posted['ledger_balanced'])
+        with self.assertRaises(UserError):
+            moves.qorlia_invoice_workflow_post(invoice_id, snapshot['version'])
+        self.assertFalse(moves.browse(invoice_id)._get_reconciled_payments())
+
+    def test_invoice_workflow_rejects_stale_state_and_unauthorized_direct_calls(self):
+        self.env['ir.config_parameter'].set_param('bahmni_sale.is_invoice_automated', False)
+        saved = self.orders.qorlia_draft_save(self.payload(self.draft()), str(uuid.uuid4()))
+        ready = self.orders.qorlia_order_workflow_load(saved['id'])
+        confirmed = self.orders.qorlia_order_workflow_run(saved['id'], ready['version'], 'confirm')
+        invoiced = self.orders.qorlia_order_workflow_run(saved['id'], confirmed['version'], 'invoice')
+        moves = self.env['account.move']
+        invoice_id = invoiced['invoices'][0]['id']
+        snapshot = moves.qorlia_invoice_workflow_load(invoice_id)
+        moves.browse(invoice_id).write({'ref': 'QorliaQA Concurrent edit'})
+        with self.assertRaises(UserError):
+            moves.qorlia_invoice_workflow_post(invoice_id, snapshot['version'])
+        self.assertEqual(moves.browse(invoice_id).state, 'draft')
+        user = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'QorliaQA No invoice rights', 'login': 'qorlia-qa-no-invoice',
+            'groups_id': [(6, 0, [self.env.ref('base.group_user').id])],
+            'company_id': self.env.company.id, 'company_ids': [(6, 0, self.env.company.ids)],
+        })
+        with self.assertRaises(AccessError):
+            moves.with_user(user).qorlia_invoice_workflow_load(invoice_id)
+        with self.assertRaises(AccessError):
+            moves.with_user(user).qorlia_invoice_workflow_post(invoice_id, snapshot['version'])
+        with self.assertRaises(ValidationError):
+            moves.qorlia_invoice_workflow_load(True)

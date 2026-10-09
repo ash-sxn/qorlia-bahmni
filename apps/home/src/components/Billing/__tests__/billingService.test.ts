@@ -12,8 +12,11 @@ import {
   getDraftChoices,
   getOrderWorkflow,
   runOrderWorkflow,
+  getInvoiceWorkflow,
+  postInvoiceWorkflow,
 } from '../billingService';
 import { draftFixture } from './draftFixture';
+import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
 import { workflowFixture } from './workflowFixture';
 
 describe('billing API', () => {
@@ -26,6 +29,32 @@ describe('billing API', () => {
       status: 200,
       json: async () => body,
     });
+  it('uses named invoice posting with the loaded version and validates financial status', async () => {
+    const invoice = invoiceWorkflowFixture();
+    reply({ result: invoice });
+    expect(await getInvoiceWorkflow(7)).toEqual(invoice);
+    await postInvoiceWorkflow(invoice);
+    const [url, options] = (fetch as jest.Mock).mock.calls[1];
+    expect(url).toContain('/account.move/qorlia_invoice_workflow_post');
+    expect(JSON.parse(options.body).params).toEqual({
+      model: 'account.move',
+      method: 'qorlia_invoice_workflow_post',
+      args: [],
+      kwargs: { invoice_id: 7, version: invoice.version },
+    });
+    for (const broken of [
+      { ledger_balanced: 'yes' },
+      { can_post: 1 },
+      { currency: false },
+      { total: NaN },
+      { version: 'stale' },
+    ]) {
+      reply({ result: { ...invoice, ...broken } });
+      await expect(getInvoiceWorkflow(7)).rejects.toThrow(
+        'Invalid invoice status response',
+      );
+    }
+  });
   it('uses named native workflow actions with a current version, never arbitrary state writes', async () => {
     const workflow = workflowFixture();
     reply({ result: workflow });

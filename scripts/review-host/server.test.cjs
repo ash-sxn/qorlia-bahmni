@@ -81,6 +81,18 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     assert.equal((await rpc(path, allCookies, { ...params, args: [1] })).status, 400);
     assert.equal((await rpc(path, allCookies, { ...params, kwargs: { context: { uid: 1 } } })).status, 400);
   }
+  for (const method of ['qorlia_invoice_workflow_load', 'qorlia_invoice_workflow_post']) {
+    const path = `/web/dataset/call_kw/account.move/${method}`;
+    const params = { model: 'account.move', method, args: [], kwargs: {} };
+    assert.equal((await rpc(path, cookie, params)).status, 401);
+    assert.equal((await rpc(path, allCookies, params)).status, 200);
+    assert.equal(seenBilling, 'session_id=erp-current');
+    assert.equal((await rpc(path, allCookies, { ...params, method: 'action_post' })).status, 400);
+    assert.equal((await rpc(path, allCookies, { ...params, args: [1] })).status, 400);
+    assert.equal((await rpc(path, allCookies, { ...params, kwargs: { context: { check_move_validity: false } } })).status, 400);
+  }
+  for (const method of ['action_post', 'button_draft', 'button_cancel', 'write', 'unlink'])
+    assert.equal((await rpc(`/web/dataset/call_kw/account.move/${method}`, allCookies, { model: 'account.move', method })).status, 404);
   await request('/openmrs/ws/rest/v1/session', { headers: { Cookie: allCookies } });
   assert.equal(seenClinical, 'JSESSIONID=valid; reporting_session=report');
   assert.equal((await request('/openmrs/module/addresshierarchy/ajax/getOrderedAddressHierarchyLevels.form',

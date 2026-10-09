@@ -38,6 +38,24 @@ export interface InvoiceLine {
   price_total: number;
 }
 
+export interface InvoiceWorkflow {
+  id: number;
+  name: string | false;
+  state: 'draft' | 'posted' | 'cancel';
+  move_type: 'out_invoice' | 'out_refund';
+  version: string;
+  customer: string | false;
+  currency: [number, string];
+  total: number;
+  open_amount: number;
+  payment_state: string;
+  invoice_date: string | false;
+  journal: string;
+  company: string;
+  ledger_balanced: boolean;
+  can_post: boolean;
+}
+
 type Relation = [number, string] | false;
 
 export interface ChargeOrder {
@@ -445,6 +463,54 @@ export const runOrderWorkflow = async (
       action,
     }),
   );
+
+function checkedInvoiceWorkflow(value: InvoiceWorkflow): InvoiceWorkflow {
+  if (
+    !value ||
+    !Number.isInteger(value.id) ||
+    value.id <= 0 ||
+    !(value.name === false || typeof value.name === 'string') ||
+    !['draft', 'posted', 'cancel'].includes(value.state) ||
+    !['out_invoice', 'out_refund'].includes(value.move_type) ||
+    typeof value.version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(value.version) ||
+    !(value.customer === false || typeof value.customer === 'string') ||
+    !Array.isArray(value.currency) ||
+    !validRelation(value.currency) ||
+    ![value.total, value.open_amount].every(Number.isFinite) ||
+    typeof value.payment_state !== 'string' ||
+    !(value.invoice_date === false || typeof value.invoice_date === 'string') ||
+    typeof value.journal !== 'string' ||
+    typeof value.company !== 'string' ||
+    typeof value.ledger_balanced !== 'boolean' ||
+    typeof value.can_post !== 'boolean'
+  )
+    throw new Error(
+      'Invalid invoice status response. Reload its current status.',
+    );
+  return value;
+}
+
+const invoiceWorkflowCall = async (method: string, kwargs: object) =>
+  checkedInvoiceWorkflow(
+    await rpc<InvoiceWorkflow>(`/web/dataset/call_kw/account.move/${method}`, {
+      model: 'account.move',
+      method,
+      args: [],
+      kwargs,
+    }),
+  );
+
+export const getInvoiceWorkflow = (invoiceId: number) =>
+  invoiceWorkflowCall('qorlia_invoice_workflow_load', {
+    invoice_id: invoiceId,
+  });
+
+export const postInvoiceWorkflow = (invoice: InvoiceWorkflow) =>
+  invoiceWorkflowCall('qorlia_invoice_workflow_post', {
+    invoice_id: invoice.id,
+    version: invoice.version,
+  });
 
 export const getDraftChoices = async (
   kind: DraftChoiceKind,

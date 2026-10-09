@@ -25,6 +25,7 @@ import {
   signInToBilling,
 } from './billingService';
 import { ChargeOrdersPanel } from './ChargeOrdersPanel';
+import { InvoiceWorkflowModal } from './InvoiceWorkflowModal';
 
 const label = (value: string) => value.replaceAll('_', ' ');
 const invoiceName = (invoice: Invoice) =>
@@ -45,6 +46,8 @@ export function BillingPage() {
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<Invoice | null>(null);
   const [tab, setTab] = useState(0);
+  const [reviewInvoice, setReviewInvoice] = useState<number | null>(null);
+  const [invoiceNotice, setInvoiceNotice] = useState('');
   const session = useQuery({
     queryKey: ['billing', 'session'],
     queryFn: getBillingSession,
@@ -100,6 +103,8 @@ export function BillingPage() {
       queryClient.removeQueries({ queryKey: ['billing'] });
       queryClient.setQueryData(['billing', 'session'], result);
       setSelected(null);
+      setReviewInvoice(null);
+      setInvoiceNotice('');
       setOffset(0);
     } catch (error) {
       setSignInError(
@@ -199,6 +204,8 @@ export function BillingPage() {
                     await disconnectBilling();
                     queryClient.removeQueries({ queryKey: ['billing'] });
                     setSelected(null);
+                    setReviewInvoice(null);
+                    setInvoiceNotice('');
                     await session.refetch();
                   } catch {
                     setSignInError(
@@ -226,6 +233,9 @@ export function BillingPage() {
                 <TabPanel>
                   <section className={styles.card}>
                     <h2>Invoices and credit notes</h2>
+                    {invoiceNotice ? (
+                      <p role="status">{invoiceNotice}</p>
+                    ) : null}
                     <form
                       className={styles.toolbar}
                       onSubmit={(event) => {
@@ -441,6 +451,12 @@ export function BillingPage() {
                       <Button kind="tertiary" onClick={() => setSelected(null)}>
                         Close details
                       </Button>
+                      <Button
+                        kind="tertiary"
+                        onClick={() => setReviewInvoice(selected.id)}
+                      >
+                        Review invoice posting
+                      </Button>
                       {lines.isFetching ? (
                         <p role="status">Loading bill details...</p>
                       ) : lines.isError ? (
@@ -522,6 +538,32 @@ export function BillingPage() {
                 </TabPanel>
               </TabPanels>
             </Tabs>
+            {reviewInvoice !== null ? (
+              <InvoiceWorkflowModal
+                uid={session.data!.uid as number}
+                invoiceId={reviewInvoice}
+                close={() => setReviewInvoice(null)}
+                reconnect={() => {
+                  setReviewInvoice(null);
+                  setSelected(null);
+                  setInvoiceNotice('');
+                  queryClient.removeQueries({ queryKey: ['billing'] });
+                  void session.refetch();
+                }}
+                completed={(invoice) => {
+                  setReviewInvoice(null);
+                  setSelected(null);
+                  setInvoiceNotice(
+                    `${invoice.name || 'Invoice'} updated. Current status: ${invoice.state}. Open amount: ${money(invoice.open_amount, invoice.currency[1])}. No payment was recorded.`,
+                  );
+                  void queryClient.invalidateQueries({
+                    predicate: (query) =>
+                      query.queryKey[0] === 'billing' &&
+                      query.queryKey[1] !== 'session',
+                  });
+                }}
+              />
+            ) : null}
           </>
         ) : null}
       </main>
