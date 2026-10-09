@@ -3,6 +3,40 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+## Draft invoice journal details
+
+Five named `account.move.qorlia_journal_edit_*` methods provide `load`, `choices`,
+`preview`, `save` and `status` for an existing customer invoice/credit journal
+item. Editing requires draft state, native invoice/line write rules and the
+invoicing group. No financial `sudo` is used. The exact editable fields are
+`name`, `account_id`, `date_maturity`, `tax_tag_ids`, `analytic_distribution`,
+`discount_date` and `discount_amount_currency`. No caller context or arbitrary
+line command is accepted. Generated adjustments remain in the invoice editor.
+
+Account choices preserve native receivable/non-receivable category and company;
+grids preserve the invoice tax country. Analytic visibility/editing requires the
+native analytic accounting group; existing hidden distributions are preserved.
+Dates, percentages and selected native records are validated. Reviews bind the
+invoice/lines and selected accounting configuration without writing records.
+
+Explicit save locks the invoice/lines, rechecks the review and calls native
+invoice write. Monetary totals/entries, all other lines and unreviewed detail
+changes must remain unchanged or the transaction rolls back. Canonical UUID,
+exact payload and author bind an atomic invoice receipt. Status and identical
+retry return current native detail values when that receipt exists, including
+after a later authorised posting. They do not restore an old version or post.
+A missing receipt never proves a delayed save stopped. The UI stores the exact
+request before sending, freezes uncertain saves and offers explicit checking or
+same-request retry. There is no automatic financial write retry.
+
+Installed native suite: 180 passing tests with no failures/errors/skips. Home:
+234 passing tests. HTTP concurrent/save/status and protected browser review/save/
+reload acceptance preserve a balanced INR 250 synthetic draft, all other items,
+payment/stock counts and protected invoices. Account/grid/analytic browser edits
+and fault-injected response-loss browser tests remain pending. The analytic JSON
+entry needs a native-plan UI. Monetary journal edits, adding/removing rows,
+posted editing and cut-off actions remain separate parity work.
+
 ## Invoice Journal Items
 
 `account.move.qorlia_invoice_journal` reads an authorised customer invoice or
@@ -23,8 +57,9 @@ Installed native suite: 168 passing tests, no failures/errors/skips. Home: 219
 passing tests. Native/HTTP checks cover paging, stale versions, access denial,
 foreign currency, drafts and credits, actual ledger equality and no financial
 writes. Protected browser open/reload and matching source/build verification are
-recorded in the readiness ledger. Narrow-screen readability and native journal
-editing remain separate pending work, not completed parity.
+recorded in the readiness ledger. The later checkpoint adds narrow-screen
+keyboard scrolling and draft detail editing above. This read-only method itself
+still performs no mutation; full native journal editing is not completed parity.
 
 ## Invoice conversation and internal notes
 

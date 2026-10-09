@@ -86,6 +86,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     'qorlia_invoice_draft_load', 'qorlia_invoice_draft_preview', 'qorlia_invoice_draft_save', 'qorlia_invoice_draft_choices',
     'qorlia_invoice_report_list', 'qorlia_invoice_report_download', 'qorlia_customer_statement', 'qorlia_customer_statement_download',
     'qorlia_invoice_messages', 'qorlia_invoice_note', 'qorlia_invoice_note_status', 'qorlia_invoice_attachment_download', 'qorlia_invoice_journal',
+    'qorlia_journal_edit_load', 'qorlia_journal_edit_preview', 'qorlia_journal_edit_choices', 'qorlia_journal_edit_save', 'qorlia_journal_edit_status',
     'qorlia_correction_load', 'qorlia_correction_run',
     'qorlia_reversal_load', 'qorlia_reversal_preview', 'qorlia_reversal_run',
     'qorlia_payment_load', 'qorlia_payment_preview', 'qorlia_payment_record', 'qorlia_credit_load', 'qorlia_credit_apply', 'qorlia_credit_remove']) {

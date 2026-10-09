@@ -1,5 +1,47 @@
 # Qorlia React frontend backend readiness
 
+## Draft journal details: protected save acceptance (10 October 2026)
+
+Draft invoice journal rows now open the Qorlia detail editor with native account
+choices, label, maturity date, tax grids, role-scoped analytic distribution and
+early-payment discount date/amount. These are existing-item metadata edits, not
+monetary entry editing, new/deleted rows, posting or bank matching. Generated
+document discount/rounding rows remain controlled by the invoice editor.
+
+Review performs no writes. Explicit save locks the invoice and its lines, checks
+native ACLs/rules/company and draft state, revalidates the reviewed configuration,
+and invokes native invoice write/synchronisation. Changes to monetary entries,
+totals, other items or unreviewed metadata reject and roll back. Same-author exact
+request receipts persist atomically on the invoice. An uncertain response freezes
+the form for explicit receipt checking or identical retry. Missing receipts do not
+prove the first request stopped. Unsaved-close confirmation and storage-failure
+checks prevent silent discard or untracked saves. Analytic JSON entry still needs
+a more accessible native-plan selector; posted and monetary journal parity remain
+open.
+
+The installed isolated native suite passes 180 tests with no failures/errors/skips;
+Home passes 234 tests across 30 suites. Types, lint, seven gateway/webpack checks,
+Python compilation and development build pass. Real HTTP concurrent exact saves
+apply one metadata edit to draft #11275. Preview is read-only; exact retry/status
+match; stale review and reused identity with changed values are rejected.
+
+Protected browser review, Keep editing, explicit save and full reload preserve a
+synthetic label, due date and early-discount metadata on item #29185. Independent
+native reads verify the same values, unchanged other items/counts/protected
+documents and the balanced INR 250 draft. Native keyboard date changes invalidate
+the previous review. Automation date fill alone did not commit React state, so
+browser acceptance uses keyboard-committed dates and checks the displayed review
+before save. At a 693px viewport, journal columns scroll inside a keyboard-focusable
+581px region without body overflow; ArrowRight moves the scroll position.
+
+All 83 hosted JS/CSS chunks and the secret-free source/LICENSE/NOTICE archive match
+the tested build. Tester code/expiry, clinical-session gate, secure cookies,
+robots exclusion and blocked raw financial/mail/report routes are unchanged.
+Source was packaged before this final acceptance note. Browser account/grid/
+analytic edits and fault-injected uncertain-save recovery are not proven by this
+populated check. Remaining Billing, clinical and separate-product parity remain
+incomplete. Production and the shared public demo have not received the redesign.
+
 ## Invoice Journal Items: protected read acceptance (10 October 2026)
 
 The signed-in Billing invoice details now open a house modal with native account,

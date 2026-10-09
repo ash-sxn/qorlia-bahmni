@@ -81,6 +81,25 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+.journalTable {
+  min-width: 78rem;
+
+  th:first-child,
+  td:nth-child(2) {
+    min-width: 12rem;
+  }
+
+  td:nth-child(n + 3):nth-child(-n + 8) {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.tableScroll:focus-visible {
+  outline: 2px solid $border-subtle-01;
+  outline-offset: 2px;
+}
 .select {
   display: grid;
   gap: 0.5rem;

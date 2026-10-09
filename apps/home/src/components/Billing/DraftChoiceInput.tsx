@@ -9,6 +9,7 @@ import {
   getInvoiceDraftChoices,
   getAdvanceChoices,
   InvoiceDraftChoiceKind,
+  getJournalDetailChoices,
 } from './billingService';
 
 export function DraftChoiceInput({
@@ -22,6 +23,8 @@ export function DraftChoiceInput({
   productId = false,
   invoiceId,
   advanceOrderId,
+  journalInvoiceId,
+  journalLineId,
   disabled,
   onChange,
   reconnect,
@@ -40,10 +43,31 @@ export function DraftChoiceInput({
   | {
       invoiceId: number | false;
       advanceOrderId?: undefined;
+      journalInvoiceId?: undefined;
+      journalLineId?: undefined;
       kind: InvoiceDraftChoiceKind;
     }
-  | { invoiceId?: undefined; advanceOrderId?: undefined; kind: DraftChoiceKind }
-  | { invoiceId?: undefined; advanceOrderId: number; kind: 'account' | 'tax' }
+  | {
+      invoiceId?: undefined;
+      advanceOrderId?: undefined;
+      journalInvoiceId?: undefined;
+      journalLineId?: undefined;
+      kind: DraftChoiceKind;
+    }
+  | {
+      invoiceId?: undefined;
+      advanceOrderId: number;
+      journalInvoiceId?: undefined;
+      journalLineId?: undefined;
+      kind: 'account' | 'tax';
+    }
+  | {
+      invoiceId?: undefined;
+      advanceOrderId?: undefined;
+      journalInvoiceId: number;
+      journalLineId: number;
+      kind: 'account' | 'grid' | 'analytic';
+    }
 )) {
   const [search, setSearch] = useState('');
   const term = useDebounce(search, 250);
@@ -54,17 +78,31 @@ export function DraftChoiceInput({
       uid,
       invoiceId,
       advanceOrderId,
+      journalInvoiceId,
+      journalLineId,
       kind,
       term,
       shopId,
       productId,
     ],
     queryFn: () =>
-      advanceOrderId !== undefined
-        ? getAdvanceChoices(advanceOrderId, kind as 'account' | 'tax', term)
-        : invoiceId !== undefined
-          ? getInvoiceDraftChoices(invoiceId, kind, term, productId)
-          : getDraftChoices(kind as DraftChoiceKind, term, shopId, productId),
+      journalInvoiceId !== undefined
+        ? getJournalDetailChoices(
+            journalInvoiceId,
+            journalLineId!,
+            kind as 'account' | 'grid' | 'analytic',
+            term,
+          )
+        : advanceOrderId !== undefined
+          ? getAdvanceChoices(advanceOrderId, kind as 'account' | 'tax', term)
+          : invoiceId !== undefined
+            ? getInvoiceDraftChoices(
+                invoiceId,
+                kind as InvoiceDraftChoiceKind,
+                term,
+                productId,
+              )
+            : getDraftChoices(kind as DraftChoiceKind, term, shopId, productId),
     enabled: !disabled,
     retry: false,
   });
@@ -79,7 +117,7 @@ export function DraftChoiceInput({
         items={choices.data ?? []}
         itemToString={(item) => item?.[1] ?? ''}
         selectedItem={selected}
-        clearSelectedOnChange={kind === 'tax'}
+        clearSelectedOnChange={kind === 'tax' || kind === 'grid'}
         shouldFilterItem={() => true}
         onInputChange={setSearch}
         onChange={({ selectedItem }) =>

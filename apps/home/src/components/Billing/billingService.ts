@@ -214,6 +214,262 @@ export async function getInvoiceJournal(
 
 type Relation = [number, string] | false;
 
+export type JournalDetailValues = {
+  name: string | false;
+  account_id: number;
+  date_maturity: string | false;
+  tax_tag_ids: number[];
+  analytic_distribution: Record<string, number> | false;
+  discount_date: string | false;
+  discount_amount_currency: number;
+};
+export interface JournalDetails {
+  invoice_id: number;
+  line_id: number;
+  name: string | false;
+  version: string;
+  values: JournalDetailValues;
+  account: [number, string];
+  tax_grids: [number, string][];
+  analytics_visible: boolean;
+  can_edit: boolean;
+  currency: [number, string];
+  debit: number;
+  credit: number;
+  review_version?: string;
+}
+export type JournalDetailRequest = {
+  invoice_id: number;
+  line_id: number;
+  version: string;
+  values: JournalDetailValues;
+  review_version: string;
+  request_key: string;
+};
+const journalId = (value: unknown) =>
+  Number.isSafeInteger(value) && Number(value) > 0;
+const journalHash = (value: unknown) =>
+  typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+function checkedJournalValues(
+  values: JournalDetailValues,
+): JournalDetailValues {
+  const date = (value: unknown) =>
+    value === false ||
+    (typeof value === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+      !Number.isNaN(Date.parse(value)) &&
+      new Date(value).toISOString().slice(0, 10) === value);
+  const fields = [
+    'name',
+    'account_id',
+    'date_maturity',
+    'tax_tag_ids',
+    'analytic_distribution',
+    'discount_date',
+    'discount_amount_currency',
+  ];
+  if (
+    !values ||
+    Object.keys(values).length !== fields.length ||
+    !fields.every((key) => Object.hasOwn(values, key)) ||
+    !(
+      values.name === false ||
+      (typeof values.name === 'string' && values.name.length <= 10000)
+    ) ||
+    !journalId(values.account_id) ||
+    !date(values.date_maturity) ||
+    !date(values.discount_date) ||
+    !Number.isFinite(values.discount_amount_currency) ||
+    values.discount_amount_currency < 0 ||
+    !Array.isArray(values.tax_tag_ids) ||
+    values.tax_tag_ids.length > 100 ||
+    !values.tax_tag_ids.every(journalId) ||
+    new Set(values.tax_tag_ids).size !== values.tax_tag_ids.length ||
+    !(
+      values.analytic_distribution === false ||
+      (values.analytic_distribution &&
+        typeof values.analytic_distribution === 'object' &&
+        !Array.isArray(values.analytic_distribution) &&
+        Object.keys(values.analytic_distribution).length <= 100 &&
+        Object.entries(values.analytic_distribution).every(
+          ([key, value]) =>
+            /^[1-9]\d*(,[1-9]\d*)*$/.test(key) &&
+            Number.isFinite(value) &&
+            value >= 0 &&
+            value <= 100,
+        ))
+    )
+  )
+    throw new Error(
+      'Invalid journal details. Check your entries before reviewing.',
+    );
+  return values;
+}
+export function checkedJournalRequest(
+  value: JournalDetailRequest,
+): JournalDetailRequest {
+  const fields = [
+    'invoice_id',
+    'line_id',
+    'version',
+    'values',
+    'review_version',
+    'request_key',
+  ];
+  if (
+    !value ||
+    Object.keys(value).length !== fields.length ||
+    !fields.every((key) => Object.hasOwn(value, key)) ||
+    !journalId(value.invoice_id) ||
+    !journalId(value.line_id) ||
+    !journalHash(value.version) ||
+    !journalHash(value.review_version) ||
+    typeof value.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      value.request_key,
+    )
+  )
+    throw new Error(
+      'Invalid journal save request. Check the current invoice before retrying.',
+    );
+  checkedJournalValues(value.values);
+  return value;
+}
+function checkedJournalDetails(
+  value: JournalDetails,
+  invoiceId: number,
+  lineId: number,
+  review = false,
+) {
+  if (
+    value?.invoice_id !== invoiceId ||
+    value.line_id !== lineId ||
+    !journalHash(value.version) ||
+    !(value.name === false || typeof value.name === 'string') ||
+    !Array.isArray(value.account) ||
+    !validRelation(value.account) ||
+    !Array.isArray(value.currency) ||
+    !validRelation(value.currency) ||
+    typeof value.can_edit !== 'boolean' ||
+    typeof value.analytics_visible !== 'boolean' ||
+    ![value.debit, value.credit].every(
+      (amount) => Number.isFinite(amount) && amount >= 0,
+    ) ||
+    !Array.isArray(value.tax_grids) ||
+    !value.tax_grids.every(
+      (grid) => Array.isArray(grid) && validRelation(grid),
+    ) ||
+    (review && !journalHash(value.review_version))
+  )
+    throw new Error(
+      'Invalid journal detail response. Reload the current invoice.',
+    );
+  checkedJournalValues(value.values);
+  if (
+    value.account[0] !== value.values.account_id ||
+    (!value.analytics_visible &&
+      value.values.analytic_distribution !== false) ||
+    value.tax_grids.length !== value.values.tax_tag_ids.length ||
+    !value.tax_grids.every(([id]) => value.values.tax_tag_ids.includes(id))
+  )
+    throw new Error('Journal detail labels do not match their native values.');
+  return value;
+}
+function journalDetailsRpc<T>(action: string, kwargs: object) {
+  const method = `qorlia_journal_edit_${action}`;
+  return rpc<T>(`/web/dataset/call_kw/account.move/${method}`, {
+    model: 'account.move',
+    method,
+    args: [],
+    kwargs,
+  });
+}
+export async function getJournalDetails(invoiceId: number, lineId: number) {
+  if (!journalId(invoiceId) || !journalId(lineId))
+    throw new Error('Select a saved invoice journal item.');
+  return checkedJournalDetails(
+    await journalDetailsRpc<JournalDetails>('load', {
+      invoice_id: invoiceId,
+      line_id: lineId,
+    }),
+    invoiceId,
+    lineId,
+  );
+}
+export async function previewJournalDetails(
+  current: JournalDetails,
+  values: JournalDetailValues,
+) {
+  if (
+    !journalId(current.invoice_id) ||
+    !journalId(current.line_id) ||
+    !journalHash(current.version)
+  )
+    throw new Error('Reload journal details before reviewing.');
+  const result = checkedJournalDetails(
+    await journalDetailsRpc<JournalDetails>('preview', {
+      invoice_id: current.invoice_id,
+      line_id: current.line_id,
+      version: current.version,
+      values: checkedJournalValues(values),
+    }),
+    current.invoice_id,
+    current.line_id,
+    true,
+  );
+  if (result.version !== current.version)
+    throw new Error(
+      'The journal review version changed. Reload before saving.',
+    );
+  return result;
+}
+export async function saveJournalDetails(request: JournalDetailRequest) {
+  checkedJournalRequest(request);
+  return checkedJournalDetails(
+    await journalDetailsRpc<JournalDetails>('save', request),
+    request.invoice_id,
+    request.line_id,
+  );
+}
+export async function getJournalDetailsStatus(request: JournalDetailRequest) {
+  checkedJournalRequest(request);
+  const result = await journalDetailsRpc<JournalDetails | false>(
+    'status',
+    request,
+  );
+  return result === false
+    ? false
+    : checkedJournalDetails(result, request.invoice_id, request.line_id);
+}
+export async function getJournalDetailChoices(
+  invoiceId: number,
+  lineId: number,
+  kind: 'account' | 'grid' | 'analytic',
+  search = '',
+) {
+  if (
+    !journalId(invoiceId) ||
+    !journalId(lineId) ||
+    !['account', 'grid', 'analytic'].includes(kind) ||
+    typeof search !== 'string' ||
+    search.length > 200
+  )
+    throw new Error('Use a valid journal detail search.');
+  const result = await journalDetailsRpc<[number, string][]>('choices', {
+    invoice_id: invoiceId,
+    line_id: lineId,
+    kind,
+    search,
+  });
+  if (
+    !Array.isArray(result) ||
+    result.length > 26 ||
+    !result.every((row) => Array.isArray(row) && validRelation(row))
+  )
+    throw new Error('Invalid journal detail choices.');
+  return result;
+}
+
 export interface ChargeOrder {
   id: number;
   name: string;

@@ -11,3 +11,4 @@ from . import test_customer_statement
 from . import test_invoice_messages
 from . import test_advance_invoices
 from . import test_invoice_journal
+from . import test_invoice_journal_edit

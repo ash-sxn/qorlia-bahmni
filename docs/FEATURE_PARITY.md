@@ -1,5 +1,33 @@
 # Bahmni workflow parity ledger
 
+## 10 October draft journal details protected save checkpoint
+
+- Draft non-adjustment journal items open the house detail editor. Native account,
+  label, due date, grids, analytic distribution (native group only) and early-payment
+  discount metadata are reviewed before explicit save. Amounts, row creation/
+  removal, posted editing and cut-off workflows are not implemented by this editor.
+- Native permissions, invoice/line locks, snapshot and selected-configuration
+  checks apply. Native write hooks remain active. Unreviewed metadata, other-row
+  or monetary effects roll back. Exact author-bound receipts permit status lookup
+  and identical retry; pending forms freeze and remain recoverable across remounts.
+- Home: 234 tests/30 suites. Installed native adapter: 180 tests with zero failures,
+  errors or skips. Types, lint, compilation, seven gateway/webpack checks and build
+  pass. Actual concurrent HTTP saves apply one edit, preserve a balanced INR 250
+  draft and reject stale/different-identity requests without new financial records.
+- Protected browser review, unsaved-close/Keep editing, save and full reload retain
+  the synthetic label, maturity and early-discount metadata on #11275/#29185.
+  Separate native readback confirms unchanged money, other lines, model counts and
+  protected invoices. Native keyboard date editing requires review again; browser
+  automation fill alone did not commit dates and was not accepted as a valid edit.
+- Narrow-screen journal columns remain inside a keyboard-scrollable region without
+  body overflow. All 83 hosted chunks and secret-free source/license archive match;
+  tester/session/security gates and expiry remain unchanged. Source precedes this
+  acceptance note. Production and the shared public demo remain unchanged.
+- Analytic account/plan selection needs UI improvement. Browser account/grid/analytic
+  editing and fault-injected response-loss recovery remain separate acceptance work.
+  Monetary/add/remove/posted journal work, other Billing workflows and complete
+  clinical/separate-product parity are still open. This is progress, not full parity.
+
 ## 10 October Invoice Journal Items protected read checkpoint
 
 - Signed-in invoice details now expose native journal entries in the Qorlia modal,

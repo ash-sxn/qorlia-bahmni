@@ -14,3 +14,4 @@ from . import customer_statement
 from . import invoice_messages
 from . import advance_invoice
 from . import invoice_journal
+from . import invoice_journal_edit

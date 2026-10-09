@@ -41,9 +41,7 @@ describe('Invoice journal view', () => {
       screen.getByRole('rowheader', { name: /4000 Clinical income/ }),
     ).toBeInTheDocument();
     expect(screen.getByText(/QorliaQA Grid/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/does not edit, post or reconcile/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/does not post or reconcile/)).toBeInTheDocument();
     expect(
       screen.queryByRole('columnheader', { name: 'Analytic distribution' }),
     ).not.toBeInTheDocument();
