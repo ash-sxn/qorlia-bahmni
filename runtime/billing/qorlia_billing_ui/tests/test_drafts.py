@@ -196,7 +196,7 @@ class DraftAdapterTest(TransactionCase):
         with self.assertRaises(ValidationError):
             self.orders.qorlia_order_workflow_run(saved['id'], fresh['version'], 'action_post')
 
-    def test_posting_rejects_unbalanced_document_discount_and_rolls_back_confirmation(self):
+    def test_confirmation_posts_balanced_document_discount_without_payment(self):
         self.env['ir.config_parameter'].set_param('bahmni_sale.is_invoice_automated', True)
         draft = self.draft()
         draft['values']['discount_type'] = 'fixed'
@@ -207,14 +207,18 @@ class DraftAdapterTest(TransactionCase):
             ('account_type', '=', 'income_other'), ('company_id', '=', self.env.company.id)], limit=1).id
         saved = self.orders.qorlia_draft_save(self.payload(draft), str(uuid.uuid4()))
         ready = self.orders.qorlia_order_workflow_load(saved['id'])
-        with self.assertRaisesRegex(UserError, 'journal entries must balance'), self.env.cr.savepoint():
-            self.orders.qorlia_order_workflow_run(saved['id'], ready['version'], 'confirm')
+        result = self.orders.qorlia_order_workflow_run(saved['id'], ready['version'], 'confirm')
         order = self.orders.browse(saved['id'])
         order.invalidate_recordset()
-        self.assertEqual(order.state, 'draft')
-        self.assertFalse(order.invoice_ids)
+        self.assertIn(order.state, ('sale', 'done'))
+        self.assertEqual(len(result['invoices']), 1)
+        self.assertEqual(order.invoice_ids.state, 'posted')
+        self.assertEqual(order.invoice_ids.invoice_total, 475)
+        self.assertEqual(order.invoice_ids.amount_residual, 475)
+        self.assertFalse(order.invoice_ids._get_unbalanced_moves({'records': order.invoice_ids}))
+        self.assertFalse(order.invoice_ids._get_reconciled_payments())
 
-    def test_posting_rejects_unbalanced_native_rounding(self):
+    def test_posting_rejects_unconfigured_native_rounding(self):
         self.env['ir.config_parameter'].set_param('bahmni_sale.is_invoice_automated', False)
         saved = self.orders.qorlia_draft_save(self.payload(self.draft()), str(uuid.uuid4()))
         ready = self.orders.qorlia_order_workflow_load(saved['id'])
@@ -222,7 +226,8 @@ class DraftAdapterTest(TransactionCase):
         invoiced = self.orders.qorlia_order_workflow_run(saved['id'], confirmed['version'], 'invoice')
         invoice = self.env['account.move'].browse(invoiced['invoices'][0]['id'])
         invoice.write({'round_off_amount': 0.25})
-        with self.assertRaisesRegex(UserError, 'journal entries must balance'), self.env.cr.savepoint():
+        self.env.company.qorlia_rounding_account_id = False
+        with self.assertRaisesRegex(ValidationError, 'rounding account'), self.env.cr.savepoint():
             invoice.action_post()
         invoice.invalidate_recordset()
         self.assertEqual(invoice.state, 'draft')

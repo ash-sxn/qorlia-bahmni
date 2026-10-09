@@ -55,6 +55,7 @@ const invoice = {
   payment_state: 'not_paid',
   amount_total: 500,
   amount_untaxed: 480,
+  qorlia_item_subtotal: 480,
   amount_tax: 20,
   discount: 25.5,
   round_off_amount: 0.25,
@@ -180,6 +181,31 @@ describe('Billing workspace', () => {
     );
     expect(screen.getByText('Unapplied credit')).toBeInTheDocument();
     expect(screen.getAllByText('Credit note').length).toBeGreaterThan(0);
+  });
+  it('shows item subtotal separately from posted accounting adjustments without subtracting them twice', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([
+      {
+        ...invoice,
+        state: 'posted',
+        amount_total: 919.75,
+        amount_untaxed: 874.75,
+        qorlia_item_subtotal: 900,
+        amount_tax: 45,
+        invoice_total: 919.75,
+        amount_residual: 919.75,
+      },
+    ]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    expect(screen.getByText('₹900.00')).toBeInTheDocument();
+    expect(screen.getByText('₹45.00')).toBeInTheDocument();
+    expect(screen.getByText('₹25.50')).toBeInTheDocument();
+    expect(screen.getByText('₹0.25')).toBeInTheDocument();
+    expect(screen.getAllByText('₹919.75').length).toBeGreaterThan(0);
+    expect(screen.queryByText('₹874.75')).not.toBeInTheDocument();
   });
   it('hides invoices and requests reconnection when ERP access expires', async () => {
     (getInvoices as jest.Mock).mockRejectedValue(new BillingSessionExpired());

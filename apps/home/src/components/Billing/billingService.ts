@@ -20,6 +20,7 @@ export interface Invoice {
   payment_state: string;
   amount_total: number;
   amount_untaxed: number;
+  qorlia_item_subtotal: number;
   amount_tax: number;
   discount: number;
   round_off_amount: number;
@@ -576,6 +577,7 @@ export const getInvoices = async (
           'payment_state',
           'amount_total',
           'amount_untaxed',
+          'qorlia_item_subtotal',
           'amount_tax',
           'discount',
           'round_off_amount',
@@ -604,6 +606,7 @@ export const getInvoices = async (
         [
           'amount_total',
           'amount_untaxed',
+          'qorlia_item_subtotal',
           'amount_tax',
           'discount',
           'round_off_amount',
@@ -799,6 +802,7 @@ export const getInvoiceLines = async (invoiceId: number) => {
         domain: [
           ['move_id', '=', invoiceId],
           ['display_type', '=', 'product'],
+          ['qorlia_adjustment_kind', '=', false],
         ],
         fields: [
           'id',

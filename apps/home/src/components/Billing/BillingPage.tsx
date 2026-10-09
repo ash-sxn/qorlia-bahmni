@@ -408,7 +408,7 @@ export function BillingPage() {
                         <dt>Items after line discounts</dt>
                         <dd>
                           {money(
-                            selected.amount_untaxed,
+                            selected.qorlia_item_subtotal,
                             selected.currency_id[1],
                           )}
                         </dd>

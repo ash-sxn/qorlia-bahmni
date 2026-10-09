@@ -1,6 +1,57 @@
 # Qorlia React frontend backend readiness
 
+## Latest Billing discount and rounding counterpart verification (9 October 2026)
+
+The earlier balance guard remains active, but discount/rounding posting is now
+corrected for the tested customer-invoice flows. The LGPL adapter replaces the
+pinned Bahmni receivable rewrite with explicit tax-free adjustment lines on
+configured accounts, then uses native Odoo posting, currency conversion and
+payment-term calculation. It does not assign the whole invoice value to each
+installment. The company rounding account is explicit, not guessed. Original
+item taxes are retained, matching Bahmni's after-tax document discount semantics.
+This is not approval of a deployment's tax treatment or chart of accounts.
+
+`qorlia_item_subtotal` keeps the original item subtotal visible. Adjustment rows
+are accounted for exactly once in `invoice_total` and excluded from the React
+product table because they appear in the document-level breakdown. Native journal
+views retain the rows. Posting/reversal/reset tests do not imply corresponding
+correction or refund controls have been added to the React UI. The pinned-image
+inheritance and rollback requirements are in `runtime/billing/README.md`.
+
+All 24 native adapter tests pass without failures, errors or skips. Added coverage
+includes fixed/percentage discounts, credit notes, positive/negative rounding,
+installments, foreign currency, reversal through native `_post`, reset/repost,
+onchange calculation, invalid/deprecated/cross-company accounts, and rejection
+of already unbalanced history. The first seven new regressions failed against
+the old implementation before the fix. Nine Home suites pass 66 tests; seven
+gateway/webpack checks, types, targeted lint and the development build pass.
+
+Real native HTTP requests posted INV/2026/00006 for INR 919.75 and RINV/2026/00002
+for INR 919.25. Independent journal reads confirmed zero debit-credit differences,
+two adjustment rows, preserved INR 45 tax, unpaid residuals, and no reconciliation.
+A discounted service order S00146 created one INV/2026/00007 for INR 920.
+An old-version repeat was rejected. Historical invalid INV/2026/00002 and
+INV/2026/00003 remain unchanged as failure fixtures, not repaired acceptance data.
+
+In the updated protected hosted browser, opening/closing invoice 106's review
+left it draft, verified by an independent HTTP read. One explicit post created
+INV/2026/00008. The UI showed original items INR 900, tax INR 45, document discount
+INR 25.50, rounding INR 0.25 and final/open INR 919.75. Independent reads confirmed
+one matching invoice, five unreconciled journal lines and zero imbalance. A second
+review offered no posting action. Browser error logs were empty. The tester gate,
+credentials, expiry and blocked raw financial routes are unchanged.
+
+Remaining Billing work includes payments and reconciliation, refund disbursement,
+React cancellation/reset/reversal, partial/down-payment discount allocation, POS,
+stock/batch delivery and returns, full role/company acceptance, printouts and
+Clinical-to-ERP synchronization. The development bundle is still large. Only
+isolated synthetic staging and the protected review frontend changed; production
+and the existing public demo did not. No real funds were moved.
+
 ## Latest Billing ledger guard and invoice posting verification (9 October 2026)
+
+Historical checkpoint. Its discount/rounding blocker is superseded by the tested
+counterpart implementation above; its invalid historical fixtures remain invalid.
 
 **Accounting correction:** the earlier INR 920 order/invoice checks below
 verified API totals and visible status, not balanced journal entries. A later

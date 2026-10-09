@@ -138,6 +138,7 @@ describe('billing API', () => {
     expect(params.kwargs.fields).toEqual(
       expect.arrayContaining([
         'invoice_total',
+        'qorlia_item_subtotal',
         'discount',
         'round_off_amount',
         'move_type',
@@ -157,6 +158,7 @@ describe('billing API', () => {
       state: 'draft',
       payment_state: 'not_paid',
       amount_untaxed: 900,
+      qorlia_item_subtotal: 900,
       amount_tax: 45,
       amount_total: 945,
       discount: 25.5,
@@ -167,6 +169,10 @@ describe('billing API', () => {
     reply({ result: [invoice] });
     expect(await getInvoices('', 0)).toEqual([invoice]);
     reply({ result: [{ ...invoice, invoice_total: undefined }] });
+    await expect(getInvoices('', 0)).rejects.toThrow(
+      'Invalid invoice response.',
+    );
+    reply({ result: [{ ...invoice, qorlia_item_subtotal: undefined }] });
     await expect(getInvoices('', 0)).rejects.toThrow(
       'Invalid invoice response.',
     );
@@ -184,6 +190,7 @@ describe('billing API', () => {
         domain: [
           ['move_id', '=', 42],
           ['display_type', '=', 'product'],
+          ['qorlia_adjustment_kind', '=', false],
         ],
       },
     });

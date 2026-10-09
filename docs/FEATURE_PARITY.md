@@ -1,6 +1,38 @@
 # Bahmni workflow parity ledger
 
+## 9 October Billing discount/rounding accounting checkpoint
+
+- Customer posting now creates explicit document-discount and signed rounding
+  adjustment lines on configured accounts. Native Odoo calculates receivables,
+  installments, currency conversion and residuals. The balance guard still
+  rejects unequal entries and old invalid records are not silently repaired.
+- Fixed and percentage discounts, both credit-note signs, rounding up/down,
+  installments, foreign currency, native reversal, reset/repost and onchange
+  consistency pass isolated native tests. Missing, deprecated and cross-company
+  accounts are rejected. A company rounding account is required explicitly.
+  Existing item tax is preserved, matching Bahmni's after-tax discount semantics,
+  not certifying Indian healthcare tax policy.
+- Actual HTTP posting produced balanced INV/2026/00006 (INR 919.75) and
+  RINV/2026/00002 (INR 919.25), with unpaid residuals and two adjustment lines.
+  Discounted service order S00146 produced INV/2026/00007 (INR 920).
+- Hosted browser posting of invoice 106 produced INV/2026/00008 (INR 919.75).
+  Closing the review first was verified not to post. The UI shows INR 900 items,
+  INR 45 tax, INR 25.50 document discount and INR 0.25 rounding without duplicate
+  adjustment rows in the item table. Independent reads verify five unreconciled,
+  balanced journal lines and no payment. A subsequent review offers no posting.
+- Native adapter tests: 24 passed, no failures/errors/skips. Home: 66 tests in
+  nine suites. Gateway/webpack: seven checks. Types, targeted lint, diff and build
+  pass. Tester gate, expiry and separate native sessions remain unchanged.
+
+Billing remains incomplete: payments/reconciliation, refund disbursement, React
+correction workflows, partial/down-payment discount allocation, POS, stock/batch
+acceptance, complete role/company acceptance, printouts and Clinical-to-ERP sync.
+Native reversal/reset test coverage is not UI parity for those actions. Changes
+remain non-production; historical unbalanced invoices remain failure fixtures.
+
 ## 9 October Billing balanced-invoice posting checkpoint
+
+Historical checkpoint. Its missing-counterpart blocker is superseded above.
 
 - The earlier INR 920 order-flow checkpoint below proved displayed/API amounts,
   not journal balance. Native ledger inspection later found an INR -25 difference
