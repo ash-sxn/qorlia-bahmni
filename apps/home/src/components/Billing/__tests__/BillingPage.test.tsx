@@ -9,6 +9,8 @@ import {
   getInvoiceLines,
   signInToBilling,
   BillingSessionExpired,
+  getChargeOrders,
+  getChargeOrderLines,
 } from '../billingService';
 
 jest.mock('../billingService', () => ({
@@ -17,6 +19,8 @@ jest.mock('../billingService', () => ({
   getInvoices: jest.fn(),
   getInvoiceLines: jest.fn(),
   signInToBilling: jest.fn(),
+  getChargeOrders: jest.fn(),
+  getChargeOrderLines: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({ useUserPrivilege: jest.fn() }));
 jest.mock('../../HomePageHeader', () => ({
@@ -65,6 +69,8 @@ describe('Billing workspace', () => {
       name: 'QA Cashier',
     });
     (getInvoices as jest.Mock).mockResolvedValue([]);
+    (getChargeOrders as jest.Mock).mockResolvedValue([]);
+    (getChargeOrderLines as jest.Mock).mockResolvedValue([]);
   });
   it('does not contact Billing before hospital sign-in is verified', () => {
     (useUserPrivilege as jest.Mock).mockReturnValue({
@@ -189,5 +195,64 @@ describe('Billing workspace', () => {
       await screen.findByText('Billing access failed.'),
     ).toBeInTheDocument();
     expect(screen.queryByText(/No invoices match/)).not.toBeInTheDocument();
+  });
+  it('fetches charge orders only after that tab is opened', async () => {
+    show();
+    await screen.findByText(/No invoices match/);
+    expect(getChargeOrders).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('tab', { name: 'Charge orders' }));
+    expect(
+      await screen.findByText('No charge orders match these filters.'),
+    ).toBeVisible();
+    expect(getChargeOrders).toHaveBeenCalledWith('', 0, 'draft');
+    expect(screen.getByRole('tab', { name: 'Charge orders' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+  it('opens a native linked invoice in the invoice tab without a legacy redirect', async () => {
+    (getChargeOrders as jest.Mock).mockResolvedValue([
+      {
+        id: 9,
+        name: 'QA-ORDER',
+        client_order_ref: false,
+        partner_id: [8, 'QA'],
+        shop_id: [1, 'QA Shop'],
+        date_order: '2026-10-09 08:00:00',
+        state: 'draft',
+        invoice_status: 'no',
+        care_setting: 'opd',
+        provider_name: false,
+        amount_untaxed: 480,
+        amount_tax: 20,
+        amount_total: 474.75,
+        discount: 25.5,
+        discount_type: 'fixed',
+        discount_percentage: 0,
+        chargeable_amount: 0,
+        disc_acc_id: false,
+        round_off_amount: 0.25,
+        currency_id: [1, 'INR'],
+        invoice_ids: [7],
+      },
+    ]);
+    (getInvoices as jest.Mock).mockResolvedValue([invoice]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    show();
+    await screen.findByText('QorliaQA Customer');
+    fireEvent.click(screen.getByRole('tab', { name: 'Charge orders' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View order QA-ORDER' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Open QorliaQA invoice' }),
+    );
+    expect(
+      screen.getByRole('tab', { name: 'Invoices and credit notes' }),
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(
+      await screen.findByRole('region', { name: 'Invoice details' }),
+    ).toBeVisible();
+    expect(getInvoiceLines).toHaveBeenCalledWith(7);
   });
 });

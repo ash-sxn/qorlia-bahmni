@@ -72,7 +72,9 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
   app.use(BILLING, async (req, res, next) => {
     const allowed = new Set(['/web/session/get_session_info', '/web/session/authenticate',
       '/web/session/destroy', '/web/dataset/call_kw/account.move/search_read',
-      '/web/dataset/call_kw/account.move.line/search_read']);
+      '/web/dataset/call_kw/account.move.line/search_read',
+      '/web/dataset/call_kw/sale.order/search_read',
+      '/web/dataset/call_kw/sale.order.line/search_read']);
     if (req.method !== 'POST' || !allowed.has(req.path)) return res.sendStatus(404);
     const clinicalCookie = cookieNamed(req.headers.cookie, 'JSESSIONID');
     if (!clinicalCookie) return res.status(401).json({ error: 'Sign in to Qorlia.' });
@@ -87,7 +89,7 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
   }, express.json({ limit: '32kb' }), (req, res, next) => {
     // The hosted adapter exposes only the read-only calls used by the Billing UI.
     const params = req.body?.params;
-    const model = req.path.includes('account.move.line/') ? 'account.move.line' : 'account.move';
+    const model = req.path.split('/')[4];
     if (!params || req.body.method !== 'call' ||
       (req.path.includes('/call_kw/') && (params.model !== model || params.method !== 'search_read')) ||
       (req.path.endsWith('/authenticate') && params.db !== 'odoo')) return res.sendStatus(400);

@@ -59,6 +59,16 @@ test('review gate protects UI, clinical API and read-only Billing with isolated 
   assert.doesNotMatch(session.headers.get('set-cookie'), /Domain=/);
   assert.equal((await rpc('/web/database/list', allCookies)).status, 404);
   assert.equal((await rpc('/web/dataset/call_kw/account.move/search_read', allCookies, { model: 'account.move', method: 'write' })).status, 400);
+  for (const model of ['sale.order', 'sale.order.line']) {
+    const path = `/web/dataset/call_kw/${model}/search_read`;
+    assert.equal((await rpc(path, cookie, { model, method: 'search_read' })).status, 401);
+    assert.equal((await rpc(path, allCookies, { model, method: 'search_read' })).status, 200);
+    assert.equal(seenBilling, 'session_id=erp-current');
+    assert.equal((await rpc(path, allCookies, { model: 'res.users', method: 'search_read' })).status, 400);
+    assert.equal((await rpc(path, allCookies, { model, method: 'write' })).status, 400);
+    for (const method of ['create', 'write', 'action_confirm', 'unlink'])
+      assert.equal((await rpc(`/web/dataset/call_kw/${model}/${method}`, allCookies, { model, method })).status, 404);
+  }
   await request('/openmrs/ws/rest/v1/session', { headers: { Cookie: allCookies } });
   assert.equal(seenClinical, 'JSESSIONID=valid; reporting_session=report');
   assert.equal((await request('/openmrs/module/addresshierarchy/ajax/getOrderedAddressHierarchyLevels.form',

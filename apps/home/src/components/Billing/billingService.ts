@@ -38,6 +38,59 @@ export interface InvoiceLine {
   price_total: number;
 }
 
+type Relation = [number, string] | false;
+
+export interface ChargeOrder {
+  id: number;
+  name: string;
+  client_order_ref: string | false;
+  partner_id: Relation;
+  shop_id: Relation;
+  date_order: string;
+  state: 'draft' | 'sent' | 'sale' | 'done' | 'cancel';
+  invoice_status: 'upselling' | 'invoiced' | 'to invoice' | 'no';
+  care_setting: 'opd' | 'ipd' | false;
+  provider_name: string | false;
+  amount_untaxed: number;
+  amount_tax: number;
+  amount_total: number;
+  discount: number;
+  discount_type: 'none' | 'fixed' | 'percentage';
+  discount_percentage: number;
+  chargeable_amount: number;
+  disc_acc_id: Relation;
+  round_off_amount: number;
+  currency_id: [number, string];
+  invoice_ids: number[];
+}
+
+export interface ChargeOrderLine {
+  id: number;
+  name: string;
+  display_type: 'line_section' | 'line_note' | false;
+  product_id: Relation;
+  product_uom: Relation;
+  product_uom_qty: number;
+  qty_delivered: number;
+  qty_invoiced: number;
+  price_unit: number;
+  discount: number;
+  price_subtotal: number;
+  price_tax: number;
+  price_total: number;
+  dispensed: boolean;
+  lot_id: Relation;
+  expiry_date: string | false;
+}
+
+const validRelation = (value: unknown) =>
+  value === false ||
+  (Array.isArray(value) &&
+    value.length === 2 &&
+    Number.isInteger(value[0]) &&
+    value[0] > 0 &&
+    typeof value[1] === 'string');
+
 async function rpc<T>(path: string, params: object): Promise<T> {
   const response = await fetch(`${API}${path}`, {
     method: 'POST',
@@ -75,7 +128,11 @@ export const signInToBilling = (login: string, password: string) =>
 
 export const disconnectBilling = () => rpc('/web/session/destroy', {});
 
-export const getInvoices = async (search: string, offset: number) => {
+export const getInvoices = async (
+  search: string,
+  offset: number,
+  invoiceIds?: number[],
+) => {
   const result = await rpc<Invoice[]>(
     '/web/dataset/call_kw/account.move/search_read',
     {
@@ -85,6 +142,7 @@ export const getInvoices = async (search: string, offset: number) => {
       kwargs: {
         domain: [
           ['move_type', 'in', ['out_invoice', 'out_refund']],
+          ...(invoiceIds ? [['id', 'in', invoiceIds]] : []),
           ...(search
             ? [
                 '|',
@@ -156,6 +214,166 @@ export const getInvoices = async (search: string, offset: number) => {
     )
   )
     throw new Error('Invalid invoice response.');
+  return result;
+};
+
+export const getChargeOrders = async (
+  search: string,
+  offset: number,
+  status: 'draft' | 'confirmed' | 'all',
+) => {
+  const result = await rpc<ChargeOrder[]>(
+    '/web/dataset/call_kw/sale.order/search_read',
+    {
+      model: 'sale.order',
+      method: 'search_read',
+      args: [],
+      kwargs: {
+        domain: [
+          ...(status === 'all'
+            ? []
+            : [
+                [
+                  'state',
+                  'in',
+                  status === 'draft' ? ['draft', 'sent'] : ['sale', 'done'],
+                ],
+              ]),
+          ...(search
+            ? [
+                '|',
+                '|',
+                ['name', 'ilike', search],
+                ['partner_id', 'ilike', search],
+                ['client_order_ref', 'ilike', search],
+              ]
+            : []),
+        ],
+        fields: [
+          'id',
+          'name',
+          'client_order_ref',
+          'partner_id',
+          'shop_id',
+          'date_order',
+          'state',
+          'invoice_status',
+          'care_setting',
+          'provider_name',
+          'amount_untaxed',
+          'amount_tax',
+          'amount_total',
+          'discount',
+          'discount_type',
+          'discount_percentage',
+          'chargeable_amount',
+          'disc_acc_id',
+          'round_off_amount',
+          'currency_id',
+          'invoice_ids',
+        ],
+        limit: 26,
+        offset,
+        order: 'id desc',
+      },
+    },
+  );
+  if (
+    !Array.isArray(result) ||
+    !result.every(
+      (row) =>
+        row &&
+        Number.isInteger(row.id) &&
+        row.id > 0 &&
+        typeof row.name === 'string' &&
+        typeof row.date_order === 'string' &&
+        (row.client_order_ref === false ||
+          typeof row.client_order_ref === 'string') &&
+        (row.provider_name === false ||
+          typeof row.provider_name === 'string') &&
+        ['draft', 'sent', 'sale', 'done', 'cancel'].includes(row.state) &&
+        ['upselling', 'invoiced', 'to invoice', 'no'].includes(
+          row.invoice_status,
+        ) &&
+        [false, 'opd', 'ipd'].includes(row.care_setting) &&
+        ['none', 'fixed', 'percentage'].includes(row.discount_type) &&
+        [row.partner_id, row.shop_id, row.disc_acc_id].every(validRelation) &&
+        Array.isArray(row.currency_id) &&
+        validRelation(row.currency_id) &&
+        [
+          row.amount_untaxed,
+          row.amount_tax,
+          row.amount_total,
+          row.discount,
+          row.discount_percentage,
+          row.chargeable_amount,
+          row.round_off_amount,
+        ].every(Number.isFinite) &&
+        Array.isArray(row.invoice_ids) &&
+        row.invoice_ids.every((id) => Number.isInteger(id) && id > 0),
+    )
+  )
+    throw new Error('Invalid charge order response.');
+  return result;
+};
+
+export const getChargeOrderLines = async (orderId: number) => {
+  const result = await rpc<ChargeOrderLine[]>(
+    '/web/dataset/call_kw/sale.order.line/search_read',
+    {
+      model: 'sale.order.line',
+      method: 'search_read',
+      args: [],
+      kwargs: {
+        domain: [['order_id', '=', orderId]],
+        fields: [
+          'id',
+          'name',
+          'display_type',
+          'product_id',
+          'product_uom',
+          'product_uom_qty',
+          'qty_delivered',
+          'qty_invoiced',
+          'price_unit',
+          'discount',
+          'price_subtotal',
+          'price_tax',
+          'price_total',
+          'dispensed',
+          'lot_id',
+          'expiry_date',
+        ],
+        limit: 501,
+        order: 'sequence, id',
+      },
+    },
+  );
+  if (
+    !Array.isArray(result) ||
+    !result.every(
+      (row) =>
+        row &&
+        Number.isInteger(row.id) &&
+        row.id > 0 &&
+        typeof row.name === 'string' &&
+        [false, 'line_section', 'line_note'].includes(row.display_type) &&
+        [row.product_id, row.product_uom, row.lot_id].every(validRelation) &&
+        [
+          row.product_uom_qty,
+          row.qty_delivered,
+          row.qty_invoiced,
+          row.price_unit,
+          row.discount,
+          row.price_subtotal,
+          row.price_tax,
+          row.price_total,
+        ].every(Number.isFinite) &&
+        typeof row.dispensed === 'boolean' &&
+        (row.expiry_date === false || typeof row.expiry_date === 'string'),
+    )
+  )
+    throw new Error('Invalid charge order detail response.');
   return result;
 };
 

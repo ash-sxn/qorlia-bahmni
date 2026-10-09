@@ -4,6 +4,8 @@ import {
   getInvoices,
   getInvoiceLines,
   signInToBilling,
+  getChargeOrders,
+  getChargeOrderLines,
 } from '../billingService';
 
 describe('billing API', () => {
@@ -125,5 +127,131 @@ describe('billing API', () => {
     await expect(getInvoices('', 0)).rejects.toThrow(
       'Invalid invoice response',
     );
+  });
+  it('reads bounded charge orders with native quotation and confirmed-order filters', async () => {
+    reply({ result: [] });
+    await getChargeOrders('QORLIAQA', 25, 'draft');
+    const [url, options] = (fetch as jest.Mock).mock.calls[0];
+    expect(url).toContain('/sale.order/search_read');
+    expect(JSON.parse(options.body).params.kwargs).toMatchObject({
+      domain: [
+        ['state', 'in', ['draft', 'sent']],
+        '|',
+        '|',
+        ['name', 'ilike', 'QORLIAQA'],
+        ['partner_id', 'ilike', 'QORLIAQA'],
+        ['client_order_ref', 'ilike', 'QORLIAQA'],
+      ],
+      offset: 25,
+      limit: 26,
+      order: 'id desc',
+    });
+    await getChargeOrders('', 0, 'confirmed');
+    await getChargeOrders('', 0, 'all');
+    const params = (fetch as jest.Mock).mock.calls
+      .slice(1)
+      .map(([, option]) => JSON.parse(option.body).params);
+    expect(params[0].kwargs.domain).toEqual([
+      ['state', 'in', ['sale', 'done']],
+    ]);
+    expect(params[1].kwargs.domain).toEqual([]);
+  });
+  it('validates native charge-order totals, status, relations and linked invoice IDs', async () => {
+    const order = {
+      id: 9,
+      name: 'QORLIAQA-ORDER',
+      client_order_ref: false,
+      partner_id: [2, 'QA'],
+      shop_id: [1, 'QA Shop'],
+      date_order: '2026-10-09 08:00:00',
+      state: 'draft',
+      invoice_status: 'no',
+      care_setting: false,
+      provider_name: false,
+      amount_untaxed: 900,
+      amount_tax: 45,
+      amount_total: 919.75,
+      discount: 25.5,
+      discount_type: 'fixed',
+      discount_percentage: 0,
+      chargeable_amount: 0,
+      disc_acc_id: false,
+      round_off_amount: 0.25,
+      currency_id: [1, 'INR'],
+      invoice_ids: [7],
+    };
+    reply({ result: [order] });
+    expect(await getChargeOrders('', 0, 'draft')).toEqual([order]);
+    for (const broken of [
+      { amount_total: Infinity },
+      { amount_tax: '45' },
+      { shop_id: [0, 'Bad'] },
+      { currency_id: false },
+      { invoice_ids: ['7'] },
+      { state: 'invented' },
+    ]) {
+      reply({ result: [{ ...order, ...broken }] });
+      await expect(getChargeOrders('', 0, 'draft')).rejects.toThrow(
+        'Invalid charge order response.',
+      );
+    }
+  });
+  it('reads only selected charge-order lines including native stock and billing progress', async () => {
+    const line = {
+      id: 10,
+      name: 'QA Consultation',
+      display_type: false,
+      product_id: [3, 'QA'],
+      product_uom: [1, 'Units'],
+      product_uom_qty: 2,
+      qty_delivered: 0,
+      qty_invoiced: 0,
+      price_unit: 500,
+      discount: 10,
+      price_subtotal: 900,
+      price_tax: 45,
+      price_total: 945,
+      dispensed: false,
+      lot_id: false,
+      expiry_date: false,
+    };
+    reply({ result: [line] });
+    expect(await getChargeOrderLines(9)).toEqual([line]);
+    const params = JSON.parse(
+      (fetch as jest.Mock).mock.calls[0][1].body,
+    ).params;
+    expect(params).toMatchObject({
+      model: 'sale.order.line',
+      method: 'search_read',
+      kwargs: {
+        domain: [['order_id', '=', 9]],
+        limit: 501,
+        order: 'sequence, id',
+      },
+    });
+    expect(params.kwargs.fields).toEqual(
+      expect.arrayContaining([
+        'qty_delivered',
+        'qty_invoiced',
+        'dispensed',
+        'lot_id',
+        'expiry_date',
+      ]),
+    );
+    reply({ result: [{ ...line, dispensed: 'false' }] });
+    await expect(getChargeOrderLines(9)).rejects.toThrow(
+      'Invalid charge order detail response.',
+    );
+  });
+  it('restricts linked invoice reads to the native order invoice IDs', async () => {
+    reply({ result: [] });
+    await getInvoices('', 0, [7, 8]);
+    const params = JSON.parse(
+      (fetch as jest.Mock).mock.calls[0][1].body,
+    ).params;
+    expect(params.kwargs.domain).toEqual([
+      ['move_type', 'in', ['out_invoice', 'out_refund']],
+      ['id', 'in', [7, 8]],
+    ]);
   });
 });

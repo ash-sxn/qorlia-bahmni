@@ -15,6 +15,7 @@
     margin: 0.75rem 0;
   }
   input:focus-visible,
+  select:focus-visible,
   a:focus-visible {
     outline: 2px solid $focus;
     outline-offset: 3px;
@@ -69,6 +70,26 @@
 }
 .tableScroll {
   overflow-x: auto;
+}
+.select {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  select {
+    min-height: 3rem;
+    max-width: 20rem;
+    padding: 0.75rem;
+    background: $field;
+    color: $text-primary;
+    border: 1px solid $border-strong-01;
+    border-radius: 0.5rem;
+    font: inherit;
+  }
+}
+.reference {
+  display: block;
+  margin-top: 0.5rem;
+  color: $text-secondary;
 }
 .totals {
   display: grid;
