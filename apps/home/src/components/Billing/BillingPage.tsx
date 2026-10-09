@@ -48,7 +48,7 @@ export function BillingPage() {
   const [selected, setSelected] = useState<Invoice | null>(null);
   const [tab, setTab] = useState(0);
   const [reviewInvoice, setReviewInvoice] = useState<number | null>(null);
-  const [editInvoice, setEditInvoice] = useState<number | null>(null);
+  const [editInvoice, setEditInvoice] = useState<number | false | null>(null);
   const [paymentInvoice, setPaymentInvoice] = useState<number | null>(null);
   const [creditInvoice, setCreditInvoice] = useState<number | null>(null);
   const [reversalInvoice, setReversalInvoice] = useState<number | null>(null);
@@ -248,6 +248,12 @@ export function BillingPage() {
                 <TabPanel>
                   <section className={styles.card}>
                     <h2>Invoices and credit notes</h2>
+                    <Button
+                      kind="tertiary"
+                      onClick={() => setEditInvoice(false)}
+                    >
+                      New invoice
+                    </Button>
                     {invoiceNotice ? (
                       <p role="status">{invoiceNotice}</p>
                     ) : null}

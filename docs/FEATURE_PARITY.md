@@ -1,5 +1,36 @@
 # Bahmni workflow parity ledger
 
+## 9 October standalone invoice creation release checkpoint
+
+- The authenticated Invoices panel now offers New invoice. It reuses the Qorlia
+  draft editor and named native routes, including customer/product defaults,
+  manual services, taxes, terms, notes and document adjustments. Incomplete
+  drafts can be calculated but cannot be saved until native validation succeeds.
+- Server-side create ACLs/company rules, bounded fields/lines, native calculation
+  versions and balanced-ledger checks remain enforced. A creation UUID, locked
+  request digest and unique database key protect uncertain retries. Concurrent
+  identical requests return the same invoice, not two documents. Altered payloads
+  cannot reuse the key. No caller state/company/type or raw financial write is
+  exposed. The browser freezes entries after an uncertain save and offers an
+  explicit identical retry, with a duplicate-risk warning before closing.
+- All 92 native tests pass. Home has 132 passing tests in 16 suites; seven gateway/
+  webpack checks, types, changed-source lint, formatting and development build
+  pass. Native HTTP created one draft #4005 from simultaneous requests, balanced
+  its journal and retained payment/protected bill state. Preview was read-only.
+- Hosted browser creation and full reload verified draft #4038, quantity 2,
+  native unit price INR 500, reference/note and INR 1,150 total. Independent reads
+  verify unposted state, balanced journal, no attached payment and unchanged
+  protected amounts. The fixture's INR 150 tax is not a production tax policy.
+- The existing protected tester gate, expiry, hospital-session requirement,
+  robots exclusion, blocked mutation routes and matching secret-free source/
+  licenses are retained. Production/shared demo and tunnel URL are unchanged.
+
+This supersedes standalone invoice creation as an outstanding gap below. Journal
+items, print/email/chatter, bank/provider/stock/feed, down payments, POS and wider
+modules still require parity and acceptance. Build bundle/browser-data warnings
+and the existing Nx dependency-cycle workaround remain, not a clean production
+build claim. The full objective remains incomplete.
+
 ## 9 October invoice and credit-draft UI release checkpoint
 
 This supersedes the earlier backend-only checkpoint below. The protected tester

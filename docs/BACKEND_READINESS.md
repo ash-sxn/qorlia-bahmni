@@ -1,5 +1,41 @@
 # Qorlia React frontend backend readiness
 
+## Standalone invoice creation hosted and browser verified (9 October 2026)
+
+Signed-in Billing now creates standalone customer invoice drafts through the
+same Qorlia editor and native load/preview/save/choice routes. Native defaults,
+customer/product onchanges, taxes, terms and discount/rounding calculations are
+retained. An incomplete new form returns a warning without a save token. Native
+create ACLs, company rules and reviewed calculations remain enforced.
+
+Creation uses a per-request UUID, transaction lock and database uniqueness.
+Identical retries return the same invoice; changed payloads cannot reuse that
+identifier. The native request retry handles repeatable-read concurrency with
+a fresh transaction. After an unconfirmed browser save, entries are frozen and
+only an explicit identical retry is offered. Closing warns that an invoice may
+already exist. Save creates a draft, not a posting, payment or stock action.
+
+Actual simultaneous HTTP saves returned one draft #4005 at INR 1,150. Preview
+changed no persisted records, the journal balanced, and payment/protected bill
+checks passed. Hosted browser creation and full reload persisted #4038 with
+quantity 2, unit price INR 500, reference and note, tax INR 150 and total INR
+1,150. Independent native reads verified draft state, a balanced journal, no
+attached payment and unchanged protected amounts. This staging tax is a test
+fixture, not an approved Indian healthcare tax treatment.
+
+Verification: 92 successful native adapter tests, Home 132 tests/16 suites,
+seven gateway/webpack checks, types, changed-source lint, formatting and build.
+Hosted gate, hospital-session requirement, blocked raw mutation routes and
+matching secret-free source/licenses pass. The development build still has
+bundle/browser-data warnings; the existing Nx dependency cycle requires the
+direct distro build with its normal target environment.
+
+Only isolated synthetic Billing staging and the protected tester review changed.
+Production/shared demo, tester access code/expiry and tunnel URL are unchanged.
+Journal-item editing, print/email/chatter, statements, provider/check/PDC,
+down payments, POS, stock/batch and Clinical-to-ERP synchronization remain
+unfinished or unverified. This is not whole Billing or product acceptance.
+
 ## Existing invoice draft UI hosted and browser verified (9 October 2026)
 
 The protected signed-in tester build now contains the React invoice/credit draft

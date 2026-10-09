@@ -1,11 +1,13 @@
 export const invoiceName = (invoice: {
-  id: number;
+  id: number | false;
   name: string | false;
   move_type?: string;
 }) =>
   invoice.name && invoice.name !== '/'
     ? invoice.name
-    : `${invoice.move_type === 'out_refund' ? 'Draft credit note' : 'Draft invoice'} #${invoice.id}`;
+    : invoice.id === false
+      ? 'New invoice'
+      : `${invoice.move_type === 'out_refund' ? 'Draft credit note' : 'Draft invoice'} #${invoice.id}`;
 
 export const money = (value: number, currency: string) => {
   try {

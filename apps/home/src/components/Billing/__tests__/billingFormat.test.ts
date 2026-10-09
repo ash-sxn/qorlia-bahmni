@@ -1,5 +1,11 @@
 import { invoiceName } from '../billingFormat';
 
+it('names unsaved invoices without inventing an invoice number', () => {
+  expect(
+    invoiceName({ id: false, name: false, move_type: 'out_invoice' }),
+  ).toBe('New invoice');
+});
+
 describe('Native invoice names', () => {
   it('distinguishes unnamed drafts using their native record IDs', () => {
     expect(invoiceName({ id: 7, name: '/', move_type: 'out_invoice' })).toBe(

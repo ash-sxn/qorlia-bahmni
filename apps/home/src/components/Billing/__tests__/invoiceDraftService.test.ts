@@ -124,4 +124,52 @@ describe('Invoice draft API boundary', () => {
       );
     }
   });
+  it('loads an unsaved customer invoice and accepts incomplete previews only with a warning', async () => {
+    const draft = { ...invoiceDraftFixture(), id: false as const, lines: [] };
+    reply(draft);
+    expect(await getInvoiceDraft(false)).toEqual(draft);
+    reply({ ...draft, warning: { message: 'Add a product or service.' } });
+    expect(
+      (await previewInvoiceDraft(draft, { field: 'partner_id' }))
+        .review_version,
+    ).toBeUndefined();
+    reply(draft);
+    await expect(previewInvoiceDraft(draft, { field: 'ref' })).rejects.toThrow(
+      'Invalid invoice draft',
+    );
+    reply({ ...draft, move_type: 'out_refund' });
+    await expect(getInvoiceDraft(false)).rejects.toThrow(
+      'Invalid invoice draft',
+    );
+  });
+  it('requires a creation key and confirms a real customer invoice in the same company', async () => {
+    const draft = {
+      ...invoiceDraftFixture(),
+      id: false as const,
+      review_version: 'b'.repeat(64),
+    };
+    for (const key of [undefined, 'invalid']) {
+      await expect(saveInvoiceDraft(draft, key)).rejects.toThrow(
+        'save request identifier',
+      );
+    }
+    expect(fetch).not.toHaveBeenCalled();
+    const key = '3a47b619-83c0-4b39-846a-953d176e7ff5';
+    reply(invoiceDraftFixture());
+    expect((await saveInvoiceDraft(draft, key)).id).toBe(7);
+    expect(
+      JSON.parse((fetch as jest.Mock).mock.calls[0][1].body).params.kwargs
+        .request_key,
+    ).toBe(key);
+    for (const bad of [
+      draft,
+      { ...invoiceDraftFixture(), move_type: 'out_refund' },
+      { ...invoiceDraftFixture(), company: [99, 'Other company'] },
+    ]) {
+      reply(bad);
+      await expect(saveInvoiceDraft(draft, key)).rejects.toThrow(
+        'Invalid new invoice response',
+      );
+    }
+  });
 });

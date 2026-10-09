@@ -2,6 +2,9 @@
 # Copyright 2026 Qorlia contributors.
 import hashlib
 import json
+import uuid
+
+from psycopg2.errors import UniqueViolation
 
 from odoo import api, Command, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
@@ -26,6 +29,30 @@ def _digest(value):
 
 class InvoiceDraft(models.Model):
     _inherit = 'account.move'
+
+    qorlia_invoice_creation_key = fields.Char(copy=False, readonly=True, index=True)
+    qorlia_invoice_creation_hash = fields.Char(copy=False, readonly=True)
+    _sql_constraints = [
+        ('qorlia_invoice_creation_key_unique', 'unique(qorlia_invoice_creation_key)',
+         'This invoice creation request has already been saved.'),
+    ]
+
+    def _qorlia_new_invoice(self):
+        self.check_access_rights('create')
+        if not self.env.user.has_group('account.group_account_invoice'):
+            raise AccessError('Your Billing account cannot create customer invoices.')
+        model = self.with_context(default_move_type='out_invoice')
+        spec = {name: '1' for name in HEADERS + TOTALS + ('invoice_line_ids', 'company_id', 'move_type', 'state')}
+        result = model.onchange({}, [], spec)
+        values = self.env['sale.order']._qorlia_from_onchange(model, result['value'], HEADERS)
+        return model.new({**values, 'company_id': self.env.company.id,
+                          'move_type': 'out_invoice', 'state': 'draft'})
+
+    def _qorlia_new_invoice_version(self):
+        document = self._qorlia_new_invoice()
+        return _digest({'user': self.env.uid, 'company': self.env.company.id,
+            'defaults': self.env['sale.order']._qorlia_read_fields(document, HEADERS),
+            'configuration': self._qorlia_invoice_draft_configuration(document)})
 
     def _qorlia_draft_invoice(self, invoice_id, operation='read', lock=False):
         invoice = self._qorlia_invoice(invoice_id, operation, lock)
@@ -95,9 +122,9 @@ class InvoiceDraft(models.Model):
                        'marker': line.qorlia_adjustment_kind} for line in self.invoice_line_ids.sorted('id')],
             'configuration': self._qorlia_invoice_draft_configuration(self)})
 
-    def _qorlia_invoice_draft_snapshot(self, document, warning=False):
+    def _qorlia_invoice_draft_snapshot(self, document, warning=False, source_version=False):
         reader = self.env['sale.order']._qorlia_read_fields
-        origin = document._origin or document
+        origin = document._origin
         items = document.invoice_line_ids.filtered(lambda line: not line.qorlia_adjustment_kind)
         labels = {}
         for record, names in [(document, HEADERS)] + [(line, ITEMS) for line in items]:
@@ -107,15 +134,15 @@ class InvoiceDraft(models.Model):
                         relation.check_access_rights('read')
                         relation.check_access_rule('read')
                         labels['%s:%s' % (relation._name, relation.id)] = relation.display_name
-        writable = origin.check_access_rights('write', raise_exception=False)
-        if writable:
+        writable = self.check_access_rights('write' if origin else 'create', raise_exception=False)
+        if writable and origin:
             try:
                 origin.check_access_rule('write')
             except AccessError:
                 writable = False
-        return {'id': origin.id, 'name': origin.name or False, 'move_type': origin.move_type,
-            'company': [origin.company_id.id, origin.company_id.display_name],
-            'version': origin._qorlia_invoice_draft_version(),
+        return {'id': origin.id or False, 'name': origin.name or False, 'move_type': document.move_type,
+            'company': [document.company_id.id, document.company_id.display_name],
+            'version': origin._qorlia_invoice_draft_version() if origin else source_version,
             'values': reader(document, HEADERS),
             'lines': [{'id': line._origin.id or False, 'values': reader(line, ITEMS),
                        'totals': reader(line, LINE_TOTALS)} for line in items],
@@ -149,8 +176,12 @@ class InvoiceDraft(models.Model):
         if (not isinstance(payload, dict) or set(payload) != {'id', 'version', 'values', 'lines'}
                 or not isinstance(payload.get('lines'), list) or len(payload['lines']) > 500):
             raise ValidationError('Invalid invoice draft. Reload the editor.')
-        invoice = self._qorlia_draft_invoice(payload['id'], 'write', lock)
-        if payload['version'] != invoice._qorlia_invoice_draft_version():
+        version = self._qorlia_new_invoice_version() if payload['id'] is False else False
+        invoice = (self._qorlia_new_invoice() if payload['id'] is False
+                   else self._qorlia_draft_invoice(payload['id'], 'write', lock))
+        if payload['id'] is not False:
+            version = invoice._qorlia_invoice_draft_version()
+        if payload['version'] != version:
             raise UserError('The draft or its accounting configuration changed. Reload before editing.')
         values = self._qorlia_invoice_draft_values(self, payload['values'], HEADERS)
         if invoice.posted_before and values['journal_id'] != invoice.journal_id.id:
@@ -206,13 +237,15 @@ class InvoiceDraft(models.Model):
                 raise ValidationError('Select sales taxes for this invoice company and tax country.')
 
     @api.model
-    def qorlia_invoice_draft_load(self, invoice_id):
-        invoice = self._qorlia_draft_invoice(invoice_id)
-        return self._qorlia_invoice_draft_snapshot(invoice)
+    def qorlia_invoice_draft_load(self, invoice_id=False):
+        # Native onchange clears virtual-record caches. Compute defaults/version before building the form.
+        version = self._qorlia_new_invoice_version() if invoice_id is False else False
+        invoice = self._qorlia_new_invoice() if invoice_id is False else self._qorlia_draft_invoice(invoice_id)
+        return self._qorlia_invoice_draft_snapshot(invoice, source_version=version)
 
     @api.model
     def qorlia_invoice_draft_choices(self, invoice_id, kind, search='', product_id=False):
-        invoice = self._qorlia_draft_invoice(invoice_id)
+        invoice = self._qorlia_new_invoice() if invoice_id is False else self._qorlia_draft_invoice(invoice_id)
         if not isinstance(search, str) or len(search) > 200:
             raise ValidationError('Enter a shorter invoice search.')
         company = invoice.company_id.id
@@ -259,6 +292,8 @@ class InvoiceDraft(models.Model):
     @api.model
     def qorlia_invoice_draft_preview(self, payload, change=False):
         invoice, values = self._qorlia_invoice_draft_payload(payload)
+        origin = invoice._origin
+        rounding = invoice.round_off_amount
         if change is not False and (not isinstance(change, dict) or set(change) - {'field', 'line'}
                                    or not isinstance(change.get('field'), str)):
             raise ValidationError('Invalid invoice draft change.')
@@ -270,10 +305,10 @@ class InvoiceDraft(models.Model):
                 raise ValidationError('Invalid invoice item change.')
             line = payload['lines'][index]
             item = self._qorlia_invoice_draft_values(self.env['account.move.line'], line['values'], ITEMS)
-            item['move_id'] = {**values, 'id': invoice.id}
-            origin = self.env['account.move.line'].browse(line['id']) if line['id'] else self.env['account.move.line']
-            result = origin.onchange(item, [change['field']], {name: '1' for name in ITEMS + LINE_TOTALS})
-            item.update(helper._qorlia_from_onchange(origin, result.get('value', {}), ITEMS))
+            item['move_id'] = {**values, 'id': origin.id or False}
+            line_origin = self.env['account.move.line'].browse(line['id']) if line['id'] else self.env['account.move.line']
+            result = line_origin.onchange(item, [change['field']], {name: '1' for name in ITEMS + LINE_TOTALS})
+            item.update(helper._qorlia_from_onchange(line_origin, result.get('value', {}), ITEMS))
             item.pop('move_id')
             command = values['invoice_line_ids'][index]
             values['invoice_line_ids'][index] = (command[0], command[1], item)
@@ -284,12 +319,12 @@ class InvoiceDraft(models.Model):
             spec = {name: '1' for name in HEADERS + TOTALS + ('invoice_line_ids',)}
             spec.update({'invoice_line_ids.' + name: '1' for name in ITEMS + LINE_TOTALS})
             changed = [change['field']] if 'line' not in change else ['invoice_line_ids']
-            result = invoice.onchange(values, changed, spec)
+            result = origin.onchange(values, changed, spec)
             values.update(helper._qorlia_from_onchange(self, result.get('value', {}), HEADERS + ('invoice_line_ids',)))
             warning = warning or result.get('warning', False)
-        document = self.new(values, origin=invoice)
+        document = self.new(values, origin=origin)
         # Native computes use the inherited rounding, not a caller-supplied adjustment.
-        document.round_off_amount = invoice.round_off_amount
+        document.round_off_amount = rounding
         document.update({'invoice_line_ids': [Command.delete(line.id)
                          for line in document.invoice_line_ids.filtered('qorlia_adjustment_kind')]})
         self._qorlia_native_draft_totals(document)
@@ -297,8 +332,14 @@ class InvoiceDraft(models.Model):
         commands = [Command.create(value) for value in document._qorlia_adjustment_values()]
         document.update({'invoice_line_ids': commands})
         self._qorlia_native_draft_totals(document)
-        self._qorlia_validate_invoice_draft(document)
-        snapshot = self._qorlia_invoice_draft_snapshot(document, warning)
+        try:
+            self._qorlia_validate_invoice_draft(document)
+        except ValidationError as error:
+            if payload['id'] is not False:
+                raise
+            return self._qorlia_invoice_draft_snapshot(document,
+                warning or {'title': 'Complete the invoice draft', 'message': str(error)}, payload['version'])
+        snapshot = self._qorlia_invoice_draft_snapshot(document, warning, payload['version'])
         snapshot['review_version'] = _digest({'snapshot': {key: snapshot[key] for key in ('id', 'version', 'values', 'lines', 'totals')},
                                             'configuration': self._qorlia_invoice_draft_configuration(document)})
         return snapshot
@@ -313,9 +354,11 @@ class InvoiceDraft(models.Model):
         document._compute_invoice_total()
 
     @api.model
-    def qorlia_invoice_draft_save(self, payload, review_version):
+    def qorlia_invoice_draft_save(self, payload, review_version, request_key=False):
         if not isinstance(review_version, str) or len(review_version) != 64:
             raise ValidationError('Review the native draft calculation before saving.')
+        if isinstance(payload, dict) and payload.get('id') is False:
+            return self._qorlia_create_invoice_draft(payload, review_version, request_key)
         invoice, _ = self._qorlia_invoice_draft_payload(payload, lock=True)
         preview = self.qorlia_invoice_draft_preview(payload)
         if preview['review_version'] != review_version:
@@ -348,4 +391,53 @@ class InvoiceDraft(models.Model):
         if invoice._get_unbalanced_moves({'records': invoice}) or any(
                 not invoice.currency_id.is_zero(after['totals'][name] - preview['totals'][name]) for name in TOTALS):
             raise UserError('Native Billing changed the reviewed calculation or produced an unbalanced draft. Nothing was saved.')
+        return after
+
+    def _qorlia_create_invoice_draft(self, payload, review_version, request_key):
+        self.check_access_rights('create')
+        if not self.env.user.has_group('account.group_account_invoice'):
+            raise AccessError('Your Billing account cannot create customer invoices.')
+        try:
+            if str(uuid.UUID(request_key)) != request_key:
+                raise ValueError()
+        except (ValueError, TypeError, AttributeError):
+            raise ValidationError('A valid invoice save request identifier is required.')
+        # Serialize uncertain-response retries. The database constraint also prevents duplicate creations.
+        lock_key = int.from_bytes(hashlib.sha256(('invoice:' + request_key).encode()).digest()[:8], 'big', signed=True)
+        self.env.cr.execute('SELECT pg_advisory_xact_lock(%s)', [lock_key])
+        try:
+            digest = _digest({'payload': payload, 'review': review_version})
+        except (ValueError, TypeError):
+            raise ValidationError('Use valid finite invoice values before saving.')
+        existing = self.search([('qorlia_invoice_creation_key', '=', request_key)], limit=1)
+        if existing:
+            if (existing.create_uid != self.env.user or existing.company_id != self.env.company
+                    or existing.qorlia_invoice_creation_hash != digest):
+                raise ValidationError('This save identifier belongs to another invoice request.')
+            return self._qorlia_invoice_draft_snapshot(self._qorlia_draft_invoice(existing.id))
+        self._qorlia_invoice_draft_payload(payload)
+        preview = self.qorlia_invoice_draft_preview(payload)
+        if preview.get('review_version') != review_version:
+            raise UserError('This new invoice review changed. Recalculate before saving.')
+        values = self._qorlia_invoice_draft_values(self, preview['values'], HEADERS)
+        values.update({'company_id': self.env.company.id, 'move_type': 'out_invoice', 'state': 'draft',
+            'qorlia_invoice_creation_key': request_key, 'qorlia_invoice_creation_hash': digest,
+            'invoice_line_ids': [Command.create(self._qorlia_invoice_draft_values(
+                self.env['account.move.line'], line['values'], ITEMS)) for line in preview['lines']]})
+        try:
+            with self.env.cr.savepoint():
+                invoice = self.create(values)
+        except UniqueViolation as error:
+            if error.diag.constraint_name != 'account_move_qorlia_invoice_creation_key_unique':
+                raise
+            # Odoo retries SQLSTATE 40001 with a fresh snapshot; a Python-only error has no pgcode.
+            self.env.cr.execute("DO $$ BEGIN RAISE EXCEPTION 'Concurrent invoice creation' USING ERRCODE = '40001'; END $$")
+        invoice.check_access_rule('create')
+        invoice._qorlia_prepare_adjustment_lines()
+        invoice.invalidate_recordset()
+        invoice.line_ids.invalidate_recordset()
+        after = self._qorlia_invoice_draft_snapshot(invoice)
+        if invoice._get_unbalanced_moves({'records': invoice}) or any(
+                not invoice.currency_id.is_zero(after['totals'][name] - preview['totals'][name]) for name in TOTALS):
+            raise UserError('Native Billing changed the reviewed calculation or produced an unbalanced draft. Nothing was created.')
         return after

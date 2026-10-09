@@ -534,7 +534,7 @@ export interface InvoiceDraftLine {
 }
 
 export interface InvoiceDraft {
-  id: number;
+  id: number | false;
   name: string | false;
   move_type: 'out_invoice' | 'out_refund';
   company: [number, string];
@@ -617,7 +617,7 @@ const dateOrFalse = (value: unknown) =>
 
 function checkedInvoiceDraft(
   value: InvoiceDraft,
-  invoiceId: number,
+  invoiceId: number | false,
   reviewed = false,
 ): InvoiceDraft {
   const header = value?.values;
@@ -635,14 +635,16 @@ function checkedInvoiceDraft(
   if (
     !value ||
     !validId(value.id) ||
-    !value.id ||
     value.id !== invoiceId ||
+    (invoiceId === false && value.move_type !== 'out_invoice') ||
     !stringOrFalse(value.name) ||
     !['out_invoice', 'out_refund'].includes(value.move_type) ||
     !value.company ||
     !validRelation(value.company) ||
     !hashVersion(value.version) ||
-    (reviewed && !hashVersion(value.review_version)) ||
+    (reviewed &&
+      !hashVersion(value.review_version) &&
+      !(invoiceId === false && value.warning)) ||
     (value.review_version !== undefined &&
       !hashVersion(value.review_version)) ||
     !header ||
@@ -753,7 +755,7 @@ const invoiceDraftPayload = ({ id, version, values, lines }: InvoiceDraft) => ({
   values,
   lines,
 });
-export const getInvoiceDraft = async (invoiceId: number) =>
+export const getInvoiceDraft = async (invoiceId: number | false) =>
   checkedInvoiceDraft(
     await invoiceDraftCall<InvoiceDraft>('qorlia_invoice_draft_load', {
       invoice_id: invoiceId,
@@ -772,19 +774,42 @@ export const previewInvoiceDraft = async (
     draft.id,
     true,
   );
-export const saveInvoiceDraft = async (draft: InvoiceDraft) => {
+export const saveInvoiceDraft = async (
+  draft: InvoiceDraft,
+  requestKey?: string,
+) => {
   if (!hashVersion(draft.review_version))
     throw new Error('Recalculate this draft before saving.');
-  return checkedInvoiceDraft(
-    await invoiceDraftCall<InvoiceDraft>('qorlia_invoice_draft_save', {
+  if (
+    draft.id === false &&
+    (!requestKey ||
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+        requestKey,
+      ))
+  )
+    throw new Error('A valid invoice save request identifier is required.');
+  const result = await invoiceDraftCall<InvoiceDraft>(
+    'qorlia_invoice_draft_save',
+    {
       payload: invoiceDraftPayload(draft),
       review_version: draft.review_version,
-    }),
-    draft.id,
+      ...(draft.id === false ? { request_key: requestKey } : {}),
+    },
   );
+  if (
+    draft.id === false &&
+    (!result?.id ||
+      !validId(result.id) ||
+      result.move_type !== 'out_invoice' ||
+      result.company?.[0] !== draft.company[0])
+  )
+    throw new Error(
+      'Invalid new invoice response. Check the invoice list before starting again.',
+    );
+  return checkedInvoiceDraft(result, draft.id === false ? result.id : draft.id);
 };
 export const getInvoiceDraftChoices = async (
-  invoiceId: number,
+  invoiceId: number | false,
   kind: InvoiceDraftChoiceKind,
   search: string,
   productId: number | false = false,

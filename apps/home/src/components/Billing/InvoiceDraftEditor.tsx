@@ -17,7 +17,7 @@ import { DraftChoiceInput } from './DraftChoiceInput';
 type Change = { field: string; line?: number };
 type Props = {
   uid: number;
-  invoiceId: number;
+  invoiceId: number | false;
   close: () => void;
   saved: (draft: InvoiceDraft) => void;
   reconnect: () => void;
@@ -73,8 +73,10 @@ function InvoiceForm({
   const [pending, setPending] = useState<Change | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [discard, setDiscard] = useState<'close' | 'reconnect' | null>(null);
+  const [unconfirmedSave, setUnconfirmedSave] = useState(false);
+  const creationKey = useRef<string | null>(null);
   const lineKeys = useRef(initial.lines.map(() => crypto.randomUUID()));
-  const disabled = busy || !draft.can_edit;
+  const disabled = busy || unconfirmedSave || !draft.can_edit;
   const requestReconnect = () => {
     if (busyRef.current) return;
     if (dirty) setDiscard('reconnect');
@@ -94,14 +96,14 @@ function InvoiceForm({
   const currency =
     label('res.currency', draft.values.currency_id) || 'Currency not set';
   const changed = (next: InvoiceDraft, change: Change) => {
-    if (busyRef.current || !draft.can_edit) return;
+    if (busyRef.current || unconfirmedSave || !draft.can_edit) return;
     setDraft({ ...next, review_version: undefined });
     setPending(change);
     setDirty(true);
     setError(null);
   };
   const calculate = async (next: InvoiceDraft, change: Change) => {
-    if (busyRef.current || !draft.can_edit) return;
+    if (busyRef.current || unconfirmedSave || !draft.can_edit) return;
     busyRef.current = true;
     // Preserve the user's entries even when native validation rejects this preview.
     setDraft({ ...next, review_version: undefined });
@@ -245,10 +247,16 @@ function InvoiceForm({
     setBusy(true);
     setError(null);
     try {
-      const result = await saveInvoiceDraft(draft);
+      if (draft.id === false && !creationKey.current)
+        creationKey.current = crypto.randomUUID();
+      const result =
+        draft.id === false
+          ? await saveInvoiceDraft(draft, creationKey.current!)
+          : await saveInvoiceDraft(draft);
       setDirty(false);
       saved(result);
     } catch (failure) {
+      if (draft.id === false) setUnconfirmedSave(true);
       setError(
         failure instanceof Error
           ? failure
@@ -278,7 +286,9 @@ function InvoiceForm({
         <div role="alert">
           <h3>Discard unsaved invoice changes?</h3>
           <p>
-            The unsaved entries in this editor will be lost.
+            {unconfirmedSave
+              ? 'The save result is unconfirmed. This invoice may already exist. Check the invoice list before creating another one.'
+              : 'The unsaved entries in this editor will be lost.'}
             {discard === 'reconnect'
               ? ' Reconnecting opens Billing sign-in and reloads the saved draft.'
               : ''}
@@ -303,8 +313,10 @@ function InvoiceForm({
           <h2>{invoiceName(draft)}</h2>
           <p>{draft.company[1]}</p>
           <p>
-            Save updates this draft only. Posting, payments and credit
-            allocation are separate actions.
+            {draft.id === false
+              ? 'Save creates a new draft only.'
+              : 'Save updates this draft only.'}{' '}
+            Posting, payments and credit allocation are separate actions.
           </p>
           {!draft.can_edit ? (
             <p role="alert">
@@ -320,6 +332,18 @@ function InvoiceForm({
               {error instanceof BillingSessionExpired ? (
                 <Button onClick={requestReconnect}>Reconnect Billing</Button>
               ) : null}
+            </div>
+          ) : null}
+          {unconfirmedSave ? (
+            <div role="alert">
+              <p>
+                The save did not return a confirmed result. Entries are locked
+                to prevent a duplicate invoice. Retry the same save request, or
+                check the invoice list before starting again.
+              </p>
+              <Button disabled={busy} onClick={() => void save()}>
+                Retry same invoice save
+              </Button>
             </div>
           ) : null}
           {draft.warning ? (

@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 import copy
+import uuid
 
 from odoo import Command, fields
 from odoo.exceptions import AccessError, UserError, ValidationError
@@ -39,6 +40,123 @@ class InvoiceDraftTest(TransactionCase):
 
     def save(self, preview):
         return self.moves.qorlia_invoice_draft_save(self.payload(preview), preview['review_version'])
+
+    def new_preview(self):
+        payload = self.payload(self.moves.qorlia_invoice_draft_load())
+        payload['values'].update(partner_id=self.customer.id, invoice_date=str(fields.Date.today()))
+        payload['lines'] = [{'id': False, 'values': {'product_id': self.product.id,
+            'name': 'QorliaQA Standalone invoice service', 'display_type': 'product', 'sequence': 10,
+            'account_id': self.income.id, 'product_uom_id': self.product.uom_id.id,
+            'quantity': 2, 'price_unit': 700, 'discount': 0,
+            'tax_ids': self.tax.ids, 'analytic_distribution': False}}]
+        return self.moves.qorlia_invoice_draft_preview(payload, {'field': 'invoice_line_ids'})
+
+    def test_new_invoice_load_and_incomplete_preview_are_readonly(self):
+        count = self.moves.search_count([])
+        lines = self.env['account.move.line'].search_count([])
+        loaded = self.moves.qorlia_invoice_draft_load()
+        self.assertIs(loaded['id'], False)
+        self.assertEqual(loaded['move_type'], 'out_invoice')
+        self.assertEqual(loaded['company'][0], self.env.company.id)
+        self.assertTrue(loaded['can_edit'])
+        payload = self.payload(loaded)
+        payload['values']['partner_id'] = self.customer.id
+        preview = self.moves.qorlia_invoice_draft_preview(payload, {'field': 'partner_id'})
+        self.assertEqual(preview['values']['partner_id'], self.customer.id)
+        self.assertNotIn('review_version', preview)
+        self.assertTrue(preview['warning'])
+        self.assertEqual(self.moves.search_count([]), count)
+        self.assertEqual(self.env['account.move.line'].search_count([]), lines)
+
+    def test_new_invoice_creation_and_identical_retry_create_one_draft(self):
+        preview = self.new_preview()
+        count = self.moves.search_count([])
+        payments = self.env['account.payment'].search_count([])
+        request_key = str(uuid.uuid4())
+        saved = self.moves.qorlia_invoice_draft_save(self.payload(preview), preview['review_version'], request_key)
+        repeated = self.moves.qorlia_invoice_draft_save(self.payload(preview), preview['review_version'], request_key)
+        self.assertEqual(saved['id'], repeated['id'])
+        self.assertEqual(saved['totals']['invoice_total'], 1470)
+        self.assertEqual(self.moves.search_count([]), count + 1)
+        invoice = self.moves.browse(saved['id'])
+        self.assertEqual(invoice.state, 'draft')
+        self.assertFalse(invoice.invoice_line_ids.sale_line_ids)
+        self.assertFalse(invoice._get_unbalanced_moves({'records': invoice}))
+        self.assertEqual(self.env['account.payment'].search_count([]), payments)
+        altered = self.payload(preview)
+        altered['values']['ref'] = 'QorliaQA different request'
+        with self.assertRaises(ValidationError):
+            self.moves.qorlia_invoice_draft_save(altered, preview['review_version'], request_key)
+
+    def test_new_invoice_product_onchange_and_manual_note_discount(self):
+        preview = self.new_preview()
+        payload = self.payload(preview)
+        payload['lines'][0]['values'].update(price_unit=1, product_uom_id=False)
+        preview = self.moves.qorlia_invoice_draft_preview(payload, {'field': 'product_id', 'line': 0})
+        self.assertEqual(preview['lines'][0]['values']['price_unit'], 700)
+        self.assertEqual(preview['lines'][0]['values']['product_uom_id'], self.product.uom_id.id)
+        payload = self.payload(preview)
+        payload['lines'][0]['values'].update(product_id=False, name='QorliaQA Manual service')
+        note = copy.deepcopy(payload['lines'][0]['values'])
+        note.update(display_type='line_note', name='QorliaQA Standalone note', account_id=False,
+                    product_uom_id=False, quantity=0, price_unit=0, tax_ids=[])
+        payload['lines'].append({'id': False, 'values': note})
+        payload['values'].update(discount_type='percentage', discount_percentage=10,
+                                 disc_acc_id=self.adjustment.id)
+        preview = self.moves.qorlia_invoice_draft_preview(payload, {'field': 'invoice_line_ids'})
+        saved = self.moves.qorlia_invoice_draft_save(self.payload(preview), preview['review_version'], str(uuid.uuid4()))
+        self.assertEqual(saved['totals']['invoice_total'], 1323)
+        self.assertEqual(len(saved['lines']), 2)
+        self.assertEqual(len(saved['generated_adjustments']), 1)
+
+    def test_new_invoice_rejects_invalid_key_stale_config_and_foreign_line(self):
+        preview = self.new_preview()
+        count = self.moves.search_count([])
+        for key in (False, 'not-a-uuid', 1):
+            with self.assertRaises(ValidationError):
+                self.moves.qorlia_invoice_draft_save(self.payload(preview), preview['review_version'], key)
+        with self.assertRaises(UserError):
+            self.moves.qorlia_invoice_draft_save(self.payload(preview), '0' * 64, str(uuid.uuid4()))
+        payload = self.payload(preview)
+        payload['lines'][0]['id'] = self.invoice().invoice_line_ids.id
+        with self.assertRaises(ValidationError):
+            self.moves.qorlia_invoice_draft_preview(payload)
+        self.tax.amount = 6
+        with self.assertRaises(UserError):
+            self.moves.qorlia_invoice_draft_save(self.payload(preview), preview['review_version'], str(uuid.uuid4()))
+        self.assertEqual(self.moves.search_count([]), count + 1)
+
+    def test_new_invoice_customer_and_company_type_injections_are_rejected(self):
+        preview = self.new_preview()
+        for field, value in (('company_id', self.env.company.id), ('move_type', 'out_refund'), ('state', 'posted')):
+            payload = self.payload(preview)
+            payload['values'][field] = value
+            with self.assertRaises(ValidationError):
+                self.moves.qorlia_invoice_draft_preview(payload)
+        payload = self.payload(preview)
+        payload['values']['partner_id'] = False
+        incomplete = self.moves.qorlia_invoice_draft_preview(payload, {'field': 'partner_id'})
+        self.assertNotIn('review_version', incomplete)
+        with self.assertRaises(UserError):
+            self.moves.qorlia_invoice_draft_save(self.payload(incomplete), preview['review_version'], str(uuid.uuid4()))
+
+    def test_new_invoice_creation_obeys_native_readonly_and_cashier_permissions(self):
+        for group, allowed in (('account.group_account_readonly', False), ('account.group_account_invoice', True)):
+            user = self.env['res.users'].with_context(no_reset_password=True).create({
+                'name': 'QorliaQA Invoice creator', 'login': 'qorliaqa-creator-' + str(uuid.uuid4()),
+                'groups_id': [Command.set(self.env.ref(group).ids)], 'company_id': self.env.company.id,
+                'company_ids': [Command.set(self.env.company.ids)]})
+            if allowed:
+                moves = self.moves.with_user(user)
+                payload = self.payload(moves.qorlia_invoice_draft_load())
+                template = self.new_preview()
+                payload.update(values=template['values'], lines=template['lines'])
+                preview = moves.qorlia_invoice_draft_preview(payload)
+                saved = moves.qorlia_invoice_draft_save(self.payload(preview), preview['review_version'], str(uuid.uuid4()))
+                self.assertEqual(self.moves.browse(saved['id']).create_uid, user)
+            else:
+                with self.assertRaises(AccessError):
+                    self.moves.with_user(user).qorlia_invoice_draft_load()
 
     def test_preview_is_readonly_and_save_recalculates_native_taxes(self):
         invoice = self.invoice()

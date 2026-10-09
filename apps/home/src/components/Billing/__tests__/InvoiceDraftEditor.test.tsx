@@ -34,7 +34,7 @@ jest.mock('../DraftChoiceInput', () => ({
 const saved = jest.fn();
 const close = jest.fn();
 const reconnect = jest.fn();
-const show = () =>
+const show = (invoiceId: number | false = 7) =>
   render(
     <QueryClientProvider
       client={
@@ -43,7 +43,7 @@ const show = () =>
     >
       <InvoiceDraftEditor
         uid={3}
-        invoiceId={7}
+        invoiceId={invoiceId}
         saved={saved}
         close={close}
         reconnect={reconnect}
@@ -241,5 +241,61 @@ describe('Native invoice draft editor', () => {
     expect(previewInvoiceDraft).toHaveBeenCalledWith(expect.any(Object), {
       field: 'auto_post',
     });
+  });
+  it('keeps new invoice saves disabled while native preview is incomplete', async () => {
+    (getInvoiceDraft as jest.Mock).mockResolvedValue({
+      ...invoiceDraftFixture(),
+      id: false,
+      lines: [],
+    });
+    (previewInvoiceDraft as jest.Mock).mockImplementation(async (draft) => ({
+      ...draft,
+      warning: { message: 'Add a service before saving.' },
+    }));
+    show(false);
+    fireEvent.click(await screen.findByRole('button', { name: 'Customer' }));
+    await screen.findByText('Add a service before saving.');
+    expect(
+      screen.getByRole('heading', { name: 'New invoice' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Save draft invoice' }),
+    ).toBeDisabled();
+    expect(saveInvoiceDraft).not.toHaveBeenCalled();
+  });
+  it('locks an unconfirmed creation and explicitly retries the identical payload with the same key', async () => {
+    (getInvoiceDraft as jest.Mock).mockResolvedValue({
+      ...invoiceDraftFixture(),
+      id: false,
+    });
+    (saveInvoiceDraft as jest.Mock).mockRejectedValueOnce(
+      new Error('Connection lost after save'),
+    );
+    show(false);
+    const reference = await screen.findByLabelText('Reference');
+    fireEvent.change(reference, { target: { value: 'QorliaQA Creation' } });
+    fireEvent.blur(reference);
+    const save = screen.getByRole('button', { name: 'Save draft invoice' });
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(save);
+    await screen.findByText('Connection lost after save');
+    expect(reference).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Add product or service' }),
+    ).toBeDisabled();
+    expect(saveInvoiceDraft).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Back to invoices' }));
+    expect(
+      screen.getByText(/This invoice may already exist/),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Retry same invoice save' }),
+    );
+    await waitFor(() => expect(saved).toHaveBeenCalled());
+    expect((saveInvoiceDraft as jest.Mock).mock.calls[1]).toEqual(
+      (saveInvoiceDraft as jest.Mock).mock.calls[0],
+    );
+    expect((saveInvoiceDraft as jest.Mock).mock.calls[0][0].id).toBe(false);
   });
 });

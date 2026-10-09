@@ -35,7 +35,7 @@ export function DraftChoiceInput({
   onChange: (value: number | false) => void;
   reconnect: () => void;
 } & (
-  | { invoiceId: number; kind: InvoiceDraftChoiceKind }
+  | { invoiceId: number | false; kind: InvoiceDraftChoiceKind }
   | { invoiceId?: undefined; kind: DraftChoiceKind }
 )) {
   const [search, setSearch] = useState('');

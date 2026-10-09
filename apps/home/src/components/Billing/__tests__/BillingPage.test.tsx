@@ -120,6 +120,18 @@ describe('Billing workspace', () => {
     (getChargeOrderLines as jest.Mock).mockResolvedValue([]);
     (getInvoiceDraftChoices as jest.Mock).mockResolvedValue([]);
   });
+  it('opens new customer invoice creation only within the signed-in Billing workspace', async () => {
+    (getInvoiceDraft as jest.Mock).mockResolvedValue({
+      ...invoiceDraftFixture(),
+      id: false,
+      lines: [],
+    });
+    show();
+    fireEvent.click(await screen.findByRole('button', { name: 'New invoice' }));
+    await screen.findByRole('heading', { name: 'New invoice' });
+    expect(getInvoiceDraft).toHaveBeenCalledWith(false);
+    expect(saveInvoiceDraft).not.toHaveBeenCalled();
+  });
   it('opens existing invoice editing inside the signed-in workspace and refreshes after saving', async () => {
     Object.defineProperty(crypto, 'randomUUID', {
       configurable: true,

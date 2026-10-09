@@ -3,6 +3,30 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+## Standalone customer invoice creation
+
+The signed-in Invoices panel's New invoice action uses the same editor and four
+named native methods below with `invoice_id: false`. The native form determines
+defaults and product/customer onchanges. Incomplete previews return a warning
+without a reviewed-save token. Valid saves create an unposted customer invoice,
+subject to native create ACLs and company rules, reviewed totals and balance.
+
+New saves require a canonical UUID `request_key`. Its locked request digest and
+database uniqueness make identical retries return the same draft. Reusing a key
+for changed values, another user or company is rejected. PostgreSQL serialization
+retry through native Odoo requests resolves concurrent repeatable-read snapshots.
+The UI never automatically retries a write: an unconfirmed creation freezes
+entries and provides an explicit identical retry. Closing/reconnecting warns to
+check existing invoices before starting another creation.
+
+All 92 native tests and 132 Home tests pass, alongside seven gateway/webpack
+checks. Actual concurrent HTTP saves created one draft #4005. Browser creation
+and full reload verified #4038 at INR 1,150 with quantity 2, native unit price
+INR 500, reference and note. Independent reads confirm a balanced draft journal,
+no attached payment and retained protected bill amounts. Staging's 15% tax is
+synthetic configuration, not an approved Indian healthcare tax rule. Production
+and the shared demo remain unchanged.
+
 ## Existing invoice and credit-note draft editing
 
 `account.move.qorlia_invoice_draft_load`, `preview`, `save` and `choices` are
@@ -16,8 +40,9 @@ Qorlia controls and displays native preview totals before enabling save.
 Hosted save/reload verified synthetic draft #2735 at INR 750 with reference/note
 and draft credit #1808 at INR 250. Native read-back confirms both remain drafts
 with balanced journals, no new payments and unchanged original/unrelated bills.
-Home has 126 passing tests, with 52 shared API/authentication tests and seven
-gateway/webpack checks. The native adapter suite has 86 successful tests.
+That earlier checkpoint had 126 Home tests, 52 shared API/authentication tests,
+seven gateway/webpack checks and 86 native adapter tests. The creation checkpoint
+above records the latest expanded Home/native test suites.
 
 The adapter uses native onchanges and the pinned Odoo tax-total form widget for
 virtual preview. A virtual invoice's old journal lines must not supply its
@@ -43,8 +68,7 @@ Saving a draft does not post it, issue a refund, create a payment or return stoc
 Native scheduled posting settings remain explicit document fields, not a promise
 that a save immediately affects a posted customer balance.
 
-This adapter does not yet create standalone new invoice drafts, edit arbitrary
-journal entries or cover native print/email/chatter. Those remain parity work.
+Arbitrary journal editing and native print/email/chatter remain parity work.
 
 ## Discount and rounding accounting
 
@@ -164,7 +188,7 @@ period checks are not bypassed. Reviews above 1,000 connected journal lines or
 The React UI requires a separate review/confirmation, shows reset consequences
 and current allocations, and never retries uncertain writes. Reset/cancel does
 not issue a refund, transfer money, return stock or cancel a sales order.
-Editable draft corrections remain unfinished.
+Editable draft corrections are covered by the draft editor described above.
 
 ## Reviewed credit-note creation and reversal
 
@@ -192,7 +216,7 @@ duplicate saves/closing during writes and requires read-back after uncertain
 responses. Drafts have distinct record-ID labels until Odoo assigns a number.
 More than 100 linked credits or 1,000 connected journal lines requires native
 Billing review, rather than truncated evidence. Partial credit editing and
-replacement draft editing are separate unfinished workflows.
+replacement draft editing are covered by the draft editor described above.
 
 ## Verification and scope
 
@@ -226,6 +250,7 @@ Tests require an isolated company with a chart, shop and synthetic data.
 Provider/check/PDC payments, statement reconciliation,
 partial/down-payment invoice allocation, stock/batch acceptance, POS, printouts
 and Clinical-to-ERP synchronization still require integration and end-to-end
-acceptance. Editable invoice/credit draft corrections remain unfinished.
+acceptance. Existing/new invoice and editable credit-draft workflows have the
+selected acceptance evidence above, not full native-form parity for every case.
 Selected native and browser checks are not full Billing acceptance. Do not use
 this review build for real patients or accounting.
