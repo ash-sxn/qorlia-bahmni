@@ -43,16 +43,43 @@ Keep a database and addon backup. If rolling back the frontend, retain the
 accounting adapter on databases containing posted adjustment lines: reverting
 the old invoice-total formula would subtract those discounts twice.
 
+## Reviewed payment registration
+
+The three named `account.move.qorlia_payment_*` actions load, preview and record
+the native `account.payment.register` wizard. They keep its computed journal,
+method, date, currency, recipient bank, difference settlement and early-discount
+behavior. Load/preview do not persist a wizard or payment. Recording locks the
+invoice and receivable lines, rejects a stale invoice/configuration snapshot,
+uses native creation/posting/reconciliation and checks the payment ledger.
+Native access controls remain in force, without `sudo` or caller accounting
+context. Simultaneous duplicate requests cannot create a second payment against
+the same reviewed balance. The React form never automatically retries a write.
+
+Manual full/partial receipts, credit-note disbursement and difference-account
+settlement are supported. Excess stays as unapplied payment credit, not an
+automatic allocation to another invoice. Native invoice status is not bank
+clearance: Community Odoo can report `paid` with an unmatched bank payment.
+History exposes native `is_matched` separately for bank journals.
+
+Provider transactions, checks and post-dated checks require additional native
+workflows and are explicitly unavailable in this form. Recording a payment
+does not charge a card or transfer money from a bank. Customer bank-statement
+matching and credit allocation controls are not implemented in the React UI.
+
 ## Verification and scope
 
 The `tests` package covers native draft/order workflows and customer posting,
 including fixed/percentage discounts, both credit-note signs, upward/downward
 rounding, installments, foreign currency, reversal, reset/repost, invalid
 configuration, stale requests, unauthorized access and unbalanced history.
+Payment checks also cover partial/full receipts, refund direction, installments,
+currency conversion, write-off accounting, excess credit, ordinary cashier
+rights, separate bank matching and rejection of stale/repeated requests.
 Tests require an isolated company with a chart, shop and synthetic data.
 
-Payments, reconciliation, refund disbursement, partial/down-payment invoice
-allocation, stock/batch acceptance, POS and Clinical-to-ERP synchronization still
+Provider/check/PDC payments, statement reconciliation, credit allocation,
+partial/down-payment invoice allocation, stock/batch acceptance, POS, printouts
+and Clinical-to-ERP synchronization still
 require integration and end-to-end acceptance. Native reversal/reset tests are
 not proof that those actions are available in the React UI. Do not use this review
 build for real patients or accounting.

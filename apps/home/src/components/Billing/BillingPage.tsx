@@ -26,6 +26,7 @@ import {
 } from './billingService';
 import { ChargeOrdersPanel } from './ChargeOrdersPanel';
 import { InvoiceWorkflowModal } from './InvoiceWorkflowModal';
+import { PaymentWorkflowModal } from './PaymentWorkflowModal';
 
 const label = (value: string) => value.replaceAll('_', ' ');
 const invoiceName = (invoice: Invoice) =>
@@ -47,6 +48,7 @@ export function BillingPage() {
   const [selected, setSelected] = useState<Invoice | null>(null);
   const [tab, setTab] = useState(0);
   const [reviewInvoice, setReviewInvoice] = useState<number | null>(null);
+  const [paymentInvoice, setPaymentInvoice] = useState<number | null>(null);
   const [invoiceNotice, setInvoiceNotice] = useState('');
   const session = useQuery({
     queryKey: ['billing', 'session'],
@@ -104,6 +106,7 @@ export function BillingPage() {
       queryClient.setQueryData(['billing', 'session'], result);
       setSelected(null);
       setReviewInvoice(null);
+      setPaymentInvoice(null);
       setInvoiceNotice('');
       setOffset(0);
     } catch (error) {
@@ -142,8 +145,9 @@ export function BillingPage() {
         </p>
         <p className={styles.note}>
           Order confirmation follows native Billing settings and may post
-          invoices or deliver stock. Payments are not collected here. Clinical
-          and Billing have separate test datasets. No patient or order
+          invoices or deliver stock. Manual payment recording uses native
+          Billing reconciliation; online payments are not collected here.
+          Clinical and Billing have separate test datasets. No patient or order
           synchronization is enabled between them yet.
         </p>
         {session.isFetching ? (
@@ -205,6 +209,7 @@ export function BillingPage() {
                     queryClient.removeQueries({ queryKey: ['billing'] });
                     setSelected(null);
                     setReviewInvoice(null);
+                    setPaymentInvoice(null);
                     setInvoiceNotice('');
                     await session.refetch();
                   } catch {
@@ -457,6 +462,12 @@ export function BillingPage() {
                       >
                         Review invoice posting
                       </Button>
+                      <Button
+                        kind="tertiary"
+                        onClick={() => setPaymentInvoice(selected.id)}
+                      >
+                        Review payments
+                      </Button>
                       {lines.isFetching ? (
                         <p role="status">Loading bill details...</p>
                       ) : lines.isError ? (
@@ -555,6 +566,32 @@ export function BillingPage() {
                   setSelected(null);
                   setInvoiceNotice(
                     `${invoice.name || 'Invoice'} updated. Current status: ${invoice.state}. Open amount: ${money(invoice.open_amount, invoice.currency[1])}. No payment was recorded.`,
+                  );
+                  void queryClient.invalidateQueries({
+                    predicate: (query) =>
+                      query.queryKey[0] === 'billing' &&
+                      query.queryKey[1] !== 'session',
+                  });
+                }}
+              />
+            ) : null}
+            {paymentInvoice !== null ? (
+              <PaymentWorkflowModal
+                uid={session.data!.uid as number}
+                invoiceId={paymentInvoice}
+                close={() => setPaymentInvoice(null)}
+                reconnect={() => {
+                  setPaymentInvoice(null);
+                  setSelected(null);
+                  setInvoiceNotice('');
+                  queryClient.removeQueries({ queryKey: ['billing'] });
+                  void session.refetch();
+                }}
+                completed={(result) => {
+                  setPaymentInvoice(null);
+                  setSelected(null);
+                  setInvoiceNotice(
+                    `${result.invoice.name || 'Invoice'} payment recorded. Native status: ${result.invoice.payment_state.replaceAll('_', ' ')}. Open amount: ${money(result.invoice.open_amount, result.invoice.currency[1])}. Check linked payments for the saved entry.`,
                   );
                   void queryClient.invalidateQueries({
                     predicate: (query) =>

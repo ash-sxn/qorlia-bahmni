@@ -1,5 +1,41 @@
 # Bahmni workflow parity ledger
 
+## 9 October reviewed native payment checkpoint
+
+- The common Qorlia Billing workspace now includes a payment review modal using
+  native Odoo payment-register computation, posting and invoice reconciliation.
+  It requires an explicit preview, blocks repeat clicks and closing during a
+  write, and requires a fresh status read after an uncertain response.
+- Manual full/partial receipts, outbound credit-note disbursements, difference
+  settlement, installments and currency conversion pass native tests. Excess
+  credit does not automatically pay another invoice. Balanced/posted/open-amount
+  eligibility, ordinary cashier access, input validation, row locks and stale
+  invoice/configuration checks are enforced in the adapter, without `sudo`.
+- Real HTTP INV/2026/00009 recorded INR 100 then INR 375 against an INR 475
+  invoice, leaving INR 375 then zero. Two simultaneous identical requests
+  produced one payment and one rejection. Independent reads verified balances
+  and balanced payment entries. RINV/2026/00003 recorded an outbound INR 100,
+  leaving INR 375. An INR 500 receipt for INV/2026/00011 did not allocate the
+  excess to INV/2026/00010; the latter remains INR 475 open with no payments.
+- Native Community Odoo may label a fully reconciled invoice `paid` while bank
+  matching remains incomplete. The UI retains native invoice status and shows
+  native bank matching separately. Cash registration does not transfer money.
+- Home: 77 tests in 10 suites; native adapter: 36 tests, no failures/errors/skips;
+  gateway/webpack: seven checks. Targeted types/lint and development build pass.
+- Hosted browser INV/2026/00012 (reference
+  QORLIAQA-PAY-BROWSER-20261009-12d50526) retained INR 475 and no payment after
+  opening, previewing and closing the review. An explicit INR 100 cash receipt
+  then left INR 375 open with native `partial` status. Independent native reads
+  verified exactly one inbound payment, linked only to this invoice, and a
+  balanced payment journal. The protected review includes the corresponding
+  source archive and licenses; tester/session boundaries remain enforced.
+
+This is not complete Billing parity. Provider/check/PDC flows, bank statement
+matching, credit-allocation UI, receipt/invoice printing, correction UI, down
+payments, POS, stock/batch fulfillment and Clinical-to-ERP synchronization remain
+unfinished or unverified. Historical unbalanced records remain blocked. Only
+isolated synthetic staging is changed, not production.
+
 ## 9 October Billing discount/rounding accounting checkpoint
 
 - Customer posting now creates explicit document-discount and signed rounding

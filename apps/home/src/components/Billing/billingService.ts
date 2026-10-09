@@ -1,6 +1,8 @@
 const API = '/openmrs/qorlia-billing-api';
 
-export class BillingSessionExpired extends Error {}
+export class BillingSessionExpired extends Error {
+  readonly billingSessionExpired = true;
+}
 
 export interface BillingSession {
   uid: number | false;
@@ -511,6 +513,166 @@ export const postInvoiceWorkflow = (invoice: InvoiceWorkflow) =>
   invoiceWorkflowCall('qorlia_invoice_workflow_post', {
     invoice_id: invoice.id,
     version: invoice.version,
+  });
+
+export interface PaymentValues {
+  journal_id: number | false;
+  payment_method_line_id: number | false;
+  currency_id: number | false;
+  partner_bank_id: number | false;
+  amount: number;
+  payment_date: string;
+  communication: string | false;
+  payment_difference_handling: 'open' | 'reconcile';
+  writeoff_account_id: number | false;
+  writeoff_label: string | false;
+}
+
+export interface PaymentWorkflow {
+  invoice: InvoiceWorkflow;
+  values: PaymentValues | false;
+  version: string | false;
+  can_record: boolean;
+  reason: string | false;
+  currency: [number, string];
+  payment_type: 'inbound' | 'outbound' | false;
+  difference: number;
+  journals: [number, string][];
+  methods: [number, string][];
+  currencies: [number, string][];
+  banks: [number, string][];
+  accounts: [number, string][];
+  payments: {
+    id: number;
+    name: string;
+    date: string;
+    amount: number;
+    currency_id: [number, string];
+    journal_id: [number, string];
+    journal_type: string;
+    is_matched: boolean;
+    state: string;
+    payment_type: 'inbound' | 'outbound';
+    ref: string | false;
+  }[];
+}
+
+const paymentCall = async (method: string, kwargs: object) => {
+  const value = await rpc<PaymentWorkflow>(
+    `/web/dataset/call_kw/account.move/${method}`,
+    { model: 'account.move', method, args: [], kwargs },
+  );
+  if (!value?.invoice)
+    throw new Error(
+      'Invalid native payment response. Reload the current status.',
+    );
+  checkedInvoiceWorkflow(value.invoice);
+  const choices = [
+    value.journals,
+    value.methods,
+    value.currencies,
+    value.banks,
+    value.accounts,
+  ];
+  const data = value.values;
+  if (
+    typeof value.can_record !== 'boolean' ||
+    !(value.reason === false || typeof value.reason === 'string') ||
+    !validRelation(value.currency) ||
+    !Array.isArray(value.currency) ||
+    ![false, 'inbound', 'outbound'].includes(value.payment_type) ||
+    !Number.isFinite(value.difference) ||
+    !(
+      value.version === false ||
+      (typeof value.version === 'string' &&
+        /^[a-f0-9]{64}$/.test(value.version))
+    ) ||
+    !choices.every(
+      (rows) =>
+        Array.isArray(rows) &&
+        rows.every((row) => Array.isArray(row) && validRelation(row)),
+    ) ||
+    !(
+      data === false ||
+      (data &&
+        [
+          'journal_id',
+          'payment_method_line_id',
+          'currency_id',
+          'partner_bank_id',
+          'writeoff_account_id',
+        ].every((field) => {
+          const id = data[field as keyof PaymentValues];
+          return (
+            id === false ||
+            (typeof id === 'number' && Number.isInteger(id) && id > 0)
+          );
+        }) &&
+        Number.isFinite(data.amount) &&
+        typeof data.payment_date === 'string' &&
+        ['open', 'reconcile'].includes(data.payment_difference_handling) &&
+        ['communication', 'writeoff_label'].every(
+          (field) =>
+            data[field as keyof PaymentValues] === false ||
+            typeof data[field as keyof PaymentValues] === 'string',
+        ))
+    ) ||
+    (value.can_record &&
+      (!data ||
+        !value.version ||
+        !value.invoice.ledger_balanced ||
+        value.invoice.state !== 'posted')) ||
+    !Array.isArray(value.payments) ||
+    !value.payments.every(
+      (payment) =>
+        payment &&
+        Number.isInteger(payment.id) &&
+        payment.id > 0 &&
+        typeof payment.name === 'string' &&
+        typeof payment.date === 'string' &&
+        Number.isFinite(payment.amount) &&
+        validRelation(payment.currency_id) &&
+        Array.isArray(payment.currency_id) &&
+        validRelation(payment.journal_id) &&
+        Array.isArray(payment.journal_id) &&
+        typeof payment.journal_type === 'string' &&
+        typeof payment.is_matched === 'boolean' &&
+        typeof payment.state === 'string' &&
+        ['inbound', 'outbound'].includes(payment.payment_type) &&
+        (payment.ref === false || typeof payment.ref === 'string'),
+    )
+  )
+    throw new Error(
+      'Invalid native payment response. Reload the current status.',
+    );
+  return value;
+};
+
+export const getPaymentWorkflow = (invoiceId: number) =>
+  paymentCall('qorlia_payment_load', { invoice_id: invoiceId });
+
+export const previewPaymentWorkflow = (
+  invoice: InvoiceWorkflow,
+  values: PaymentValues,
+  changed:
+    | false
+    | 'journal_id'
+    | 'payment_method_line_id'
+    | 'currency_id'
+    | 'payment_date' = false,
+) =>
+  paymentCall('qorlia_payment_preview', {
+    invoice_id: invoice.id,
+    invoice_version: invoice.version,
+    values,
+    changed,
+  });
+
+export const recordPaymentWorkflow = (review: PaymentWorkflow) =>
+  paymentCall('qorlia_payment_record', {
+    invoice_id: review.invoice.id,
+    version: review.version,
+    values: review.values,
   });
 
 export const getDraftChoices = async (

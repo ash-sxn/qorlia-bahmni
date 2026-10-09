@@ -13,8 +13,12 @@ import {
   getChargeOrderLines,
   getInvoiceWorkflow,
   postInvoiceWorkflow,
+  getPaymentWorkflow,
+  previewPaymentWorkflow,
+  recordPaymentWorkflow,
 } from '../billingService';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
+import { paymentWorkflowFixture } from './paymentWorkflowFixture';
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
@@ -26,6 +30,9 @@ jest.mock('../billingService', () => ({
   getChargeOrderLines: jest.fn(),
   getInvoiceWorkflow: jest.fn(),
   postInvoiceWorkflow: jest.fn(),
+  getPaymentWorkflow: jest.fn(),
+  previewPaymentWorkflow: jest.fn(),
+  recordPaymentWorkflow: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({ useUserPrivilege: jest.fn() }));
 jest.mock('../../HomePageHeader', () => ({
@@ -273,6 +280,51 @@ describe('Billing workspace', () => {
       'aria-selected',
       'true',
     );
+  });
+  it('records a reviewed payment inside the workspace and refreshes native invoice balances', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([
+      { ...invoice, state: 'posted' },
+    ]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    (getPaymentWorkflow as jest.Mock).mockResolvedValue(
+      paymentWorkflowFixture(),
+    );
+    (previewPaymentWorkflow as jest.Mock).mockResolvedValue(
+      paymentWorkflowFixture(),
+    );
+    (recordPaymentWorkflow as jest.Mock).mockResolvedValue(
+      paymentWorkflowFixture({
+        can_record: false,
+        values: false,
+        invoice: invoiceWorkflowFixture({
+          state: 'posted',
+          name: 'INV/QA/7',
+          can_post: false,
+          open_amount: 0,
+          payment_state: 'in_payment',
+        }),
+      }),
+    );
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Review payments' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Review payment' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Record payment' }),
+    );
+    expect(
+      await screen.findByText(
+        /payment recorded.*Native status: in payment.*Open amount: ₹0.00/,
+      ),
+    ).toBeVisible();
+    expect(getPaymentWorkflow).toHaveBeenCalledWith(7);
+    expect(recordPaymentWorkflow).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(getInvoices).toHaveBeenCalledTimes(2));
   });
   it('opens a native linked invoice in the invoice tab without a legacy redirect', async () => {
     (getChargeOrders as jest.Mock).mockResolvedValue([

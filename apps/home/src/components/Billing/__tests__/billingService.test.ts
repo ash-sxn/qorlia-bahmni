@@ -14,9 +14,13 @@ import {
   runOrderWorkflow,
   getInvoiceWorkflow,
   postInvoiceWorkflow,
+  getPaymentWorkflow,
+  previewPaymentWorkflow,
+  recordPaymentWorkflow,
 } from '../billingService';
 import { draftFixture } from './draftFixture';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
+import { paymentWorkflowFixture } from './paymentWorkflowFixture';
 import { workflowFixture } from './workflowFixture';
 
 describe('billing API', () => {
@@ -29,6 +33,44 @@ describe('billing API', () => {
       status: 200,
       json: async () => body,
     });
+  it('uses named reviewed payment actions with version and native values, not arbitrary financial writes', async () => {
+    const payment = paymentWorkflowFixture();
+    reply({ result: payment });
+    expect(await getPaymentWorkflow(7)).toEqual(payment);
+    if (!payment.values) throw new Error('Fixture requires values');
+    await previewPaymentWorkflow(payment.invoice, payment.values, 'journal_id');
+    await recordPaymentWorkflow(payment);
+    const [url, options] = (fetch as jest.Mock).mock.calls[2];
+    expect(url).toContain('/account.move/qorlia_payment_record');
+    expect(JSON.parse(options.body).params).toEqual({
+      model: 'account.move',
+      method: 'qorlia_payment_record',
+      args: [],
+      kwargs: {
+        invoice_id: 7,
+        version: payment.version,
+        values: payment.values,
+      },
+    });
+  });
+  it('rejects malformed native payment money, eligibility, choices and history', async () => {
+    const payment = paymentWorkflowFixture();
+    for (const broken of [
+      { difference: NaN },
+      { version: 'old' },
+      { currency: false },
+      { methods: [false] },
+      { can_record: 'yes' },
+      { values: false },
+      { payments: [{ id: 2, amount: '500' }] },
+      { values: { ...payment.values, amount: Infinity } },
+    ]) {
+      reply({ result: { ...payment, ...broken } });
+      await expect(getPaymentWorkflow(7)).rejects.toThrow(
+        'Invalid native payment response',
+      );
+    }
+  });
   it('uses named invoice posting with the loaded version and validates financial status', async () => {
     const invoice = invoiceWorkflowFixture();
     reply({ result: invoice });
