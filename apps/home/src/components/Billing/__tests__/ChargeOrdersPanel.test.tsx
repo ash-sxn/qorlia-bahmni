@@ -13,8 +13,10 @@ import {
   getChargeOrderLines,
   getChargeOrders,
   getInvoices,
+  OrderWorkflow,
 } from '../billingService';
 import { ChargeOrdersPanel } from '../ChargeOrdersPanel';
+import { workflowFixture as mockWorkflowFixture } from './workflowFixture';
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
@@ -26,6 +28,35 @@ jest.mock('../DraftOrderEditor', () => ({
   DraftOrderEditor: ({ saved }: { saved: (draft: BillingDraft) => void }) => (
     <button onClick={() => saved({ name: 'QORLIAQA-SAVED' } as BillingDraft)}>
       Test save draft
+    </button>
+  ),
+}));
+jest.mock('../OrderWorkflowModal', () => ({
+  OrderWorkflowModal: ({
+    completed,
+  }: {
+    completed: (order: OrderWorkflow) => void;
+  }) => (
+    <button
+      onClick={() =>
+        completed(
+          mockWorkflowFixture({
+            state: 'sale',
+            can_confirm: false,
+            invoices: [
+              {
+                id: 8,
+                name: 'INV/QA/8',
+                state: 'posted',
+                total: 500,
+                currency: [1, 'INR'],
+              },
+            ],
+          }),
+        )
+      }
+    >
+      Test native action
     </button>
   ),
 }));
@@ -275,5 +306,35 @@ describe('Charge orders workspace', () => {
     expect(
       client.getQueryState(['billing', 'charge-lines', 3, 9])?.isInvalidated,
     ).toBe(true);
+  });
+  it('refreshes native action outcomes and linked invoices without invalidating the Billing session', async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    client.setQueryData(['billing', 'session'], { uid: 3 });
+    client.setQueryData(['billing', 'invoices', 3], []);
+    show(client);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View order QORLIAQA-ORDER' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review order actions' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Test native action' }));
+    await screen.findByText(
+      /S00018 updated.*INV\/QA\/8 \(posted\).*No payment was recorded/,
+    );
+    expect(client.getQueryState(['billing', 'session'])?.isInvalidated).toBe(
+      false,
+    );
+    expect(
+      client.getQueryState(['billing', 'invoices', 3])?.isInvalidated,
+    ).toBe(true);
+    await waitFor(() =>
+      expect(getChargeOrders).toHaveBeenLastCalledWith('S00018', 0, 'all'),
+    );
+    expect(
+      screen.queryByRole('region', { name: 'Charge order details' }),
+    ).not.toBeInTheDocument();
   });
 });

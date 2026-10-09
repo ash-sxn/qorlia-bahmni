@@ -359,6 +359,93 @@ export const saveBillingDraft = async (
     }),
   );
 
+export interface OrderWorkflow {
+  id: number;
+  name: string;
+  state: ChargeOrder['state'];
+  version: string;
+  customer: string | false;
+  currency: [number, string];
+  amount_total: number;
+  can_confirm: boolean;
+  can_invoice: boolean;
+  automation: { delivery: boolean; invoice: boolean; legacy_delivery: boolean };
+  invoices: {
+    id: number;
+    name: string | false;
+    state: 'draft' | 'posted' | 'cancel';
+    total: number;
+    currency: [number, string];
+  }[];
+  pickings: { id: number; name: string; state: string }[];
+}
+
+function checkedWorkflow(value: OrderWorkflow): OrderWorkflow {
+  const positiveId = (id: unknown) => Number.isInteger(id) && Number(id) > 0;
+  if (
+    !value ||
+    !positiveId(value.id) ||
+    typeof value.name !== 'string' ||
+    !['draft', 'sent', 'sale', 'done', 'cancel'].includes(value.state) ||
+    typeof value.version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(value.version) ||
+    !(value.customer === false || typeof value.customer === 'string') ||
+    !Array.isArray(value.currency) ||
+    !validRelation(value.currency) ||
+    !Number.isFinite(value.amount_total) ||
+    typeof value.can_confirm !== 'boolean' ||
+    typeof value.can_invoice !== 'boolean' ||
+    !value.automation ||
+    !['delivery', 'invoice', 'legacy_delivery'].every(
+      (key) =>
+        typeof value.automation[key as keyof OrderWorkflow['automation']] ===
+        'boolean',
+    ) ||
+    !Array.isArray(value.invoices) ||
+    !value.invoices.every(
+      (invoice) =>
+        invoice &&
+        positiveId(invoice.id) &&
+        (invoice.name === false || typeof invoice.name === 'string') &&
+        ['draft', 'posted', 'cancel'].includes(invoice.state) &&
+        Number.isFinite(invoice.total) &&
+        Array.isArray(invoice.currency) &&
+        validRelation(invoice.currency),
+    ) ||
+    !Array.isArray(value.pickings) ||
+    !value.pickings.every(
+      (picking) =>
+        picking &&
+        positiveId(picking.id) &&
+        typeof picking.name === 'string' &&
+        typeof picking.state === 'string',
+    )
+  )
+    throw new Error(
+      'Invalid order status response. Reload the current status.',
+    );
+  return value;
+}
+
+export const getOrderWorkflow = async (orderId: number) =>
+  checkedWorkflow(
+    await draftCall<OrderWorkflow>('qorlia_order_workflow_load', {
+      order_id: orderId,
+    }),
+  );
+
+export const runOrderWorkflow = async (
+  order: OrderWorkflow,
+  action: 'confirm' | 'invoice',
+) =>
+  checkedWorkflow(
+    await draftCall<OrderWorkflow>('qorlia_order_workflow_run', {
+      order_id: order.id,
+      version: order.version,
+      action,
+    }),
+  );
+
 export const getDraftChoices = async (
   kind: DraftChoiceKind,
   search: string,

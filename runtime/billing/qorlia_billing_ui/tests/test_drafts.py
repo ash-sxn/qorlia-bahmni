@@ -139,3 +139,59 @@ class DraftAdapterTest(TransactionCase):
             self.orders.with_user(user).qorlia_draft_load()
         with self.assertRaises(AccessError):
             self.orders.with_user(user).qorlia_draft_save(self.payload(self.draft()), str(uuid.uuid4()))
+        saved = self.orders.qorlia_draft_save(self.payload(self.draft()), str(uuid.uuid4()))
+        workflow = self.orders.qorlia_order_workflow_load(saved['id'])
+        with self.assertRaises(AccessError):
+            self.orders.with_user(user).qorlia_order_workflow_load(saved['id'])
+        with self.assertRaises(AccessError):
+            self.orders.with_user(user).qorlia_order_workflow_run(saved['id'], workflow['version'], 'confirm')
+
+    def test_workflow_native_confirmation_and_regular_invoice(self):
+        self.env['ir.config_parameter'].set_param('bahmni_sale.is_invoice_automated', False)
+        saved = self.orders.qorlia_draft_save(self.payload(self.draft()), str(uuid.uuid4()))
+        ready = self.orders.qorlia_order_workflow_load(saved['id'])
+        self.assertTrue(ready['can_confirm'])
+        self.assertFalse(ready['automation']['invoice'])
+        confirmed = self.orders.qorlia_order_workflow_run(saved['id'], ready['version'], 'confirm')
+        self.assertIn(confirmed['state'], ('sale', 'done'))
+        self.assertFalse(confirmed['invoices'])
+        self.assertTrue(confirmed['can_invoice'])
+        invoiced = self.orders.qorlia_order_workflow_run(saved['id'], confirmed['version'], 'invoice')
+        self.assertEqual(len(invoiced['invoices']), 1)
+        self.assertEqual(invoiced['invoices'][0]['state'], 'draft')
+        self.assertEqual(invoiced['invoices'][0]['total'], 500)
+        self.assertFalse(invoiced['can_invoice'])
+        self.assertFalse(invoiced['pickings'])
+        with self.assertRaises(UserError):
+            self.orders.qorlia_order_workflow_run(saved['id'], confirmed['version'], 'invoice')
+        self.assertEqual(len(self.orders.browse(saved['id']).invoice_ids), 1)
+
+    def test_workflow_discloses_native_automatic_invoice_posting(self):
+        self.env['ir.config_parameter'].set_param('bahmni_sale.is_invoice_automated', True)
+        saved = self.orders.qorlia_draft_save(self.payload(self.draft()), str(uuid.uuid4()))
+        ready = self.orders.qorlia_order_workflow_load(saved['id'])
+        self.assertTrue(ready['automation']['invoice'])
+        result = self.orders.qorlia_order_workflow_run(saved['id'], ready['version'], 'confirm')
+        self.assertEqual(len(result['invoices']), 1)
+        self.assertEqual(result['invoices'][0]['state'], 'posted')
+        self.assertEqual(result['invoices'][0]['total'], 500)
+        self.assertEqual(self.orders.browse(saved['id']).invoice_ids.payment_state, 'not_paid')
+        self.assertFalse(result['can_confirm'])
+        self.assertFalse(result['can_invoice'])
+        with self.assertRaises(UserError):
+            self.orders.qorlia_order_workflow_run(saved['id'], ready['version'], 'confirm')
+
+    def test_workflow_rejects_changed_settings_and_order(self):
+        self.env['ir.config_parameter'].set_param('bahmni_sale.is_invoice_automated', False)
+        saved = self.orders.qorlia_draft_save(self.payload(self.draft()), str(uuid.uuid4()))
+        ready = self.orders.qorlia_order_workflow_load(saved['id'])
+        self.env['ir.config_parameter'].set_param('bahmni_sale.is_invoice_automated', True)
+        with self.assertRaises(UserError):
+            self.orders.qorlia_order_workflow_run(saved['id'], ready['version'], 'confirm')
+        self.assertEqual(self.orders.browse(saved['id']).state, 'draft')
+        fresh = self.orders.qorlia_order_workflow_load(saved['id'])
+        self.orders.browse(saved['id']).order_line.write({'price_unit': 650})
+        with self.assertRaises(UserError):
+            self.orders.qorlia_order_workflow_run(saved['id'], fresh['version'], 'confirm')
+        with self.assertRaises(ValidationError):
+            self.orders.qorlia_order_workflow_run(saved['id'], fresh['version'], 'action_post')

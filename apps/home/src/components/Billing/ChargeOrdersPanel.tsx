@@ -12,6 +12,7 @@ import {
   Invoice,
 } from './billingService';
 import { DraftOrderEditor } from './DraftOrderEditor';
+import { OrderWorkflowModal } from './OrderWorkflowModal';
 
 const orderState = {
   draft: 'Draft',
@@ -43,6 +44,7 @@ export function ChargeOrdersPanel({
   const [selected, setSelected] = useState<ChargeOrder | null>(null);
   const [editing, setEditing] = useState<number | false | null>(null);
   const [notice, setNotice] = useState('');
+  const [workflow, setWorkflow] = useState<number | null>(null);
   const queryClient = useQueryClient();
   const orders = useQuery({
     queryKey: [
@@ -117,6 +119,39 @@ export function ChargeOrdersPanel({
 
   return (
     <>
+      {workflow !== null ? (
+        <OrderWorkflowModal
+          key={workflow}
+          uid={uid}
+          orderId={workflow}
+          close={() => setWorkflow(null)}
+          reconnect={reconnect}
+          completed={(result) => {
+            setWorkflow(null);
+            setSelected(null);
+            setStatus('all');
+            setOffset(0);
+            setSearch(result.name);
+            setSubmittedSearch(result.name);
+            setNotice(
+              `${result.name} updated. Current status: ${result.state === 'sale' ? 'Confirmed' : result.state === 'done' ? 'Locked' : result.state}. Linked invoices: ${result.invoices.map((invoice) => `${invoice.name || 'Draft invoice'} (${invoice.state})`).join(', ') || 'None'}. No payment was recorded.`,
+            );
+            void queryClient.invalidateQueries({
+              predicate: ({ queryKey }) =>
+                queryKey[0] === 'billing' &&
+                [
+                  'charge-orders',
+                  'charge-lines',
+                  'draft',
+                  'order-workflow',
+                  'order-invoices',
+                  'invoices',
+                  'invoice-lines',
+                ].includes(String(queryKey[1])),
+            });
+          }}
+        />
+      ) : null}
       <section className={styles.card}>
         <h2>Charge orders</h2>
         <p>
@@ -328,6 +363,9 @@ export function ChargeOrdersPanel({
           </dl>
           <Button kind="tertiary" onClick={() => setSelected(null)}>
             Close order details
+          </Button>
+          <Button kind="tertiary" onClick={() => setWorkflow(selected.id)}>
+            Review order actions
           </Button>
           {['draft', 'sent'].includes(selected.state) &&
           !selected.invoice_ids.length ? (

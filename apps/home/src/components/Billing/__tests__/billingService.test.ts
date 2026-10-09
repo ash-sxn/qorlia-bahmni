@@ -10,8 +10,11 @@ import {
   previewBillingDraft,
   saveBillingDraft,
   getDraftChoices,
+  getOrderWorkflow,
+  runOrderWorkflow,
 } from '../billingService';
 import { draftFixture } from './draftFixture';
+import { workflowFixture } from './workflowFixture';
 
 describe('billing API', () => {
   beforeEach(() => {
@@ -23,6 +26,35 @@ describe('billing API', () => {
       status: 200,
       json: async () => body,
     });
+  it('uses named native workflow actions with a current version, never arbitrary state writes', async () => {
+    const workflow = workflowFixture();
+    reply({ result: workflow });
+    expect(await getOrderWorkflow(18)).toEqual(workflow);
+    await runOrderWorkflow(workflow, 'confirm');
+    const [url, options] = (fetch as jest.Mock).mock.calls[1];
+    expect(url).toContain('/sale.order/qorlia_order_workflow_run');
+    expect(JSON.parse(options.body).params).toEqual({
+      model: 'sale.order',
+      method: 'qorlia_order_workflow_run',
+      args: [],
+      kwargs: { order_id: 18, version: workflow.version, action: 'confirm' },
+    });
+  });
+  it('rejects malformed workflow eligibility, automation and financial responses', async () => {
+    for (const broken of [
+      { can_confirm: 'yes' },
+      { version: 'old' },
+      { automation: {} },
+      { amount_total: Infinity },
+      { currency: false },
+      { invoices: [{ id: 7, total: '500' }] },
+    ]) {
+      reply({ result: { ...workflowFixture(), ...broken } });
+      await expect(getOrderWorkflow(18)).rejects.toThrow(
+        'Invalid order status response',
+      );
+    }
+  });
   it('uses the native ERP session without storing credentials', async () => {
     reply({ result: { uid: 3 } });
     await signInToBilling('cashier', 'synthetic-password');

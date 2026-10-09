@@ -40,7 +40,7 @@ class SaleOrder(models.Model):
          'This draft request has already been saved.'),
     ]
 
-    def _qorlia_order(self, order_id, operation='read', lock=False):
+    def _qorlia_order(self, order_id, operation='read', lock=False, states=('draft', 'sent')):
         if not _positive_id(order_id):
             raise ValidationError('Select a valid charge order.')
         order = self.browse(order_id).exists()
@@ -54,7 +54,7 @@ class SaleOrder(models.Model):
             order.invalidate_recordset()
             order.order_line.invalidate_recordset()
             order.check_access_rule(operation)
-        if order.state not in ('draft', 'sent'):
+        if states is not None and order.state not in states:
             raise UserError('Only draft or sent quotations can be edited. Reload this order.')
         return order
 

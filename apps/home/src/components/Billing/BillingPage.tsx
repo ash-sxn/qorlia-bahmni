@@ -136,8 +136,9 @@ export function BillingPage() {
           Qorlia workspace.
         </p>
         <p className={styles.note}>
-          This review screen does not collect payments or change invoices.
-          Clinical and Billing have separate test datasets. No patient or order
+          Order confirmation follows native Billing settings and may post
+          invoices or deliver stock. Payments are not collected here. Clinical
+          and Billing have separate test datasets. No patient or order
           synchronization is enabled between them yet.
         </p>
         {session.isFetching ? (

@@ -76,7 +76,8 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
       '/web/dataset/call_kw/sale.order/search_read',
       '/web/dataset/call_kw/sale.order.line/search_read',
       ...['load', 'preview', 'save', 'choices'].map((action) =>
-        `/web/dataset/call_kw/sale.order/qorlia_draft_${action}`)]);
+        `/web/dataset/call_kw/sale.order/qorlia_draft_${action}`),
+      ...['load', 'run'].map((action) => `/web/dataset/call_kw/sale.order/qorlia_order_workflow_${action}`)]);
     if (req.method !== 'POST' || !allowed.has(req.path)) return res.sendStatus(404);
     const clinicalCookie = cookieNamed(req.headers.cookie, 'JSESSIONID');
     if (!clinicalCookie) return res.status(401).json({ error: 'Sign in to Qorlia.' });
@@ -95,7 +96,7 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
     const method = req.path.split('/')[5];
     if (!params || req.body.method !== 'call' ||
       (req.path.includes('/call_kw/') && (params.model !== model || params.method !== method)) ||
-      (method?.startsWith('qorlia_draft_') &&
+      (method?.startsWith('qorlia_') &&
         (!Array.isArray(params.args) || params.args.length || !params.kwargs ||
           typeof params.kwargs !== 'object' || Array.isArray(params.kwargs) ||
           Object.keys(params.kwargs).includes('context'))) ||
