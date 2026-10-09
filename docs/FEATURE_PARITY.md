@@ -1,6 +1,48 @@
 # Bahmni workflow parity ledger
 
+## 9 October Billing balanced-invoice posting checkpoint
+
+- The earlier INR 920 order-flow checkpoint below proved displayed/API amounts,
+  not journal balance. Native ledger inspection later found an INR -25 difference
+  on INV/2026/00002 and INV/2026/00003. They are retained as invalid synthetic
+  failure fixtures, not accepted accounting results. No payment should be
+  recorded against them.
+- The LGPL Billing adapter restores Odoo's native balance rejection omitted by
+  the installed Bahmni discount override. Document-discount/rounding posting is
+  blocked and rolled back instead of accepting unequal entries. This is a guard,
+  not a completed fix of discount/rounding counterpart accounting. Draft editing
+  is preserved. Actual HTTP confirmation of S00093 failed the guard and a fresh
+  read confirmed draft state and zero invoices.
+- Reviewed standalone invoice posting uses native `action_post`, native access
+  controls, invoice/line locks and semantic version checks. The common Qorlia
+  dialog explains posting, displays actual customer/company/journal/total, and
+  warns about existing unbalanced records. It blocks repeated clicks and closing
+  while a write is pending, and requires read-only recovery after an uncertain
+  reply. The protected gateway exposes named load/post methods, never raw
+  posting/write/reset/cancellation or client-supplied accounting context.
+- Synthetic INV/2026/00004 was posted through a real native HTTP request. Its
+  final total and open amount are INR 472.50; independent journal-line reads
+  confirm zero debit-credit difference, unreconciled entries and `not_paid`.
+  An old-version repeat was rejected. This is not a payment or tax-compliance
+  claim. Nine Home suites pass 65 tests, gateway/webpack seven checks and native
+  adapter 12 tests. Types, targeted lint, diff checks and development build pass.
+- Hosted browser verification opened/closed invoice 25's review without a write,
+  then posted it once as INV/2026/00005. The result shows INR 472.50 open and no
+  payment recorded. Reopening the review offers no second posting. Independent
+  native reads confirm one matching invoice and three unreconciled journal lines
+  with zero debit-credit difference. The old INV/2026/00003 review shows its
+  balance warning and no posting action. Browser error logs were empty. Tester
+  credentials, gate and expiry are unchanged; screenshots are retained privately.
+
+Billing is not complete. Discount/rounding accounting, payments/reconciliation,
+refunds, cancellation/reset, down payments, POS, stock/batch workflows, full
+role/company acceptance and Clinical-to-ERP synchronization remain. The earlier
+checkpoint's standalone-posting limit is superseded only for the balanced
+invoice flow verified here. All changes remain non-production.
+
 ## 9 October Billing order confirmation and invoicing checkpoint
+
+Historical display/API checkpoint, superseded by the ledger correction above.
 
 - Billing is part of the signed-in React workspace. The shared design-system
   review dialog reads the current native order state and exposes only actions

@@ -1,6 +1,68 @@
 # Qorlia React frontend backend readiness
 
+## Latest Billing ledger guard and invoice posting verification (9 October 2026)
+
+**Accounting correction:** the earlier INR 920 order/invoice checks below
+verified API totals and visible status, not balanced journal entries. A later
+independent ledger read found debits minus credits of INR -25 on synthetic
+INV/2026/00002 and INV/2026/00003. The installed Bahmni discount override computes
+unbalanced moves but omits Odoo's rejection. Those earlier posted fixtures are
+not valid accounting acceptance and must not be used for payment testing.
+They remain unchanged as failure fixtures. No production ledger was inspected
+or changed by this isolated test.
+
+The original LGPL adapter's `models/account_move.py` restores the native Odoo
+balance invariant using its own currency-rounded journal check and recursion
+handling. It rejects unequal entries and rolls back the transaction. It does not
+invent a discount-accounting formula. Document-discount and rounding posting
+remain blocked until their missing native accounting counterparts are corrected.
+Draft quotation editing remains available. A real HTTP confirmation of synthetic
+S00093 with an INR 25 document discount returned the balance error; a fresh read
+confirmed draft state and zero invoices after rollback.
+
+Named invoice load/post methods read a fresh bounded snapshot, enforce native
+ACLs/record rules, lock the invoice and lines, and reject stale versions. Posting
+delegates to native `action_post` with analytic validation. Versions include
+semantic invoice and line values, not only timestamps. The tester gateway allows
+these methods but blocks raw posting, reset, cancellation and write calls, as
+well as browser context overrides. The React design-system dialog shows the
+customer, company, journal, native final total and eligibility before an explicit
+action. Unbalanced existing records display a payment warning. Uncertain replies
+require an explicit status read and are never automatically replayed.
+
+Actual native HTTP testing posted synthetic invoice 23, INV/2026/00004, with a
+10% line discount and arithmetic 5% tax: INR 472.50. Independent journal-line
+reads confirmed a zero debit-credit difference, unreconciled entries, INR 472.50
+open amount and `not_paid`. Reusing the pre-post version was rejected. This
+proves invoice posting, not payment receipt or Indian healthcare tax validity.
+
+Nine Home suites pass 65 tests; seven gateway/webpack checks and 12 native adapter
+tests pass. Native tests include document-discount/rounding rollback, balanced
+standalone posting, stale semantic edits and permission denial. Home types,
+targeted lint, diff checks and the development build pass.
+
+The protected hosted browser opened and closed invoice 25's review first; an
+independent HTTP read confirmed it was still draft. A single explicit Post invoice
+then created INV/2026/00005. The UI showed posted status, INR 472.50 still open and
+no payment recorded. Its subsequent review no longer offered posting. Independent
+native reads confirmed one matching invoice, three unreconciled journal lines,
+zero debit-credit difference, INR 22.50 tax and `not_paid`. The hosted review of
+legacy INV/2026/00003 displayed the unbalanced-entry/payment warning with no
+posting action. Browser error logs were empty for these flows. Review, result,
+posted-status and warning screenshots are retained privately. The shared tester
+code, hospital/ERP sign-ins and 15 October expiry are unchanged.
+
+Remaining: correct discount/rounding accounting, payment registration and
+reconciliation, refunds, cancellation/reset, down payments, POS, stock/batch
+delivery and returns, full role/company checks, printouts and Clinical-to-ERP
+synchronization. Billing is still incomplete. Only isolated synthetic staging
+and the protected development tester release are in scope; production and the
+public demo are unchanged.
+
 ## Latest Billing order workflow verification (9 October 2026)
+
+Historical API/display checkpoint. Its INR 920 examples failed the later ledger
+acceptance above. Do not interpret this section as successful accounting posting.
 
 The original LGPL-3.0 adapter in
 `runtime/billing/qorlia_billing_ui/models/order_workflow.py` provides a bounded
