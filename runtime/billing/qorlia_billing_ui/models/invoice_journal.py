@@ -54,11 +54,22 @@ class InvoiceJournal(models.Model):
             records.check_access_rule('read')
         tax_names = dict(selected.tax_ids.name_get())
         grid_names = dict(selected.tax_tag_ids.name_get())
+        cutoff_allowed = bool(invoice.state == 'posted' and invoice.check_access_rights('write', raise_exception=False)
+            and self.check_access_rights('create', raise_exception=False)
+            and self.env.user.has_group('account.group_account_invoice'))
+        if cutoff_allowed:
+            try:
+                invoice.check_access_rule('write')
+            except AccessError:
+                cutoff_allowed = False
         for row in rows:
             row['tax_ids'] = [[identifier, tax_names[identifier]] for identifier in row['tax_ids']]
             row['tax_tag_ids'] = [[identifier, grid_names[identifier]] for identifier in row['tax_tag_ids']]
             if not analytics:
                 row['analytic_distribution'] = False
+            line = selected.browse(row['id'])
+            row['can_cutoff'] = bool(cutoff_allowed and not line.reconciled
+                and line.account_id.internal_group in ('income', 'expense'))
         debit, credit = sum(lines.mapped('debit')), sum(lines.mapped('credit'))
         currency = invoice.company_currency_id
         return {

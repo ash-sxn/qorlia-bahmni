@@ -3,9 +3,18 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest checkpoint: 294 installed native tests (including five upstream Cut-Off
-contract tests) pass. The last complete Home suite has 334 passing tests; the
-26 journal-detail tests were rerun successfully after hosted verification.
+Latest checkpoint: 308 installed native tests (including five upstream Cut-Off
+contract and 14 integration tests) and 351 Home tests in 43 suites pass.
+Reviewed Cut-Off load/onchange/preview/save/status and exact-retry recovery are
+integrated. Local browser save/read-back proves two balanced INR 125 entries,
+unchanged source matching and one native match between the new accrual rows.
+Protected artifact `reviewed-cutoff-20261010` passes hosted native API/access
+checks and browser recalculation/review/guarded discard. All 83 chunks and source/
+license notices match; gates, backends and expiry are unchanged. Independent
+native reads after discard retain exactly two entries and one receipt, unchanged
+source/protected records and financial counts. Published source precedes final
+evidence notes and the journal-copy assertion fix, and includes pre-existing
+clinical working-tree edits rather than a clean commit-only release.
 Native cheque numbering/PDF/recovery is implemented below, but the
 actual staging company has no bank-compatible cheque layout. The prior protected
 browser save/reload and independent native readback confirm
@@ -203,7 +212,31 @@ bank report and stationery. PDF generation and marked-sent state do not establis
 physical printing, deposit or clearance. Batch, PDC cancellation, bank matching,
 payment providers and remaining financial parity still require implementation.
 
-## Cut-Off native contract (not yet integrated)
+## Cut-Off integration and native contract
+
+Six named `account.move.qorlia_cutoff_*` methods expose load, choices, onchange,
+preview, save and status with fixed company/source context. The React journal
+offers the action only on native-eligible posted revenue/expense items. The
+house-design modal requires review of both entries and default-setting effects
+before Save. A reconcilable accrual account may match the two new posted accrual
+rows to each other; this effect is disclosed and does not match the source invoice.
+Server-owned review/configuration locks and author/payload-bound UUID receipts
+provide exact status/retry recovery without duplicating the native execution.
+
+The 14 integration cases cover permissions/company/source identity, stale review,
+native amount onchange, field/date/percentage validation, fiscal locks, credit
+signs, source invariants and rollback, exact retries, future scheduling and
+reconciliation confined to generated accrual rows. The full suite passes all
+308 tests with zero failures/errors/skips. Local synthetic browser save and
+independent read-back/status/retry confirm two balanced INR 125 entries, one
+receipt, unchanged source amounts/state/matching and protected records, and no
+payment/stock/mail changes. The selected accrual account is a staging fixture,
+not a recommended Indian production chart of accounts. Hosted native API/session/
+route checks and browser recalculation/review/discard pass on the protected
+`reviewed-cutoff-20261010` artifact. Native read-back/status/exact retry after
+discard confirms no extra entries or changed source/protected records and counts.
+No production/public-demo change was made. Wider journal/Billing/module parity
+is still required.
 
 The installed native invoice journal view exposes `action_automatic_entry` on
 posted income/expense items with `default_action=change_period`. It opens
@@ -229,11 +262,9 @@ full isolated suite passes all 294 tests with no failures, errors or skips.
 Installed test/init hashes match the worktree. The staging service is running
 again, the analytic setting was restored, and independent native/hosted reads
 retain the synthetic saved label, exact receipt and protected balances/counts.
-This is a contract-test foundation,
-not an exposed Qorlia API or React feature. The subsequent adapter must bind the
-source, generated entries and company defaults to a server-owned review, enforce
-native ACLs/rules and locks, and atomically persist exact-request receipts with
-status/retry recovery. The redesigned journal still has no Cut-Off button.
+Those 294-test results describe the earlier contract-only checkpoint. The
+subsequent integration described above binds source, entries and defaults to a
+server-owned review, native ACLs/rules/locks and atomic exact-request recovery.
 
 Inspected source: `account/wizard/account_automatic_entry_wizard.py`, its view,
 `account/models/account_move_line.py::action_automatic_entry` and

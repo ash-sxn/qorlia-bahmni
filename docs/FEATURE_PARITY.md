@@ -1,5 +1,41 @@
 # Bahmni workflow parity ledger
 
+## 10 October reviewed Cut-Off integration checkpoint
+
+- Eligible posted invoice/credit income or expense rows now open a house-design
+  Cut-Off workflow. Six scoped native APIs support load, choices, onchange,
+  preview, save and status. Recognition date, amount, percentage, journal and
+  accrual account use installed Odoo wizard calculations, not browser accounting.
+- Review displays both generated entries, posting/scheduling, company-default
+  changes and native reconciliation between new accrual rows when applicable.
+  Source invoice money, payment state and matching are guarded unchanged. Sorted
+  source/configuration locks and exact-author UUID receipts prevent duplicate
+  financial entries and allow status/retry after uncertain responses.
+- All 308 installed native tests pass with zero failures/errors/skips, including
+  native contract tests and 14 integration tests. Home passes 351 tests in 43
+  suites; types, touched-file lint and seven gateway/build-config tests pass.
+  Direct webpack builds successfully; the existing Nx task-graph cycle and
+  development bundle/Browserslist warnings remain.
+- A real local browser save created two balanced INR 125 adjusting entries on
+  synthetic invoice #24525, source item #63988. Independent native read-back and
+  exact status/retry prove one receipt and no duplicate entries, unchanged source
+  amounts/state/matching and protected records, no payment/stock/mail changes,
+  and one native partial/full match confined to the two new accrual rows.
+  That reconciliation is native behavior, not customer payment allocation.
+- Protected artifact `reviewed-cutoff-20261010` is published with unchanged
+  tester/clinical/ERP gates, backends and expiry (15 October, 18:29:59 UTC).
+  All 83 chunks, source and license notices match; archive secret checks and
+  native API/session/route denials pass. Hosted browser amount recalculation,
+  review of balanced entries/defaults/matching effects and guarded discard pass.
+  Independent native reads/status/exact retry after discard retain exactly two
+  entries and one receipt, unchanged source/protected records and counts.
+  Published source precedes final evidence notes and the journal-copy test fix,
+  and includes pre-existing clinical working-tree edits, not a clean commit-only
+  production release.
+  Monetary journal row add/remove, bank/provider, stock/POS/sync and wider
+  clinical/separate-product acceptance remain unfinished. Production and the
+  shared public demo are unchanged. Older checkpoints below are historical.
+
 ## 10 October native Cut-Off contract checkpoint
 
 - Inspected the installed Odoo invoice row action, wizard/view and execution,

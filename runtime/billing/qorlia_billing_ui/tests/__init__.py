@@ -17,3 +17,4 @@ from . import test_advance_invoices
 from . import test_invoice_journal
 from . import test_invoice_journal_edit
 from . import test_native_cutoff_contract
+from . import test_invoice_cutoff

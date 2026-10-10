@@ -1,5 +1,40 @@
 # Qorlia React frontend backend readiness
 
+## Reviewed Cut-Off integration checkpoint (10 October 2026)
+
+Six scoped `account.move.qorlia_cutoff_*` methods and the redesigned journal
+control now delegate recognition-period adjustments to the installed Odoo wizard.
+Virtual onchange/preview is read-only. Review exposes generated entries,
+company-default changes, future scheduling and native matching of the two new
+accrual rows when both entries post and the account permits reconciliation.
+Save locks source/configuration, verifies unchanged source financial/matching
+data and records an atomic author/payload-bound UUID receipt. Exact retries return
+the same entries, including when the source later becomes ineligible.
+
+The 308 installed native tests pass with zero failures/errors/skips. Home has
+351 passing tests/43 suites; type checking, touched-file lint and seven gateway/
+build-config tests pass. Direct webpack builds successfully; the existing Nx
+task-graph cycle, stale Browserslist and development bundle-size warnings remain.
+Real local browser save on synthetic #24525/#63988 and independent native
+read-back/status/retry verify two balanced INR 125 entries, one receipt, unchanged
+source amounts/state/matching and protected records, no payment/stock/mail writes,
+and a partial/full reconciliation confined to the two new accrual rows.
+
+Protected artifact `reviewed-cutoff-20261010` is published with the same tester,
+clinical and ERP gates, backends and expiry (15 October 2026, 18:29:59 UTC).
+All 83 chunks and source/LICENSE/NOTICE match; the archive is secret-free.
+Authenticated native load/choices/onchange/preview/status and denial checks pass.
+Hosted browser review recalculated INR -125 to 25%, showed both balanced entries
+and native defaults/matching effects, then discarded without saving. Subsequent
+independent native read-back/status/exact retry retained exactly the original two
+entries and one receipt, unchanged source/protected records and financial counts.
+Published source precedes these final evidence notes and the corrected journal
+copy assertion, and includes pre-existing clinical working-tree changes rather
+than a clean commit-only release. This is selected Cut-Off integration evidence,
+not full monetary journal or Billing acceptance. Wider
+bank/provider, stock/POS/sync and clinical/external-module parity remain required.
+Production and the public demo are unchanged. Earlier checkpoints are historical.
+
 ## Native Cut-Off contract checkpoint (10 October 2026)
 
 Five installed-source contract tests prove read-only virtual preview, native

@@ -38,6 +38,7 @@ export const invoiceJournalFixture = (): InvoiceJournal => ({
       display_type: 'product',
       qorlia_adjustment_kind: false,
       analytic_distribution: false,
+      can_cutoff: true,
     },
   ],
 });

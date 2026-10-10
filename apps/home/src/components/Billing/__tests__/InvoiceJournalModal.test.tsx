@@ -41,15 +41,33 @@ describe('Invoice journal view', () => {
       screen.getByRole('rowheader', { name: /4000 Clinical income/ }),
     ).toBeInTheDocument();
     expect(screen.getByText(/QorliaQA Grid/)).toBeInTheDocument();
-    expect(screen.getByText(/does not post or reconcile/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Reading this table does not change entries/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/reviewed Cut-Off workflow/)).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /Edit details for item/ }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Cut-Off for item 17' }),
     ).toBeEnabled();
     expect(
       screen.queryByRole('columnheader', { name: 'Analytic distribution' }),
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Back to invoice' }));
     expect(close).toHaveBeenCalledTimes(1);
+  });
+  it('does not offer Cut-Off when native eligibility denies it', async () => {
+    const data = invoiceJournalFixture();
+    (getInvoiceJournal as jest.Mock).mockResolvedValue({
+      ...data,
+      rows: data.rows.map((row) => ({ ...row, can_cutoff: false })),
+    });
+    show();
+    await screen.findByRole('table');
+    expect(
+      screen.queryByRole('button', { name: /Cut-Off for item/ }),
+    ).not.toBeInTheDocument();
   });
   it('paginates with the original snapshot and appends rows without replacing totals', async () => {
     const data = invoiceJournalFixture();

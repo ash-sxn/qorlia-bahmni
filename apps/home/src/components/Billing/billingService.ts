@@ -98,6 +98,7 @@ export interface InvoiceJournal {
     display_type: string | false;
     qorlia_adjustment_kind: false | 'discount' | 'rounding';
     analytic_distribution: Record<string, number> | false;
+    can_cutoff: boolean;
   }[];
 }
 
@@ -169,6 +170,8 @@ export async function getInvoiceJournal(
       !date(row.date) ||
       !date(row.date_maturity) ||
       !validRelation(row.currency_id) ||
+      typeof row.can_cutoff !== 'boolean' ||
+      (row.can_cutoff && (result.state !== 'posted' || row.reconciled)) ||
       ![
         row.debit,
         row.credit,
@@ -213,6 +216,364 @@ export async function getInvoiceJournal(
 }
 
 type Relation = [number, string] | false;
+
+export type CutoffValues = {
+  date: string;
+  percentage: number;
+  total_amount: number;
+  journal_id: number | false;
+  revenue_accrual_account: number | false;
+  expense_accrual_account: number | false;
+};
+export type CutoffData = {
+  invoice_id: number;
+  line_id: number;
+  name: string;
+  version: string;
+  values: CutoffValues;
+  labels: Partial<
+    Record<
+      'journal_id' | 'revenue_accrual_account' | 'expense_accrual_account',
+      [number, string]
+    >
+  >;
+  account_type: 'income' | 'expense';
+  currency: [number, string];
+  source_account: [number, string];
+  source_balance: number;
+  company: string;
+  can_create: boolean;
+  lock_date_message: string | false;
+};
+export type CutoffReview = CutoffData & {
+  review_version: string;
+  reconcile_accrual_rows: boolean;
+  default_changes: {
+    journal: [number, string];
+    account: [number, string];
+    account_type: 'income' | 'expense';
+  };
+  entries: {
+    kind: 'recognition' | 'adjustment';
+    date: string;
+    ref: string;
+    state: 'draft' | 'posted';
+    rows: {
+      role: 'source' | 'accrual';
+      name: string;
+      account_id: [number, string];
+      partner_id: Relation;
+      currency_id: [number, string];
+      debit: number;
+      credit: number;
+      amount_currency: number;
+      analytic_distribution: Record<string, number> | false;
+    }[];
+  }[];
+};
+export type CutoffRequest = {
+  invoice_id: number;
+  line_id: number;
+  version: string;
+  values: CutoffValues;
+  review_version: string;
+  request_key: string;
+};
+export type CutoffSaved = {
+  invoice_id: number;
+  line_id: number;
+  request_key: string;
+  entries: {
+    id: number;
+    name: string;
+    date: string;
+    state: 'draft' | 'posted' | 'cancel';
+    auto_post: string;
+    ref: string | false;
+    journal_id: [number, string];
+  }[];
+};
+const cutoffFields = [
+  'date',
+  'percentage',
+  'total_amount',
+  'journal_id',
+  'revenue_accrual_account',
+  'expense_accrual_account',
+] as const;
+const cutoffDate = (value: unknown) =>
+  typeof value === 'string' &&
+  /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+  !Number.isNaN(Date.parse(value)) &&
+  new Date(value).toISOString().slice(0, 10) === value;
+function checkedCutoffValues(values: CutoffValues) {
+  if (
+    !values ||
+    Object.keys(values).length !== cutoffFields.length ||
+    !cutoffFields.every((key) => Object.hasOwn(values, key)) ||
+    !cutoffDate(values.date) ||
+    ![values.percentage, values.total_amount].every(Number.isFinite) ||
+    !['journal_id', 'revenue_accrual_account', 'expense_accrual_account'].every(
+      (key) => {
+        const value = values[key as keyof CutoffValues];
+        return value === false || journalId(value);
+      },
+    )
+  )
+    throw new Error('Invalid Cut-Off values. Reload this invoice item.');
+  return values;
+}
+export function checkedCutoffRequest(request: CutoffRequest) {
+  const keys = [
+    'invoice_id',
+    'line_id',
+    'version',
+    'values',
+    'review_version',
+    'request_key',
+  ];
+  if (
+    !request ||
+    Object.keys(request).length !== keys.length ||
+    !keys.every((key) => Object.hasOwn(request, key)) ||
+    !journalId(request.invoice_id) ||
+    !journalId(request.line_id) ||
+    !journalHash(request.version) ||
+    !journalHash(request.review_version) ||
+    typeof request.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      request.request_key,
+    )
+  )
+    throw new Error(
+      'Invalid Cut-Off recovery request. Check the invoice before creating another request.',
+    );
+  checkedCutoffValues(request.values);
+  return request;
+}
+function cutoffRpc<T>(
+  action: 'load' | 'choices' | 'onchange' | 'preview' | 'save' | 'status',
+  kwargs: object,
+) {
+  const method = `qorlia_cutoff_${action}`;
+  return rpc<T>(`/web/dataset/call_kw/account.move/${method}`, {
+    model: 'account.move',
+    method,
+    args: [],
+    kwargs,
+  });
+}
+function checkedCutoffData(
+  data: CutoffData,
+  invoiceId: number,
+  lineId: number,
+) {
+  if (
+    data?.invoice_id !== invoiceId ||
+    data.line_id !== lineId ||
+    !journalHash(data.version) ||
+    typeof data.name !== 'string' ||
+    typeof data.company !== 'string' ||
+    typeof data.can_create !== 'boolean' ||
+    !['income', 'expense'].includes(data.account_type) ||
+    !Array.isArray(data.currency) ||
+    !validRelation(data.currency) ||
+    !Array.isArray(data.source_account) ||
+    !validRelation(data.source_account) ||
+    !Number.isFinite(data.source_balance) ||
+    !(
+      data.lock_date_message === false ||
+      typeof data.lock_date_message === 'string'
+    ) ||
+    !data.labels ||
+    Array.isArray(data.labels) ||
+    typeof data.labels !== 'object'
+  )
+    throw new Error('Invalid native Cut-Off response.');
+  checkedCutoffValues(data.values);
+  for (const key of [
+    'journal_id',
+    'revenue_accrual_account',
+    'expense_accrual_account',
+  ] as const) {
+    const label = data.labels[key];
+    if (
+      data.values[key]
+        ? !Array.isArray(label) ||
+          !validRelation(label) ||
+          label[0] !== data.values[key]
+        : label !== undefined
+    )
+      throw new Error('Cut-Off labels do not match their native values.');
+  }
+  return data;
+}
+export async function getCutoff(invoiceId: number, lineId: number) {
+  if (!journalId(invoiceId) || !journalId(lineId))
+    throw new Error('Select a saved invoice item.');
+  return checkedCutoffData(
+    await cutoffRpc<CutoffData>('load', {
+      invoice_id: invoiceId,
+      line_id: lineId,
+    }),
+    invoiceId,
+    lineId,
+  );
+}
+export async function onchangeCutoff(
+  current: CutoffData,
+  values: CutoffValues,
+  field: keyof CutoffValues,
+) {
+  checkedCutoffData(current, current.invoice_id, current.line_id);
+  checkedCutoffValues(values);
+  if (!cutoffFields.includes(field))
+    throw new Error('Unsupported Cut-Off field.');
+  const result = checkedCutoffData(
+    await cutoffRpc<CutoffData>('onchange', {
+      invoice_id: current.invoice_id,
+      line_id: current.line_id,
+      version: current.version,
+      values,
+      field,
+    }),
+    current.invoice_id,
+    current.line_id,
+  );
+  if (result.version !== current.version)
+    throw new Error('The Cut-Off source changed. Reload before continuing.');
+  return result;
+}
+export async function previewCutoff(current: CutoffData, values: CutoffValues) {
+  checkedCutoffData(current, current.invoice_id, current.line_id);
+  checkedCutoffValues(values);
+  const result = await cutoffRpc<CutoffReview>('preview', {
+    invoice_id: current.invoice_id,
+    line_id: current.line_id,
+    version: current.version,
+    values,
+  });
+  checkedCutoffData(result, current.invoice_id, current.line_id);
+  const active =
+    result.account_type === 'income'
+      ? 'revenue_accrual_account'
+      : 'expense_accrual_account';
+  if (
+    result.version !== current.version ||
+    !journalHash(result.review_version) ||
+    typeof result.reconcile_accrual_rows !== 'boolean' ||
+    !result.default_changes ||
+    !Array.isArray(result.default_changes.journal) ||
+    !validRelation(result.default_changes.journal) ||
+    result.default_changes.journal[0] !== result.values.journal_id ||
+    !Array.isArray(result.default_changes.account) ||
+    !validRelation(result.default_changes.account) ||
+    result.default_changes.account[0] !== result.values[active] ||
+    result.default_changes.account_type !== result.account_type ||
+    !Array.isArray(result.entries) ||
+    result.entries.length !== 2
+  )
+    throw new Error('Invalid reviewed adjusting entries.');
+  for (const entry of result.entries) {
+    if (
+      entry.kind !==
+        (entry === result.entries[0] ? 'recognition' : 'adjustment') ||
+      !cutoffDate(entry.date) ||
+      typeof entry.ref !== 'string' ||
+      !['draft', 'posted'].includes(entry.state) ||
+      !Array.isArray(entry.rows) ||
+      entry.rows.length !== 2 ||
+      entry.rows.some(
+        (row) =>
+          !row ||
+          !['source', 'accrual'].includes(row.role) ||
+          typeof row.name !== 'string' ||
+          !Array.isArray(row.account_id) ||
+          !validRelation(row.account_id) ||
+          !validRelation(row.partner_id) ||
+          !Array.isArray(row.currency_id) ||
+          !validRelation(row.currency_id) ||
+          ![row.debit, row.credit, row.amount_currency].every(
+            Number.isFinite,
+          ) ||
+          row.debit < 0 ||
+          row.credit < 0,
+      ) ||
+      Math.abs(
+        entry.rows.reduce((sum, row) => sum + row.debit - row.credit, 0),
+      ) > 0.000001
+    )
+      throw new Error('Invalid or unbalanced Cut-Off preview.');
+    if (entry.rows[0].role !== 'source' || entry.rows[1].role !== 'accrual')
+      throw new Error('Invalid Cut-Off preview row order.');
+  }
+  return result;
+}
+function checkedCutoffSaved(result: CutoffSaved, request: CutoffRequest) {
+  if (
+    result?.invoice_id !== request.invoice_id ||
+    result.line_id !== request.line_id ||
+    result.request_key !== request.request_key ||
+    !Array.isArray(result.entries) ||
+    result.entries.length !== 2 ||
+    new Set(result.entries.map((entry) => entry.id)).size !== 2 ||
+    result.entries.some(
+      (entry) =>
+        !journalId(entry.id) ||
+        typeof entry.name !== 'string' ||
+        !cutoffDate(entry.date) ||
+        !['draft', 'posted', 'cancel'].includes(entry.state) ||
+        typeof entry.auto_post !== 'string' ||
+        !(entry.ref === false || typeof entry.ref === 'string') ||
+        !Array.isArray(entry.journal_id) ||
+        !validRelation(entry.journal_id),
+    )
+  )
+    throw new Error(
+      'Invalid Cut-Off receipt. Check the same request before creating another.',
+    );
+  return result;
+}
+export async function saveCutoff(request: CutoffRequest) {
+  checkedCutoffRequest(request);
+  return checkedCutoffSaved(
+    await cutoffRpc<CutoffSaved>('save', request),
+    request,
+  );
+}
+export async function getCutoffStatus(request: CutoffRequest) {
+  checkedCutoffRequest(request);
+  const result = await cutoffRpc<CutoffSaved | false>('status', request);
+  return result === false ? false : checkedCutoffSaved(result, request);
+}
+export async function getCutoffChoices(
+  invoiceId: number,
+  lineId: number,
+  kind: 'journal' | 'accrual',
+  search = '',
+) {
+  if (
+    !journalId(invoiceId) ||
+    !journalId(lineId) ||
+    !['journal', 'accrual'].includes(kind) ||
+    typeof search !== 'string' ||
+    search.length > 200
+  )
+    throw new Error('Use a valid Cut-Off search.');
+  const result = await cutoffRpc<[number, string][]>('choices', {
+    invoice_id: invoiceId,
+    line_id: lineId,
+    kind,
+    search,
+  });
+  if (
+    !Array.isArray(result) ||
+    result.length > 26 ||
+    !result.every((row) => Array.isArray(row) && validRelation(row))
+  )
+    throw new Error('Invalid Cut-Off search result.');
+  return result;
+}
 
 export type JournalDetailValues = {
   name: string | false;

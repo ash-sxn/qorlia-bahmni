@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { invoiceName, money } from './billingFormat';
 import styles from './BillingPage.module.scss';
 import { BillingSessionExpired, getInvoiceJournal } from './billingService';
+import { CutoffModal } from './CutoffModal';
 import { JournalDetailsEditor } from './JournalDetailsEditor';
 
 export function InvoiceJournalModal({
@@ -18,6 +19,7 @@ export function InvoiceJournalModal({
   reconnect: () => void;
 }) {
   const [editing, setEditing] = useState<number | null>(null);
+  const [cutoff, setCutoff] = useState<number | null>(null);
   const journal = useInfiniteQuery({
     queryKey: ['billing', 'invoice-journal', uid, invoiceId],
     initialPageParam: {
@@ -37,6 +39,20 @@ export function InvoiceJournalModal({
   });
   const data = journal.data?.pages[0];
   const rows = journal.data?.pages.flatMap((page) => page.rows) ?? [];
+  if (cutoff !== null)
+    return (
+      <CutoffModal
+        uid={uid}
+        invoiceId={invoiceId}
+        lineId={cutoff}
+        close={() => setCutoff(null)}
+        reconnect={reconnect}
+        saved={() => {
+          setCutoff(null);
+          void journal.refetch();
+        }}
+      />
+    );
   if (editing !== null)
     return (
       <JournalDetailsEditor
@@ -69,7 +85,9 @@ export function InvoiceJournalModal({
           Native accounting entries, not just billed products. Debits, credits
           and residuals use the company currency. Reconciliation does not
           establish bank clearance. Draft and posted items offer a reviewed
-          detail editor. This view does not post or reconcile entries.
+          detail editor. Reading this table does not change entries. Eligible
+          posted revenue or expense items also offer a reviewed Cut-Off
+          workflow.
         </p>
         {journal.error instanceof BillingSessionExpired ? (
           <div role="alert">
@@ -212,6 +230,14 @@ export function InvoiceJournalModal({
                               ) : (
                                 'Managed by invoice editor'
                               )}
+                              {row.can_cutoff && data.state === 'posted' ? (
+                                <Button
+                                  kind="tertiary"
+                                  onClick={() => setCutoff(row.id)}
+                                >
+                                  Cut-Off for item {row.id}
+                                </Button>
+                              ) : null}
                             </td>
                           ) : null}
                           {data.analytics_visible ? (
