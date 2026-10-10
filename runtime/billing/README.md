@@ -3,7 +3,21 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest checkpoint: private bank matching/undo and rolled-back native calculations
+Latest checkpoint: reviewed native bank load/fee/preview/save/status APIs are
+installed in isolated staging. Author/company/configuration-bound reviews, row
+locks, complete native effect comparison and atomic exact-request receipts retain
+native permissions. Raw receipt injection is denied. Failed save callbacks/data
+are restored; successful native callbacks remain. All 465 installed adapter tests
+pass with zero failures/errors/skips on 16.0.1.29.0, including 45 API cases.
+Six installed hashes match; staging and mandatory analytics are restored.
+Independent authenticated HTTP validates load/fees and retains bank #37,
+protected financial records and counts. React matching/undo, gateway writes,
+browser save/recovery and broader concurrency/configuration acceptance are still
+required. Frontend checks were not rerun for this backend checkpoint. Protected
+bank-read build/source/gates/expiry and production/public demo remain unchanged.
+Wider Billing/product parity remains open.
+
+Earlier checkpoint: private bank matching/undo and rolled-back native calculations
 now preserve original bank amounts and native balance/fiscal restrictions, reject
 hashed entries and accounting-bypass contexts, and enforce mandatory analytics.
 SQL-complete graphs include partial/full reconciliation, FX and cash-basis moves/

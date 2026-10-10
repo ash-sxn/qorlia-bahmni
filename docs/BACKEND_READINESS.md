@@ -1,5 +1,40 @@
 # Qorlia React frontend backend readiness
 
+## Reviewed native bank save API checkpoint (10 October 2026)
+
+Five named native APIs now load matching access, list applicable fee rules,
+preview complete match/undo effects, save a reviewed request and recover its
+exact receipt. Reviews bind the author, active companies, chosen sources and
+complete financial/configuration values. Company/entry, graph and configuration
+rows are locked for save. Automatic fiscal positions, nested tax children,
+currency rates and mandatory analytic policies are included. Native ACL/rules
+remain active; readers can load their ledger without write-only configuration.
+
+Save checks the actual native graph against the review and records a server-owned
+receipt in the same SQL savepoint. Raw receipt create/write/default injection is
+denied. Exact accepted retries do not repeat accounting, including after a later
+undo. Failed saves restore earlier transaction callback functions and data;
+successful saves retain native callbacks. Preview remains rolled-back native SQL,
+not a pure calculation, and sequences may advance.
+
+All 465 installed native adapter tests pass with zero failures/errors/skips on
+16.0.1.29.0. The 45-case API class includes 24 inherited native contracts, three
+public-API tax/analytic/cash-basis parity cases and 18 API/access/recovery cases.
+Six installed file hashes match source. Staging restarted and independent SQL
+confirms mandatory plan #23 restored. Authenticated HTTP load/fee APIs serialize
+correctly, with two complete ledger rows for synthetic entry #37. Independent
+native reads retain its accounting/matching, protected records and financial/
+stock/mail/statement counts. Existing upstream/report warnings remain.
+
+These APIs are installed only in isolated staging. Matching/undo React controls,
+write gateway allowlisting and actual browser save/read-back/recovery are not yet
+delivered. Cross-request concurrency/multicompany and broader fee/tax/rounding,
+forced-account and FX-only residual acceptance remain required. Statement create/
+import/checkpoints, provider payments, stock/POS, clinical synchronisation and
+separate-product redesign remain in scope. Frontend checks were not rerun for
+this backend checkpoint. Protected bank-read-20261010 build/source/gates/expiry
+and production/public demo are unchanged. Earlier entries are historical.
+
 ## Private native bank calculation checkpoint (10 October 2026)
 
 The adapter now implements private matching, undo and rolled-back calculation

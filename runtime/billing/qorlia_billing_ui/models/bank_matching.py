@@ -11,10 +11,10 @@ from odoo.tools import float_compare
 GRAPH_FIELDS = {
     'account.bank.statement.line': ('move_id', 'journal_id', 'date', 'payment_ref', 'partner_id',
         'amount', 'currency_id', 'amount_currency', 'foreign_currency_id', 'amount_residual',
-        'is_reconciled', 'to_check', 'payment_ids', 'statement_id'),
+        'is_reconciled', 'to_check', 'payment_ids', 'statement_id', 'transaction_type'),
     'account.move': ('name', 'state', 'move_type', 'date', 'company_id', 'journal_id', 'partner_id',
         'currency_id', 'amount_total', 'amount_residual', 'payment_state', 'line_ids',
-        'reversed_entry_id', 'tax_cash_basis_rec_id', 'tax_cash_basis_origin_move_id'),
+        'reversed_entry_id', 'tax_cash_basis_rec_id', 'tax_cash_basis_origin_move_id', 'narration'),
     'account.move.line': ('name', 'move_id', 'account_id', 'partner_id', 'date', 'date_maturity',
         'debit', 'credit', 'balance', 'currency_id', 'amount_currency', 'amount_residual',
         'amount_residual_currency', 'reconciled', 'matched_debit_ids', 'matched_credit_ids',
@@ -101,6 +101,8 @@ class BankMatching(models.Model):
                     or model.rule_type not in ('writeoff_button', 'writeoff_suggestion')
                     or model.match_journal_ids and self.journal_id not in model.match_journal_ids):
                 raise ValidationError('Select an active native fee rule for this company and journal.')
+            if model.rule_type == 'writeoff_suggestion' and not model._is_applicable_for(self, self.partner_id):
+                raise ValidationError('This native fee suggestion does not apply to the bank entry.')
         return prepared, model
 
     def _qorlia_bank_fee_rows(self, model, remaining_amount):

@@ -23,3 +23,4 @@ from . import invoice_cutoff
 from . import invoice_journal_money
 from . import bank_statement
 from . import bank_matching
+from . import bank_matching_api

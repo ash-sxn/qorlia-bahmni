@@ -1,5 +1,27 @@
 # Bahmni workflow parity ledger
 
+## 10 October reviewed native bank save API checkpoint
+
+- Five scoped native load/fee/preview/save/status APIs bind reviews to author,
+  companies, complete accounting and configuration, including automatic fiscal
+  positions, nested tax children, rates and analytic policies. Stable row locks,
+  native permissions, actual-save graph comparison and atomic receipts are used.
+- Exact accepted retries never replay accounting after a later undo. Receipt
+  injection through raw create/write/default/context is denied. Failed saves
+  restore pre-existing callback functions/data; successful native callbacks stay.
+- All 465 installed adapter tests pass with zero failures/errors/skips on
+  16.0.1.29.0. The new API class has 45 cases: 24 inherited native contracts,
+  three reused public tax/analytic/cash-basis cases and 18 API/security/recovery
+  cases. Six source hashes match installed files. Staging runs; SQL confirms
+  mandatory plan #23 restored. Independent native HTTP validates load/fees and
+  retains entry #37, protected financial records and financial/stock/mail counts.
+- No React matching controls, gateway write exposure, browser matching/save/undo
+  or complete concurrency/multicompany acceptance is delivered by this step.
+  Broader native configurations, statement create/import/checkpoints and all
+  wider Billing/clinical/separate-product parity remain required. Frontend checks
+  were not rerun; protected bank-read-20261010 and source/gates/expiry are unchanged.
+  Production/public demo are unchanged. This does not complete Banking or Billing.
+
 ## 10 October private native bank calculation checkpoint
 
 - Added private native matching/undo and rolled-back calculation helpers, not
