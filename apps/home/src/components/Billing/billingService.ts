@@ -637,7 +637,7 @@ export async function previewBankCheckpoint(
   }
   return result;
 }
-function checkedCheckpointRequest(request: BankCheckpointRequest) {
+export function checkedBankCheckpointRequest(request: BankCheckpointRequest) {
   if (
     !bankObject(request) ||
     Object.keys(request).length !== 3 ||
@@ -649,12 +649,13 @@ function checkedCheckpointRequest(request: BankCheckpointRequest) {
   )
     throw new Error('Use an exact reviewed statement save request.');
   checkedBankCheckpointPayload(request.payload);
+  return request;
 }
 async function checkpointSaveResult(
   action: 'editor_save' | 'editor_status',
   request: BankCheckpointRequest,
 ) {
-  checkedCheckpointRequest(request);
+  checkedBankCheckpointRequest(request);
   const result = await checkpointCall<{
     accepted: boolean;
     checkpoint: BankCheckpoint | false;

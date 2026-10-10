@@ -1,6 +1,7 @@
 import { Button, Modal, TextInput } from '@bahmni/design-system';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { BankCheckpointEditorModal } from './BankCheckpointEditorModal';
 import { money } from './billingFormat';
 import styles from './BillingPage.module.scss';
 import {
@@ -31,6 +32,7 @@ export function BankCheckpointsPanel({
   const [journalType, setJournalType] = useState('all');
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
+  const [editing, setEditing] = useState<number | null>(null);
   const history = useQuery({
     queryKey: [
       'billing',
@@ -184,6 +186,16 @@ export function BankCheckpointsPanel({
                       >
                         View checkpoint {row.id}
                       </Button>
+                      <Button
+                        kind="tertiary"
+                        disabled={history.isFetching}
+                        onClick={() => {
+                          setSelected(null);
+                          setEditing(row.id);
+                        }}
+                      >
+                        Edit checkpoint {row.id}
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -225,6 +237,23 @@ export function BankCheckpointsPanel({
           close={() => setSelected(null)}
           reconnect={reconnect}
           openEntry={openEntry}
+          edit={() => {
+            setSelected(null);
+            setEditing(selected);
+          }}
+        />
+      ) : null}
+      {editing !== null ? (
+        <BankCheckpointEditorModal
+          key={`${uid}:${editing}`}
+          uid={uid}
+          selection={{
+            checkpoint_id: editing,
+            entry_ids: [],
+            split_line_id: false,
+          }}
+          close={() => setEditing(null)}
+          reconnect={reconnect}
         />
       ) : null}
     </section>
@@ -237,12 +266,14 @@ function CheckpointDetail({
   close,
   reconnect,
   openEntry,
+  edit,
 }: {
   uid: number;
   checkpointId: number;
   close: () => void;
   reconnect: () => void;
   openEntry: (entryId: number) => void;
+  edit: () => void;
 }) {
   const detail = useInfiniteQuery({
     queryKey: ['billing', 'checkpoint-detail', uid, checkpointId],
@@ -401,6 +432,9 @@ function CheckpointDetail({
             </table>
           </div>
           {!rows.length ? <p>This checkpoint has no entries.</p> : null}
+          <Button disabled={detail.isFetching} onClick={edit}>
+            Edit checkpoint balances
+          </Button>
           {detail.hasNextPage ? (
             <Button
               disabled={detail.isFetching}

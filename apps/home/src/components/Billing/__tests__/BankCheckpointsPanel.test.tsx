@@ -14,6 +14,20 @@ import {
 } from '../billingService';
 import { bankCheckpoint, checkpointDetail } from './bankFixture';
 
+jest.mock('../BankCheckpointEditorModal', () => ({
+  BankCheckpointEditorModal: ({
+    selection,
+    close,
+  }: {
+    selection: unknown;
+    close: () => void;
+  }) => (
+    <section aria-label="Checkpoint editor test workspace">
+      <pre>{JSON.stringify(selection)}</pre>
+      <button onClick={close}>Close checkpoint editor</button>
+    </section>
+  ),
+}));
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
   getBankCheckpointDetail: jest.fn(),
@@ -49,6 +63,33 @@ describe('Statement balance checkpoint workspace', () => {
     });
     (getBankCheckpointDetail as jest.Mock).mockResolvedValue(
       checkpointDetail(),
+    );
+  });
+  it('opens the native edit selection from history and replaces detail rather than nesting dialogs', async () => {
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Edit checkpoint 9' }),
+    );
+    expect(
+      screen.getByRole('region', { name: 'Checkpoint editor test workspace' }),
+    ).toHaveTextContent(
+      '{"checkpoint_id":9,"entry_ids":[],"split_line_id":false}',
+    );
+    expect(getBankCheckpointDetail).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close checkpoint editor' }),
+    );
+    await open();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Edit checkpoint balances' }),
+    );
+    expect(
+      screen.queryByRole('dialog', { name: 'Statement checkpoint details' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'Checkpoint editor test workspace' }),
+    ).toHaveTextContent(
+      '{"checkpoint_id":9,"entry_ids":[],"split_line_id":false}',
     );
   });
   it('keeps native completeness separate from continuity and opens details on demand', async () => {

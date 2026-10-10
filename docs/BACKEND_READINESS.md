@@ -1,5 +1,30 @@
 # Qorlia React frontend backend readiness
 
+## React statement checkpoint editor source checkpoint (10 October 2026)
+
+Bank statements now opens native create, multi-selection, split and existing
+checkpoint editors. The house components/styles retain one Billing design system.
+Native preview controls the selected entries, all affected journal checkpoints,
+completeness/continuity and unchanged connected accounting. No frontend balance
+calculation or arbitrary accounting CRUD is added. Edits invalidate the review.
+
+The exact reviewed request is stored before sending, scoped to the Billing user
+and browser tab. Unconfirmed saves prevent replacement writes. Reopening resumes
+the pending request without loading a different checkpoint, and status/exact retry
+returns current native state. Invalid/unavailable storage fails closed; accepted
+saves with failed storage cleanup remain locked. Unsaved edits have discard and
+reload guards. Session expiry preserves pending recovery. Four named editor APIs
+are now permitted through the existing protected gateway, retaining every gate.
+
+Home passes 469 tests/53 suites, including 19 new editor/entry-point tests. Seven
+gateway/config tests, Home library types, touched lint and diff checks pass.
+Development webpack build 68949d1a0d2a3838 passes after supplying the existing Nx
+target environment. Missing Yarn/Browserslist and existing development bundle
+warnings remain. The preceding 492 native tests were not rerun for this UI step.
+The tester artifact is still bank-checkpoint-20261010: this source checkpoint is
+not yet hosted or browser save accepted. Production/public demo are unchanged;
+nine unrelated clinical edits remain preserved. Full product parity is open.
+
 ## Native statement checkpoint editing APIs (10 October 2026)
 
 The isolated native adapter 16.0.1.32.0 now supports statement creation from one

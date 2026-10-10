@@ -47,11 +47,13 @@ export function BankNativeGraph({
   after,
   labels,
   heading,
+  purpose = 'matching',
 }: {
   before: BankGraph;
   after?: BankGraph;
   labels: Record<string, string>;
   heading: string;
+  purpose?: 'matching' | 'checkpoint';
 }) {
   const name = (model: string, id: number | string) =>
     labels[`${model}:${id}`] ??
@@ -91,8 +93,10 @@ export function BankNativeGraph({
         All seven native record groups are included, without limiting the review
         to the current search page. Monetary numbers below are exact native
         values. Check each record&apos;s currency and source links, not only its
-        amount. New record labels are temporary until save. Undo can delete
-        generated payments and reverse exchange or cash-basis entries.
+        amount.{' '}
+        {purpose === 'checkpoint'
+          ? 'Only statement grouping changes. This complete financial snapshot must remain unchanged.'
+          : 'New record labels are temporary until save. Undo can delete generated payments and reverse exchange or cash-basis entries.'}
       </p>
       {Object.entries(before).map(([model, original]) => {
         const proposed = after?.[model];

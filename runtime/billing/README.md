@@ -3,6 +3,17 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest React source checkpoint: native create, contiguous selection, split and
+edit controls are wired to all four checkpoint editor APIs. Complete affected
+checkpoint/unchanged accounting review remains native. Per-user/tab exact-request
+storage, status/retry, expiry recovery and storage-failure guards prevent a lost
+response from becoming a replacement save. The protected gateway permits only
+the four named methods with all existing gates retained. Home passes 469 tests/53
+suites, seven gateway/config checks, library types, touched lint/diff and build
+68949d1a0d2a3838. Prior 492 native tests were not rerun for this UI step. This is
+not yet hosted or browser save accepted. Production/public demo are unchanged;
+whole-product parity remains open. The dated checkpoints below are historical.
+
 Current source/API checkpoint: adapter 16.0.1.32.0 supports native statement
 checkpoint creation/editing through `qorlia_checkpoint_editor_load`,
 `qorlia_checkpoint_editor_preview`, `qorlia_checkpoint_editor_save` and

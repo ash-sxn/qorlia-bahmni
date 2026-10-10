@@ -135,10 +135,10 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models', name), 'utf8')
       .matchAll(/^    def (qorlia_bank_\w+)\(/gm)].map(match => match[1]));
   assert.equal(bankMethods.length, 10, 'All current named native bank APIs must be covered.');
-  const checkpointMethods = [...readFileSync(resolve(__dirname,
-    '../../runtime/billing/qorlia_billing_ui/models/bank_checkpoint.py'), 'utf8')
-    .matchAll(/^    def (qorlia_checkpoint_\w+)\(/gm)].map(match => match[1]);
-  assert.equal(checkpointMethods.length, 2, 'Both native checkpoint read APIs must be covered.');
+  const checkpointMethods = ['bank_checkpoint.py', 'bank_checkpoint_editor.py'].flatMap(name =>
+    [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models', name), 'utf8')
+      .matchAll(/^    def (qorlia_checkpoint_\w+)\(/gm)].map(match => match[1]));
+  assert.equal(checkpointMethods.length, 6, 'All native checkpoint read and reviewed editor APIs must be covered.');
   for (const [model, method] of [
     ...bankMethods.map(method => ['account.bank.statement.line', method]),
     ...checkpointMethods.map(method => ['account.bank.statement', method]),
@@ -164,7 +164,8 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     'qorlia_bank_match_unknown', 'qorlia_bank_match_fees', '_qorlia_bank_match_apply', '_qorlia_bank_match_undo'])
     assert.equal((await rpc(`/web/dataset/call_kw/account.bank.statement.line/${method}`, allCookies,
       {model: 'account.bank.statement.line', method})).status, 404);
-  for (const method of ['create', 'write', 'unlink', 'default_get', '_qorlia_checkpoint_previous', 'qorlia_checkpoint_save'])
+  for (const method of ['create', 'write', 'unlink', 'default_get', '_qorlia_checkpoint_previous', 'qorlia_checkpoint_save',
+    '_qorlia_checkpoint_editor_simulate', 'qorlia_checkpoint_editor_unknown'])
     assert.equal((await rpc(`/web/dataset/call_kw/account.bank.statement/${method}`, allCookies,
       {model: 'account.bank.statement', method})).status, 404);
   assert.equal((await request('/openmrs/qorlia-billing-api/report/pdf/account.report_invoice/7',

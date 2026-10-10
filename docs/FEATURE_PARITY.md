@@ -1,5 +1,25 @@
 # Bahmni workflow parity ledger
 
+## 10 October React statement checkpoint editor source checkpoint
+
+- Native create/contiguous selection/split/edit entry points now use the shared
+  Billing design system. Preview shows all journal checkpoint effects and the
+  unchanged seven-model financial graph; native derived balances remain authority.
+- Pending requests persist before send, per user/browser tab. Lost response,
+  reload, session expiry and accepted-response cleanup failure cannot start a
+  replacement save. Exact status/retry recovery returns current native state.
+  Invalid storage fails closed. Edits invalidate reviews; discard is explicit.
+- Four named editor methods are allowlisted behind unchanged review/session,
+  origin, company/context and expiry gates. Raw/private writes stay blocked.
+- Home passes 469 tests/53 suites and seven gateway/config checks pass. Library
+  types, touched lint/diff and development build 68949d1a0d2a3838 pass. Existing
+  build warnings remain. Earlier 492 native tests are not a rerun for this step.
+- Not yet hosted or browser save accepted. The tester build remains
+  bank-checkpoint-20261010; production/public demo and nine unrelated clinical
+  edits are unchanged. Imports/attachments, pivot/graph, wider bank configurations,
+  POS/stock/provider payments and clinical/ERP integration remain unfinished,
+  along with whole clinical and external-module parity.
+
 ## 10 October native statement checkpoint editing API checkpoint
 
 - Adapter 16.0.1.32.0 adds four named load/review/save/status APIs. Native

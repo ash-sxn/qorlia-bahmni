@@ -23,6 +23,20 @@ import {
   checkpointDetail,
 } from './bankFixture';
 
+jest.mock('../BankCheckpointEditorModal', () => ({
+  BankCheckpointEditorModal: ({
+    selection,
+    close,
+  }: {
+    selection: unknown;
+    close: () => void;
+  }) => (
+    <section aria-label="Checkpoint editor test workspace">
+      <pre>{JSON.stringify(selection)}</pre>
+      <button onClick={close}>Close checkpoint editor</button>
+    </section>
+  ),
+}));
 jest.mock('../BankMatchingModal', () => ({
   BankMatchingModal: ({
     uid,
@@ -87,6 +101,88 @@ describe('Bank statement native read workspace', () => {
     (getBankCheckpointDetail as jest.Mock).mockResolvedValue(
       checkpointDetail(),
     );
+  });
+  it('retains distinct transaction selection across pages and passes it to native checkpoint creation', async () => {
+    (getBankHistory as jest.Mock).mockImplementation(
+      async (_search, _state, offset) => ({
+        rows: [{ ...bankEntry(), id: offset === 0 ? 7 : 8 }],
+        offset,
+        has_more: offset === 0,
+      }),
+    );
+    show();
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'Checkpoint transaction 7' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Next statement entries' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'Checkpoint transaction 8' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Create checkpoint from selected transactions',
+      }),
+    );
+    expect(
+      screen.getByRole('region', { name: 'Checkpoint editor test workspace' }),
+    ).toHaveTextContent(
+      '{"checkpoint_id":false,"entry_ids":[7,8],"split_line_id":false}',
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close checkpoint editor' }),
+    );
+    expect(
+      screen.getByRole('button', {
+        name: 'Create checkpoint from selected transactions',
+      }),
+    ).toBeDisabled();
+  });
+  it('passes the split anchor and supports recovering a pending request without a new selection', async () => {
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Split checkpoint at transaction 7',
+      }),
+    );
+    expect(
+      screen.getByRole('region', { name: 'Checkpoint editor test workspace' }),
+    ).toHaveTextContent(
+      '{"checkpoint_id":false,"entry_ids":[7],"split_line_id":7}',
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close checkpoint editor' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Resume pending checkpoint save' }),
+    );
+    expect(
+      screen.getByRole('region', { name: 'Checkpoint editor test workspace' }),
+    ).toHaveTextContent('null');
+  });
+  it('clears checkpoint selection when search or filters change', async () => {
+    show();
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'Checkpoint transaction 7' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Search statements' }));
+    expect(
+      screen.getByRole('button', {
+        name: 'Create checkpoint from selected transactions',
+      }),
+    ).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Checkpoint transaction 7' }),
+    );
+    fireEvent.change(screen.getByLabelText('Matching state'), {
+      target: { value: 'matched' },
+    });
+    expect(
+      screen.getByRole('button', {
+        name: 'Create checkpoint from selected transactions',
+      }),
+    ).toBeDisabled();
   });
   it('opens checkpoints on demand and returns a checkpoint entry to its native ledger', async () => {
     show();

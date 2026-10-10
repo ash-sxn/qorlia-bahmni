@@ -1,11 +1,13 @@
-import { Button, Modal, TextInput } from '@bahmni/design-system';
+import { Button, Checkbox, Modal, TextInput } from '@bahmni/design-system';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { BankCheckpointEditorModal } from './BankCheckpointEditorModal';
 import { BankCheckpointsPanel } from './BankCheckpointsPanel';
 import { BankMatchingModal } from './BankMatchingModal';
 import { money } from './billingFormat';
 import styles from './BillingPage.module.scss';
 import {
+  BankCheckpointSelection,
   BillingSessionExpired,
   getBankCandidates,
   getBankDetail,
@@ -26,6 +28,14 @@ export function BankStatementsPanel({
   const [selected, setSelected] = useState<number | null>(null);
   const [matching, setMatching] = useState(false);
   const [checkpoints, setCheckpoints] = useState(false);
+  const [groupIds, setGroupIds] = useState<number[]>([]);
+  const [editor, setEditor] = useState<{
+    selection: BankCheckpointSelection | null;
+  } | null>(null);
+  const openCheckpoint = (selection: BankCheckpointSelection | null) => {
+    setSelected(null);
+    setEditor({ selection });
+  };
   const history = useQuery({
     queryKey: ['billing', 'bank-history', uid, submitted, state, offset],
     queryFn: () => getBankHistory(submitted, state, offset),
@@ -68,6 +78,36 @@ export function BankStatementsPanel({
         payment is separate from a bank-statement match. Reading this workspace
         does not change accounting or connect to your bank.
       </p>
+      <div className={styles.toolbar}>
+        <Button
+          disabled={!groupIds.length || history.isFetching || history.isError}
+          onClick={() =>
+            openCheckpoint({
+              checkpoint_id: false,
+              entry_ids: groupIds,
+              split_line_id: false,
+            })
+          }
+        >
+          Create checkpoint from selected transactions
+        </Button>
+        <Button
+          kind="tertiary"
+          disabled={!groupIds.length}
+          onClick={() => setGroupIds([])}
+        >
+          Clear checkpoint selection
+        </Button>
+        <Button kind="tertiary" onClick={() => openCheckpoint(null)}>
+          Resume pending checkpoint save
+        </Button>
+      </div>
+      <p>
+        Selected checkpoint transactions: {groupIds.join(', ') || 'None'}.
+        Selections remain across pages and are cleared when you submit a search
+        or change filters. Native Billing requires a contiguous selection from
+        one journal.
+      </p>
       <form
         className={styles.toolbar}
         onSubmit={(event) => {
@@ -75,6 +115,7 @@ export function BankStatementsPanel({
           setSubmitted(search.trim());
           setOffset(0);
           setSelected(null);
+          setGroupIds([]);
         }}
       >
         <TextInput
@@ -93,6 +134,7 @@ export function BankStatementsPanel({
               setState(event.target.value);
               setOffset(0);
               setSelected(null);
+              setGroupIds([]);
             }}
           >
             <option value="all">All entries</option>
@@ -139,6 +181,7 @@ export function BankStatementsPanel({
               <thead>
                 <tr>
                   {[
+                    'Checkpoint selection',
                     'Date',
                     'Entry / statement',
                     'Label / partner',
@@ -157,6 +200,21 @@ export function BankStatementsPanel({
               <tbody>
                 {history.data.rows.map((row) => (
                   <tr key={row.id}>
+                    <td>
+                      <Checkbox
+                        id={`checkpoint-transaction-${row.id}`}
+                        labelText={`Checkpoint transaction ${row.id}`}
+                        checked={groupIds.includes(row.id)}
+                        disabled={history.isFetching}
+                        onChange={(_event, { checked }) =>
+                          setGroupIds((ids) =>
+                            checked
+                              ? [...new Set([...ids, row.id])]
+                              : ids.filter((id) => id !== row.id),
+                          )
+                        }
+                      />
+                    </td>
                     <td>{row.date}</td>
                     <td>
                       {row.move_id[1]}
@@ -192,6 +250,19 @@ export function BankStatementsPanel({
                         }}
                       >
                         View statement entry {row.id}
+                      </Button>
+                      <Button
+                        kind="tertiary"
+                        disabled={history.isFetching}
+                        onClick={() =>
+                          openCheckpoint({
+                            checkpoint_id: false,
+                            entry_ids: [row.id],
+                            split_line_id: row.id,
+                          })
+                        }
+                      >
+                        Split checkpoint at transaction {row.id}
                       </Button>
                     </td>
                   </tr>
@@ -247,6 +318,18 @@ export function BankStatementsPanel({
             manage={() => setMatching(true)}
           />
         )
+      ) : null}
+      {editor ? (
+        <BankCheckpointEditorModal
+          key={`${uid}:${JSON.stringify(editor.selection)}`}
+          uid={uid}
+          selection={editor.selection}
+          close={() => {
+            setEditor(null);
+            setGroupIds([]);
+          }}
+          reconnect={reconnect}
+        />
       ) : null}
     </section>
   );
