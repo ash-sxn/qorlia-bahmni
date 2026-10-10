@@ -3,6 +3,20 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Current source/API checkpoint: adapter 16.0.1.32.0 supports native statement
+checkpoint creation/editing through `qorlia_checkpoint_editor_load`,
+`qorlia_checkpoint_editor_preview`, `qorlia_checkpoint_editor_save` and
+`qorlia_checkpoint_editor_status`. Selection follows native single/contiguous
+multi/split defaults. Complete affected-statement review, native permissions,
+rollback/callback quarantine, current-state recovery and exact-request receipts
+are enforced; freshly traversed accounting must remain unchanged. Caller default
+overrides and validation-bypass contexts are rejected. All 492 native tests and
+450 Home tests pass. Actual authenticated HTTP/client checks and independent
+native read-back verify synthetic grouping/metadata/receipt behavior without
+changing fixture accounting or protected documents. The React editor, gateway
+write exposure and browser acceptance are still pending. The protected tester
+UI remains the read checkpoint below; production/public demo are unchanged.
+
 Current hosted checkpoint: `bank-checkpoint-20261010` exposes native statement
 checkpoints behind unchanged review/hospital/Billing gates and expiry. All 83
 hosted JS/CSS files and protected source/license/manifest hashes match source

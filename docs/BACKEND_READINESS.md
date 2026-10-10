@@ -1,5 +1,31 @@
 # Qorlia React frontend backend readiness
 
+## Native statement checkpoint editing APIs (10 October 2026)
+
+The isolated native adapter 16.0.1.32.0 now supports statement creation from one
+transaction, contiguous multi-selection and split-at-transaction, plus native
+reference/opening/ending-balance edits. Four named load/review/save/status APIs
+reuse Odoo defaults and writes. Reviews include all affected journal checkpoints
+and freshly traversed seven-model accounting snapshots. Hidden balance sources,
+foreign companies, caller default overrides and accounting-bypass contexts fail
+closed. Preview rolls back with callback quarantine. Locked source/review checks
+and protected exact-request receipts make accepted retries non-mutating; recovery
+returns current native state. Unexpected accounting changes abort the transaction.
+
+All 492 native tests pass, including 13 editor cases. The initial query errors
+were fixed by joining bank transactions to their delegated journal entries.
+Authenticated native HTTP verifies synthetic creation #254, editing, split #258,
+status, exact retry and current-state recovery. The actual TypeScript clients
+validate populated reviews and accepted recovery. Independent native read-back
+confirms receipt uniqueness, final grouping and unchanged fixture accounting,
+bank #37 and eight protected documents. Mandatory analytics remain active,
+Billing is running and installed editor/test/manifest hashes match local source.
+Home passes 450 tests/52 suites; library/touched-test types, touched lint and diff
+checks pass. No redesigned editor controls, protected gateway write exposure,
+new hosted bundle or browser editor acceptance are claimed yet. Production and
+public demo are unchanged. Full product parity remains open; UI entry points and
+durable recovery controls are the next implementation gate.
+
 ## Protected statement checkpoint browser acceptance (10 October 2026)
 
 The `bank-checkpoint-20261010` tester artifact is hosted behind the existing

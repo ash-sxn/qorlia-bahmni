@@ -1,5 +1,43 @@
 # Bahmni workflow parity ledger
 
+## 10 October native statement checkpoint editing API checkpoint
+
+- Adapter 16.0.1.32.0 adds four named load/review/save/status APIs. Native
+  `default_get` and `create/write` preserve single transaction, contiguous
+  multi-selection and split-at-transaction grouping, editable references and
+  opening/ending balances. Review includes every affected journal checkpoint,
+  native completeness/continuity and the complete connected accounting graph.
+- Native ACLs, related-record/company rules and whole-journal reads reject hidden
+  balance inputs. Review runs under rollback with isolated callback queues.
+  Source/review versions, locks and protected exact-request receipts prevent
+  unreviewed saves and repeated writes after an accepted response is lost.
+  Recovery returns current native state, not a frozen historical statement.
+  Caller defaults/accounting-bypass contexts are denied. A fresh graph traversal
+  detects unexpected new/removed accounting records as well as changed values.
+- All 492 native adapter tests pass with zero failures/errors/skips, including
+  13 new editor tests. The initial 490-test run had ten query errors because
+  journal ownership is delegated to `account.move`; joining through `move_id`
+  fixes the root query. The corrected focused run passed 11 tests, then both
+  hardening cases and the full 492-test rerun passed. Plan #23 was restored to
+  mandatory and Billing is running. Installed editor/test/manifest hashes match.
+- Authenticated native HTTP creates checkpoint #254, edits its reference/ending
+  balance, and splits transaction #2435 into #258 in synthetic journal #2482.
+  Load/review/save/status/exact retry and later-state receipt recovery pass.
+  The actual TypeScript clients independently validate populated native reviews,
+  all seven graph groups and accepted-request recovery without further writes.
+  Independent native read-back verifies the final grouping, receipt uniqueness,
+  unchanged fixture accounting, bank #37 and eight protected documents.
+- Home passes 450 tests/52 suites, including eight new client-boundary cases.
+  Home library and source-based touched-test types, touched lint and diff checks
+  pass. Jest uses the established isolated CommonJS config-loader options;
+  initial config-loader and test-literal type errors were corrected, not waived.
+- The React editor controls, gateway write allowlist, hosted build and browser
+  save acceptance are not delivered in this checkpoint. The protected tester UI
+  remains `bank-checkpoint-20261010`; production/public demo are unchanged and
+  nine unrelated clinical edits remain preserved. Import/attachments, pivot/graph,
+  broader configuration/concurrency and full Billing/clinical/external parity
+  remain unfinished. Next: wire native editor entry points and recovery UI.
+
 ## 10 October protected statement checkpoint browser acceptance
 
 - Deployed `bank-checkpoint-20261010` behind unchanged code/session/expiry gates.

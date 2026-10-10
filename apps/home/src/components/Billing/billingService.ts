@@ -382,7 +382,16 @@ function validBankCheckpoint(row: BankCheckpoint) {
     bankText(row.problem_description)
   );
 }
-const checkpointCall = <T>(action: 'history' | 'detail', kwargs: object) =>
+const checkpointCall = <T>(
+  action:
+    | 'history'
+    | 'detail'
+    | 'editor_load'
+    | 'editor_preview'
+    | 'editor_save'
+    | 'editor_status',
+  kwargs: object,
+) =>
   rpc<T>(
     `/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_${action}`,
     {
@@ -421,6 +430,253 @@ export async function getBankCheckpointHistory(
     throw new Error('Invalid statement checkpoint history.');
   return data;
 }
+export interface BankCheckpointSelection {
+  checkpoint_id: number | false;
+  entry_ids: number[];
+  split_line_id: number | false;
+}
+export interface BankCheckpointValues {
+  name: string | false;
+  reference: string | false;
+  balance_start: number;
+  balance_end_real: number;
+}
+export interface BankCheckpointPayload extends BankCheckpointSelection {
+  version: string;
+  values: BankCheckpointValues;
+}
+export interface BankCheckpointEditor extends BankCheckpointPayload {
+  checkpoint: Omit<BankCheckpoint, 'id'>;
+  selected_entry_ids: number[];
+}
+export interface BankCheckpointReview {
+  values: BankCheckpointValues;
+  checkpoint: Omit<BankCheckpoint, 'id'>;
+  entry_ids: number[];
+  affected: {
+    checkpoint: Omit<BankCheckpoint, 'id'> & { id: number | 'new' };
+    entry_ids: number[];
+  }[];
+  financial: BankGraph;
+  review_version: string;
+}
+export interface BankCheckpointRequest {
+  payload: BankCheckpointPayload;
+  review_version: string;
+  request_key: string;
+}
+const checkpointIds = (ids: unknown): ids is number[] =>
+  Array.isArray(ids) && ids.every(bankId) && new Set(ids).size === ids.length;
+function checkedCheckpointSelection(selection: BankCheckpointSelection) {
+  if (
+    !bankObject(selection) ||
+    !(selection.checkpoint_id === false || bankId(selection.checkpoint_id)) ||
+    !checkpointIds(selection.entry_ids) ||
+    !(selection.split_line_id === false || bankId(selection.split_line_id)) ||
+    (selection.checkpoint_id !== false &&
+      (selection.entry_ids.length || selection.split_line_id !== false)) ||
+    (selection.checkpoint_id === false && !selection.entry_ids.length) ||
+    (selection.split_line_id !== false &&
+      (selection.entry_ids.length !== 1 ||
+        selection.entry_ids[0] !== selection.split_line_id))
+  )
+    throw new Error(
+      'Select a checkpoint or distinct native transactions from one journal.',
+    );
+}
+function checkedCheckpointValues(values: BankCheckpointValues) {
+  if (
+    !bankObject(values) ||
+    Object.keys(values).length !== 4 ||
+    !['name', 'reference'].every(
+      (key) =>
+        bankText(values[key as keyof BankCheckpointValues]) &&
+        (values[key as 'name' | 'reference'] === false ||
+          String(values[key as 'name' | 'reference']).length <= 200),
+    ) ||
+    ![values.balance_start, values.balance_end_real].every(
+      (value) => typeof value === 'number' && Number.isFinite(value),
+    )
+  )
+    throw new Error(
+      'Review the complete statement reference and finite balances.',
+    );
+}
+export function checkedBankCheckpointPayload(payload: BankCheckpointPayload) {
+  checkedCheckpointSelection(payload);
+  if (Object.keys(payload).length !== 5 || !bankHash(payload.version))
+    throw new Error('Reload the native statement source before editing.');
+  checkedCheckpointValues(payload.values);
+  return payload;
+}
+function checkedCheckpointHeader(
+  checkpoint: Omit<BankCheckpoint, 'id'>,
+  values: BankCheckpointValues,
+) {
+  checkedCheckpointValues(values);
+  if (
+    !bankObject(checkpoint) ||
+    !validBankCheckpoint({ ...checkpoint, id: 1 }) ||
+    Object.entries(values).some(
+      ([key, value]) => checkpoint[key as keyof typeof checkpoint] !== value,
+    )
+  )
+    throw new Error(
+      'The native statement header and reviewed values disagree.',
+    );
+}
+export async function loadBankCheckpointEditor(
+  selection: BankCheckpointSelection,
+): Promise<BankCheckpointEditor> {
+  checkedCheckpointSelection(selection);
+  if (Object.keys(selection).length !== 3)
+    throw new Error('Use only native statement selection fields.');
+  const result = await checkpointCall<BankCheckpointEditor>(
+    'editor_load',
+    selection,
+  );
+  if (
+    !bankObject(result) ||
+    result.checkpoint_id !== selection.checkpoint_id ||
+    result.split_line_id !== selection.split_line_id ||
+    !checkpointIds(result.entry_ids) ||
+    JSON.stringify(result.entry_ids) !== JSON.stringify(selection.entry_ids) ||
+    !bankHash(result.version) ||
+    !checkpointIds(result.selected_entry_ids) ||
+    !selection.entry_ids.every((id) =>
+      result.selected_entry_ids.includes(id),
+    ) ||
+    (selection.checkpoint_id === false &&
+      selection.split_line_id === false &&
+      result.selected_entry_ids.length !== selection.entry_ids.length)
+  )
+    throw new Error('Invalid native statement editor selection or source.');
+  checkedCheckpointHeader(result.checkpoint, result.values);
+  return result;
+}
+export async function previewBankCheckpoint(
+  payload: BankCheckpointPayload,
+): Promise<BankCheckpointReview> {
+  checkedBankCheckpointPayload(payload);
+  const result = await checkpointCall<BankCheckpointReview>('editor_preview', {
+    payload,
+  });
+  if (
+    !bankObject(result) ||
+    !bankHash(result.review_version) ||
+    !checkpointIds(result.entry_ids) ||
+    !payload.entry_ids.every((id) => result.entry_ids.includes(id)) ||
+    (payload.checkpoint_id === false &&
+      payload.split_line_id === false &&
+      result.entry_ids.length !== payload.entry_ids.length) ||
+    !Array.isArray(result.affected) ||
+    new Set(result.affected.map((item) => item?.checkpoint?.id)).size !==
+      result.affected.length
+  )
+    throw new Error('Invalid complete native statement effects.');
+  checkedCheckpointHeader(result.checkpoint, result.values);
+  if (
+    Object.entries(payload.values).some(
+      ([key, value]) =>
+        result.values[key as keyof BankCheckpointValues] !== value,
+    )
+  )
+    throw new Error('The native statement review changed the proposed values.');
+  const target =
+    payload.checkpoint_id === false ? 'new' : payload.checkpoint_id;
+  let reviewedTarget = false;
+  for (const item of result.affected) {
+    if (
+      !bankObject(item) ||
+      !bankObject(item.checkpoint) ||
+      !checkpointIds(item.entry_ids) ||
+      !(
+        bankId(item.checkpoint.id) ||
+        (target === 'new' && item.checkpoint.id === 'new')
+      ) ||
+      !validBankCheckpoint({ ...item.checkpoint, id: 1 })
+    )
+      throw new Error('An affected native checkpoint is incomplete.');
+    if (item.checkpoint.id === target) {
+      reviewedTarget = true;
+      if (
+        JSON.stringify(item.entry_ids) !== JSON.stringify(result.entry_ids) ||
+        Object.entries(result.checkpoint).some(
+          ([key, value]) =>
+            JSON.stringify(
+              item.checkpoint[key as keyof typeof item.checkpoint],
+            ) !== JSON.stringify(value),
+        )
+      )
+        throw new Error(
+          'The selected checkpoint disagrees with its affected-statement review.',
+        );
+    }
+  }
+  if (!reviewedTarget)
+    throw new Error('The affected statements omit the selected checkpoint.');
+  if (!bankObject(result.financial))
+    throw new Error('The unchanged native accounting snapshot is unavailable.');
+  if (!result.entry_ids.length) {
+    if (Object.keys(result.financial).length)
+      throw new Error('An empty checkpoint has unexpected accounting effects.');
+  } else {
+    const entries = result.financial['account.bank.statement.line'];
+    if (!bankObject(entries) || !Array.isArray(entries.rows))
+      throw new Error('The complete native bank effects are unavailable.');
+    const rows = entries.rows.map((row) => {
+      if (!bankObject(row.values) || Object.hasOwn(row.values, 'statement_id'))
+        throw new Error('Invalid unchanged-accounting snapshot.');
+      return { ...row, values: { ...row.values, statement_id: false } };
+    });
+    const graph = {
+      ...result.financial,
+      'account.bank.statement.line': { ...entries, rows },
+    };
+    for (const id of result.entry_ids) checkedBankGraph(graph, id, false);
+  }
+  return result;
+}
+function checkedCheckpointRequest(request: BankCheckpointRequest) {
+  if (
+    !bankObject(request) ||
+    Object.keys(request).length !== 3 ||
+    !bankHash(request.review_version) ||
+    typeof request.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      request.request_key,
+    )
+  )
+    throw new Error('Use an exact reviewed statement save request.');
+  checkedBankCheckpointPayload(request.payload);
+}
+async function checkpointSaveResult(
+  action: 'editor_save' | 'editor_status',
+  request: BankCheckpointRequest,
+) {
+  checkedCheckpointRequest(request);
+  const result = await checkpointCall<{
+    accepted: boolean;
+    checkpoint: BankCheckpoint | false;
+  }>(action, request);
+  if (
+    !bankObject(result) ||
+    typeof result.accepted !== 'boolean' ||
+    (action === 'editor_save' && !result.accepted) ||
+    (result.accepted
+      ? !result.checkpoint ||
+        !validBankCheckpoint(result.checkpoint) ||
+        (request.payload.checkpoint_id !== false &&
+          result.checkpoint.id !== request.payload.checkpoint_id)
+      : result.checkpoint !== false)
+  )
+    throw new Error('Invalid native statement save or recovery response.');
+  return result;
+}
+export const saveBankCheckpoint = (request: BankCheckpointRequest) =>
+  checkpointSaveResult('editor_save', request);
+export const getBankCheckpointSaveStatus = (request: BankCheckpointRequest) =>
+  checkpointSaveResult('editor_status', request);
 export async function getBankCheckpointDetail(
   checkpointId: number,
   after: number | false = false,
