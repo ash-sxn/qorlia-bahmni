@@ -1,5 +1,9 @@
 import { Encounter } from 'fhir/r4';
-import { getActiveVisit } from '../../encounterService';
+import {
+  FHIR_ENCOUNTER_TAG_SYSTEM,
+  FHIR_ENCOUNTER_TYPE_CODE_SYSTEM,
+} from '../../constants/fhir';
+import { getActiveVisit, getEncounterByUuid } from '../../encounterService';
 import { resolveEncounterMatchDecision } from '../encounterMatchDecisionMapper';
 import {
   searchEncounters,
@@ -7,10 +11,17 @@ import {
 } from '../encounterSessionService';
 
 jest.mock('../../encounterService');
-jest.mock('../encounterSessionService');
+jest.mock('../encounterSessionService', () => ({
+  ...jest.requireActual('../encounterSessionService'),
+  searchEncounters: jest.fn(),
+  getEncounterSessionDuration: jest.fn(),
+}));
 
 const mockGetActiveVisit = getActiveVisit as jest.MockedFunction<
   typeof getActiveVisit
+>;
+const mockGetEncounterByUuid = getEncounterByUuid as jest.MockedFunction<
+  typeof getEncounterByUuid
 >;
 const mockSearchEncounters = searchEncounters as jest.MockedFunction<
   typeof searchEncounters
@@ -74,6 +85,344 @@ beforeEach(() => {
 });
 
 describe('resolveEncounterMatchDecision', () => {
+  it.each([0, -1, NaN, Infinity, -Infinity, Number.MAX_VALUE])(
+    'blocks encounter searches when the supplied session policy is unusable: %s',
+    async (duration) => {
+      mockGetActiveVisit.mockResolvedValue(createActiveVisit());
+      mockGetEncounterSessionDuration.mockResolvedValue(duration);
+      await expect(
+        resolveEncounterMatchDecision(
+          PATIENT_UUID,
+          PRACTITIONER_UUID,
+          LOCATION_UUID,
+        ),
+      ).rejects.toThrow('Invalid encounter session duration');
+      expect(mockSearchEncounters).not.toHaveBeenCalled();
+      expect(mockGetEncounterByUuid).not.toHaveBeenCalled();
+    },
+  );
+
+  describe('saved encounter handoff', () => {
+    const now = new Date('2026-10-05T10:00:00Z');
+    const savedEncounter = (): Encounter => ({
+      ...createEncounter('saved-encounter', LOCATION_UUID),
+      status: 'unknown',
+      subject: { reference: `Patient/${PATIENT_UUID}` },
+      type: [
+        {
+          coding: [
+            {
+              system: FHIR_ENCOUNTER_TYPE_CODE_SYSTEM,
+              code: ENCOUNTER_TYPE_UUID,
+            },
+          ],
+        },
+      ],
+      meta: {
+        lastUpdated: '2026-10-05T09:59:00Z',
+        tag: [{ system: FHIR_ENCOUNTER_TAG_SYSTEM, code: 'encounter' }],
+      },
+      period: { start: '2026-10-05T09:58:00Z' },
+    });
+    const resolveSaved = (
+      uuid = 'saved-encounter',
+      type: string | undefined = ENCOUNTER_TYPE_UUID,
+    ) =>
+      resolveEncounterMatchDecision(
+        PATIENT_UUID,
+        PRACTITIONER_UUID,
+        LOCATION_UUID,
+        type,
+        uuid,
+      );
+
+    beforeEach(() => {
+      jest.spyOn(Date, 'now').mockReturnValue(now.getTime());
+      mockGetActiveVisit.mockReset().mockResolvedValue(createActiveVisit());
+      mockGetEncounterByUuid.mockReset().mockResolvedValue(savedEncounter());
+      mockSearchEncounters.mockReset().mockResolvedValue([]);
+      mockGetEncounterSessionDuration.mockReset().mockResolvedValue(30);
+    });
+    afterEach(() => jest.restoreAllMocks());
+
+    it('reads the saved ID and reuses it when the search index has no encounter yet', async () => {
+      const encounter = savedEncounter();
+      await expect(resolveSaved()).resolves.toEqual({
+        matched: true,
+        encounter,
+        reasons: ['MATCHED'],
+      });
+      expect(mockGetEncounterByUuid).toHaveBeenCalledWith(encounter.id);
+      expect(mockGetActiveVisit).toHaveBeenCalledWith(PATIENT_UUID);
+      expect(mockSearchEncounters).toHaveBeenCalledTimes(2);
+    });
+
+    it('supports exact typed absolute and history-versioned references', async () => {
+      const encounter = savedEncounter();
+      encounter.subject = {
+        reference: `https://staging.example/R4/Patient/${PATIENT_UUID}/_history/2`,
+      };
+      encounter.partOf = { reference: `Encounter/${VISIT_UUID}/_history/3` };
+      encounter.participant = [
+        {
+          individual: { reference: `Practitioner/${OTHER_PRACTITIONER_UUID}` },
+        },
+        {
+          individual: {
+            reference: `https://staging.example/R4/Practitioner/${PRACTITIONER_UUID}/_history/2`,
+          },
+        },
+      ];
+      mockGetEncounterByUuid.mockResolvedValue(encounter);
+      await expect(resolveSaved()).resolves.toMatchObject({
+        matched: true,
+        encounter,
+      });
+    });
+
+    it('preserves the existing location-mismatch decision after a login-location change', async () => {
+      const encounter = savedEncounter();
+      encounter.location = [
+        { location: { reference: 'Location/other-location' } },
+      ];
+      mockGetEncounterByUuid.mockResolvedValue(encounter);
+      await expect(resolveSaved()).resolves.toEqual({
+        matched: false,
+        encounter,
+        reasons: ['LOCATION_MISMATCH'],
+      });
+    });
+
+    it('selects a newer indexed encounter rather than preferring the cached ID', async () => {
+      const newer = {
+        ...savedEncounter(),
+        id: 'newer',
+        period: { start: '2026-10-05T09:59:00Z' },
+      };
+      mockSearchEncounters.mockResolvedValue([newer]);
+      await expect(resolveSaved()).resolves.toMatchObject({
+        matched: true,
+        encounter: newer,
+      });
+    });
+
+    it('replaces the stale indexed copy with its fresh direct-read representation', async () => {
+      const fresh = savedEncounter();
+      mockSearchEncounters.mockResolvedValue([
+        {
+          ...fresh,
+          location: [{ location: { reference: 'Location/stale-location' } }],
+        },
+      ]);
+      await expect(resolveSaved()).resolves.toEqual({
+        matched: true,
+        encounter: fresh,
+        reasons: ['MATCHED'],
+      });
+    });
+
+    it('does not resume an expired saved encounter even if the cache says MATCHED', async () => {
+      const encounter = savedEncounter();
+      encounter.meta!.lastUpdated = '2026-10-05T09:29:59Z';
+      mockGetEncounterByUuid.mockResolvedValue(encounter);
+      await expect(resolveSaved()).resolves.toEqual({
+        matched: false,
+        encounter,
+        reasons: ['SESSION_EXPIRED'],
+      });
+    });
+
+    it('includes the exact configured session boundary', async () => {
+      const encounter = savedEncounter();
+      encounter.meta!.lastUpdated = '2026-10-05T09:30:00Z';
+      mockGetEncounterByUuid.mockResolvedValue(encounter);
+      await expect(resolveSaved()).resolves.toMatchObject({ matched: true });
+    });
+
+    it.each([
+      [
+        'patient suffix collision',
+        { subject: { reference: `Patient/prefix-${PATIENT_UUID}` } },
+      ],
+      [
+        'wrong patient resource type',
+        { subject: { reference: `Practitioner/${PATIENT_UUID}` } },
+      ],
+      [
+        'different patient',
+        { subject: { reference: 'Patient/another-patient' } },
+      ],
+      [
+        'different active visit',
+        { partOf: { reference: 'Encounter/previous-visit' } },
+      ],
+      [
+        'wrong visit resource type',
+        { partOf: { reference: `Patient/${VISIT_UUID}` } },
+      ],
+      [
+        'different provider',
+        {
+          participant: [
+            {
+              individual: {
+                reference: `Practitioner/${OTHER_PRACTITIONER_UUID}`,
+              },
+            },
+          ],
+        },
+      ],
+      [
+        'wrong provider resource type',
+        {
+          participant: [
+            { individual: { reference: `Patient/${PRACTITIONER_UUID}` } },
+          ],
+        },
+      ],
+      [
+        'different encounter type',
+        {
+          type: [
+            {
+              coding: [
+                { system: FHIR_ENCOUNTER_TYPE_CODE_SYSTEM, code: 'other-type' },
+              ],
+            },
+          ],
+        },
+      ],
+      [
+        'wrong type system',
+        {
+          type: [
+            {
+              coding: [
+                {
+                  system: 'https://unrelated.example/type',
+                  code: ENCOUNTER_TYPE_UUID,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      ['different returned ID', { id: 'another-id' }],
+      ['cancelled encounter', { status: 'cancelled' }],
+      ['entered-in-error encounter', { status: 'entered-in-error' }],
+      ['missing metadata', { meta: undefined }],
+      [
+        'missing encounter tag',
+        { meta: { lastUpdated: '2026-10-05T09:59:00Z' } },
+      ],
+      [
+        'visit tag',
+        {
+          meta: {
+            lastUpdated: '2026-10-05T09:59:00Z',
+            tag: [{ system: FHIR_ENCOUNTER_TAG_SYSTEM, code: 'visit' }],
+          },
+        },
+      ],
+      [
+        'invalid last-updated time',
+        { meta: { ...savedEncounter().meta, lastUpdated: 'invalid' } },
+      ],
+      [
+        'future last-updated time',
+        {
+          meta: {
+            ...savedEncounter().meta,
+            lastUpdated: '2026-10-05T10:00:01Z',
+          },
+        },
+      ],
+    ] as [string, Partial<Encounter>][])(
+      'ignores %s and uses normal search',
+      async (_label, changes) => {
+        mockGetEncounterByUuid.mockResolvedValue({
+          ...savedEncounter(),
+          ...changes,
+        });
+        await expect(resolveSaved()).resolves.toEqual({
+          matched: false,
+          encounter: null,
+          reasons: ['NO_ACTIVE_ENCOUNTER'],
+        });
+        expect(mockSearchEncounters).toHaveBeenCalledTimes(2);
+      },
+    );
+
+    it.each([
+      '../other',
+      'saved-encounter?patient=other',
+      ' ',
+      'https://upstream.example/id',
+    ])('does not request an unsafe cached ID: %s', async (uuid) => {
+      await expect(resolveSaved(uuid)).resolves.toMatchObject({
+        reasons: ['NO_ACTIVE_ENCOUNTER'],
+      });
+      expect(mockGetEncounterByUuid).not.toHaveBeenCalled();
+    });
+
+    it('does not use a saved candidate without a selected encounter type', async () => {
+      await expect(
+        resolveEncounterMatchDecision(
+          PATIENT_UUID,
+          PRACTITIONER_UUID,
+          LOCATION_UUID,
+          undefined,
+          'saved-encounter',
+        ),
+      ).resolves.toMatchObject({ reasons: ['NO_ACTIVE_ENCOUNTER'] });
+      expect(mockGetEncounterByUuid).not.toHaveBeenCalled();
+    });
+
+    it('does not read or resume a candidate after its active visit closes', async () => {
+      mockGetActiveVisit.mockResolvedValue(null);
+      await expect(resolveSaved()).resolves.toMatchObject({
+        reasons: ['NO_ACTIVE_VISIT'],
+      });
+      expect(mockGetEncounterByUuid).not.toHaveBeenCalled();
+    });
+
+    it('falls back to search when the saved ID is no longer found', async () => {
+      mockGetEncounterByUuid.mockRejectedValue(
+        Object.assign(new Error('Not found'), { status: 404 }),
+      );
+      await expect(resolveSaved()).resolves.toMatchObject({
+        reasons: ['NO_ACTIVE_ENCOUNTER'],
+      });
+    });
+
+    it.each([401, 403, 500])(
+      'propagates candidate read failure %s instead of trusting the cache',
+      async (status) => {
+        mockGetEncounterByUuid.mockRejectedValue(
+          Object.assign(new Error('Candidate unavailable'), { status }),
+        );
+        await expect(resolveSaved()).rejects.toThrow('Candidate unavailable');
+      },
+    );
+
+    it('does not let a valid candidate hide search failure', async () => {
+      mockSearchEncounters.mockRejectedValue(new Error('Search unavailable'));
+      await expect(resolveSaved()).rejects.toThrow('Search unavailable');
+    });
+
+    it('does not let a candidate bypass active-visit or session-setting failure', async () => {
+      mockGetActiveVisit.mockRejectedValueOnce(new Error('Visit unavailable'));
+      await expect(resolveSaved()).rejects.toThrow('Visit unavailable');
+      mockGetEncounterSessionDuration.mockRejectedValueOnce(
+        new Error('Session setting unavailable'),
+      );
+      await expect(resolveSaved()).rejects.toThrow(
+        'Session setting unavailable',
+      );
+      expect(mockGetEncounterByUuid).not.toHaveBeenCalled();
+    });
+  });
+
   describe('NO_ACTIVE_VISIT', () => {
     it('returns NO_ACTIVE_VISIT when patient has no active visit', async () => {
       mockGetActiveVisit.mockResolvedValue(null);
@@ -95,6 +444,59 @@ describe('resolveEncounterMatchDecision', () => {
   });
 
   describe('MATCHED', () => {
+    it('accepts absolute/versioned visit, provider and location references', async () => {
+      const encounter = {
+        ...createEncounter('enc-1', LOCATION_UUID),
+        partOf: {
+          reference: `https://staging.example/R4/Encounter/${VISIT_UUID}/_history/2`,
+        },
+        participant: [
+          {
+            individual: {
+              reference: `Practitioner/${PRACTITIONER_UUID}/_history/3`,
+            },
+          },
+        ],
+        location: [
+          {
+            location: {
+              reference: `https://staging.example/R4/Location/${LOCATION_UUID}`,
+            },
+          },
+        ],
+      };
+      mockGetActiveVisit.mockResolvedValue(createActiveVisit());
+      mockSearches([encounter], [encounter]);
+      await expect(
+        resolveEncounterMatchDecision(
+          PATIENT_UUID,
+          PRACTITIONER_UUID,
+          LOCATION_UUID,
+          ENCOUNTER_TYPE_UUID,
+        ),
+      ).resolves.toMatchObject({ matched: true, encounter });
+    });
+
+    it('rejects a visit reference of the wrong resource type', async () => {
+      const encounter = {
+        ...createEncounter('enc-1', LOCATION_UUID),
+        partOf: { reference: `Patient/${VISIT_UUID}` },
+      };
+      mockGetActiveVisit.mockResolvedValue(createActiveVisit());
+      mockSearches([encounter], [encounter]);
+      await expect(
+        resolveEncounterMatchDecision(
+          PATIENT_UUID,
+          PRACTITIONER_UUID,
+          LOCATION_UUID,
+          ENCOUNTER_TYPE_UUID,
+        ),
+      ).resolves.toMatchObject({
+        matched: false,
+        encounter: null,
+        reasons: ['NO_ACTIVE_ENCOUNTER'],
+      });
+    });
     it('returns MATCHED when in-session own encounter location UUID matches login location', async () => {
       const encounter = createEncounter('enc-1', LOCATION_UUID);
       mockGetActiveVisit.mockResolvedValue(createActiveVisit());
@@ -496,51 +898,30 @@ describe('resolveEncounterMatchDecision', () => {
   });
 
   describe('error handling', () => {
-    it('returns NO_ACTIVE_ENCOUNTER and logs error when getActiveVisit throws', async () => {
-      const consoleSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+    it('propagates an active-visit failure instead of claiming a new encounter', async () => {
       mockGetActiveVisit.mockRejectedValue(new Error('Network error'));
-
-      const result = await resolveEncounterMatchDecision(
-        PATIENT_UUID,
-        PRACTITIONER_UUID,
-        LOCATION_UUID,
-        ENCOUNTER_TYPE_UUID,
-      );
-
-      expect(result).toEqual({
-        matched: false,
-        encounter: null,
-        reasons: ['NO_ACTIVE_ENCOUNTER'],
-      });
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Error in resolveEncounterMatchDecision:',
-        'Network error',
-      );
-      consoleSpy.mockRestore();
+      await expect(
+        resolveEncounterMatchDecision(
+          PATIENT_UUID,
+          PRACTITIONER_UUID,
+          LOCATION_UUID,
+          ENCOUNTER_TYPE_UUID,
+        ),
+      ).rejects.toThrow('Network error');
     });
 
-    it('returns NO_ACTIVE_ENCOUNTER when searchEncounters throws', async () => {
-      const consoleSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+    it('propagates search failure instead of claiming a new encounter', async () => {
       mockGetActiveVisit.mockResolvedValue(createActiveVisit());
       mockSearchEncounters.mockRejectedValue(new Error('API timeout'));
 
-      const result = await resolveEncounterMatchDecision(
-        PATIENT_UUID,
-        PRACTITIONER_UUID,
-        LOCATION_UUID,
-        ENCOUNTER_TYPE_UUID,
-      );
-
-      expect(result).toEqual({
-        matched: false,
-        encounter: null,
-        reasons: ['NO_ACTIVE_ENCOUNTER'],
-      });
-      consoleSpy.mockRestore();
+      await expect(
+        resolveEncounterMatchDecision(
+          PATIENT_UUID,
+          PRACTITIONER_UUID,
+          LOCATION_UUID,
+          ENCOUNTER_TYPE_UUID,
+        ),
+      ).rejects.toThrow('API timeout');
     });
   });
 });

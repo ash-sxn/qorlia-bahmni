@@ -16,6 +16,9 @@
   "exclude": [
     "out-tsc",
     "dist",
+    "**/__tests__/**",
+    "**/__mocks__/**",
+    "**/setupTests.*",
     "**/*.spec.ts",
     "**/*.test.ts",
     "**/*.spec.tsx",
@@ -35,7 +38,7 @@
     "eslint.config.cjs",
     "eslint.config.mjs"
   ],
-  "include": ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx", "setupTests.ts"],
+  "include": ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx"],
   "references": [
     {
       "path": "../bahmni-services/tsconfig.lib.json"

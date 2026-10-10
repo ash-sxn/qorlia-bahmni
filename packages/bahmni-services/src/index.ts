@@ -58,6 +58,8 @@ export {
   type PatientSearchField,
   type AppointmentSearchField,
   type AppointmentSearchResult,
+  type Appointment,
+  type Reason,
   type ExpectedFieldConfig,
   type SearchActionConfig,
   AttributeFormat,
@@ -86,6 +88,13 @@ export {
 } from './visitService';
 export {
   searchAppointmentsByAttribute,
+  getAppointmentsForDate,
+  getWaitlistedAppointments,
+  getAppointmentSummary,
+  getAppointmentBookingConflicts,
+  bookAppointment,
+  getLegacyAppointment,
+  updateAppointment,
   updateAppointmentStatus,
   checkInAppointment,
   getAppointmentById,
@@ -94,13 +103,24 @@ export {
   getUpcomingAppointmentsPage,
   getPastAppointmentsPage,
   type AppointmentPage,
+  type AppointmentSummary,
+  type AppointmentBookingConflicts,
+  type AppointmentBookingRequest,
+  type AppointmentUpdateRequest,
   getAllAppointmentServices,
+  getAppointmentService,
+  saveAppointmentService,
+  getFutureAppointmentsForServiceType,
   deleteAppointmentService,
   getAppointmentUnavailabilities,
   createAppointmentUnavailability,
   APPOINTMENT_STATUSES,
   APPOINTMENT_IDENTIFIER_SYSTEM,
   type AppointmentService,
+  type AppointmentAttribute,
+  type AppointmentServiceAvailability,
+  type AppointmentServiceType,
+  type AppointmentServiceSaveRequest,
   type AppointmentUnavailability,
   type CreateUnavailabilityRequest,
 } from './appointmentService';
@@ -176,9 +196,13 @@ export {
 export {
   getPatientDiagnoses,
   getDiagnosesPage,
+  getSavedDiagnosis,
+  updateSavedDiagnosis,
+  removeSavedDiagnosis,
   type DiagnosisPage,
   type Diagnosis,
   type DiagnosisInputEntry,
+  type SavedDiagnosis,
   type DiagnosesByDate,
 } from './diagnosesService';
 export {
@@ -187,6 +211,7 @@ export {
   searchFHIRConceptsByName,
   getConceptById,
   searchConceptByName,
+  getDisplayNameForConcept,
   type ConceptSearch,
   type ConceptClass,
   type ConceptData,
@@ -243,6 +268,7 @@ export {
   updateSessionLocation,
   type User,
   type UserLocation,
+  BAHMNI_USER_COOKIE_NAME,
   BAHMNI_USER_LOCATION_COOKIE,
 } from './userService';
 export { logout, validateSessionUser } from './authService';
@@ -390,11 +416,20 @@ export {
   getPatientPrograms,
   getPatientProgramsPage,
   getAllPrograms,
+  getProgramAttributeTypes,
+  createProgramEnrollment,
+  completeProgramEnrollment,
+  voidProgramEnrollment,
+  removeProgramState,
+  updateProgramEnrollmentDetails,
   getProgramByUUID,
+  getProgramDateBounds,
   getCurrentStateName,
   extractAttributes,
   updateProgramState,
   type Program,
+  type ProgramAttributeDefinition,
+  type NewProgramEnrollment,
   type ProgramPage,
   type ProgramEnrollment,
   type PatientProgramsResponse,
@@ -441,7 +476,11 @@ export {
 } from './locationService';
 export { getPatientImmunizations } from './immunizationService';
 export type { ImmunizationStatus } from './immunizationService';
-export { uploadDocument } from './documentUploadService';
+export {
+  uploadDocument,
+  getDocumentPath,
+  getAuthenticatedDocumentUrl,
+} from './documentUploadService';
 export type {
   DocumentUploadResponse,
   ProcessedFileData,

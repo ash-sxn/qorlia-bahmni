@@ -21,6 +21,59 @@
   flex: 1;
   padding: $spacing-05;
   width: 100%;
+  min-width: 0;
+  container: qorlia-observation-form / inline-size;
+}
+
+// Use the actual pad width, including a narrow pad on a desktop chart.
+@container qorlia-observation-form (max-width: 40rem) {
+  .formContent
+    :global(
+      .form-builder-row
+        .form-builder-column-wrapper
+        .form-builder-column
+        .form-field-wrap
+    ) {
+    :global(.form-field-content-wrap) {
+      flex-direction: column;
+      align-items: stretch;
+      gap: $spacing-03;
+    }
+
+    :global(.label-wrap) {
+      flex: none;
+      float: none;
+      min-width: 0;
+      margin: 0;
+      text-align: start;
+      font-size: 14px;
+
+      > div {
+        justify-content: flex-start !important;
+      }
+    }
+
+    :global(.obs-control-field) {
+      flex: none;
+      min-width: 0;
+      padding-inline-end: 0;
+
+      :global(.form-builder-clone),
+      > :global(.form-builder-comment-wrap) {
+        position: static;
+        margin-inline-start: 0 !important;
+      }
+
+      :global(.obs-numeric-text-wrap) {
+        max-width: 100%;
+        flex-wrap: wrap;
+      }
+
+      > :global(.obs-comment-section-wrap) {
+        max-width: 100%;
+      }
+    }
+  }
 }
 
 .loadingWrapper {
@@ -54,23 +107,13 @@
   color: $text-primary;
 }
 
-// Pin icon styling
+// Hover, focus and selection treatments come from the shared IconButton.
 .pinIconContainer {
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  user-select: none;
-
-  &:hover {
-    background-color: #f0f0f0;
-  }
-
   &.pinned {
-    color: #000000;
+    color: $icon-primary;
   }
 
   &.unpinned {
-    color: #6c757d;
+    color: $icon-secondary;
   }
 }

@@ -21,12 +21,13 @@ const queryClient = new QueryClient(queryClientConfig);
 export function App() {
   const [isInitialized, setIsInitialized] = useState(false);
 
+  useEffect(() => initializeAuditListener(), []);
+
   useEffect(() => {
     const initializeApp = async () => {
       try {
         await initAppI18n(BAHMNI_REPORTS_NAMESPACE);
         initFontAwesome();
-        initializeAuditListener();
         setIsInitialized(true);
       } catch (error) {
         // eslint-disable-next-line no-console

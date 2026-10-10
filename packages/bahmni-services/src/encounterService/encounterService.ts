@@ -4,6 +4,7 @@ import {
   FHIR_ENCOUNTER_CLASS_CODE_SYSTEM,
   FHIR_ENCOUNTER_TAG_SYSTEM,
 } from '../constants/fhir';
+import { getAllFHIRSearchPages } from '../fhirSearchCompatibility';
 import { getUserLoginLocation } from '../userService';
 import { getVisitLocationUUID } from '../visitService';
 import {
@@ -98,7 +99,7 @@ export async function getPatientVisits(
 }
 
 /**
- * Fetches and transforms visits for a given patient UUID
+ * Fetches every search page and transforms visits for a given patient UUID
  * @param patientUUID - The UUID of the patient
  * @param locationUuid - Optional location UUID to filter visits server-side
  * @returns Promise resolving to an array of FhirEncounter
@@ -107,12 +108,15 @@ export async function getVisits(
   patientUUID: string,
   locationUuid?: string,
 ): Promise<Encounter[]> {
-  const fhirEncounterBundle = await getPatientVisits(patientUUID, locationUuid);
-  return (
-    fhirEncounterBundle.entry
-      ?.map((entry) => entry.resource)
-      .filter((resource): resource is Encounter => resource !== undefined) ?? []
+  const fhirEncounterBundle = await getAllFHIRSearchPages<Encounter>(
+    PATIENT_VISITS_URL(patientUUID, locationUuid),
   );
+  return (fhirEncounterBundle.entry ?? []).map((entry) => {
+    if (entry.resource?.resourceType !== 'Encounter') {
+      throw new Error('Invalid visit search resource');
+    }
+    return entry.resource;
+  });
 }
 
 /**

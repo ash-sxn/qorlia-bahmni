@@ -32,6 +32,8 @@ interface UseObservationFormDataReturn {
   formMetadata: FormMetadata | undefined;
   isLoadingMetadata: boolean;
   metadataError: Error | null;
+  isFetchingMetadata: boolean;
+  retryMetadata: () => Promise<unknown>;
 }
 
 interface ImmutableData {
@@ -109,7 +111,9 @@ export function useObservationFormData(
   const {
     data: fetchedMetadata,
     isLoading: isLoadingMetadata,
+    isFetching: isFetchingMetadata,
     error: queryError,
+    refetch: retryMetadata,
   } = useQuery<FormMetadata>({
     queryKey: ['formMetadata', props?.formUuid],
     queryFn: () => fetchFormMetadata(props!.formUuid!),
@@ -248,5 +252,7 @@ export function useObservationFormData(
     formMetadata,
     isLoadingMetadata,
     metadataError,
+    isFetchingMetadata,
+    retryMetadata,
   };
 }

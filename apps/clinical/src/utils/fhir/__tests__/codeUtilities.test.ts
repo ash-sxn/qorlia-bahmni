@@ -7,6 +7,14 @@ import {
 
 describe('FHIR Code Utilities', () => {
   describe('extractCodesFromConcept', () => {
+    test('ignores malformed coding entries at the API boundary', () => {
+      expect(
+        extractCodesFromConcept({
+          coding: [null, 7, {}, { code: 3 }, { code: 'valid', system: 4 }],
+        }),
+      ).toEqual([{ code: 'valid', system: undefined }]);
+      expect(extractCodesFromResource(null)).toEqual([]);
+    });
     test('extracts codes from a valid CodeableConcept', () => {
       const concept = {
         text: 'Paracetamol',

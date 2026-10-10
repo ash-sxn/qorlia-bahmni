@@ -24,6 +24,12 @@ jest.mock('@bahmni/services', () => ({
 }));
 jest.mock('../../hooks/usePatientUUID');
 jest.mock('../../notification');
+jest.mock('../../userPrivileges/useHasPrivilege', () => ({
+  useHasPrivilege: () => false,
+}));
+jest.mock('../../userPrivileges/useUserPrivilege', () => ({
+  useUserPrivilege: () => ({ userPrivileges: [] }),
+}));
 
 const mockUseQuery = useQuery as jest.MockedFunction<typeof useQuery>;
 const mockuseSubscribeConsultationSaved =

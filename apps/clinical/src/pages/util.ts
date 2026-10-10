@@ -1,6 +1,10 @@
 import { HeaderSideNavItem } from '@bahmni/design-system';
-import { PATIENT_NOT_FOUND_ERROR_KEY } from '@bahmni/services';
-import { useHasPrivilege } from '@bahmni/widgets';
+import {
+  hasPrivilege,
+  PATIENT_NOT_FOUND_ERROR_KEY,
+  type UserPrivilege,
+} from '@bahmni/services';
+import { getWidgetConfig } from '@bahmni/widgets';
 import { Dashboard } from '../providers/clinicalConfig/models';
 import {
   DashboardConfig,
@@ -28,19 +32,26 @@ export const getDefaultDashboard = (
 
 export const filterControlsByPrivileges = (
   controls: ControlConfig[],
+  userPrivileges: UserPrivilege[],
 ): ControlConfig[] => {
-  return controls.filter((control) =>
-    useHasPrivilege(control.requiredPrivileges),
+  return controls.filter(
+    (control) =>
+      (!control.requiredPrivileges?.length ||
+        hasPrivilege(userPrivileges, control.requiredPrivileges)) &&
+      (getWidgetConfig(control.type)?.readPrivileges ?? []).every((privilege) =>
+        hasPrivilege(userPrivileges, privilege),
+      ),
   );
 };
 
 export const filterSectionsByPrivileges = (
   sections: DashboardSectionConfig[],
+  userPrivileges: UserPrivilege[],
 ): DashboardSectionConfig[] => {
   return sections
     .map((section) => ({
       ...section,
-      controls: filterControlsByPrivileges(section.controls),
+      controls: filterControlsByPrivileges(section.controls, userPrivileges),
     }))
     .filter((section) => section.controls.length > 0);
 };

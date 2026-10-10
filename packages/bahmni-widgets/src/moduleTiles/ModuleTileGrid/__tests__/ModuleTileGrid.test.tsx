@@ -62,6 +62,26 @@ const renderGrid = (props: Partial<typeof defaultProps> & object = {}) => {
 };
 
 describe('ModuleTileGrid', () => {
+  it('adds Billing to the same grid without replacing configured modules', async () => {
+    mockGetVisibleModules.mockResolvedValue(mockModules);
+    renderGrid({
+      additionalModules: [
+        {
+          id: 'qorlia.billing',
+          extensionPointId: 'org.bahmni.home.dashboard',
+          type: 'link',
+          label: 'Billing',
+          url: '/bahmni-v2/home/billing',
+          order: 14,
+          icon: 'fa-file-invoice-dollar',
+        },
+      ],
+    });
+    expect(
+      await screen.findByRole('link', { name: 'Billing' }),
+    ).toHaveAttribute('href', '/bahmni-v2/home/billing');
+    expect(screen.getByTestId('app-tile-clinical')).toBeInTheDocument();
+  });
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseUserPrivilege.mockReturnValue(privilegeState());
@@ -102,6 +122,18 @@ describe('ModuleTileGrid', () => {
 
     expect(screen.getByTestId('app-tile-registration')).toBeInTheDocument();
     expect(screen.getByTestId('app-tile-inpatient')).toBeInTheDocument();
+  });
+
+  it('uses review URLs and leaves unfinished modules without legacy links', async () => {
+    mockGetVisibleModules.mockResolvedValue(mockModules);
+
+    renderGrid({ reviewUrls: { clinical: '/bahmni-v2/clinical/' } });
+
+    const clinical = await screen.findByTestId('app-tile-clinical');
+    expect(clinical).toHaveAttribute('href', '/bahmni-v2/clinical/');
+    expect(screen.getByTestId('app-tile-registration')).not.toHaveAttribute(
+      'href',
+    );
   });
 
   it('renders empty state when no modules available', async () => {

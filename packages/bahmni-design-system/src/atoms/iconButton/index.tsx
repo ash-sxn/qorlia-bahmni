@@ -2,7 +2,7 @@ import {
   IconButton as CarbonIconButton,
   IconButtonProps as CarbonIconButtonProps,
 } from '@carbon/react';
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 
 export type IconButtonProps = CarbonIconButtonProps & {
   testId?: string;

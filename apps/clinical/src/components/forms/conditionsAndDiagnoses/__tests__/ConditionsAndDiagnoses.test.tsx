@@ -2,6 +2,8 @@ import {
   type ConditionInputEntry,
   type DiagnosisInputEntry,
   getConditions,
+  getPatientDiagnoses,
+  hasPrivilege,
 } from '@bahmni/services';
 import {
   useNotification,
@@ -30,6 +32,7 @@ import { useConceptSearch } from '../../../../hooks/useConceptSearch';
 import { ConceptSearch } from '../../../../models/concepts';
 import { useConditionsAndDiagnosesStore } from '../../../../stores/conditionsAndDiagnosesStore';
 import ConditionsAndDiagnoses from '../ConditionsAndDiagnoses';
+import type { EncounterSessionStartContext } from '../../../../events/startConsultation';
 
 expect.extend(toHaveNoViolations);
 
@@ -188,6 +191,7 @@ const mockExistingConditions = [
 describe('ConditionsAndDiagnoses', () => {
   // Mock store actions
   let addDiagnosisMock: jest.Mock;
+  let addConditionMock: jest.Mock;
   let removeDiagnosisMock: jest.Mock;
   let updateCertaintyMock: jest.Mock;
   let markAsConditionMock: jest.Mock;
@@ -203,9 +207,11 @@ describe('ConditionsAndDiagnoses', () => {
     conceptSearchResults: ConceptSearch[] = [],
     conceptSearchLoading = false,
     conceptSearchError: Error | null = null,
-    existingConditions: Condition[] = [],
+    existingConditions: Condition[] | null = [],
     existingConditionsLoading = false,
     existingConditionsError: Error | null = null,
+    diagnosesError: Error | null = null,
+    encounterSessionStartContext?: EncounterSessionStartContext,
   ) => {
     mockedUseConceptSearch.mockReturnValue({
       searchResults: conceptSearchResults,
@@ -226,8 +232,8 @@ describe('ConditionsAndDiagnoses', () => {
     ]);
 
     // Mock useQuery to return the appropriate structure
-    mockedUseQuery.mockReturnValue({
-      data: existingConditions,
+    const queryResult = {
+      data: existingConditions ?? undefined,
       isLoading: existingConditionsLoading,
       error: existingConditionsError,
       isError: !!existingConditionsError,
@@ -242,15 +248,30 @@ describe('ConditionsAndDiagnoses', () => {
           ? 'pending'
           : 'success',
       fetchStatus: 'idle',
-    } as any);
+    };
+    mockedUseQuery.mockImplementation(
+      (options: any) =>
+        ({
+          ...queryResult,
+          ...(options.queryKey[0] === 'diagnoses' && diagnosesError
+            ? {
+                data: undefined,
+                error: diagnosesError,
+                isError: true,
+                isSuccess: false,
+              }
+            : {}),
+        }) as any,
+    );
 
     if (existingConditionsError) {
       mockedGetConditions.mockRejectedValue(existingConditionsError);
     } else {
-      mockedGetConditions.mockResolvedValue(existingConditions);
+      mockedGetConditions.mockResolvedValue(existingConditions ?? []);
     }
 
     addDiagnosisMock = jest.fn();
+    addConditionMock = jest.fn();
     removeDiagnosisMock = jest.fn();
     updateCertaintyMock = jest.fn();
     markAsConditionMock = jest.fn();
@@ -264,6 +285,7 @@ describe('ConditionsAndDiagnoses', () => {
       selectedDiagnoses,
       selectedConditions,
       addDiagnosis: addDiagnosisMock,
+      addCondition: addConditionMock,
       removeDiagnosis: removeDiagnosisMock,
       updateCertainty: updateCertaintyMock,
       validate: validateMock,
@@ -285,7 +307,9 @@ describe('ConditionsAndDiagnoses', () => {
     return render(
       <QueryClientProvider client={queryClient}>
         <UserPrivilegeProvider>
-          <ConditionsAndDiagnoses />
+          <ConditionsAndDiagnoses
+            encounterSessionStartContext={encounterSessionStartContext}
+          />
         </UserPrivilegeProvider>
       </QueryClientProvider>,
     );
@@ -299,6 +323,125 @@ describe('ConditionsAndDiagnoses', () => {
   });
 
   describe('Initial Rendering', () => {
+    it('uses the consultation pad encounter for duplicate reads, not patient-wide history', async () => {
+      renderComponent(
+        [],
+        [],
+        mockConcepts,
+        false,
+        null,
+        [],
+        false,
+        null,
+        null,
+        {
+          patientUuid: 'test-patient-uuid',
+          activeEncounter: {
+            resourceType: 'Encounter',
+            id: 'current-encounter',
+            status: 'in-progress',
+            class: {},
+            subject: { reference: 'Patient/test-patient-uuid' },
+          },
+        },
+      );
+      const query = mockedUseQuery.mock.calls.find(
+        ([options]: any) => options.queryKey[0] === 'diagnoses',
+      )?.[0] as any;
+      (getPatientDiagnoses as jest.Mock).mockResolvedValueOnce([]);
+      await query.queryFn();
+      expect(query.queryKey).toEqual([
+        'diagnoses',
+        'test-patient-uuid',
+        'current-encounter',
+      ]);
+      expect(getPatientDiagnoses).toHaveBeenCalledWith(
+        'test-patient-uuid',
+        'current-encounter',
+      );
+    });
+
+    it('does not use past diagnoses as duplicates for a new encounter', async () => {
+      renderComponent(
+        [],
+        [],
+        mockConcepts,
+        false,
+        null,
+        [],
+        false,
+        null,
+        null,
+        {
+          patientUuid: 'test-patient-uuid',
+          activeEncounter: null,
+        },
+      );
+      const query = mockedUseQuery.mock.calls.find(
+        ([options]: any) => options.queryKey[0] === 'diagnoses',
+      )?.[0] as any;
+      expect(await query.queryFn()).toEqual([]);
+      expect(getPatientDiagnoses).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      { activeEncounter: undefined },
+      {
+        activeEncounter: {
+          resourceType: 'Encounter',
+          id: 'other-patient-encounter',
+          status: 'in-progress',
+          class: {},
+          subject: { reference: 'Patient/other-patient' },
+        },
+      },
+    ] as EncounterSessionStartContext[])(
+      'blocks diagnosis entry until the current patient encounter is resolved: %j',
+      async (context) => {
+        renderComponent(
+          [],
+          [],
+          mockConcepts,
+          false,
+          null,
+          [],
+          false,
+          null,
+          null,
+          context,
+        );
+        const query = mockedUseQuery.mock.calls.find(
+          ([options]: any) => options.queryKey[0] === 'diagnoses',
+        )?.[0] as any;
+        expect(query.enabled).toBe(false);
+        await userEvent.type(screen.getByRole('combobox'), 'hyper');
+        expect(screen.getByText('Loading concepts...')).toBeInTheDocument();
+        expect(addDiagnosisMock).not.toHaveBeenCalled();
+      },
+    );
+
+    it('rejects same-name draft diagnoses with different concept IDs', async () => {
+      renderComponent(
+        [
+          createMockDiagnosisEntry({
+            id: 'different-id',
+            display: ' HYPERTENSION ',
+          }),
+        ],
+        [],
+        mockConcepts,
+      );
+      await userEvent.type(
+        screen.getByRole('combobox', { name: 'Search for diagnoses' }),
+        'hyper',
+      );
+      await userEvent.click(screen.getByText('Hypertension'));
+      expect(addDiagnosisMock).not.toHaveBeenCalled();
+      expect(
+        screen.getByText('Diagnosis is already added'),
+      ).toBeInTheDocument();
+    });
+
     test('should render the component with default state', () => {
       renderComponent();
       expect(screen.getByText('Conditions and Diagnoses')).toBeInTheDocument();
@@ -594,6 +737,19 @@ describe('ConditionsAndDiagnoses', () => {
   });
 
   describe('Diagnosis to Condition Conversion', () => {
+    test.each([null, CERTAINITY_CONCEPTS[1], { code: 'unknown' }])(
+      'retains but does not convert a diagnosis with certainty %j',
+      (selectedCertainty) => {
+        renderComponent([createMockDiagnosisEntry({ selectedCertainty })]);
+        const link = screen.getByTestId('add-as-condition-link');
+        expect(link).toHaveAttribute('aria-disabled', 'true');
+        fireEvent.click(link);
+        expect(markAsConditionMock).not.toHaveBeenCalled();
+        expect(removeDiagnosisMock).not.toHaveBeenCalled();
+        expect(screen.getByText('Hypertension')).toBeInTheDocument();
+      },
+    );
+
     test('should handle marking diagnosis as condition', async () => {
       const user = userEvent.setup();
       const diagnosisToConvert = createMockDiagnosisEntry({
@@ -663,9 +819,18 @@ describe('ConditionsAndDiagnoses', () => {
 
     test('should handle undefined/null existingConditions array in isConditionDuplicate', () => {
       const diagnosis = createMockDiagnosisEntry();
-      renderComponent([diagnosis], [], [], false, null, []); // Empty existingConditions
+      renderComponent([diagnosis], [], [], false, null, null, true);
 
       expect(screen.getByText('Hypertension')).toBeInTheDocument();
+      expect(screen.getByTestId('add-as-condition-link')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+      expect(
+        screen.queryByText('Already added as condition'),
+      ).not.toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('add-as-condition-link'));
+      expect(markAsConditionMock).not.toHaveBeenCalled();
     });
   });
 
@@ -700,8 +865,13 @@ describe('ConditionsAndDiagnoses', () => {
       );
       await user.type(searchInput, 'test');
       expect(
-        screen.getByText('No matching Diagnosis recorded'),
+        screen.getByText(
+          'An unexpected error occurred. Please try again later.',
+        ),
       ).toBeInTheDocument();
+      expect(
+        screen.queryByText('No matching Diagnosis recorded'),
+      ).not.toBeInTheDocument();
     });
 
     test('should prioritize search error over conditions error for display', async () => {
@@ -991,6 +1161,154 @@ describe('ConditionsAndDiagnoses', () => {
   });
 
   describe('Privilege Guard', () => {
+    it('adds a condition without diagnosis write authorization or diagnosis history', async () => {
+      mockedUseUserPrivilege.mockImplementation((required) =>
+        hasPrivilege(
+          [{ name: 'Edit Conditions', uuid: 'edit-conditions' }],
+          required,
+        ),
+      );
+      renderComponent(
+        [],
+        [],
+        mockConcepts,
+        false,
+        null,
+        [],
+        false,
+        null,
+        new Error('Diagnosis history unavailable'),
+      );
+      expect(mockedUseQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryKey: ['conditions', 'test-patient-uuid'],
+          enabled: true,
+        }),
+      );
+      expect(mockedUseQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryKey: ['diagnoses', 'test-patient-uuid', null],
+          enabled: false,
+        }),
+      );
+      await userEvent.type(screen.getByRole('combobox'), 'hyper');
+      await userEvent.click(
+        screen.getByRole('option', { name: 'Hypertension' }),
+      );
+      expect(addConditionMock).toHaveBeenCalledWith(
+        expect.objectContaining(mockConcepts[0]),
+      );
+      expect(addDiagnosisMock).not.toHaveBeenCalled();
+    });
+
+    it('blocks direct condition selection when condition history is unavailable', async () => {
+      mockedUseUserPrivilege.mockImplementation((required) =>
+        hasPrivilege(
+          [{ name: 'Edit Conditions', uuid: 'edit-conditions' }],
+          required,
+        ),
+      );
+      renderComponent(
+        [],
+        [],
+        mockConcepts,
+        false,
+        null,
+        [],
+        false,
+        new Error('Condition history unavailable'),
+      );
+      await userEvent.type(screen.getByRole('combobox'), 'hyper');
+      expect(
+        screen.queryByRole('option', { name: 'Hypertension' }),
+      ).not.toBeInTheDocument();
+      expect(addConditionMock).not.toHaveBeenCalled();
+    });
+
+    it('does not offer an already selected condition to a condition-only user', async () => {
+      mockedUseUserPrivilege.mockImplementation((required) =>
+        hasPrivilege(
+          [{ name: 'Edit Conditions', uuid: 'edit-conditions' }],
+          required,
+        ),
+      );
+      renderComponent(
+        [],
+        [createMockConditionEntry({ id: 'uuid-1' })],
+        mockConcepts,
+      );
+      await userEvent.type(
+        screen.getByRole('combobox', { name: 'Search conditions' }),
+        'hyper',
+      );
+      const option = screen.getByRole('option', {
+        name: /Hypertension.*already added/i,
+      });
+      expect(option.closest('li')).toHaveAttribute('disabled');
+      fireEvent.click(option);
+      expect(addConditionMock).not.toHaveBeenCalled();
+      expect(addDiagnosisMock).not.toHaveBeenCalled();
+    });
+
+    it.each(['Add Diagnoses', 'Edit Diagnoses'])(
+      'allows diagnosis entry with native %s authorization',
+      async (name) => {
+        mockedUseUserPrivilege.mockImplementation((required) =>
+          hasPrivilege([{ name, uuid: name }], required),
+        );
+        renderComponent([], [], mockConcepts);
+        await userEvent.type(screen.getByRole('combobox'), 'hyper');
+        await userEvent.click(
+          screen.getByRole('option', { name: 'Hypertension' }),
+        );
+        expect(addDiagnosisMock).toHaveBeenCalledWith(
+          expect.objectContaining(mockConcepts[0]),
+        );
+      },
+    );
+
+    it('does not convert a diagnosis without native Edit Conditions authorization', () => {
+      mockedUseUserPrivilege.mockImplementation((required) =>
+        hasPrivilege(
+          [{ name: 'Add Diagnoses', uuid: 'add-diagnoses' }],
+          required,
+        ),
+      );
+      renderComponent(mockDiagnosisEntries);
+      const link = screen.getByTestId('add-as-condition-link');
+      expect(link).toHaveAttribute('aria-disabled', 'true');
+      fireEvent.click(link);
+      expect(markAsConditionMock).not.toHaveBeenCalled();
+      expect(screen.getByText('Hypertension')).toBeInTheDocument();
+      expect(
+        screen.getByRole('combobox', { name: 'Diagnoses Certainty' }),
+      ).not.toBeDisabled();
+    });
+
+    it('blocks conversion when condition authorization is revoked with a draft open', () => {
+      const privileges = [
+        { name: 'Add Diagnoses', uuid: 'add-diagnoses' },
+        { name: 'Edit Conditions', uuid: 'edit-conditions' },
+      ];
+      mockedUseUserPrivilege.mockImplementation((required) =>
+        hasPrivilege(privileges, required),
+      );
+      const { rerender } = renderComponent(mockDiagnosisEntries);
+      expect(screen.getByTestId('add-as-condition-link')).toHaveAttribute(
+        'aria-disabled',
+        'false',
+      );
+      privileges.pop();
+      rerender(<ConditionsAndDiagnoses />);
+      expect(screen.getByTestId('add-as-condition-link')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+      fireEvent.click(screen.getByTestId('add-as-condition-link'));
+      expect(markAsConditionMock).not.toHaveBeenCalled();
+      expect(removeDiagnosisMock).not.toHaveBeenCalled();
+    });
+
     it('renders null when user lacks Add Diagnoses privilege', () => {
       mockedUseUserPrivilege.mockReturnValue(mockUserPrivilegesEmpty);
       const { container } = renderComponent();
@@ -1002,6 +1320,58 @@ describe('ConditionsAndDiagnoses', () => {
       expect(
         screen.getByTestId('conditions-and-diagnoses-tile'),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('Independent history failures', () => {
+    test('does not offer concepts when diagnosis history fails independently', async () => {
+      const user = userEvent.setup();
+      renderComponent(
+        [],
+        [],
+        mockConcepts,
+        false,
+        null,
+        [],
+        false,
+        null,
+        new Error('Diagnosis history unavailable'),
+      );
+      await user.type(
+        screen.getByPlaceholderText('Search to add new Diagnosis'),
+        'hyper',
+      );
+      expect(
+        screen.getByText(
+          'An unexpected error occurred. Please try again later.',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('option', { name: 'Hypertension' }),
+      ).not.toBeInTheDocument();
+      expect(addDiagnosisMock).not.toHaveBeenCalled();
+    });
+
+    test('keeps a retained diagnosis editable but prevents conversion on a condition read error', () => {
+      renderComponent(
+        mockDiagnosisEntries,
+        [],
+        [],
+        false,
+        null,
+        [],
+        false,
+        new Error('Conditions unavailable'),
+      );
+      expect(screen.getByText('Hypertension')).toBeInTheDocument();
+      expect(screen.getByTestId('add-as-condition-link')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+      fireEvent.click(screen.getByTestId('add-as-condition-link'));
+      expect(markAsConditionMock).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+      expect(removeDiagnosisMock).toHaveBeenCalledWith('uuid-1');
     });
   });
 });

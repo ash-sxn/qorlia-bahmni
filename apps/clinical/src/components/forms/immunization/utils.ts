@@ -12,7 +12,6 @@ import {
   Medication,
   MedicationRequest,
   ValueSet,
-  ValueSetExpansionContains,
 } from 'fhir/r4';
 import { InputControlAttributes } from '../../../providers/clinicalConfig/models';
 import { getMedicationDisplay } from '../../../services/medicationService';
@@ -242,17 +241,19 @@ export function getComboBoxItems(
   isLoading: boolean,
   isError: boolean,
   messages: { loading: string; error: string; empty: string },
-): (ValueSetExpansionContains & { disabled?: boolean })[] {
+): ValueSetComboBoxItem[] {
   if (!searchTerm.trim()) return [];
   const contains = codeableConcepts?.expansion?.contains ?? [];
-  const filtered = contains.filter((item) =>
-    item.display?.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filtered = contains
+    .filter((item) =>
+      item.display?.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
+    .map(({ code = '', display = '' }) => ({ code, display }));
   return resolveComboBoxItems(
     isLoading,
     isError,
     filtered,
-    (message) => ({ display: message }),
+    (message) => ({ code: '', display: message }),
     messages,
   );
 }

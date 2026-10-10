@@ -1,5 +1,9 @@
 import { get } from '../../api';
-import { getAppProperty, isAuditLogEnabled } from '../ApplicationConfigService';
+import {
+  getAppProperty,
+  getAppSetting,
+  isAuditLogEnabled,
+} from '../ApplicationConfigService';
 import { APP_PROPERTY_URL, AUDIT_LOG_APP_PROPERTY } from '../constants';
 
 // Mock dependencies
@@ -136,6 +140,32 @@ describe('ApplicationConfigService', () => {
       }
     });
   });
+
+  it('reads a legacy global property only when the settings resource is absent', async () => {
+    mockGet.mockRejectedValueOnce(
+      Object.assign(new Error('Missing resource'), { status: 404 }),
+    );
+    mockGet.mockResolvedValueOnce('legacy-value');
+    expect(await getAppSetting('core', 'test.legacy.setting')).toBe(
+      'legacy-value',
+    );
+    expect(mockGet).toHaveBeenLastCalledWith(
+      APP_PROPERTY_URL('test.legacy.setting'),
+    );
+  });
+
+  it.each([401, 403, 500])(
+    'does not hide a settings failure with status %s',
+    async (status) => {
+      mockGet.mockRejectedValueOnce(
+        Object.assign(new Error('Failed setting'), { status }),
+      );
+      await expect(
+        getAppSetting('core', 'test.failed.setting'),
+      ).rejects.toThrow('Failed setting');
+      expect(mockGet).toHaveBeenCalledTimes(1);
+    },
+  );
 
   describe('isAuditLogEnabled', () => {
     it('should return true when application property value is "true"', async () => {

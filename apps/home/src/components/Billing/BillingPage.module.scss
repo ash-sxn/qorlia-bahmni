@@ -1,0 +1,162 @@
+@use "@carbon/react/scss/theme" as *;
+
+.page {
+  min-height: 100vh;
+  padding: 6rem clamp(1rem, 6vw, 6rem) 3rem;
+  background: $background;
+  color: $text-primary;
+  h1 {
+    margin: 0.5rem 0;
+  }
+  h2 {
+    margin-bottom: 1rem;
+  }
+  p {
+    margin: 0.75rem 0;
+  }
+  input:focus-visible,
+  select:focus-visible,
+  a:focus-visible {
+    outline: 2px solid $focus;
+    outline-offset: 3px;
+  }
+}
+.page,
+.tableScroll {
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  caption {
+    text-align: left;
+    padding: 1rem 0;
+    font-weight: 600;
+  }
+  th,
+  td {
+    text-align: left;
+    padding: 1rem;
+    border-bottom: 1px solid $border-subtle-01;
+  }
+  th {
+    background: $layer-02;
+  }
+}
+.eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  font-weight: 600;
+}
+.note {
+  color: $text-secondary;
+  max-width: 65rem;
+  font-size: 0.875rem;
+}
+.card {
+  background: $layer-01;
+  border: 1px solid $border-subtle-01;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+.form {
+  display: grid;
+  gap: 1rem;
+  max-width: 28rem;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.tableScroll {
+  overflow-x: auto;
+}
+.statementTable {
+  min-width: 60rem;
+  td:nth-child(n + 4) {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.journalTable {
+  min-width: 78rem;
+
+  th:first-child,
+  td:nth-child(2) {
+    min-width: 12rem;
+  }
+
+  td:nth-child(n + 3):nth-child(-n + 8) {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.tableScroll:focus-visible {
+  outline: 2px solid $border-subtle-01;
+  outline-offset: 2px;
+}
+.select {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  select {
+    min-height: 3rem;
+    max-width: 20rem;
+    padding: 0.75rem;
+    background: $field;
+    color: $text-primary;
+    border: 1px solid $border-strong-01;
+    border-radius: 0.5rem;
+    font: inherit;
+  }
+}
+.reference {
+  display: block;
+  margin-top: 0.5rem;
+  color: $text-secondary;
+}
+.totals {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem 1rem;
+  max-width: 32rem;
+  margin: 1.5rem 0;
+  dd {
+    margin: 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}
+.editorGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 1.25rem;
+  margin: 1rem 0;
+}
+.draftItem {
+  border: 1px solid $border-subtle-01;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin: 1.5rem 0;
+  legend {
+    padding: 0 0.5rem;
+    font-weight: 600;
+  }
+}
+.conversation {
+  list-style: none;
+  padding: 0;
+  > li {
+    border-top: 1px solid $border-subtle-01;
+    padding: 1rem 0;
+  }
+}
+.messageBody {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

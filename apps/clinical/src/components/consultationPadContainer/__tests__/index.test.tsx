@@ -1,6 +1,7 @@
 import {
   createVisitWithFhirR4,
   dispatchAuditEvent,
+  getActiveVisit,
   getVisitLocationUUID,
   getUserLoginLocation,
   useTranslation,
@@ -11,7 +12,7 @@ import {
   usePatientUUID,
 } from '@bahmni/widgets';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { useClinicalAppData } from '../../../hooks/useClinicalAppData';
@@ -58,6 +59,7 @@ jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   createVisitWithFhirR4: jest.fn(),
   dispatchAuditEvent: jest.fn(),
+  getActiveVisit: jest.fn(),
   getVisitLocationUUID: jest.fn(),
   getUserLoginLocation: jest.fn(),
   useTranslation: jest.fn(),
@@ -81,7 +83,7 @@ jest.mock('../../../hooks/useEncounterConcepts');
 jest.mock('../../../providers/clinicalConfig');
 jest.mock('../../../stores/encounterDetailsStore');
 
-const mockConsultationPad = jest.fn(() => (
+const mockConsultationPad = jest.fn<React.ReactElement, [unknown]>(() => (
   <div data-testid="consultation-pad" />
 ));
 jest.mock('../../consultationPad', () => ({
@@ -141,6 +143,8 @@ const mockReset = jest.fn();
 const mockSetConsultationDate = jest.fn();
 const mockSetRequestedEncounterType = jest.fn();
 const mockInvalidateQueries = jest.fn();
+const mockSetQueryData = jest.fn();
+const mockRefetch = jest.fn();
 
 const defaultStoreState = {
   selectedVisitType: null,
@@ -179,12 +183,17 @@ beforeEach(() => {
   jest
     .mocked(useEncounterConcepts)
     .mockReturnValue(defaultEncounterConceptsResult as any);
-  jest
-    .mocked(useQuery)
-    .mockReturnValue({ data: null, error: null, isLoading: false } as any);
-  jest
-    .mocked(useQueryClient)
-    .mockReturnValue({ invalidateQueries: mockInvalidateQueries } as any);
+  jest.mocked(useQuery).mockReturnValue({
+    data: null,
+    error: null,
+    isLoading: false,
+    isFetching: false,
+    refetch: mockRefetch,
+  } as any);
+  jest.mocked(useQueryClient).mockReturnValue({
+    invalidateQueries: mockInvalidateQueries,
+    setQueryData: mockSetQueryData,
+  } as any);
   jest
     .mocked(getVisitLocationUUID)
     .mockResolvedValue(MOCK_VISIT_LOCATION as any);
@@ -192,6 +201,8 @@ beforeEach(() => {
     .mocked(getUserLoginLocation)
     .mockReturnValue({ uuid: 'login-loc-uuid' } as any);
   jest.mocked(createVisitWithFhirR4).mockResolvedValue(undefined as any);
+  jest.mocked(getActiveVisit).mockResolvedValue(null);
+  mockRefetch.mockResolvedValue({ data: null, error: null });
   jest.mocked(dispatchAuditEvent).mockReturnValue(undefined);
   jest
     .mocked(useEncounterDetailsStore)
@@ -206,6 +217,147 @@ afterEach(() => {
 });
 
 describe('ConsultationPadContainer', () => {
+  it('reuses a visit created since the panel opened without writing or emitting another OPEN_VISIT', async () => {
+    jest.mocked(useClinicalConfig).mockReturnValue(buildConfig(['OPD']) as any);
+    jest.mocked(getActiveVisit).mockResolvedValue({
+      resourceType: 'Encounter',
+      id: 'concurrent-visit',
+    } as any);
+    renderComponent();
+    await screen.findByTestId('consultation-pad');
+    expect(getActiveVisit).toHaveBeenCalledWith(
+      PATIENT_UUID,
+      MOCK_VISIT_LOCATION.uuid,
+    );
+    expect(createVisitWithFhirR4).not.toHaveBeenCalled();
+    expect(dispatchAuditEvent).not.toHaveBeenCalled();
+  });
+
+  it('blocks the write when its immediate preflight read fails', async () => {
+    jest.mocked(useClinicalConfig).mockReturnValue(buildConfig(['OPD']) as any);
+    jest
+      .mocked(getActiveVisit)
+      .mockRejectedValue(new Error('Status unavailable'));
+    renderComponent();
+    await screen.findByText('CHECK_VISIT_STATUS_BUTTON');
+    expect(createVisitWithFhirR4).not.toHaveBeenCalled();
+  });
+
+  it('auto-creates only once under StrictMode effect replay', async () => {
+    jest.mocked(useClinicalConfig).mockReturnValue(buildConfig(['OPD']) as any);
+    jest.mocked(createVisitWithFhirR4).mockReturnValue(new Promise(() => {}));
+    render(
+      <React.StrictMode>
+        <ConsultationPadContainer
+          encounterSessionStartContext={ENCOUNTER_SESSION_CONTEXT}
+          onClose={jest.fn()}
+        />
+      </React.StrictMode>,
+    );
+    await waitFor(() => expect(createVisitWithFhirR4).toHaveBeenCalledTimes(1));
+  });
+
+  it('does not create from cached no-visit data while the current read is fetching', () => {
+    jest.mocked(useClinicalConfig).mockReturnValue(buildConfig(['OPD']) as any);
+    jest.mocked(useQuery).mockReturnValue({
+      data: null,
+      error: null,
+      isLoading: false,
+      isFetching: true,
+      refetch: mockRefetch,
+    } as any);
+    renderComponent();
+    expect(createVisitWithFhirR4).not.toHaveBeenCalled();
+    expect(
+      screen.getByTestId('consultation-pad-container-loading'),
+    ).toBeInTheDocument();
+    expect(useQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: [
+          'activeVisitAtLoginLocation',
+          PATIENT_UUID,
+          'login-loc-uuid',
+        ],
+        refetchOnMount: 'always',
+        retry: false,
+      }),
+    );
+  });
+
+  it('checks a lost write reply with GET only and opens a recovered visit without a second write or invented audit', async () => {
+    jest.mocked(useClinicalConfig).mockReturnValue(buildConfig(['OPD']) as any);
+    jest
+      .mocked(createVisitWithFhirR4)
+      .mockRejectedValue(new Error('Reply lost'));
+    mockRefetch.mockResolvedValue({ data: { id: 'saved-visit' }, error: null });
+    renderComponent();
+    await userEvent.click(await screen.findByText('CHECK_VISIT_STATUS_BUTTON'));
+    await screen.findByTestId('consultation-pad');
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
+    expect(createVisitWithFhirR4).toHaveBeenCalledTimes(1);
+    expect(dispatchAuditEvent).not.toHaveBeenCalled();
+  });
+
+  it('requires a successful empty read and a deliberate click before retrying a failed single-type start', async () => {
+    jest.mocked(useClinicalConfig).mockReturnValue(buildConfig(['OPD']) as any);
+    jest
+      .mocked(createVisitWithFhirR4)
+      .mockRejectedValue(new Error('Write unavailable'));
+    renderComponent();
+    await userEvent.click(await screen.findByText('CHECK_VISIT_STATUS_BUTTON'));
+    const start = await screen.findByText('START_VISIT_BUTTON');
+    expect(createVisitWithFhirR4).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('START_VISIT_RECHECKED_EMPTY')).toBeInTheDocument();
+    await userEvent.click(start);
+    await waitFor(() => expect(createVisitWithFhirR4).toHaveBeenCalledTimes(2));
+  });
+
+  it('keeps writes blocked when the recovery read fails', async () => {
+    jest.mocked(useClinicalConfig).mockReturnValue(buildConfig(['OPD']) as any);
+    jest
+      .mocked(createVisitWithFhirR4)
+      .mockRejectedValue(new Error('Reply lost'));
+    mockRefetch.mockResolvedValue({
+      data: null,
+      error: new Error('Read unavailable'),
+    });
+    renderComponent();
+    await userEvent.click(await screen.findByText('CHECK_VISIT_STATUS_BUTTON'));
+    expect(
+      await screen.findByText('CHECK_VISIT_STATUS_BUTTON'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('START_VISIT_BUTTON')).not.toBeInTheDocument();
+    expect(createVisitWithFhirR4).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not reset another consultation after a pending start is unmounted', async () => {
+    jest.mocked(useClinicalConfig).mockReturnValue(buildConfig(['OPD']) as any);
+    let finish!: (visit: any) => void;
+    jest.mocked(createVisitWithFhirR4).mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const { unmount } = renderComponent();
+    await waitFor(() => expect(createVisitWithFhirR4).toHaveBeenCalledTimes(1));
+    unmount();
+    await act(async () => finish({ id: 'created-visit' }));
+    expect(mockReset).not.toHaveBeenCalled();
+  });
+
+  it('shows retryable encounter-metadata errors instead of an empty panel', async () => {
+    const refetch = jest.fn();
+    jest.mocked(useEncounterConcepts).mockReturnValue({
+      ...defaultEncounterConceptsResult,
+      error: new Error('Metadata unavailable'),
+      refetch,
+    } as any);
+    renderComponent();
+    await userEvent.click(await screen.findByText('RETRY_VISIT_SETUP_BUTTON'));
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(createVisitWithFhirR4).not.toHaveBeenCalled();
+  });
+
   it('shows loading spinner when config is loading', () => {
     jest.mocked(useClinicalConfig).mockReturnValue({
       isLoading: true,
@@ -342,7 +494,7 @@ describe('ConsultationPadContainer', () => {
     });
     expect(dispatchAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        eventType: 'START_VISIT',
+        eventType: 'OPEN_VISIT',
         messageParams: { visitType: 'OPD' },
       }),
     );

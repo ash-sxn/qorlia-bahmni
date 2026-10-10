@@ -1,10 +1,13 @@
-import { get, post } from '../../api';
+import { del, get, post } from '../../api';
+import { AttributeFormat } from '../../patientService/attributeFormatMapper';
 import { mockEnrollments, patientUUID, mockPrograms } from '../__mocks__/mocks';
 import {
   PROGRAM_DETAILS_URL,
   PATIENT_PROGRAMS_URL,
   PATIENT_PROGRAMS_PAGE_URL,
   ALL_PROGRAMS_URL,
+  PROGRAM_ATTRIBUTE_TYPES_URL,
+  PROGRAM_ENROLLMENTS_URL,
 } from '../constants';
 import {
   ProgramEnrollment,
@@ -14,10 +17,17 @@ import {
 import {
   extractAttributes,
   getAllPrograms,
+  getProgramAttributeTypes,
+  createProgramEnrollment,
+  completeProgramEnrollment,
+  voidProgramEnrollment,
+  removeProgramState,
+  updateProgramEnrollmentDetails,
   getCurrentStateName,
   getPatientPrograms,
   getPatientProgramsPage,
   getProgramByUUID,
+  getProgramDateBounds,
   updateProgramState,
 } from '../programService';
 
@@ -26,6 +36,17 @@ jest.mock('../../api');
 describe('programService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('uses full representation for enrollment reads without requiring newer module getters', () => {
+    for (const url of [
+      PATIENT_PROGRAMS_URL(patientUUID),
+      PATIENT_PROGRAMS_PAGE_URL(patientUUID, 15, 0),
+      PROGRAM_DETAILS_URL('enrollment-1'),
+    ]) {
+      expect(url).toContain('v=full');
+      expect(url).not.toContain('custom:');
+    }
   });
 
   describe('getPatientProgramEnrollments', () => {
@@ -120,6 +141,23 @@ describe('programService', () => {
 
       expect(result['ID_Number']).toBe('123145');
     });
+
+    it.each([true, false, 0, 12.5])(
+      'preserves a scalar attribute in program summaries: %s',
+      (value) => {
+        const enrollment = {
+          ...mockEnrollments[0],
+          attributes: [{ ...mockEnrollments[0].attributes[0], value }],
+        } as ProgramEnrollment;
+        expect(extractAttributes(enrollment, ['ID_Number'])).toEqual({
+          ID_Number: String(value),
+        });
+        enrollment.attributes[0].voided = true;
+        expect(extractAttributes(enrollment, ['ID_Number'])).toEqual({
+          ID_Number: null,
+        });
+      },
+    );
   });
 
   describe('getCurrentStateName', () => {
@@ -147,6 +185,18 @@ describe('programService', () => {
       expect(result).toBe('In Progress');
     });
 
+    it('ignores voided states when finding the current state', () => {
+      const mockEnrollment: ProgramEnrollment = {
+        ...mockEnrollments[1],
+        states: [
+          { ...mockEnrollments[1].states[1], voided: true },
+          mockEnrollments[1].states[0],
+        ],
+      };
+
+      expect(getCurrentStateName(mockEnrollment)).toBeNull();
+    });
+
     it('should return SHORT name when available', () => {
       const result = getCurrentStateName(mockEnrollments[1]);
       expect(result).toBe('In Progress');
@@ -166,13 +216,14 @@ describe('programService', () => {
   describe('updateProgramState', () => {
     it('should successfully update program state', async () => {
       const programEnrollmentUUID = 'enrollment-1';
-      const stateConceptUUID = 'concept-state-1';
+      const stateConceptUUID = 'allowed-state-1';
       const mockUpdatedEnrollment: ProgramEnrollment = {
         ...mockEnrollments[0],
         uuid: programEnrollmentUUID,
       };
 
       (post as jest.Mock).mockResolvedValue(mockUpdatedEnrollment);
+      (get as jest.Mock).mockResolvedValue(mockUpdatedEnrollment);
 
       const result = await updateProgramState(
         programEnrollmentUUID,
@@ -184,9 +235,13 @@ describe('programService', () => {
         `/openmrs/ws/rest/v1/bahmniprogramenrollment/${programEnrollmentUUID}`,
         {
           uuid: programEnrollmentUUID,
+          dateEnrolled: mockUpdatedEnrollment.dateEnrolled,
           states: [
             {
               state: { uuid: stateConceptUUID },
+              startDate: new Date(
+                `${getProgramDateBounds(mockUpdatedEnrollment).max}T00:00:00`,
+              ).toISOString(),
             },
           ],
         },
@@ -195,9 +250,10 @@ describe('programService', () => {
 
     it('should call post with correct URL and body structure', async () => {
       const programEnrollmentUUID = 'enrollment-2';
-      const stateConceptUUID = 'workflow-state-2';
+      const stateConceptUUID = 'allowed-state-3';
 
       (post as jest.Mock).mockResolvedValue(mockEnrollments[1]);
+      (get as jest.Mock).mockResolvedValue(mockEnrollments[1]);
 
       await updateProgramState(programEnrollmentUUID, stateConceptUUID);
 
@@ -206,6 +262,7 @@ describe('programService', () => {
         `/openmrs/ws/rest/v1/bahmniprogramenrollment/${programEnrollmentUUID}`,
         expect.objectContaining({
           uuid: programEnrollmentUUID,
+          dateEnrolled: mockEnrollments[1].dateEnrolled,
           states: expect.arrayContaining([
             expect.objectContaining({
               state: { uuid: stateConceptUUID },
@@ -217,16 +274,366 @@ describe('programService', () => {
 
     it('should handle API errors correctly', async () => {
       const programEnrollmentUUID = 'enrollment-1';
-      const stateConceptUUID = 'invalid-state-uuid';
+      const stateConceptUUID = 'allowed-state-1';
       const mockError = new Error('Failed to update program state');
 
       (post as jest.Mock).mockRejectedValue(mockError);
+      (get as jest.Mock).mockResolvedValue(mockEnrollments[0]);
 
       await expect(
         updateProgramState(programEnrollmentUUID, stateConceptUUID),
       ).rejects.toThrow('Failed to update program state');
     });
+
+    it.each([
+      { allowedStates: undefined },
+      { allowedStates: [] },
+      { allowedStates: [{ uuid: 'allowed-state-1', retired: true }] },
+    ])('rejects stale or unavailable allowed states: %j', async (changes) => {
+      (get as jest.Mock).mockResolvedValue({
+        ...mockEnrollments[0],
+        ...changes,
+      });
+
+      await expect(
+        updateProgramState('enrollment-1', 'allowed-state-1'),
+      ).rejects.toThrow('The selected program state is no longer allowed');
+      expect(post).not.toHaveBeenCalled();
+    });
+
+    it('sends an explicit retrospective state start date with the original enrollment date', async () => {
+      (get as jest.Mock).mockResolvedValue(mockEnrollments[1]);
+      (post as jest.Mock).mockResolvedValue(mockEnrollments[1]);
+
+      await updateProgramState('enrollment-2', 'allowed-state-3', '2024-06-02');
+
+      expect(post).toHaveBeenCalledWith(
+        PROGRAM_DETAILS_URL('enrollment-2').split('?')[0],
+        {
+          uuid: 'enrollment-2',
+          dateEnrolled: mockEnrollments[1].dateEnrolled,
+          states: [
+            {
+              state: { uuid: 'allowed-state-3' },
+              startDate: new Date('2024-06-02T00:00:00').toISOString(),
+            },
+          ],
+        },
+      );
+    });
   });
+
+  it.each([
+    '',
+    '2024-02-30',
+    '2024-05-31',
+    '9999-01-01',
+    '2024-06-02T00:00:00Z',
+  ])(
+    'rejects invalid/out-of-range program dates before either write: %s',
+    async (date) => {
+      (get as jest.Mock).mockResolvedValue(mockEnrollments[1]);
+
+      await expect(
+        updateProgramState('enrollment-2', 'allowed-state-3', date),
+      ).rejects.toThrow(
+        'Program date must be between the latest state and today',
+      );
+      await expect(
+        completeProgramEnrollment('enrollment-2', date, 'outcome-1'),
+      ).rejects.toThrow(
+        'Program date must be between the latest state and today',
+      );
+      expect(post).not.toHaveBeenCalled();
+    },
+  );
+
+  it('uses the latest non-voided state date for the date bounds', () => {
+    const current = mockEnrollments[1];
+    expect(
+      getProgramDateBounds({
+        ...current,
+        states: [
+          { ...current.states[0], startDate: '2024-07-01', voided: true },
+          ...current.states,
+        ],
+      }).min,
+    ).toBe('2024-06-01');
+    expect(getProgramDateBounds({ ...current, states: [] }).min).toBe(
+      '2024-01-01',
+    );
+  });
+
+  it('completes a current enrollment with its required original date', async () => {
+    (get as jest.Mock).mockResolvedValue(mockEnrollments[0]);
+    (post as jest.Mock).mockResolvedValue(mockEnrollments[0]);
+
+    await completeProgramEnrollment('enrollment-1', '2026-09-26', 'outcome-1');
+
+    expect(post).toHaveBeenCalledWith(
+      '/openmrs/ws/rest/v1/bahmniprogramenrollment/enrollment-1',
+      {
+        uuid: 'enrollment-1',
+        dateEnrolled: mockEnrollments[0].dateEnrolled,
+        dateCompleted: new Date('2026-09-26T00:00:00').toISOString(),
+        outcome: 'outcome-1',
+      },
+    );
+  });
+
+  it('voids through the dedicated Bahmni delete endpoint with a reason', async () => {
+    await voidProgramEnrollment('enrollment-1');
+
+    expect(del).toHaveBeenCalledWith(
+      '/openmrs/ws/rest/v1/bahmniprogramenrollment/enrollment-1?reason=Removed+from+the+Qorlia+program+manager',
+    );
+  });
+
+  it('voids the current state through the legacy programenrollment endpoint', async () => {
+    (get as jest.Mock).mockResolvedValue(mockEnrollments[1]);
+    await removeProgramState('enrollment-2', 'state-2');
+
+    expect(del).toHaveBeenCalledWith(
+      '/openmrs/ws/rest/v1/programenrollment/enrollment-2/state/state-2?reason=User+removed+the+current+state',
+    );
+  });
+
+  it.each([
+    { voided: true },
+    { dateCompleted: '2026-10-04' },
+    { states: [] },
+    { states: [{ uuid: 'state-2', voided: true, endDate: null }] },
+    { states: [{ uuid: 'state-2', voided: false, endDate: '2026-10-03' }] },
+  ])('refuses to remove a stale current state: %j', async (changes) => {
+    (get as jest.Mock).mockResolvedValue({ ...mockEnrollments[1], ...changes });
+
+    await expect(removeProgramState('enrollment-2', 'state-2')).rejects.toThrow(
+      'Only the current state of an active program can be removed',
+    );
+    expect(del).not.toHaveBeenCalled();
+  });
+
+  it('updates changed attributes and voids a cleared value without replacing the rest', async () => {
+    const current = mockEnrollments[0];
+    (get as jest.Mock).mockResolvedValue(current);
+    (post as jest.Mock).mockResolvedValue(current);
+
+    await updateProgramEnrollmentDetails(
+      current.uuid,
+      '2023-01-01',
+      [
+        {
+          uuid: current.attributes[0].attributeType.uuid,
+          name: 'ID_Number',
+          datatypeClassname: 'java.lang.String',
+          retired: false,
+        },
+        {
+          uuid: current.attributes[1].attributeType.uuid,
+          name: 'Treatment Date',
+          datatypeClassname: 'org.openmrs.customdatatype.datatype.DateDatatype',
+          retired: false,
+        },
+        {
+          uuid: current.attributes[2].attributeType.uuid,
+          name: 'Patient Stage',
+          datatypeClassname: 'org.openmrs.Concept',
+          retired: false,
+        },
+      ],
+      {
+        [current.attributes[0].attributeType.uuid]: '456',
+        [current.attributes[1].attributeType.uuid]: '',
+        [current.attributes[2].attributeType.uuid]: (
+          current.attributes[2].value as { uuid: string }
+        ).uuid,
+      },
+    );
+
+    expect(post).toHaveBeenCalledWith(
+      `/openmrs/ws/rest/v1/bahmniprogramenrollment/${current.uuid}`,
+      {
+        uuid: current.uuid,
+        dateEnrolled: new Date('2023-01-01T00:00:00').toISOString(),
+        attributes: [
+          {
+            uuid: current.attributes[0].uuid,
+            attributeType: { uuid: current.attributes[0].attributeType.uuid },
+            value: '456',
+          },
+          {
+            uuid: current.attributes[1].uuid,
+            attributeType: { uuid: current.attributes[1].attributeType.uuid },
+            voided: true,
+          },
+        ],
+      },
+    );
+  });
+
+  it('rejects an enrollment date later than its first state', async () => {
+    (get as jest.Mock).mockResolvedValue({
+      ...mockEnrollments[0],
+      states: [{ startDate: '2023-01-02', voided: false }],
+    });
+
+    await expect(
+      updateProgramEnrollmentDetails('enrollment-1', '2023-01-03', [], {}),
+    ).rejects.toThrow('Enrollment date must be on or before the first state');
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    AttributeFormat.CONCEPT,
+    AttributeFormat.CODED_CONCEPT,
+    AttributeFormat.CONCEPT_DATATYPE,
+  ])(
+    'serializes a changed concept using its datatype contract: %s',
+    async (datatypeClassname) => {
+      const current = mockEnrollments[0];
+      const attribute = current.attributes[2];
+      (get as jest.Mock).mockResolvedValue(current);
+      (post as jest.Mock).mockResolvedValue(current);
+
+      await updateProgramEnrollmentDetails(
+        current.uuid,
+        '2023-01-01',
+        [
+          {
+            uuid: attribute.attributeType.uuid,
+            name: 'Patient Stage',
+            datatypeClassname,
+            retired: false,
+            concept: {
+              answers: [
+                {
+                  uuid: 'answer-2',
+                  display: 'Follow-up',
+                  name: { display: 'Follow-up care' },
+                },
+              ],
+            } as ProgramEnrollment['program']['concept'],
+          },
+        ],
+        { [attribute.attributeType.uuid]: 'answer-2' },
+      );
+
+      expect(post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          attributes: [
+            {
+              uuid: attribute.uuid,
+              attributeType: { uuid: attribute.attributeType.uuid },
+              ...(datatypeClassname === AttributeFormat.CONCEPT
+                ? { value: 'Follow-up care', hydratedObject: 'answer-2' }
+                : { value: 'answer-2' }),
+            },
+          ],
+        }),
+      );
+    },
+  );
+
+  it.each(
+    [
+      AttributeFormat.CONCEPT,
+      AttributeFormat.CODED_CONCEPT,
+      AttributeFormat.CONCEPT_DATATYPE,
+    ].flatMap((datatypeClassname) =>
+      ['answer-1', 'Standard', 'Standard care'].map((value) => ({
+        datatypeClassname,
+        value,
+      })),
+    ),
+  )(
+    'preserves an unchanged concept returned as a UUID or label: %j',
+    async ({ datatypeClassname, value }) => {
+      const attribute = { ...mockEnrollments[0].attributes[2], value };
+      const current = { ...mockEnrollments[0], attributes: [attribute] };
+      (get as jest.Mock).mockResolvedValue(current);
+      const definition = {
+        uuid: attribute.attributeType.uuid,
+        name: 'Care plan',
+        datatypeClassname,
+        retired: false,
+        concept: {
+          answers: [
+            {
+              uuid: 'answer-1',
+              display: 'Standard',
+              name: { display: 'Standard care' },
+            },
+          ],
+        } as ProgramEnrollment['program']['concept'],
+      };
+      await updateProgramEnrollmentDetails(
+        current.uuid,
+        '2023-01-01',
+        [definition],
+        { [definition.uuid]: 'answer-1' },
+      );
+      expect(post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ attributes: [] }),
+      );
+    },
+  );
+
+  it.each([
+    AttributeFormat.CONCEPT,
+    AttributeFormat.CODED_CONCEPT,
+    AttributeFormat.CONCEPT_DATATYPE,
+  ])(
+    'rejects an unconfigured concept answer before writing: %s',
+    async (datatypeClassname) => {
+      (get as jest.Mock).mockResolvedValue(mockEnrollments[0]);
+      await expect(
+        updateProgramEnrollmentDetails(
+          'enrollment-1',
+          '2023-01-01',
+          [
+            {
+              uuid: 'care-type',
+              name: 'Care plan',
+              datatypeClassname,
+              retired: false,
+            },
+          ],
+          { 'care-type': 'unconfigured-answer' },
+        ),
+      ).rejects.toThrow('Invalid concept answer');
+      expect(post).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([true, false, 0, 12.5])(
+    'does not rewrite an unchanged scalar attribute: %s',
+    async (value) => {
+      const attribute = { ...mockEnrollments[0].attributes[0], value };
+      const current = { ...mockEnrollments[0], attributes: [attribute] };
+      (get as jest.Mock).mockResolvedValue(current);
+      const definition = {
+        uuid: attribute.attributeType.uuid,
+        name: 'Scalar',
+        datatypeClassname:
+          typeof value === 'boolean'
+            ? AttributeFormat.BOOLEAN_DATATYPE
+            : AttributeFormat.FLOAT,
+        retired: false,
+      };
+      await updateProgramEnrollmentDetails(
+        current.uuid,
+        '2023-01-01',
+        [definition],
+        { [definition.uuid]: String(value) },
+      );
+      expect(post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ attributes: [] }),
+      );
+    },
+  );
 
   describe('getPatientProgramsPage', () => {
     it('should fetch page 1 with default count', async () => {
@@ -351,5 +758,32 @@ describe('programService', () => {
 
       await expect(getAllPrograms()).rejects.toThrow('Network error');
     });
+  });
+
+  it('loads only active program attribute types', async () => {
+    const active = { uuid: 'attr-1', name: 'ID_Number', retired: false };
+    (get as jest.Mock).mockResolvedValue({
+      results: [active, { uuid: 'attr-2', retired: true }],
+    });
+
+    expect(await getProgramAttributeTypes()).toEqual([active]);
+    expect(get).toHaveBeenCalledWith(PROGRAM_ATTRIBUTE_TYPES_URL);
+  });
+
+  it('posts a new enrollment to Bahmni without changing its fields', async () => {
+    const enrollment = {
+      patient: 'patient-1',
+      program: 'program-1',
+      dateEnrolled: '2026-09-26T00:00:00.000Z',
+      states: [
+        { state: 'workflow-state-1', startDate: '2026-09-26T00:00:00.000Z' },
+      ],
+      attributes: [{ attributeType: { uuid: 'attr-1' }, value: '123' }],
+    };
+    (post as jest.Mock).mockResolvedValue(mockEnrollments[0]);
+
+    await createProgramEnrollment(enrollment);
+
+    expect(post).toHaveBeenCalledWith(PROGRAM_ENROLLMENTS_URL, enrollment);
   });
 });

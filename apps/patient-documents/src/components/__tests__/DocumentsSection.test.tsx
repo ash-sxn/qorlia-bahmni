@@ -11,6 +11,7 @@ import { DocumentsSection } from '../DocumentsSection';
 
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
+  getUserLoginLocation: () => ({ uuid: 'location' }),
   getDocumentTypes: jest
     .fn()
     .mockResolvedValue([{ id: 'type-1', label: 'Prescription' }]),
@@ -21,6 +22,10 @@ const mockSave = jest.fn().mockResolvedValue({ savedCount: 1, failures: [] });
 
 jest.mock('@bahmni/widgets', () => ({
   ...jest.requireActual('@bahmni/widgets'),
+  useActivePractitioner: () => ({
+    practitioner: { uuid: 'provider' },
+    loading: false,
+  }),
   useNotification: () => ({ addNotification: mockAddNotification }),
   DocumentUpload: ({
     saveTarget,
@@ -197,16 +202,23 @@ describe('DocumentsSection', () => {
     expect(screen.getAllByTestId('document-upload').length).toBeGreaterThan(0);
   });
 
-  it('renders nothing when the patient has no visits', () => {
+  it('offers registration when the patient has no visits instead of inventing a visit', () => {
     mockUseVisitDocuments.mockReturnValue({
       visitGroups: [],
       isLoading: false,
       refetch: mockRefetch,
     });
 
-    const { container } = renderSection();
+    renderSection();
 
-    expect(container).toBeEmptyDOMElement();
+    expect(
+      screen.getByText(
+        'Start a patient visit in Registration before uploading documents.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Open registration' }),
+    ).toHaveAttribute('href', '/bahmni-v2/registration/patient/patient-uuid');
     expect(screen.queryAllByTestId('document-upload')).toHaveLength(0);
   });
 
@@ -475,9 +487,11 @@ describe('DocumentsSection', () => {
   it('passes the patient and document encounter type to the visit-documents hook', () => {
     renderSection();
 
-    expect(mockUseVisitDocuments).toHaveBeenCalledWith('patient-uuid', [
-      'doc-enc-type-uuid',
-    ]);
+    expect(mockUseVisitDocuments).toHaveBeenCalledWith(
+      'patient-uuid',
+      ['doc-enc-type-uuid'],
+      { providerUuid: 'provider', locationUuid: 'location' },
+    );
   });
 
   describe('leaving with unsaved documents', () => {

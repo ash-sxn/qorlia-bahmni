@@ -165,7 +165,7 @@ const AdministeredTab: React.FC<AdministeredTabProps> = ({
     >
       <ExpandableDataTable
         headers={headers}
-        rows={data}
+        rows={data ?? []}
         dataTestId="administered-immunizations-table"
         sortable={sortable}
         ariaLabel={t('IMMUNIZATION_HISTORY_WIDGET_ADMINISTERED_TABLE_ARIA')}

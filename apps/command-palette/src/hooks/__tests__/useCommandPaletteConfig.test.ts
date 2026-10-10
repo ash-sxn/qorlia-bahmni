@@ -133,6 +133,8 @@ describe('useCommandPaletteConfig', () => {
   });
 
   it('excludes extensions the user lacks privilege for', async () => {
+    const privileges = [{ uuid: 'clinical', name: 'View Clinical' }];
+    mockGetCurrentUserPrivileges.mockResolvedValue(privileges);
     mockFetchModuleExtensions.mockResolvedValue([
       navExt({ requiredPrivilege: 'View Clinical' }),
     ]);
@@ -140,7 +142,12 @@ describe('useCommandPaletteConfig', () => {
 
     const { result } = renderHook(() => useCommandPaletteConfig());
 
-    await waitFor(() => expect(mockFetchModuleExtensions).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(mockHasPrivilege).toHaveBeenCalledWith(
+        privileges,
+        'View Clinical',
+      ),
+    );
     expect(result.current.navItems).toHaveLength(0);
   });
 

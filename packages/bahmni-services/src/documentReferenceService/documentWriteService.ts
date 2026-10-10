@@ -6,12 +6,14 @@ import {
   FhirResource,
   Period,
 } from 'fhir/r4';
-import { post } from '../api';
+import { get, post } from '../api';
+import { OPENMRS_FHIR_R4 } from '../constants/app';
 import {
   FHIR_ENCOUNTER_CLASS_CODE_SYSTEM,
   FHIR_ENCOUNTER_TAG_SYSTEM,
   FHIR_ENCOUNTER_TYPE_CODE_SYSTEM,
 } from '../constants/fhir';
+import { getDocumentPath } from '../documentUploadService';
 import {
   createBundleEntry,
   createEncounterBundle,
@@ -19,6 +21,7 @@ import {
 } from '../encounterBundle';
 import { getUserLoginLocation } from '../userService';
 import { generateUUID } from '../utils/utils';
+import { saveLegacyDocuments, usesLegacyDocuments } from './legacyDocuments';
 import {
   AttachToExistingEncounter,
   CreateEncounterInVisit,
@@ -162,15 +165,76 @@ export async function saveDocuments({
   if (documents.length === 0) {
     return [];
   }
+  if (documents.some((document) => !getDocumentPath(document.url)))
+    throw new Error('Choose an uploaded document before saving.');
 
-  const entries =
+  if (await usesLegacyDocuments())
+    return saveLegacyDocuments({ patientUuid, target, documents });
+
+  const uuid =
     'encounterUuid' in target
-      ? existingEncounterEntries(patientUuid, target, documents)
-      : newEncounterEntries(
-          patientUuid,
-          target.createEncounterInVisit,
-          documents,
-        );
+      ? target.encounterUuid
+      : target.createEncounterInVisit.visitUuid;
+  if (!patientUuid || !uuid)
+    throw new Error(
+      'A patient and a visit or document encounter are required.',
+    );
+  const current = await get<Encounter>(
+    `${OPENMRS_FHIR_R4}/Encounter/${encodeURIComponent(uuid)}`,
+  );
+  if (
+    current.id !== uuid ||
+    current.subject?.reference !== `Patient/${patientUuid}` ||
+    current.status === 'entered-in-error' ||
+    current.status === 'cancelled'
+  )
+    throw new Error(
+      'This encounter is unavailable or belongs to another patient.',
+    );
+
+  let entries: Array<BundleEntry<FhirResource>>;
+  if ('encounterUuid' in target) {
+    // The transaction re-states encounter fields. Never replace newer clinical
+    // metadata with the copy held while staff were selecting files.
+    const fields = [
+      'subject',
+      'partOf',
+      'type',
+      'location',
+      'participant',
+      'period',
+      'status',
+    ] as const;
+    if (
+      fields.some(
+        (field) =>
+          JSON.stringify(current[field]) !==
+          JSON.stringify(target.existingEncounter[field]),
+      ) ||
+      (target.existingEncounter.meta?.versionId &&
+        current.meta?.versionId !== target.existingEncounter.meta.versionId)
+    )
+      throw new Error('This document encounter changed. Reload before saving.');
+    entries = existingEncounterEntries(
+      patientUuid,
+      { ...target, existingEncounter: current },
+      documents,
+    );
+  } else {
+    if (current.partOf)
+      throw new Error(
+        'Choose a visit, not a clinical encounter, for these documents.',
+      );
+    const start = parseDate(current.period?.start);
+    const end = parseDate(current.period?.end);
+    if (!start || (current.period?.end && (!end || end < start)))
+      throw new Error('This visit has invalid dates. Reload before saving.');
+    entries = newEncounterEntries(
+      patientUuid,
+      { ...target.createEncounterInVisit, visitPeriod: current.period },
+      documents,
+    );
+  }
 
   return post<unknown>(ENCOUNTER_BUNDLE_URL, createEncounterBundle(entries));
 }

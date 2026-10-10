@@ -1,8 +1,4 @@
-import {
-  getConditionPage,
-  useSubscribeConsultationSaved,
-  resetEncounterSession,
-} from '@bahmni/services';
+import { getConditionPage, resetEncounterSession } from '@bahmni/services';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -97,6 +93,18 @@ const inactiveCondition: Condition = {
 
 describe('ConditionsTable Integration', () => {
   let queryClient: QueryClient;
+
+  it('exposes a named keyboard-focusable table viewport', async () => {
+    mockedGetConditionPage.mockResolvedValue(wrapPage([activeCondition]));
+    renderComponent();
+    await screen.findByText('Diabetes mellitus');
+    const viewport = screen.getByTestId('condition-table-active');
+    expect(viewport).toHaveAttribute('role', 'region');
+    expect(viewport).toHaveAttribute('tabindex', '0');
+    expect(viewport).toHaveAccessibleName(
+      'CONDITION_LIST_DISPLAY_CONTROL_TITLE',
+    );
+  });
 
   const renderComponent = (props = {}) =>
     render(
@@ -406,5 +414,30 @@ describe('ConditionsTable Integration', () => {
       1,
       'active',
     );
+  });
+
+  it('does not display the previous patient conditions while the new patient loads', async () => {
+    mockedGetConditionPage.mockResolvedValueOnce(wrapPage([activeCondition]));
+    const { rerender } = renderComponent();
+    await screen.findByText('Diabetes mellitus');
+    mockedGetConditionPage.mockImplementation(() => new Promise(() => {}));
+    (usePatientUUID as jest.Mock).mockReturnValue('new-patient-uuid');
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <ConditionsTable />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => {
+      expect(mockedGetConditionPage).toHaveBeenCalledWith(
+        'new-patient-uuid',
+        5,
+        1,
+        'active',
+      );
+    });
+    expect(screen.queryByText('Diabetes mellitus')).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('conditions-table-active-skeleton'),
+    ).toBeInTheDocument();
   });
 });

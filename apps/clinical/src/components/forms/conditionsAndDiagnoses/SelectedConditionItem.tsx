@@ -57,13 +57,20 @@ const SelectedConditionItem: React.FC<SelectedConditionItemProps> = React.memo(
                 updateConditionDuration(id, null, durationUnit);
                 return;
               }
-              const numValue = parseInt(value, 10);
-              if (!isNaN(numValue) && numValue > 0 && numValue <= 99) {
+              const numValue = Number(value);
+              if (
+                Number.isSafeInteger(numValue) &&
+                numValue > 0 &&
+                numValue <= 99
+              ) {
                 updateConditionDuration(id, numValue, durationUnit);
               }
             }}
             data-testid={`condition-duration-value-${id}`}
             type="number"
+            min={1}
+            max={99}
+            step={1}
             invalid={hasDurationValueError}
             invalidText={hasDurationValueError ? t(errors.durationValue!) : ''}
             size="sm"

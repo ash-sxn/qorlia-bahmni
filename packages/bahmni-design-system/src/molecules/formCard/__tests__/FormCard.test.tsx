@@ -111,6 +111,25 @@ describe('FormCard', () => {
     expect(onCardClick).toHaveBeenCalledTimes(1);
   });
 
+  it('does not activate the card when its native action button is used', () => {
+    const onCardClick = jest.fn();
+    const onActionClick = jest.fn();
+    render(
+      <FormCard
+        {...defaultProps}
+        onCardClick={onCardClick}
+        actionIcon="fa-close"
+        onActionClick={onActionClick}
+      />,
+    );
+    const action = screen.getByRole('button', { name: 'Action for Test Card' });
+    expect(action.tagName).toBe('BUTTON');
+    fireEvent.keyDown(action, { key: 'Enter' });
+    fireEvent.click(action);
+    expect(onActionClick).toHaveBeenCalledTimes(1);
+    expect(onCardClick).not.toHaveBeenCalled();
+  });
+
   it('prioritizes onCardClick over onOpen', () => {
     const onCardClick = jest.fn();
     const onOpen = jest.fn();

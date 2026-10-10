@@ -1,5 +1,6 @@
 import { Patient } from 'fhir/r4';
 import { del, get, post, put } from '../api';
+import { getAppSetting } from '../applicationConfigService/ApplicationConfigService';
 import { APP_PROPERTY_URL } from '../applicationConfigService/constants';
 import { BIRTH_TIME_EXT_URL } from '../constants/fhir';
 import { PATIENT_NOT_FOUND_ERROR_KEY } from '../errorHandling';
@@ -10,7 +11,6 @@ import {
   PATIENT_LUCENE_SEARCH_URL,
   PATIENT_RESOURCE_URL,
   IDENTIFIER_TYPES_URL,
-  APP_SETTINGS_URL,
   PRIMARY_IDENTIFIER_TYPE_PROPERTY,
   CREATE_PATIENT_URL,
   UPDATE_PATIENT_URL,
@@ -34,7 +34,6 @@ import {
   FormattedPatientData,
   PatientSearchResultBundle,
   IdentifierTypesResponse,
-  AppSettingsResponse,
   CreatePatientRequest,
   CreatePatientResponse,
   AddressHierarchyEntry,
@@ -227,6 +226,19 @@ export const getFormattedPatientById = async (
   patientUUID: string,
 ): Promise<FormattedPatientData> => {
   const patient = await getPatientById(patientUUID);
+  // Older FHIR servers shorten estimated DOBs to a year. Do not turn that
+  // into a fabricated January 1 date in every patient header.
+  if (patient.birthDate && patient.birthDate.length < 10) {
+    const profile = await getPatientProfile(patientUUID);
+    if (profile.patient.uuid !== patientUUID || profile.patient.voided)
+      throw new Error(PATIENT_NOT_FOUND_ERROR_KEY);
+    const date = profile.patient.person.birthdate?.slice(0, 10);
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date))
+      throw new Error(
+        'The patient birth date is unavailable. Reload the record.',
+      );
+    return formatPatientData({ ...patient, birthDate: date });
+  }
   return formatPatientData(patient);
 };
 
@@ -302,11 +314,7 @@ export const getIdentifierTypes =
  * @returns Promise<string | null> - The primary identifier type UUID or null if not found
  */
 export const getPrimaryIdentifierType = async (): Promise<string | null> => {
-  const settings = await get<AppSettingsResponse>(APP_SETTINGS_URL('core'));
-  const primaryIdentifierTypes = settings.find(
-    (setting) => setting.property === PRIMARY_IDENTIFIER_TYPE_PROPERTY,
-  );
-  return primaryIdentifierTypes?.value ?? null;
+  return getAppSetting('core', PRIMARY_IDENTIFIER_TYPE_PROPERTY);
 };
 
 /**
@@ -375,8 +383,21 @@ export const getIdentifierData = async (): Promise<{
 export const createPatient = async (
   patientData: CreatePatientRequest,
 ): Promise<CreatePatientResponse> => {
-  return post<CreatePatientResponse>(CREATE_PATIENT_URL, patientData);
+  return validateSavedPatient(
+    await post<CreatePatientResponse>(CREATE_PATIENT_URL, patientData),
+  );
 };
+
+function validateSavedPatient(
+  response: CreatePatientResponse,
+): CreatePatientResponse {
+  // Older Bahmni servers can return a Java exception with HTTP 200.
+  if (!response?.patient?.uuid)
+    throw new Error(
+      'Patient save failed. The server did not return a saved patient.',
+    );
+  return response;
+}
 
 /**
  * Update an existing patient
@@ -388,9 +409,11 @@ export const updatePatient = async (
   patientUuid: string,
   patientData: CreatePatientRequest,
 ): Promise<CreatePatientResponse> => {
-  return post<CreatePatientResponse>(
-    UPDATE_PATIENT_URL(patientUuid),
-    patientData,
+  return validateSavedPatient(
+    await post<CreatePatientResponse>(
+      UPDATE_PATIENT_URL(patientUuid),
+      patientData,
+    ),
   );
 };
 

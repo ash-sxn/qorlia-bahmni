@@ -1,4 +1,10 @@
-# Bahmni Apps Frontend
+# Qorlia Bahmni Frontend
+
+This is Qorlia's public development fork of the [Bahmni Apps Frontend](https://github.com/Bahmni/bahmni-apps-frontend). Bahmni and its contributors built the upstream software. Qorlia is working on configuration, presentation, and hospital-specific implementation, not claiming authorship of Bahmni or endorsement by its maintainers. This fork is not the code currently running at demo-bahmni.qorlia.com.
+
+The upstream git history, copyright notices, [LICENSE](LICENSE), and [NOTICE](NOTICE) are retained. Changes to covered source files remain under that repository's Mozilla Public License 2.0 with Healthcare Disclaimer. Other integrated components can have different licenses; check each component before distributing a combined build. Qorlia's brand does not replace Bahmni's copyright attribution.
+
+Qorlia's visual direction and clinical UI rules are in [the design system](docs/QORLIA_DESIGN_SYSTEM.md). The current changes are development work only; no live Bahmni deployment uses this fork yet.
 
 A React TypeScript monorepo application for Bahmni applications, built with Nx, Webpack, and Carbon Design System. This application includes PWA support for offline capabilities.
 
@@ -97,4 +103,4 @@ For a more detailed explanation of the project structure and architecture, see [
 
 ## License
 
-[Add license information here]
+See [LICENSE](LICENSE) and [NOTICE](NOTICE). The license applies to this frontend repository; it does not grant rights to upstream trademarks or logos.

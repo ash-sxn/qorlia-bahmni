@@ -1,6 +1,5 @@
 import {
   Button,
-  Link,
   SkeletonText,
   SortableDataTable,
   Stack,
@@ -15,7 +14,7 @@ import {
   formatUrl,
   useTranslation,
 } from '@bahmni/services';
-import { useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useNotification } from '../../../notification';
 import { useUserPrivilege } from '../../../userPrivileges/useUserPrivilege';
 import {
@@ -127,15 +126,9 @@ const PatientSearchResults = ({
 
     if (INTERNAL_PATH_PATTERN.test(url)) {
       return (
-        <Link
-          href={url}
-          onClick={(e) => {
-            e.preventDefault();
-            navigate(url);
-          }}
-        >
+        <RouterLink className="cds--link" to={url}>
           {identifier}
-        </Link>
+        </RouterLink>
       );
     }
 
