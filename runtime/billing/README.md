@@ -3,7 +3,7 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest checkpoint: 251 installed native adapter tests and 293 Home
+Latest checkpoint: 273 installed native adapter tests and 329 Home
 tests pass. Native cheque numbering/PDF/recovery is implemented below, but the
 actual staging company has no bank-compatible cheque layout. The prior protected
 browser save/reload and independent native readback confirm
@@ -18,6 +18,48 @@ for dated evidence and remaining gates. Older counts below describe earlier
 checkpoints, not current total coverage or a product completion percentage.
 
 ## Customer payment history and state controls
+
+The local React candidate now connects New/Edit Draft and pending-save recovery
+to six fixed native methods, including computed default/dependent-field onchange.
+Unattached onchange avoids unlinking saved allocation rows. The house editor
+shows native allocation/ledger review, readonly accounting-date/journal flags,
+and exact persisted request recovery. Saving remains a draft operation, not
+posting, reconciliation or a bank transfer. 273 native tests, 329 Home tests in
+41 suites, seven gateway/webpack checks, types, lint and development build pass.
+Candidate gateway methods are session-gated and narrowly allowed. Local browser
+create/edit and lost-accepted-response/full-reload/identical-retry recovery passed
+on synthetic #3817 (INR 125 then INR 175). Independent readback verifies exactly
+one new payment/move and creation/edit receipts, balanced ledger and unchanged
+protected balances/records and reconciliation/stock/mail counts. Network fault
+injection was cleared. Protected artifact `payment-draft-editor-20261010` is
+published with unchanged gates/expiry/backends. All 83 chunks, source/licenses,
+secret-free archive and actual session/route boundaries verified. Published
+source precedes this evidence note. Production and shared demo are unchanged;
+mixed-currency allocation and wider parity remain
+required. The following sections preserve earlier checkpoint evidence.
+
+The standalone draft backend now adds create/edit, native dependent choices,
+date/journal/bank/currency restrictions and exact author-bound save/status
+receipts. Unique creation UUIDs and transaction locks prevent duplicate first
+saves. Accepted retries return current state after later actions. Saving keeps
+the payment in draft, its ledger balanced and existing document balances
+unchanged, without posting or reconciling. Changed-only native writes avoid an
+unchanged delegated company field resetting the selected journal. Read-back
+must match reviewed fields/allocations/totals/native ledger, or it rolls back.
+Edit roles/rules are checked before author-bound version comparisons.
+
+Installed native suite: 265 tests, zero failures/errors/skips; mandatory analytic
+plan restored and web restarted. Native HTTP #3433 create/edit/receipt recovery
+and #3686 concurrent identical first-save checks pass. Two concurrent accepted
+responses produce exactly one payment/move and no changes to protected balances
+or reconciliation/stock/mail counts. React service validation has 19 new tests;
+all 312 Home tests/40 suites, Home typecheck and touched-service lint pass.
+No React payment editor or protected publication in this checkpoint. All five
+candidate methods remain gateway-denied. Native dependent-field onchange,
+browser editor/recovery, mixed-currency allocation and wider ledger parity remain
+required. Production/public demo are unchanged.
+
+Earlier preview-only checkpoint follows:
 
 The next editor's backend load/preview foundation is installed only in isolated
 staging. Virtual payment onchange generates native readonly invoice/credit rows;

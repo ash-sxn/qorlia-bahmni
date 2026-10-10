@@ -115,7 +115,8 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     'qorlia_cheque_load', 'qorlia_cheque_preview', 'qorlia_cheque_print', 'qorlia_cheque_status', 'qorlia_cheque_download', 'qorlia_cheque_download_current',
     'qorlia_cheque_sent_load', 'qorlia_cheque_sent_preview', 'qorlia_cheque_sent_run', 'qorlia_cheque_sent_status',
     'qorlia_cheque_void_load', 'qorlia_cheque_void_preview', 'qorlia_cheque_void_run', 'qorlia_cheque_void_status',
-    'qorlia_payment_history', 'qorlia_payment_state_load', 'qorlia_payment_state_preview', 'qorlia_payment_state_run', 'qorlia_payment_state_status']) {
+    'qorlia_payment_history', 'qorlia_payment_state_load', 'qorlia_payment_state_preview', 'qorlia_payment_state_run', 'qorlia_payment_state_status',
+    ...['load', 'choices', 'onchange', 'preview', 'save', 'status'].map(action => `qorlia_customer_payment_draft_${action}`)]) {
     const path = `/web/dataset/call_kw/account.payment/${method}`;
     const params = { model: 'account.payment', method, args: [], kwargs: { payment_id: 1 } };
     assert.equal((await rpc(path, cookie, params)).status, 401);
@@ -131,10 +132,6 @@ test('review gate protects UI, clinical API and named Billing actions with isola
   for (const model of ['account.payment', 'account.payment.register', 'account.move.reversal', 'sale.advance.payment.inv'])
     for (const method of ['create', 'write', 'action_post', 'action_draft', 'action_cancel', 'action_create_payments', '_create_payments', 'reverse_moves', 'unlink', 'mark_as_sent', 'unmark_as_sent', 'action_void_check'])
       assert.equal((await rpc(`/web/dataset/call_kw/${model}/${method}`, allCookies, { model, method })).status, 404);
-  // Draft previews remain staging-only until the editor and exact-save recovery are connected.
-  for (const method of ['qorlia_customer_payment_draft_load', 'qorlia_customer_payment_draft_preview'])
-    assert.equal((await rpc(`/web/dataset/call_kw/account.payment/${method}`, allCookies,
-      { model: 'account.payment', method, args: [], kwargs: {} })).status, 404);
   await request('/openmrs/ws/rest/v1/session', { headers: { Cookie: allCookies } });
   assert.equal(seenClinical, 'JSESSIONID=valid; reporting_session=report');
   assert.equal((await request('/openmrs/module/addresshierarchy/ajax/getOrderedAddressHierarchyLevels.form',

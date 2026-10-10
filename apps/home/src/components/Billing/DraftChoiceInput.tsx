@@ -10,6 +10,9 @@ import {
   getAdvanceChoices,
   InvoiceDraftChoiceKind,
   getJournalDetailChoices,
+  getCustomerPaymentDraftChoices,
+  CustomerPaymentDraftValues,
+  CustomerPaymentDraftChoiceKind,
 } from './billingService';
 
 export function DraftChoiceInput({
@@ -26,6 +29,7 @@ export function DraftChoiceInput({
   journalInvoiceId,
   journalLineId,
   analyticScope,
+  paymentValues,
   disabled,
   onChange,
   reconnect,
@@ -48,6 +52,7 @@ export function DraftChoiceInput({
 } & (
   | {
       invoiceId: number | false;
+      paymentValues?: undefined;
       advanceOrderId?: undefined;
       journalInvoiceId?: undefined;
       journalLineId?: undefined;
@@ -55,6 +60,7 @@ export function DraftChoiceInput({
     }
   | {
       invoiceId?: undefined;
+      paymentValues?: undefined;
       advanceOrderId?: undefined;
       journalInvoiceId?: undefined;
       journalLineId?: undefined;
@@ -63,6 +69,7 @@ export function DraftChoiceInput({
   | {
       invoiceId?: undefined;
       advanceOrderId: number;
+      paymentValues?: undefined;
       journalInvoiceId?: undefined;
       journalLineId?: undefined;
       kind: 'account' | 'tax';
@@ -71,8 +78,17 @@ export function DraftChoiceInput({
       invoiceId?: undefined;
       advanceOrderId?: undefined;
       journalInvoiceId: number;
+      paymentValues?: undefined;
       journalLineId: number;
       kind: 'account' | 'grid' | 'analytic';
+    }
+  | {
+      paymentValues: CustomerPaymentDraftValues;
+      invoiceId?: undefined;
+      advanceOrderId?: undefined;
+      journalInvoiceId?: undefined;
+      journalLineId?: undefined;
+      kind: CustomerPaymentDraftChoiceKind;
     }
 )) {
   const [search, setSearch] = useState('');
@@ -91,26 +107,38 @@ export function DraftChoiceInput({
       term,
       shopId,
       productId,
+      paymentValues,
     ],
     queryFn: () =>
-      journalInvoiceId !== undefined
-        ? getJournalDetailChoices(
-            journalInvoiceId,
-            journalLineId!,
-            kind as 'account' | 'grid' | 'analytic',
+      paymentValues !== undefined
+        ? getCustomerPaymentDraftChoices(
+            paymentValues,
+            kind as CustomerPaymentDraftChoiceKind,
             term,
-            analyticScope,
           )
-        : advanceOrderId !== undefined
-          ? getAdvanceChoices(advanceOrderId, kind as 'account' | 'tax', term)
-          : invoiceId !== undefined
-            ? getInvoiceDraftChoices(
-                invoiceId,
-                kind as InvoiceDraftChoiceKind,
-                term,
-                productId,
-              )
-            : getDraftChoices(kind as DraftChoiceKind, term, shopId, productId),
+        : journalInvoiceId !== undefined
+          ? getJournalDetailChoices(
+              journalInvoiceId,
+              journalLineId!,
+              kind as 'account' | 'grid' | 'analytic',
+              term,
+              analyticScope,
+            )
+          : advanceOrderId !== undefined
+            ? getAdvanceChoices(advanceOrderId, kind as 'account' | 'tax', term)
+            : invoiceId !== undefined
+              ? getInvoiceDraftChoices(
+                  invoiceId,
+                  kind as InvoiceDraftChoiceKind,
+                  term,
+                  productId,
+                )
+              : getDraftChoices(
+                  kind as DraftChoiceKind,
+                  term,
+                  shopId,
+                  productId,
+                ),
     enabled: !disabled,
     retry: false,
   });

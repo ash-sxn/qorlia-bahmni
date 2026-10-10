@@ -1,5 +1,93 @@
 # Qorlia React frontend backend readiness
 
+## Customer payment draft editor candidate (10 October 2026)
+
+The signed-in React payment history now connects New, Edit Draft and independent
+pending-save recovery to native load, choices, onchange, preview, save and status.
+Native onchange computes new defaults and journal/direction/customer dependencies
+on unattached records, preserving saved allocation rows. Accounting date and
+previously posted journal restrictions remain server-enforced.
+
+The editor uses existing Qorlia/Carbon components, reviews native readonly
+allocations and prepared journal lines, and persists the exact UUID request
+before saving. Uncertain results lock the form and allow explicit status checks
+or identical retries, including recovery without loading an editable draft after
+later posting/cancellation. Save does not post, reconcile or move funds.
+
+All 273 installed native tests, 329 Home tests in 41 suites, seven gateway/webpack
+checks, Home type checking, touched-file lint and the development distro build
+pass. The Home suite uses the same preset/setup inline as described below. The
+build retains the existing outdated Browserslist data and development bundle-size
+warnings. The native analytic test setting is restored after the suite.
+
+The candidate gateway permits only six named draft methods behind verified
+clinical and ERP sessions. Tests reject anonymous calls, wrong models, arbitrary
+arguments/context and raw financial mutation routes.
+
+Actual local browser creation saved synthetic payment #3817 for INR 125; full
+reload, exact status and finish succeeded. Browser editing changed it to INR 175.
+CDP fault injection dropped the accepted edit's HTTP 200 reply after native save;
+the form retained the request and blocked another payment. Full reload and
+identical retry returned #3817, then finish/history showed INR 175 in Draft.
+Network interception was cleared. Independent native reads verify one creation
+receipt, one edit receipt, exactly one new payment/move, balanced INR 175 ledger,
+unchanged protected documents/payments/ledger and reconciliation/stock/mail
+counts. No posting, bank transaction or existing record mutation occurred.
+
+Protected artifact `payment-draft-editor-20261010` is now published with unchanged
+tester/clinical/ERP gates, expiry and backend mounts. All 83 hosted JS/CSS chunks,
+source and LICENSE/NOTICE files match the local package. The archive contains no
+tester code or QA password. Actual hosted checks verify session-required draft
+methods, authenticated native load/onchange/preview, rejection of arbitrary
+model/args/context and blocked raw financial/database routes. Published source
+precedes this release-evidence note. Production and shared demo are unchanged.
+Mixed-currency automatic allocation, wider ledger variants and remaining
+Billing/clinical/external modules stay open.
+
+## Customer payment draft save and recovery foundation (10 October 2026)
+
+The isolated adapter now supports standalone customer draft creation/editing,
+native dependent choices and date/journal/bank/currency restrictions. Saving
+calls native create/write without posting, reconciliation or bank operations.
+It writes only changed header fields because rewriting an unchanged delegated
+company field can reset the journal during native method validation. Method-only
+edits still trigger native ledger synchronization. Read-back must match the
+reviewed details, allocation rows, totals and prepared native ledger; unexpected
+changes roll back. Existing document balances must remain unchanged.
+
+Creation UUIDs are unique. Author-bound creation/edit receipts commit with the
+draft. Status and accepted retries return the payment's current state, including
+later posting/cancellation, without restoring an old draft. Transaction locks,
+native roles/record rules and stale payment/document/configuration checks apply.
+Edit permission is checked before comparing the author-bound review version.
+
+The installed 265-test suite passes with zero failures/errors/skips. The analytic
+test plan is restored to mandatory and staging web service is running. Local and
+installed adapter hashes match. Authenticated native HTTP created synthetic
+payment #3433 for INR 100, edited it to INR 150 and verified exact save/status
+recovery after later cancellation. A separate concurrent HTTP test submitted
+two identical first-save requests and obtained matching accepted responses for
+exactly one new payment (#3686, INR 125) and one move. Protected records, invoice
+and credit balances, reconciliation/stock/outgoing-mail counts stayed unchanged.
+No bank transaction was performed.
+
+The React API service validates complete form payloads, readonly allocation and
+ledger responses, native choice records, exact recovery request shapes and
+current-state receipts. All 312 Home tests/40 suites pass, including 19 new
+payment-draft service cases. Home typecheck and touched-service lint pass.
+The Home suite was run with the existing Jest preset and setup via inline JSON:
+direct TypeScript config loading hit compiler-option errors, while Nx hit an
+existing circular task graph. No test assertions or source compiler settings
+were bypassed or changed.
+
+This remains a backend/API foundation, not an available payment editor. All five
+candidate routes remain denied by the protected gateway. React form integration,
+native dependent-field onchange fidelity, exact-request browser recovery and
+protected publication are next. Mixed-currency automatic allocation and wider
+monetary-journal/writeoff variants still require parity verification. Full Billing,
+clinical and separate-product work remain in scope. Production/public demo and
+the currently published protected frontend are unchanged.
+
 ## Customer payment draft preview foundation (10 October 2026)
 
 Two staging-only native adapters load and preview standalone customer payment

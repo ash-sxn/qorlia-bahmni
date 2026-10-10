@@ -179,3 +179,302 @@ class PaymentDraftTest(TransactionCase):
         with self.assertRaises(AccessError):
             self.payments.with_context(allowed_company_ids=[self.env.company.id]).qorlia_customer_payment_draft_preview(
                 self.payload(company_id=foreign.id))
+
+    def request(self, payload=None):
+        payload = payload or self.payload()
+        return {'payload': payload, 'review_version': self.payments.qorlia_customer_payment_draft_preview(payload)['review_version'],
+                'request_key': str(uuid.uuid4())}
+
+    def test_create_saves_reviewed_draft_and_native_balanced_ledger_without_reconciliation(self):
+        invoice, credit = self.invoice(), self.invoice(100, move_type='out_refund')
+        request = self.request()
+        review = self.payments.qorlia_customer_payment_draft_preview(request['payload'])
+        with patch.object(type(self.payments), 'action_post') as post:
+            result = self.payments.qorlia_customer_payment_draft_save(**request)
+        post.assert_not_called()
+        self.assertTrue(result['accepted'])
+        payment = self.payments.browse(result['payment']['payment_id'])
+        self.assertEqual(payment.state, 'draft')
+        self.assertFalse(payment.move_id._get_unbalanced_moves({'records': payment.move_id}))
+        self.assertEqual((invoice.amount_residual, credit.amount_residual), (500, 100))
+        saved = self.payments.qorlia_customer_payment_draft_load(payment.id)
+        self.assertEqual(saved['values'], review['values'])
+        self.assertEqual(saved['allocations'], review['allocations'])
+        self.assertEqual(saved['totals'], review['totals'])
+
+    def test_exact_creation_retry_and_status_do_not_duplicate_or_restore_old_state(self):
+        self.invoice()
+        request = self.request()
+        self.assertFalse(self.payments.qorlia_customer_payment_draft_status(**request)['accepted'])
+        first = self.payments.qorlia_customer_payment_draft_save(**request)
+        payment = self.payments.browse(first['payment']['payment_id'])
+        payment.ref = 'QorliaQA Later reference'
+        payment.with_context(default_partner_type='customer').action_post()
+        before = self.payments.search_count([])
+        retry = self.payments.qorlia_customer_payment_draft_save(**request)
+        status = self.payments.qorlia_customer_payment_draft_status(**request)
+        self.assertEqual(retry, status)
+        self.assertEqual(status['payment']['state'], 'posted')
+        self.assertEqual(self.payments.search_count([]), before)
+        self.assertEqual(payment.ref, 'QorliaQA Later reference')
+        changed = {**request, 'payload': {**request['payload'], 'values': {**request['payload']['values'], 'amount': 101}}}
+        with self.assertRaises(ValidationError):
+            self.payments.qorlia_customer_payment_draft_status(**changed)
+        with self.assertRaises(ValidationError):
+            self.payments.qorlia_customer_payment_draft_save(**changed)
+
+    def test_edit_draft_uses_native_write_and_exact_recovery(self):
+        self.invoice()
+        created = self.payments.qorlia_customer_payment_draft_save(**self.request())
+        payment = self.payments.browse(created['payment']['payment_id'])
+        loaded = self.payments.qorlia_customer_payment_draft_load(payment.id)
+        request = self.request({'id': payment.id, 'version': loaded['version'],
+                                'values': {**loaded['values'], 'amount': 150, 'bank_reference': 'QorliaQA Bank'}})
+        with patch.object(type(payment), 'action_post') as post:
+            result = self.payments.qorlia_customer_payment_draft_save(**request)
+        post.assert_not_called()
+        self.assertEqual(result['payment']['amount'], 150)
+        self.assertEqual(payment.bank_reference, 'QorliaQA Bank')
+        self.assertEqual(payment.outstanding_invoice_lines.allocated_amount, 150)
+        payment.ref = 'QorliaQA Further edit'
+        status = self.payments.qorlia_customer_payment_draft_status(**request)
+        self.assertTrue(status['accepted'])
+        self.assertEqual(self.payments.qorlia_customer_payment_draft_save(**request), status)
+        self.assertEqual(payment.ref, 'QorliaQA Further edit')
+
+    def test_stale_creation_review_is_denied_before_any_payment_is_created(self):
+        invoice = self.invoice()
+        request = self.request()
+        invoice.ref = 'QorliaQA Invoice changed after review'
+        before = self.payments.search_count([])
+        with self.assertRaises(UserError):
+            self.payments.qorlia_customer_payment_draft_save(**request)
+        self.assertEqual(self.payments.search_count([]), before)
+        self.assertFalse(self.payments.qorlia_customer_payment_draft_status(**request)['accepted'])
+
+    def test_same_transaction_journal_configuration_change_invalidates_review(self):
+        self.invoice()
+        request = self.request()
+        self.journal.active = False
+        with self.assertRaises(UserError):
+            self.payments.qorlia_customer_payment_draft_save(**request)
+
+    def test_unknown_invalid_and_missing_request_values_are_denied(self):
+        self.invoice()
+        request = self.request()
+        for changed in ({'request_key': 'invalid'}, {'review_version': False}, {'payload': []},
+                        {'payload': {**request['payload'], 'id': True}}):
+            with self.assertRaises(ValidationError):
+                self.payments.qorlia_customer_payment_draft_save(**{**request, **changed})
+        values = dict(request['payload']['values'])
+        values.pop('ref')
+        with self.assertRaises(ValidationError):
+            self.payments.qorlia_customer_payment_draft_preview({**request['payload'], 'values': values})
+
+    def test_choices_use_native_company_journal_method_and_bank_domains(self):
+        values = self.payload()['values']
+        choices = self.payments.qorlia_customer_payment_draft_choices
+        self.assertIn(self.journal.id, [item[0] for item in choices(values, 'journal')])
+        self.assertIn(self.method.id, [item[0] for item in choices(values, 'method')])
+        outbound = self.journal.outbound_payment_method_line_ids.filtered(lambda row: row.code == 'manual')[:1]
+        self.assertNotIn(outbound.id, [item[0] for item in choices(values, 'method')])
+        self.assertIn(self.customer.id, [item[0] for item in choices(values, 'customer', 'Draft payment customer')])
+        self.assertEqual(choices(values, 'bank'), [])
+        for kind in ('unsafe', []):
+            with self.assertRaises(ValidationError):
+                choices(values, kind)
+
+    def test_native_auto_date_is_locked_but_effective_date_is_editable(self):
+        self.invoice()
+        with self.assertRaisesRegex(ValidationError, 'accounting date'):
+            self.preview(date='2026-01-02')
+        preview = self.preview(effective_date='2026-12-01')
+        self.assertTrue(preview['date_readonly'])
+        self.assertEqual(preview['values']['effective_date'], '2026-12-01')
+        self.env['ir.config_parameter'].set_param('bahmni_auto_payment_reconciliation.enabled', '')
+        self.assertFalse(self.preview(date='2026-01-02')['date_readonly'])
+
+    def test_new_request_cannot_edit_posted_or_stale_draft(self):
+        self.invoice()
+        created = self.payments.qorlia_customer_payment_draft_save(**self.request())
+        payment = self.payments.browse(created['payment']['payment_id'])
+        loaded = self.payments.qorlia_customer_payment_draft_load(payment.id)
+        request = self.request({'id': payment.id, 'version': loaded['version'], 'values': loaded['values']})
+        payment.ref = 'QorliaQA Concurrent change'
+        with self.assertRaises(UserError):
+            self.payments.qorlia_customer_payment_draft_save(**request)
+        payment.with_context(default_partner_type='customer').action_post()
+        with self.assertRaises(UserError):
+            self.payments.qorlia_customer_payment_draft_save(**request)
+
+    def test_creation_key_cannot_be_replayed_by_another_author(self):
+        self.invoice()
+        request = self.request()
+        self.payments.qorlia_customer_payment_draft_save(**request)
+        user = self.env['res.users'].with_context(no_reset_password=True).create({'name': 'QorliaQA Other draft author',
+            'login': 'qorliaqa-draft-author-' + str(uuid.uuid4()), 'company_id': self.env.company.id,
+            'company_ids': [Command.set(self.env.company.ids)],
+            'groups_id': [Command.set(self.env.ref('account.group_account_invoice').ids)]})
+        with self.assertRaises(ValidationError):
+            self.payments.with_user(user).qorlia_customer_payment_draft_status(**request)
+
+    def test_hidden_creation_receipt_does_not_allow_duplicate_creation(self):
+        self.invoice()
+        request = self.request()
+        result = self.payments.qorlia_customer_payment_draft_save(**request)
+        self.env['ir.rule'].create({'name': 'QorliaQA Hidden payment receipt', 'model_id': self.env['ir.model']._get_id('account.payment'),
+            'domain_force': "[('id', '!=', %s)]" % result['payment']['payment_id']})
+        user = self.env['res.users'].with_context(no_reset_password=True).create({'name': 'QorliaQA Receipt reader',
+            'login': 'qorliaqa-draft-hidden-' + str(uuid.uuid4()), 'company_id': self.env.company.id,
+            'company_ids': [Command.set(self.env.company.ids)],
+            'groups_id': [Command.set(self.env.ref('account.group_account_invoice').ids)]})
+        with self.assertRaises(AccessError):
+            self.payments.with_user(user).qorlia_customer_payment_draft_save(**request)
+
+    def test_previously_posted_draft_keeps_its_journal_and_original_auto_date(self):
+        self.invoice()
+        result = self.payments.qorlia_customer_payment_draft_save(**self.request())
+        payment = self.payments.browse(result['payment']['payment_id']).with_context(default_partner_type='customer')
+        payment.action_post()
+        payment.action_draft()
+        self.assertTrue(payment.posted_before)
+        loaded = self.payments.qorlia_customer_payment_draft_load(payment.id)
+        self.assertTrue(loaded['journal_readonly'])
+        self.assertTrue(loaded['date_readonly'])
+        other = self.env['account.journal'].create({'name': 'QorliaQA Replacement bank', 'code': 'QDRP', 'type': 'bank'})
+        method = other.inbound_payment_method_line_ids.filtered(lambda row: row.code == 'manual')[:1]
+        with self.assertRaisesRegex(ValidationError, 'original journal'):
+            self.payments.qorlia_customer_payment_draft_preview({'id': payment.id, 'version': loaded['version'],
+                'values': {**loaded['values'], 'journal_id': other.id, 'payment_method_line_id': method.id}})
+        reviewed = self.payments.qorlia_customer_payment_draft_preview({'id': payment.id, 'version': loaded['version'],
+            'values': {**loaded['values'], 'amount': 150}})
+        self.assertEqual(reviewed['values']['date'], loaded['values']['date'])
+
+    def test_unexpected_native_creation_detail_rolls_back_the_draft_and_move(self):
+        self.invoice()
+        request = self.request()
+        before = (self.payments.search_count([]), self.env['account.move'].search_count([]))
+        create = type(self.payments).create
+
+        def unexpected(model, values):
+            saved = create(model, values)
+            saved.bank_reference = 'QorliaQA Unexpected native detail'
+            return saved
+
+        with patch.object(type(self.payments), 'create', unexpected), self.assertRaisesRegex(UserError, 'unreviewed detail'):
+            self.payments.qorlia_customer_payment_draft_save(**request)
+        self.assertEqual((self.payments.search_count([]), self.env['account.move'].search_count([])), before)
+        self.assertFalse(self.payments.qorlia_customer_payment_draft_status(**request)['accepted'])
+
+    def test_readonly_role_cannot_save_a_new_or_existing_draft(self):
+        self.invoice()
+        request = self.request()
+        created = self.payments.qorlia_customer_payment_draft_save(**request)
+        loaded = self.payments.qorlia_customer_payment_draft_load(created['payment']['payment_id'])
+        edit = self.request({'id': loaded['id'], 'version': loaded['version'], 'values': {**loaded['values'], 'amount': 150}})
+        reader = self.env['res.users'].with_context(no_reset_password=True).create({'name': 'QorliaQA Save reader',
+            'login': 'qorliaqa-save-reader-' + str(uuid.uuid4()), 'company_id': self.env.company.id,
+            'company_ids': [Command.set(self.env.company.ids)],
+            'groups_id': [Command.set(self.env.ref('account.group_account_readonly').ids)]})
+        for pending in ({**request, 'request_key': str(uuid.uuid4())}, edit):
+            with self.assertRaises(AccessError):
+                self.payments.with_user(reader).qorlia_customer_payment_draft_save(**pending)
+
+    def test_new_load_uses_native_computed_form_defaults(self):
+        loaded = self.payments.qorlia_customer_payment_draft_load()
+        self.assertTrue(loaded['values']['journal_id'])
+        self.assertTrue(loaded['values']['payment_method_line_id'])
+        self.assertEqual(loaded['values']['currency_id'], self.env.company.currency_id.id)
+        self.assertFalse(loaded['values']['partner_id'])
+
+    def test_journal_onchange_uses_native_method_currency_and_bank_without_write(self):
+        currency = self.env.ref('base.EUR')
+        currency.active = True
+        other = self.env['account.journal'].create({'name': 'QorliaQA Form currency bank', 'code': 'QDCU',
+            'type': 'bank', 'currency_id': currency.id})
+        bank = self.env['res.partner.bank'].create({'acc_number': 'QorliaQA-Form-Bank',
+            'partner_id': self.env.company.partner_id.id, 'company_id': self.env.company.id})
+        other.bank_account_id = bank
+        payload = self.payload(journal_id=other.id, amount=0, partner_id=False)
+        before = (self.payments.search_count([]), self.env['account.move'].search_count([]))
+        form = self.payments.qorlia_customer_payment_draft_onchange(payload, 'journal_id')
+        method = other.inbound_payment_method_line_ids[:1]
+        self.assertEqual(form['values']['journal_id'], other.id)
+        self.assertEqual(form['values']['payment_method_line_id'], method.id)
+        self.assertEqual(form['values']['currency_id'], currency.id)
+        self.assertEqual(form['values']['partner_bank_id'], bank.id)
+        self.assertEqual((self.payments.search_count([]), self.env['account.move'].search_count([])), before)
+        self.assertNotIn('ledger', form)
+
+    def test_direction_onchange_uses_outbound_method_and_customer_bank(self):
+        self.invoice()
+        bank = self.env['res.partner.bank'].create({'acc_number': 'QorliaQA-Customer-Bank', 'partner_id': self.customer.id})
+        form = self.payments.qorlia_customer_payment_draft_onchange(self.payload(payment_type='outbound'), 'payment_type')
+        self.assertEqual(form['values']['payment_type'], 'outbound')
+        self.assertEqual(form['values']['payment_method_line_id'], self.journal.outbound_payment_method_line_ids[:1].id)
+        self.assertEqual(form['values']['partner_bank_id'], bank.id)
+        native = self.payments.new({**form['values'], 'partner_type': 'customer', 'is_internal_transfer': False})
+        self.assertEqual(form['show_bank'], native.show_partner_bank_account)
+        self.assertEqual(form['require_bank'], native.require_partner_bank_account)
+
+    def test_saved_customer_onchange_never_unlinks_native_allocation_rows(self):
+        invoice = self.invoice()
+        saved = self.payments.qorlia_customer_payment_draft_save(**self.request())
+        payment = self.payments.browse(saved['payment']['payment_id'])
+        rows = payment.outstanding_invoice_lines
+        original = rows.read(['invoice_id', 'allocated_amount', 'remaining_amt', 'selected'])
+        customer = self.env['res.partner'].create({'name': 'QorliaQA Different form customer'})
+        loaded = self.payments.qorlia_customer_payment_draft_load(payment.id)
+        form = self.payments.qorlia_customer_payment_draft_onchange({'id': payment.id, 'version': loaded['version'],
+            'values': {**loaded['values'], 'partner_id': customer.id, 'amount': 0}}, 'partner_id')
+        self.env.flush_all()
+        self.assertEqual(rows.read(['invoice_id', 'allocated_amount', 'remaining_amt', 'selected']), original)
+        self.assertEqual(payment.partner_id, self.customer)
+        self.assertEqual(invoice.amount_residual, 500)
+        self.assertFalse(form['allocations']['outstanding'])
+        self.assertEqual(form['values']['partner_id'], customer.id)
+        self.assertEqual(form['totals']['current_outstanding'], 0)
+
+    def test_onchange_rejects_unsupported_field_and_stale_saved_form(self):
+        payload = self.payload()
+        for field in (False, 'outstanding_invoice_lines', 'partner_type', 'state'):
+            with self.assertRaises(ValidationError):
+                self.payments.qorlia_customer_payment_draft_onchange(payload, field)
+        self.invoice()
+        saved = self.payments.qorlia_customer_payment_draft_save(**self.request())
+        loaded = self.payments.qorlia_customer_payment_draft_load(saved['payment']['payment_id'])
+        self.payments.browse(loaded['id']).ref = 'QorliaQA Changed form'
+        with self.assertRaisesRegex(UserError, 'changed'):
+            self.payments.qorlia_customer_payment_draft_onchange({'id': loaded['id'], 'version': loaded['version'],
+                'values': loaded['values']}, 'ref')
+
+    def test_onchange_rejects_native_auto_date_and_previously_posted_journal_edits(self):
+        with self.assertRaisesRegex(ValidationError, 'accounting date'):
+            self.payments.qorlia_customer_payment_draft_onchange(self.payload(date='2026-01-01'), 'date')
+        self.invoice()
+        saved = self.payments.qorlia_customer_payment_draft_save(**self.request())
+        payment = self.payments.browse(saved['payment']['payment_id']).with_context(default_partner_type='customer')
+        payment.action_post()
+        payment.action_draft()
+        loaded = self.payments.qorlia_customer_payment_draft_load(payment.id)
+        other = self.env['account.journal'].create({'name': 'QorliaQA Wrong form journal', 'code': 'QDWF', 'type': 'cash'})
+        with self.assertRaisesRegex(ValidationError, 'original journal'):
+            self.payments.qorlia_customer_payment_draft_onchange({'id': payment.id, 'version': loaded['version'],
+                'values': {**loaded['values'], 'journal_id': other.id}}, 'journal_id')
+
+    def test_onchange_preserves_native_amount_limit_and_effective_date(self):
+        self.invoice(50)
+        with self.assertRaises(ValidationError):
+            self.payments.qorlia_customer_payment_draft_onchange(self.payload(amount=100), 'amount')
+        form = self.payments.qorlia_customer_payment_draft_onchange(
+            self.payload(amount=20, effective_date='2026-10-20'), 'effective_date')
+        self.assertEqual(form['values']['effective_date'], '2026-10-20')
+        self.assertEqual(form['totals']['balance_outstanding'], 30)
+
+    def test_readonly_role_cannot_run_payment_form_onchange(self):
+        reader = self.env['res.users'].with_context(no_reset_password=True).create({'name': 'QorliaQA Form reader',
+            'login': 'qorliaqa-form-reader-' + str(uuid.uuid4()), 'company_id': self.env.company.id,
+            'company_ids': [Command.set(self.env.company.ids)],
+            'groups_id': [Command.set(self.env.ref('account.group_account_readonly').ids)]})
+        with self.assertRaises(AccessError):
+            self.payments.with_user(reader).qorlia_customer_payment_draft_onchange(self.payload(), 'partner_id')

@@ -8,6 +8,10 @@ import {
   getCustomerPaymentHistory,
 } from './billingService';
 import {
+  CustomerPaymentDraftEditor,
+  pendingCustomerPaymentDraft,
+} from './CustomerPaymentDraftEditor';
+import {
   PaymentStateModal,
   pendingPaymentState,
   paymentStateLabels,
@@ -25,6 +29,7 @@ export function CustomerPaymentsPanel({
   const [state, setState] = useState('all');
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
+  const [editing, setEditing] = useState<number | false | null>(null);
   const [notice, setNotice] = useState('');
   const queryClient = useQueryClient();
   const history = useQuery({
@@ -35,9 +40,11 @@ export function CustomerPaymentsPanel({
     refetchOnWindowFocus: false,
   });
   let pending = null,
+    pendingDraft = null,
     recoveryError = '';
   try {
     pending = pendingPaymentState(uid);
+    pendingDraft = pendingCustomerPaymentDraft(uid);
   } catch {
     recoveryError =
       'Payment recovery storage is unavailable or invalid. Ask your Billing administrator to check it before another action.';
@@ -60,6 +67,20 @@ export function CustomerPaymentsPanel({
           Recover pending payment request
         </Button>
       ) : null}
+      {pendingDraft ? (
+        <Button
+          kind="tertiary"
+          onClick={() => setEditing(pendingDraft!.payload.id)}
+        >
+          Recover pending payment draft save
+        </Button>
+      ) : null}
+      <Button
+        disabled={!!pending || !!pendingDraft || !!recoveryError}
+        onClick={() => setEditing(false)}
+      >
+        New customer payment
+      </Button>
       <form
         className={styles.toolbar}
         onSubmit={(event) => {
@@ -159,12 +180,29 @@ export function CustomerPaymentsPanel({
                       <Button
                         kind="tertiary"
                         disabled={
-                          history.isFetching || !!pending || !!recoveryError
+                          history.isFetching ||
+                          !!pending ||
+                          !!pendingDraft ||
+                          !!recoveryError
                         }
                         onClick={() => setSelected(row.payment_id)}
                       >
                         Review payment {row.name}
                       </Button>
+                      {row.state === 'draft' ? (
+                        <Button
+                          kind="tertiary"
+                          disabled={
+                            history.isFetching ||
+                            !!pending ||
+                            !!pendingDraft ||
+                            !!recoveryError
+                          }
+                          onClick={() => setEditing(row.payment_id)}
+                        >
+                          Edit draft {row.name}
+                        </Button>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
@@ -192,6 +230,22 @@ export function CustomerPaymentsPanel({
             </Button>
           </div>
         </>
+      ) : null}
+      {editing !== null ? (
+        <CustomerPaymentDraftEditor
+          key={String(editing)}
+          uid={uid}
+          paymentId={editing}
+          close={() => setEditing(null)}
+          reconnect={reconnect}
+          completed={() => {
+            setEditing(null);
+            setNotice(
+              'Payment draft save accepted. Reloaded history shows the current native state.',
+            );
+            void queryClient.invalidateQueries({ queryKey: ['billing'] });
+          }}
+        />
       ) : null}
       {selected !== null ? (
         <PaymentStateModal

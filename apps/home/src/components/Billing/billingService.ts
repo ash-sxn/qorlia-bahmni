@@ -3432,6 +3432,367 @@ export const savePaymentStateWorkflow = (request: PaymentStateRequest) =>
 export const getPaymentStateRequestStatus = (request: PaymentStateRequest) =>
   paymentStateResult('qorlia_payment_state_status', request);
 
+export interface CustomerPaymentDraftValues {
+  partner_id: number | false;
+  company_id: number;
+  payment_type: 'inbound' | 'outbound';
+  amount: number;
+  date: string;
+  journal_id: number | false;
+  payment_method_line_id: number | false;
+  currency_id: number | false;
+  partner_bank_id: number | false;
+  ref: string | false;
+  payment_reference: string | false;
+  bank_reference: string | false;
+  cheque_reference: string | false;
+  effective_date: string | false;
+}
+export interface CustomerPaymentDraftPayload {
+  id: number | false;
+  version: string | false;
+  values: CustomerPaymentDraftValues;
+}
+export interface CustomerPaymentAllocation {
+  invoice_id: number;
+  name: string;
+  date: string | false;
+  care_setting: string | false;
+  invoice_amount: number;
+  allocated_amount: number;
+  remaining_amount: number;
+  selected: boolean;
+  state: string;
+  open_amount: number;
+  document_version: string;
+}
+export interface CustomerPaymentDraft extends CustomerPaymentDraftPayload {
+  warning?: string | false;
+  labels: Record<string, string>;
+  allocations: {
+    outstanding: CustomerPaymentAllocation[];
+    credits: CustomerPaymentAllocation[];
+  };
+  totals: { current_outstanding: number; balance_outstanding: number };
+  auto_allocate: boolean;
+  date_readonly: boolean;
+  journal_readonly: boolean;
+  show_bank: boolean;
+  require_bank: boolean;
+  multi_currency: boolean;
+  review_version: string;
+  ledger?: {
+    name: string;
+    account_id: number;
+    partner_id: number | false;
+    currency_id: number;
+    debit: number;
+    credit: number;
+    amount_currency: number;
+  }[];
+  account_labels?: Record<string, string>;
+}
+export interface CustomerPaymentDraftRequest {
+  payload: CustomerPaymentDraftPayload;
+  review_version: string;
+  request_key: string;
+}
+export type CustomerPaymentDraftChoiceKind =
+  | 'company'
+  | 'customer'
+  | 'journal'
+  | 'method'
+  | 'bank'
+  | 'currency';
+const customerPaymentFields = [
+  'partner_id',
+  'company_id',
+  'payment_type',
+  'amount',
+  'date',
+  'journal_id',
+  'payment_method_line_id',
+  'currency_id',
+  'partner_bank_id',
+  'ref',
+  'payment_reference',
+  'bank_reference',
+  'cheque_reference',
+  'effective_date',
+].sort();
+const customerPaymentChoiceKinds: CustomerPaymentDraftChoiceKind[] = [
+  'company',
+  'customer',
+  'journal',
+  'method',
+  'bank',
+  'currency',
+];
+const paymentIdentifier = (value: unknown) =>
+  Number.isSafeInteger(value) && Number(value) > 0;
+const paymentHash = (value: unknown) =>
+  typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+const paymentText = (value: unknown) =>
+  value === false || typeof value === 'string';
+function checkedCustomerPaymentValues(values: CustomerPaymentDraftValues) {
+  if (
+    !values ||
+    Object.keys(values).sort().join(',') !== customerPaymentFields.join(',') ||
+    !paymentIdentifier(values.company_id) ||
+    !(
+      [
+        'partner_id',
+        'journal_id',
+        'payment_method_line_id',
+        'currency_id',
+        'partner_bank_id',
+      ] as const
+    ).every(
+      (field) => values[field] === false || paymentIdentifier(values[field]),
+    ) ||
+    !['inbound', 'outbound'].includes(values.payment_type) ||
+    !Number.isFinite(values.amount) ||
+    values.amount < 0 ||
+    !validDate(values.date) ||
+    !(values.effective_date === false || validDate(values.effective_date)) ||
+    ![
+      values.ref,
+      values.payment_reference,
+      values.bank_reference,
+      values.cheque_reference,
+    ].every(paymentText)
+  )
+    throw new Error(
+      'Invalid customer payment details. Reload the complete form.',
+    );
+  return values;
+}
+function checkedCustomerPaymentPayload(payload: CustomerPaymentDraftPayload) {
+  if (
+    !payload ||
+    Object.keys(payload).sort().join(',') !== 'id,values,version' ||
+    !(payload.id === false
+      ? payload.version === false
+      : paymentIdentifier(payload.id) && paymentHash(payload.version))
+  )
+    throw new Error('Invalid customer payment draft. Reload before editing.');
+  checkedCustomerPaymentValues(payload.values);
+  return payload;
+}
+export function checkedCustomerPaymentDraftRequest(
+  request: CustomerPaymentDraftRequest,
+) {
+  if (
+    !request ||
+    Object.keys(request).sort().join(',') !==
+      'payload,request_key,review_version' ||
+    !paymentHash(request.review_version) ||
+    typeof request.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      request.request_key,
+    )
+  )
+    throw new Error(
+      'Invalid payment draft recovery request. Ask your Billing administrator to review it.',
+    );
+  checkedCustomerPaymentPayload(request.payload);
+  return request;
+}
+function checkedCustomerPaymentDraft(
+  value: CustomerPaymentDraft,
+  id: number | false,
+  preview = false,
+) {
+  if (value?.id !== id)
+    throw new Error('Customer payment response belongs to another draft.');
+  checkedCustomerPaymentPayload({
+    id: value.id,
+    version: value.version,
+    values: value.values,
+  });
+  const labels = (data: unknown) =>
+    !!data &&
+    typeof data === 'object' &&
+    !Array.isArray(data) &&
+    Object.values(data).every((label) => typeof label === 'string');
+  if (
+    !paymentHash(value.review_version) ||
+    !(value.warning === undefined || paymentText(value.warning)) ||
+    !labels(value.labels) ||
+    ![
+      value.auto_allocate,
+      value.date_readonly,
+      value.journal_readonly,
+      value.show_bank,
+      value.require_bank,
+      value.multi_currency,
+    ].every((flag) => typeof flag === 'boolean') ||
+    value.date_readonly !== value.auto_allocate ||
+    !value.totals ||
+    ![value.totals.current_outstanding, value.totals.balance_outstanding].every(
+      Number.isFinite,
+    ) ||
+    !value.allocations ||
+    Object.keys(value.allocations).sort().join(',') !== 'credits,outstanding' ||
+    ![value.allocations.outstanding, value.allocations.credits].every(
+      (rows) =>
+        Array.isArray(rows) &&
+        rows.length <= 500 &&
+        new Set(rows.map((row) => row?.invoice_id)).size === rows.length &&
+        rows.every(
+          (row) =>
+            paymentIdentifier(row?.invoice_id) &&
+            typeof row.name === 'string' &&
+            (row.date === false || validDate(row.date)) &&
+            paymentText(row.care_setting) &&
+            [
+              row.invoice_amount,
+              row.allocated_amount,
+              row.remaining_amount,
+              row.open_amount,
+            ].every(Number.isFinite) &&
+            typeof row.selected === 'boolean' &&
+            ['draft', 'posted', 'cancel'].includes(row.state) &&
+            paymentHash(row.document_version),
+        ),
+    ) ||
+    (preview &&
+      (!labels(value.account_labels) ||
+        !Array.isArray(value.ledger) ||
+        value.ledger.length < 2 ||
+        value.ledger.some(
+          (row) =>
+            !row ||
+            typeof row.name !== 'string' ||
+            !paymentIdentifier(row.account_id) ||
+            !(row.partner_id === false || paymentIdentifier(row.partner_id)) ||
+            !paymentIdentifier(row.currency_id) ||
+            ![row.debit, row.credit, row.amount_currency].every(
+              Number.isFinite,
+            ) ||
+            row.debit < 0 ||
+            row.credit < 0,
+        )))
+  )
+    throw new Error('Invalid native payment review. Reload before saving.');
+  return value;
+}
+export async function getCustomerPaymentDraft(
+  paymentId: number | false = false,
+) {
+  if (!(paymentId === false || paymentIdentifier(paymentId)))
+    throw new Error('Select a saved payment or a new draft.');
+  return checkedCustomerPaymentDraft(
+    await chequeCall<CustomerPaymentDraft>(
+      'qorlia_customer_payment_draft_load',
+      { payment_id: paymentId },
+    ),
+    paymentId,
+  );
+}
+export async function previewCustomerPaymentDraft(
+  payload: CustomerPaymentDraftPayload,
+) {
+  checkedCustomerPaymentPayload(payload);
+  const result = checkedCustomerPaymentDraft(
+    await chequeCall<CustomerPaymentDraft>(
+      'qorlia_customer_payment_draft_preview',
+      { payload },
+    ),
+    payload.id,
+    true,
+  );
+  if (result.version !== payload.version)
+    throw new Error('This payment changed. Reload before editing.');
+  return result;
+}
+export async function changeCustomerPaymentDraft(
+  payload: CustomerPaymentDraftPayload,
+  field: keyof CustomerPaymentDraftValues,
+) {
+  checkedCustomerPaymentPayload(payload);
+  if (!customerPaymentFields.includes(field))
+    throw new Error('Select a supported customer payment field.');
+  const result = checkedCustomerPaymentDraft(
+    await chequeCall<CustomerPaymentDraft>(
+      'qorlia_customer_payment_draft_onchange',
+      { payload, field },
+    ),
+    payload.id,
+  );
+  if (result.version !== payload.version)
+    throw new Error('This payment changed. Reload before editing.');
+  return result;
+}
+export async function getCustomerPaymentDraftChoices(
+  values: CustomerPaymentDraftValues,
+  kind: CustomerPaymentDraftChoiceKind,
+  search = '',
+) {
+  checkedCustomerPaymentValues(values);
+  if (
+    !customerPaymentChoiceKinds.includes(kind) ||
+    typeof search !== 'string' ||
+    search.length > 200
+  )
+    throw new Error('Use a valid customer payment search.');
+  const result = await chequeCall<[number, string][]>(
+    'qorlia_customer_payment_draft_choices',
+    { values, kind, search },
+  );
+  if (
+    !Array.isArray(result) ||
+    result.length > 26 ||
+    new Set(result.map((row) => row?.[0])).size !== result.length ||
+    result.some(
+      (row) =>
+        !Array.isArray(row) ||
+        row.length !== 2 ||
+        !paymentIdentifier(row[0]) ||
+        typeof row[1] !== 'string',
+    )
+  )
+    throw new Error('Invalid customer payment choices. Search again.');
+  return result;
+}
+async function customerPaymentDraftResult(
+  method: string,
+  request: CustomerPaymentDraftRequest,
+) {
+  checkedCustomerPaymentDraftRequest(request);
+  const result = await chequeCall<{
+    accepted: boolean;
+    payment: PaymentStateWorkflow | false;
+  }>(method, request);
+  if (
+    !result ||
+    typeof result.accepted !== 'boolean' ||
+    (method === 'qorlia_customer_payment_draft_save' && !result.accepted) ||
+    (!result.accepted && result.payment !== false)
+  )
+    throw new Error(
+      'Payment draft response unavailable. Check the exact request before another save.',
+    );
+  if (result.accepted) {
+    if (!result.payment)
+      throw new Error(
+        'Saved payment state is unavailable. Check this exact request.',
+      );
+    checkedPaymentState(
+      result.payment,
+      request.payload.id || result.payment.payment_id,
+    );
+  }
+  return result;
+}
+export const saveCustomerPaymentDraft = (
+  request: CustomerPaymentDraftRequest,
+) => customerPaymentDraftResult('qorlia_customer_payment_draft_save', request);
+export const getCustomerPaymentDraftRequestStatus = (
+  request: CustomerPaymentDraftRequest,
+) =>
+  customerPaymentDraftResult('qorlia_customer_payment_draft_status', request);
+
 export const getDraftChoices = async (
   kind: DraftChoiceKind,
   search: string,

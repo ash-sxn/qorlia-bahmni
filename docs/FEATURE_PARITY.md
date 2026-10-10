@@ -1,5 +1,59 @@
 # Bahmni workflow parity ledger
 
+## 10 October customer payment draft editor candidate
+
+- React New/Edit Draft and independent recovery use six fixed native methods.
+  Native onchange supplies computed defaults and dependent journal, direction,
+  method, currency and bank fields on unattached records. Existing saved
+  allocation rows and readonly date/journal rules are preserved.
+- House components show native readonly allocation and journal review. Exact
+  requests persist before saving; uncertain results permit only explicit status
+  or identical retry. Recovery works without reloading an editable draft after
+  later state transitions. Saving remains separate from Confirm.
+- 273 installed native tests, 329 Home tests/41 suites, seven gateway/webpack
+  checks, Home types, touched-file lint and development distro build pass.
+  Existing Browserslist and development bundle-size warnings remain.
+- Actual local browser create/edit/full-reload/status/finish passed on synthetic
+  #3817 (INR 125 then INR 175). Dropping the accepted edit's reply and retrying
+  the persisted identical request after reload returned that same payment.
+  Interception was cleared. Independent reads verify one creation/edit receipt,
+  one new payment/move, balanced ledger and unchanged protected financial records
+  and reconciliation/stock/mail counts. No posting or bank transaction occurred.
+- Protected artifact `payment-draft-editor-20261010` published with unchanged
+  gates/expiry/backends. All 83 hosted chunks, source/licenses and secret-free
+  archive match. Actual hosted checks verify session-required methods, native
+  load/onchange/preview and arbitrary model/args/context and raw mutation/database
+  denial. Published source precedes this evidence note. Production/shared demo
+  unchanged. Mixed-currency allocation, wider ledger variants and remaining
+  Billing/clinical/external workflows stay open.
+
+## 10 October customer payment draft save/API foundation
+
+- Native customer draft create/edit and choices use installed Odoo/Bahmni
+  permissions, eligible journals/methods/banks and date/currency restrictions.
+  Readonly allocation rows remain native-derived. Saving is separate from Confirm.
+- Server review binds native ledger/configuration and actual document values.
+  Changed-only header writes preserve journal selection; method edits invoke
+  native ledger sync. Unexpected saved details/ledger or document balance changes
+  roll back. Edit permission takes precedence over stale-version feedback.
+- Exact author-bound UUID receipts and transaction locks protect creation/edit
+  retries. Accepted recovery returns current state after later actions, not the
+  state originally saved. Read-only status does not imply a missing original
+  request has stopped.
+- 265 installed native tests pass, zero failures/errors/skips; analytic plan
+  restored and staging running. HTTP #3433 creation/edit/recovery verified with
+  final cancellation. Concurrent identical HTTP saves created only #3686 and one
+  move, with protected documents and reconciliation/stock/mail counts unchanged.
+- React service adds fixed load/preview/choices/save/status calls and strict
+  payload, review, choice and receipt validation. 312 Home tests/40 suites,
+  touched-service lint and Home typecheck pass. Existing Jest preset/setup runs
+  directly through inline JSON because TS config/Nx task graph paths fail before
+  test execution; compiler configuration and assertions are unchanged.
+- No new payment form or protected frontend release yet. All five methods remain
+  gateway-denied pending form/onchange/recovery/browser acceptance. Mixed-currency
+  allocation, wider ledger variants and all remaining Billing/clinical/external
+  modules remain required. Production/shared public demo unchanged.
+
 ## 10 October customer payment draft preview foundation
 
 - Staging-only standalone customer draft load/preview uses virtual records and
