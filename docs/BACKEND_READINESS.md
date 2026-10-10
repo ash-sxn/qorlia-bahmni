@@ -1,5 +1,34 @@
 # Qorlia React frontend backend readiness
 
+## Native-faithful journal simulation checkpoint (10 October 2026)
+
+A private native calculation helper now reproduces saved monetary rows and
+totals by executing native invoice write/synchronisation inside an unconditionally
+rolled-back savepoint. It retains native ACLs, balance/hash/fiscal restrictions,
+suppresses standard tracking/notifications and isolates transaction callbacks.
+Stable snapshots distinguish saved rows from newly generated rows without
+depending on the new database IDs. This is not a purely virtual onchange:
+temporary SQL writes occur and surrogate sequences can advance despite rollback.
+
+All 326 installed native tests pass with zero failures/errors/skips, including
+nine new tests comparing simulation with actual native save for invoice/credit,
+draft/posted, company/foreign currency, tax/add/remove and installment cases.
+Tests also verify record/count rollback on success and failure, preserved earlier
+request writes, original callback queues and native permission/hash/fiscal guards.
+Seven gateway/build-config tests pass. Installed model/test/init hashes match.
+Billing restarted, the analytic setting is mandatory, and independent native
+reads/exact Cut-Off retry retain the original entries/receipt, source/protected
+records, balances, counts and matching. Existing upstream warnings remain.
+
+This helper is private, not a browser-callable monetary editing API. Review-bound
+payload validation, atomic save/status/retry, React row editing and real browser
+acceptance remain unfinished. No frontend build is claimed for this backend-only
+step; the existing protected artifact/archive is unchanged and predates it.
+Additional native addons need a fresh synchronous-hook review before using this
+calculation path. Wider Billing and clinical/external-module parity remain
+incomplete. Production and the public demo are unchanged. Earlier checkpoints
+below are historical.
+
 ## Native journal monetary contract checkpoint (10 October 2026)
 
 Nine added installed-source tests establish native journal amount/credit

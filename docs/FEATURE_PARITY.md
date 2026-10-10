@@ -1,5 +1,27 @@
 # Bahmni workflow parity ledger
 
+## 10 October native-faithful journal simulation checkpoint
+
+- Added a private native-write simulation that always rolls back temporary
+  ledger changes, normalises generated row IDs and isolates commit/rollback
+  callbacks while retaining earlier request work and standard native restrictions.
+  Company-currency preview now follows actual write, not misleading onchange.
+  Temporary SQL writes and consumed surrogate IDs are not a pure virtual preview.
+- All 326 installed native tests pass without failures/errors/skips. Nine new
+  tests compare native saved and simulated invoice/credit ledgers across money,
+  currency, state, tax, added/deleted rows and installment cases, and check rollback,
+  callback restoration, native permissions, protected hashes and fiscal locks.
+  Seven gateway/build-config tests pass; installed model/test/init hashes match.
+- Staging restarted with mandatory analytics. Independent source/protected-record
+  reads and exact Cut-Off status/retry retain two original entries, one receipt,
+  balances, financial/stock/mail counts and matching. Upstream warnings remain.
+- No public monetary API, React row editor or browser acceptance is delivered by
+  this private helper. Full reviewed atomic save/recovery and wider Billing,
+  clinical and external-product parity remain unfinished. No TSX changed; frontend
+  build/tests were not rerun. Protected artifact/source/access gates/expiry,
+  production and the public demo are unchanged. Re-audit synchronous native hooks
+  when changing addons. Earlier checkpoints below are historical.
+
 ## 10 October native journal monetary contract checkpoint
 
 - Traced the installed invoice journal tree/mobile form and native line/dynamic
