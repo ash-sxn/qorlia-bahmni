@@ -11,6 +11,7 @@ import {
   previewPaymentWorkflow,
   recordPaymentWorkflow,
 } from './billingService';
+import { ChequeSentModal } from './ChequeSentModal';
 import { ChequeWorkflowModal } from './ChequeWorkflowModal';
 import { BillingReportsModal } from './InvoiceReportsModal';
 
@@ -35,6 +36,7 @@ export function PaymentWorkflowModal({
   const [uncertain, setUncertain] = useState(false);
   const [receipt, setReceipt] = useState<number | null>(null);
   const [cheque, setCheque] = useState<number | null>(null);
+  const [chequeSent, setChequeSent] = useState<number | null>(null);
   const busyRef = useRef(false);
   const current = useQuery({
     queryKey: ['billing', 'payment-workflow', uid, invoiceId],
@@ -158,6 +160,20 @@ export function PaymentWorkflowModal({
         </select>
       </label>
     ) : null;
+  if (chequeSent !== null)
+    return (
+      <ChequeSentModal
+        uid={uid}
+        paymentId={chequeSent}
+        reconnect={reconnect}
+        close={() => {
+          setChequeSent(null);
+          setPrepared(null);
+          setReview(null);
+          void current.refetch();
+        }}
+      />
+    );
   if (cheque !== null)
     return (
       <ChequeWorkflowModal
@@ -518,13 +534,22 @@ export function PaymentWorkflowModal({
                     ['check_printing', 'pdc'].includes(
                       item.method_code || '',
                     ) ? (
-                      <Button
-                        kind="tertiary"
-                        disabled={busy || uncertain || current.isFetching}
-                        onClick={() => setCheque(item.id)}
-                      >
-                        Cheque printing for {item.name}
-                      </Button>
+                      <>
+                        <Button
+                          kind="tertiary"
+                          disabled={busy || uncertain || current.isFetching}
+                          onClick={() => setCheque(item.id)}
+                        >
+                          Cheque printing for {item.name}
+                        </Button>
+                        <Button
+                          kind="tertiary"
+                          disabled={busy || uncertain || current.isFetching}
+                          onClick={() => setChequeSent(item.id)}
+                        >
+                          Cheque sent status for {item.name}
+                        </Button>
+                      </>
                     ) : null}
                   </li>
                 ))}

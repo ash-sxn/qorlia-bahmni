@@ -1,5 +1,30 @@
 # Bahmni workflow parity ledger
 
+## 10 October native cheque sent-status checkpoint
+
+- Posted cheque/PDC history offers a distinct Qorlia sent-status review using
+  native mark/unmark methods through four fixed adapters. It does not print,
+  renumber, void, transfer funds or clear the cheque; bank layouts are separate.
+- Native roles/company rules, locks and balance checks apply. Explicit review
+  binds the financial state and flag. Unexpected financial or numbering changes
+  roll back. Atomic same-author receipts recover exact requests and prevent an
+  old retry overwriting a later sent-state change.
+- Pending requests persist across remounts, block new actions, and require
+  explicit status checking or identical retry. Fresh reload is required before
+  finishing an accepted request. Unmark warns about later reprinting.
+- Installed suite: 210 native tests, zero failures/errors/skips, including real
+  PDC allocations. Home: 266 tests/35 suites. Types, lint, seven gateway/webpack
+  checks and development build pass.
+- Protected browser mark, full reload, exact-request recovery and fresh unmark
+  passed on synthetic payment #2003/invoice #14729. Independent native readback
+  confirms exactly two accepted receipts, restored unsent state, unchanged INR
+  400 residual, numbering, references, ledger, allocations and protected record
+  counts. Bank matching remains pending. All 83 chunks/source/licenses and access
+  gates passed. The deployed source archive precedes this final evidence note.
+- Void, bank matching, batch printing, provider collection, journal money,
+  stock/POS/sync and full clinical/external-module parity remain incomplete.
+  The staging bank layout remains disabled; production/shared demo are unchanged.
+
 ## 10 October native cheque printing candidate
 
 - Posted cheque/PDC payments open a house printing-review modal with native

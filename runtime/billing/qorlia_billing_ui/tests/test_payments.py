@@ -252,6 +252,26 @@ class PaymentWorkflowTest(TransactionCase):
             self.record(invoice, review)
         self.assertFalse(invoice._get_reconciled_payments())
 
+    def test_sent_status_preserves_real_pdc_invoice_allocation(self):
+        from uuid import uuid4
+        invoice = self.invoice()
+        review = self.cheque_review(invoice, 'base_accounting_kit.account_payment_method_pdc_in',
+            amount=100, effective_date=str(fields.Date.today() + timedelta(days=30)),
+            bank_reference='QorliaQA sent bank', cheque_reference='QorliaQA sent cheque')
+        result = self.record(invoice, review)
+        payments = self.env['account.payment']
+        payment = payments.browse(result['payments'][0]['id'])
+        before = payments._qorlia_cheque_financial_state(payment)
+        residual = invoice.amount_residual
+        for action in ('mark_sent', 'unmark_sent'):
+            loaded = payments.qorlia_cheque_sent_load(payment.id)
+            prepared = payments.qorlia_cheque_sent_preview(payment.id, loaded['version'], action)
+            payments.qorlia_cheque_sent_run(payment.id, loaded['version'], prepared['review_version'], str(uuid4()), action)
+            self.assertEqual(before, payments._qorlia_cheque_financial_state(payment))
+            self.assertEqual(invoice.amount_residual, residual)
+            self.assertEqual(payment.reconciled_invoice_ids, invoice)
+            self.assertFalse(payment.is_matched)
+
     def test_inbound_pdc_records_native_references_without_deferring_posting(self):
         invoice, unrelated = self.invoice(), self.invoice()
         payment_date = fields.Date.today()

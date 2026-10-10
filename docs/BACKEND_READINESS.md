@@ -1,5 +1,42 @@
 # Qorlia React frontend backend readiness
 
+## Native cheque sent-status checkpoint (10 October 2026)
+
+Posted cheque/PDC history opens a separate house sent-status review. Four named
+`account.payment.qorlia_cheque_sent_*` actions load, preview, run and check the
+exact request. They call installed native `mark_as_sent`/`unmark_as_sent`, not
+printing, cancellation, clearance or manual financial changes. No bank layout
+is required to update the sent flag. Native permissions, posted customer-payment
+scope, company rules, locks and balanced-ledger checks remain enforced.
+
+Review binds the current payment, number, sent flag and financial state. Native
+number/reference/ledger/allocation changes roll back. Same-author exact receipts
+commit atomically with the flag. Duplicate accepted requests return current state
+without overwriting later authorised changes. Pending requests survive remounts;
+status checking and identical retry are explicit, with no automatic write retry.
+After acceptance, a fresh read is required before finishing and starting another
+action. Unmarking warns that another print review becomes available.
+
+Installed native suite: 210 tests, zero failures/errors/skips, including actual
+PDC invoice allocations and native mark/unmark round trips. Home: 266 tests across
+35 suites. Seven gateway/webpack tests, types, lint and development build passed
+in this implementation pass.
+The isolated web service was restarted and its analytic test setting restored.
+Void, bank matching, batch printing, provider collection, monetary journal edits,
+stock/POS/sync and remaining clinical/external-module parity remain open. The
+actual cheque layout is still disabled. Production/shared demo are unchanged.
+
+Protected browser acceptance: payment #2003 on invoice #14729 was marked sent,
+the page was fully reloaded, the persisted exact request was checked without
+another write, and the cheque was unmarked sent through a fresh review. Final
+native readback confirms exactly two accepted receipts, restored unsent state,
+unchanged INR 400 invoice residual, cheque number, references, ledger and
+allocations, balanced journal entries, pending bank match and unchanged protected
+invoices/record counts. All 83 hosted JS/CSS chunks and the secret-free source,
+LICENSE and NOTICE archive match. Tester expiry, secure cookies, clinical-session
+gate, robots exclusion and blocked raw mutation/report routes passed verification.
+The deployed source archive precedes this final browser-evidence note.
+
 ## Native cheque printing candidate checkpoint (10 October 2026)
 
 Posted cheque/PDC payments now open a Qorlia printing-review modal. Six named

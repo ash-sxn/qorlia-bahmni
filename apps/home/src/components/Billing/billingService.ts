@@ -2821,6 +2821,8 @@ function checkedCheque(
   paymentId: number,
 ): ChequeWorkflow {
   if (
+    !Number.isSafeInteger(paymentId) ||
+    paymentId <= 0 ||
     value?.payment_id !== paymentId ||
     typeof value.name !== 'string' ||
     typeof value.version !== 'string' ||
@@ -2942,6 +2944,149 @@ export async function downloadCurrentCheque(paymentId: number) {
   );
   return checkedPdf(pdf, pdf?.payment_id === paymentId, 'cheque');
 }
+
+export type ChequeSentAction = 'mark_sent' | 'unmark_sent';
+export interface ChequeSentWorkflow {
+  payment_id: number;
+  name: string;
+  amount: number;
+  currency: [number, string];
+  journal: string;
+  check_number: string | false;
+  sent: boolean;
+  bank_matched: boolean;
+  can_update: boolean;
+  reason: string | false;
+  version: string;
+  action?: ChequeSentAction;
+  review_version?: string;
+}
+export interface ChequeSentRequest {
+  payment_id: number;
+  version: string;
+  review_version: string;
+  request_key: string;
+  action: ChequeSentAction;
+}
+export function checkedChequeSentRequest(value: ChequeSentRequest) {
+  if (
+    !value ||
+    Object.keys(value).sort().join(',') !==
+      'action,payment_id,request_key,review_version,version' ||
+    !['mark_sent', 'unmark_sent'].includes(value.action)
+  )
+    throw new Error(
+      'Invalid cheque sent-status request. Check the saved payment.',
+    );
+  checkedChequeRequest({
+    payment_id: value.payment_id,
+    version: value.version,
+    review_version: value.review_version,
+    request_key: value.request_key,
+    check_number: false,
+  });
+  return value;
+}
+function checkedChequeSent(value: ChequeSentWorkflow, paymentId: number) {
+  if (
+    !Number.isSafeInteger(paymentId) ||
+    paymentId <= 0 ||
+    value?.payment_id !== paymentId ||
+    typeof value.name !== 'string' ||
+    typeof value.journal !== 'string' ||
+    !Number.isFinite(value.amount) ||
+    value.amount < 0 ||
+    !Array.isArray(value.currency) ||
+    !validRelation(value.currency) ||
+    !(value.check_number === false || chequeNumber(value.check_number)) ||
+    ![value.sent, value.bank_matched, value.can_update].every(
+      (item) => typeof item === 'boolean',
+    ) ||
+    !(value.reason === false || typeof value.reason === 'string') ||
+    (value.can_update && !!value.reason) ||
+    typeof value.version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(value.version)
+  )
+    throw new Error('Invalid cheque sent status. Reload the saved payment.');
+  return value;
+}
+export async function getChequeSentWorkflow(paymentId: number) {
+  if (!Number.isSafeInteger(paymentId) || paymentId <= 0)
+    throw new Error('Select a saved cheque payment.');
+  return checkedChequeSent(
+    await chequeCall<ChequeSentWorkflow>('qorlia_cheque_sent_load', {
+      payment_id: paymentId,
+    }),
+    paymentId,
+  );
+}
+export async function previewChequeSentWorkflow(
+  payment: ChequeSentWorkflow,
+  action: ChequeSentAction,
+) {
+  checkedChequeSent(payment, payment.payment_id);
+  if (
+    !payment.can_update ||
+    !['mark_sent', 'unmark_sent'].includes(action) ||
+    payment.sent === (action === 'mark_sent')
+  )
+    throw new Error('Select an available cheque sent-status action.');
+  const reviewed = checkedChequeSent(
+    await chequeCall<ChequeSentWorkflow>('qorlia_cheque_sent_preview', {
+      payment_id: payment.payment_id,
+      version: payment.version,
+      action,
+    }),
+    payment.payment_id,
+  );
+  if (
+    reviewed.version !== payment.version ||
+    reviewed.action !== action ||
+    !reviewed.can_update ||
+    reviewed.sent !== payment.sent ||
+    (
+      [
+        'name',
+        'amount',
+        'currency',
+        'journal',
+        'check_number',
+        'bank_matched',
+      ] as const
+    ).some(
+      (field) =>
+        JSON.stringify(reviewed[field]) !== JSON.stringify(payment[field]),
+    ) ||
+    typeof reviewed.review_version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(reviewed.review_version)
+  )
+    throw new Error('Invalid cheque sent-status review. Reload before saving.');
+  return reviewed;
+}
+async function chequeSentResult(method: string, request: ChequeSentRequest) {
+  checkedChequeSentRequest(request);
+  const result = await chequeCall<{
+    accepted: boolean;
+    action: ChequeSentAction;
+    payment: ChequeSentWorkflow;
+  }>(method, request);
+  if (
+    typeof result?.accepted !== 'boolean' ||
+    result.action !== request.action ||
+    (method === 'qorlia_cheque_sent_run' && !result.accepted)
+  )
+    throw new Error(
+      'Cheque sent-status response is unavailable. Check the request status.',
+    );
+  return {
+    ...result,
+    payment: checkedChequeSent(result.payment, request.payment_id),
+  };
+}
+export const saveChequeSentWorkflow = (request: ChequeSentRequest) =>
+  chequeSentResult('qorlia_cheque_sent_run', request);
+export const getChequeSentRequestStatus = (request: ChequeSentRequest) =>
+  chequeSentResult('qorlia_cheque_sent_status', request);
 
 export const getDraftChoices = async (
   kind: DraftChoiceKind,

@@ -3,7 +3,7 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest candidate checkpoint: 202 installed native adapter tests and 255 Home
+Latest candidate checkpoint: 210 installed native adapter tests and 266 Home
 tests pass. Native cheque numbering/PDF/recovery is implemented below, but the
 actual staging company has no bank-compatible cheque layout. The prior protected
 browser save/reload and independent native readback confirm
@@ -13,6 +13,16 @@ for dated evidence and remaining gates. Older counts below describe earlier
 checkpoints, not current total coverage or a product completion percentage.
 
 ## Native cheque printing
+
+Sent-state actions are separate: `qorlia_cheque_sent_load`, `preview`, `run` and
+`status` call native `mark_as_sent`/`unmark_as_sent` for posted customer cheque/PDC
+bank payments. Current review, permissions, company scope and balance checks
+apply even when no printing layout exists. Exact author-bound UUID receipts
+make retries idempotent; old accepted requests never overwrite a later status.
+The financial snapshot and cheque number must remain unchanged. The Qorlia modal
+persists uncertain requests before sending and requires explicit check/retry,
+then fresh read before finishing. Sent is not printed, delivered or bank-cleared.
+Unmark warns about eligibility for another print review. Void remains pending.
 
 Six named `account.payment.qorlia_cheque_*` actions provide `load`, `preview`,
 `print`, `status`, `download` and `download_current`. Only posted customer
@@ -35,7 +45,7 @@ fixture is labelled NOT A BANK CHEQUE and rolls back; it does not install a real
 bank layout. Staging currently offers only the disabled layout, so operational
 printing remains unavailable until an administrator verifies the appropriate
 bank report and stationery. PDF generation and marked-sent state do not establish
-physical printing, deposit or clearance. Batch, void/unmark-sent, bank matching,
+physical printing, deposit or clearance. Batch, void, bank matching,
 payment providers and remaining financial parity still require implementation.
 
 ## Draft invoice journal details

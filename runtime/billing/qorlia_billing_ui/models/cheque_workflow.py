@@ -14,6 +14,81 @@ class ChequeWorkflow(models.Model):
     _inherit = 'account.payment'
 
     qorlia_cheque_receipts = fields.Json(copy=False, readonly=True)
+    qorlia_cheque_sent_receipts = fields.Json(copy=False, readonly=True)
+
+    @api.model
+    def qorlia_cheque_sent_load(self, payment_id):
+        payment = self._qorlia_cheque_payment(payment_id)
+        reason = False
+        try:
+            self._qorlia_cheque_payment(payment_id, write=True)
+        except (AccessError, UserError) as error:
+            reason = str(error)
+        return {'payment_id': payment.id, 'name': payment.name, 'amount': payment.amount,
+                'currency': [payment.currency_id.id, payment.currency_id.name],
+                'journal': payment.journal_id.display_name, 'check_number': payment.check_number or False,
+                'sent': payment.is_move_sent, 'bank_matched': payment.is_matched,
+                'can_update': not reason, 'reason': reason,
+                'version': _digest({'payment': payment.read(['write_date', 'check_number', 'is_move_sent'])[0],
+                    'financial': self._qorlia_cheque_financial_state(payment), 'author': self.env.uid})}
+
+    @api.model
+    def qorlia_cheque_sent_preview(self, payment_id, version, action):
+        if action not in ('mark_sent', 'unmark_sent'):
+            raise ValidationError('Select a supported cheque sent-status action.')
+        current = self.qorlia_cheque_sent_load(payment_id)
+        if not current['can_update']:
+            raise AccessError(current['reason'])
+        if current['version'] != version:
+            raise UserError('The cheque payment changed. Reload and review its sent status again.')
+        if current['sent'] == (action == 'mark_sent'):
+            raise UserError('This payment already has the requested sent status. Reload before another action.')
+        return {**current, 'action': action, 'review_version': _digest({
+            'version': version, 'action': action, 'author': self.env.uid})}
+
+    def _qorlia_cheque_sent_request(self, version, review_version, request_key, action):
+        if action not in ('mark_sent', 'unmark_sent'):
+            raise ValidationError('Select a supported cheque sent-status action.')
+        self._qorlia_cheque_request(version, False, review_version, request_key)
+        return _digest({'version': version, 'review_version': review_version,
+                        'action': action, 'author': self.env.uid})
+
+    def _qorlia_cheque_sent_receipt(self, payment, request_key, digest):
+        receipt = (payment.qorlia_cheque_sent_receipts or {}).get(request_key)
+        if receipt and (receipt['hash'] != digest or receipt['author'] != self.env.uid):
+            raise ValidationError('This identifier belongs to a different cheque sent-status request.')
+        return receipt
+
+    @api.model
+    def qorlia_cheque_sent_status(self, payment_id, version, review_version, request_key, action):
+        digest = self._qorlia_cheque_sent_request(version, review_version, request_key, action)
+        payment = self._qorlia_cheque_payment(payment_id)
+        receipt = self._qorlia_cheque_sent_receipt(payment, request_key, digest)
+        return {'accepted': bool(receipt), 'action': action, 'payment': self.qorlia_cheque_sent_load(payment_id)}
+
+    @api.model
+    def qorlia_cheque_sent_run(self, payment_id, version, review_version, request_key, action):
+        digest = self._qorlia_cheque_sent_request(version, review_version, request_key, action)
+        payment = self._qorlia_cheque_payment(payment_id, write=True, lock=True)
+        if self._qorlia_cheque_sent_receipt(payment, request_key, digest):
+            return self.qorlia_cheque_sent_status(payment_id, version, review_version, request_key, action)
+        review = self.qorlia_cheque_sent_preview(payment_id, version, action)
+        if review['review_version'] != review_version:
+            raise UserError('Review this cheque sent-status action again before saving.')
+        before = self._qorlia_cheque_financial_state(payment)
+        number = payment.check_number
+        if action == 'mark_sent':
+            payment.mark_as_sent()
+        else:
+            payment.unmark_as_sent()
+        payment.invalidate_recordset()
+        if (payment.is_move_sent != (action == 'mark_sent') or payment.check_number != number
+                or self._qorlia_cheque_financial_state(payment) != before):
+            raise UserError('Native Billing changed an unreviewed payment detail. No sent-status request was saved.')
+        receipts = dict(payment.qorlia_cheque_sent_receipts or {})
+        receipts[request_key] = {'hash': digest, 'author': self.env.uid, 'action': action}
+        payment.write({'qorlia_cheque_sent_receipts': receipts})
+        return self.qorlia_cheque_sent_status(payment_id, version, review_version, request_key, action)
 
     def _qorlia_cheque_payment(self, payment_id, write=False, lock=False):
         payment = self._qorlia_receipt_payment(payment_id, lock=lock)
@@ -24,7 +99,7 @@ class ChequeWorkflow(models.Model):
             raise UserError('Select a posted bank cheque or post-dated cheque payment.')
         if write:
             if not self.env.user.has_group('account.group_account_invoice'):
-                raise AccessError('Your Billing account cannot print cheques.')
+                raise AccessError('Your Billing account cannot update cheques.')
             for record in (payment, payment.move_id):
                 record.check_access_rights('write')
                 record.check_access_rule('write')

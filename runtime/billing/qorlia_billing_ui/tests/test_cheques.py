@@ -188,3 +188,91 @@ class ChequeWorkflowTest(TransactionCase):
         payment.action_post()
         with self.assertRaises(UserError):
             self.payments.qorlia_cheque_load(payment.id)
+
+    def sent_request(self, payment, action='mark_sent'):
+        loaded = self.payments.qorlia_cheque_sent_load(payment.id)
+        review = self.payments.qorlia_cheque_sent_preview(payment.id, loaded['version'], action)
+        return {'payment_id': payment.id, 'version': loaded['version'], 'action': action,
+                'review_version': review['review_version'], 'request_key': str(uuid.uuid4())}
+
+    def test_sent_flags_use_native_methods_without_layout_or_financial_changes(self):
+        payment = self.payment()
+        before = self.payments._qorlia_cheque_financial_state(payment)
+        number = payment.check_number
+        marked = self.sent_request(payment)
+        self.assertFalse(self.payments.qorlia_cheque_sent_status(**marked)['accepted'])
+        self.assertTrue(self.payments.qorlia_cheque_sent_run(**marked)['payment']['sent'])
+        unmarked = self.sent_request(payment, 'unmark_sent')
+        self.assertFalse(self.payments.qorlia_cheque_sent_run(**unmarked)['payment']['sent'])
+        self.assertEqual(payment.check_number, number)
+        self.assertEqual(before, self.payments._qorlia_cheque_financial_state(payment))
+        self.assertEqual(len(payment.qorlia_cheque_sent_receipts), 2)
+
+    def test_accepted_old_sent_request_never_overwrites_later_status(self):
+        payment = self.payment()
+        request = self.sent_request(payment)
+        self.payments.qorlia_cheque_sent_run(**request)
+        self.payments.qorlia_cheque_sent_run(**self.sent_request(payment, 'unmark_sent'))
+        with patch.object(type(payment), 'mark_as_sent') as native:
+            result = self.payments.qorlia_cheque_sent_run(**request)
+            native.assert_not_called()
+        self.assertTrue(result['accepted'])
+        self.assertFalse(result['payment']['sent'])
+        self.assertTrue(self.payments.qorlia_cheque_sent_status(**request)['accepted'])
+
+    def test_stale_or_tampered_sent_review_does_not_write(self):
+        payment = self.payment()
+        request = self.sent_request(payment)
+        payment.ref = 'QorliaQA changed reference'
+        with self.assertRaises(UserError):
+            self.payments.qorlia_cheque_sent_run(**request)
+        fresh = self.sent_request(payment)
+        with self.assertRaises(UserError):
+            self.payments.qorlia_cheque_sent_run(**{**fresh, 'review_version': 'a' * 64})
+        self.assertFalse(payment.is_move_sent)
+        self.assertFalse(payment.qorlia_cheque_sent_receipts)
+
+    def test_sent_request_conflict_and_invalid_action_are_rejected(self):
+        payment = self.payment()
+        request = self.sent_request(payment)
+        self.payments.qorlia_cheque_sent_run(**request)
+        for change in ({'action': 'unmark_sent'}, {'version': 'b' * 64}):
+            with self.assertRaises(ValidationError):
+                self.payments.qorlia_cheque_sent_status(**{**request, **change})
+        for action in ('void', 'print', False):
+            with self.assertRaises(ValidationError):
+                self.payments.qorlia_cheque_sent_preview(payment.id, request['version'], action)
+
+    def test_readonly_sent_review_and_write_are_denied(self):
+        payment = self.payment()
+        reader = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'QorliaQA Sent reader', 'login': 'qorliaqa-sent-' + str(uuid.uuid4()),
+            'company_id': self.env.company.id, 'company_ids': [Command.set(self.env.company.ids)],
+            'groups_id': [Command.set(self.env.ref('account.group_account_readonly').ids)]})
+        loaded = self.payments.with_user(reader).qorlia_cheque_sent_load(payment.id)
+        self.assertFalse(loaded['can_update'])
+        with self.assertRaises(AccessError):
+            self.payments.with_user(reader).qorlia_cheque_sent_preview(payment.id, loaded['version'], 'mark_sent')
+        with self.assertRaises(AccessError):
+            self.payments.with_user(reader).qorlia_cheque_sent_run(**self.sent_request(payment))
+
+    def test_native_unexpected_financial_write_rolls_back_sent_request(self):
+        payment = self.payment()
+        request = self.sent_request(payment)
+        def unsafe(record):
+            record.write({'is_move_sent': True, 'ref': 'QorliaQA unexpected native change'})
+        with patch.object(type(payment), 'mark_as_sent', unsafe):
+            with self.assertRaises(UserError), self.env.cr.savepoint():
+                self.payments.qorlia_cheque_sent_run(**request)
+        payment.invalidate_recordset()
+        self.assertFalse(payment.is_move_sent)
+        self.assertFalse(payment.qorlia_cheque_sent_receipts)
+
+    def test_sent_action_requires_current_opposite_flag(self):
+        payment = self.payment()
+        loaded = self.payments.qorlia_cheque_sent_load(payment.id)
+        with self.assertRaises(UserError):
+            self.payments.qorlia_cheque_sent_preview(payment.id, loaded['version'], 'unmark_sent')
+        payment.action_draft()
+        with self.assertRaises(UserError):
+            self.payments.qorlia_cheque_sent_load(payment.id)
