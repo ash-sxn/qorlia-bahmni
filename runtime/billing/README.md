@@ -3,16 +3,42 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest candidate checkpoint: 210 installed native adapter tests and 266 Home
+Latest candidate checkpoint: 221 installed native adapter tests and 276 Home
 tests pass. Native cheque numbering/PDF/recovery is implemented below, but the
 actual staging company has no bank-compatible cheque layout. The prior protected
 browser save/reload and independent native readback confirm
 one INR 100 synthetic PDC, INR 400 remaining, persisted references/effective date,
-balanced entries and unchanged protected records. See the readiness/parity ledgers
+balanced entries and unchanged protected records. Native cheque void now has
+protected browser save/full-reload/recovery/finish acceptance and independent
+native readback with one exact receipt, unchanged financial/old-ledger values
+and number, reopened refund/invoice/credit allocations and balanced entries.
+The label-polished hosted build verifies all 83 chunks, source/licenses and
+unchanged access gates. See the readiness/parity ledgers
 for dated evidence and remaining gates. Older counts below describe earlier
 checkpoints, not current total coverage or a product completion percentage.
 
 ## Native cheque printing
+
+Cheque void uses four separate `qorlia_cheque_void_*` methods: load, preview, run
+and status. They call installed native `action_void_check` only for posted sent
+customer check-printing bank payments. PDC cancellation is a different workflow.
+Native read/write rules, company scope, connected reconciliation locks and
+balanced-ledger checks apply without financial `sudo`. Review binds payment,
+selected credit allocations, exchange/cash-basis entries and configuration;
+the connected graph is capped at 1,000 journal lines. Unreconciled selected drafts
+are reviewed but do not block void or change their state.
+
+Atomic author-bound UUID receipts preserve exact-request recovery and prevent
+repeated native cancellation. Existing cheque number, financial fields and
+old-ledger values must remain unchanged. Pending requests persist before write
+and recover even after cancelled payments leave reconciliation history. Status
+checking/identical retry are explicit. Accepted requests require fresh status
+before finishing and reloading the invoice. Void does not send a bank
+stop-payment instruction, refund money or delete payment history. Installed tests
+include actual native cash-basis reversal and selected-credit reopening. Protected
+browser save/reload/recovery/finish and independent native readback passed.
+The final label-polished package verifies all 83 chunks and access gates; its
+source archive precedes the final browser-evidence documentation note.
 
 Sent-state actions are separate: `qorlia_cheque_sent_load`, `preview`, `run` and
 `status` call native `mark_as_sent`/`unmark_as_sent` for posted customer cheque/PDC
@@ -22,7 +48,8 @@ make retries idempotent; old accepted requests never overwrite a later status.
 The financial snapshot and cheque number must remain unchanged. The Qorlia modal
 persists uncertain requests before sending and requires explicit check/retry,
 then fresh read before finishing. Sent is not printed, delivered or bank-cleared.
-Unmark warns about eligibility for another print review. Void remains pending.
+Unmark warns about eligibility for another print review. Native cheque void is
+described above; PDC cancellation remains pending.
 
 Six named `account.payment.qorlia_cheque_*` actions provide `load`, `preview`,
 `print`, `status`, `download` and `download_current`. Only posted customer
@@ -45,7 +72,7 @@ fixture is labelled NOT A BANK CHEQUE and rolls back; it does not install a real
 bank layout. Staging currently offers only the disabled layout, so operational
 printing remains unavailable until an administrator verifies the appropriate
 bank report and stationery. PDF generation and marked-sent state do not establish
-physical printing, deposit or clearance. Batch, void, bank matching,
+physical printing, deposit or clearance. Batch, PDC cancellation, bank matching,
 payment providers and remaining financial parity still require implementation.
 
 ## Draft invoice journal details

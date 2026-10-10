@@ -113,7 +113,8 @@ test('review gate protects UI, clinical API and named Billing actions with isola
   assert.equal((await request('/openmrs/qorlia-billing-api/web/content/1', { headers: { Cookie: allCookies } })).status, 404);
   for (const method of ['qorlia_payment_report_list', 'qorlia_payment_report_download',
     'qorlia_cheque_load', 'qorlia_cheque_preview', 'qorlia_cheque_print', 'qorlia_cheque_status', 'qorlia_cheque_download', 'qorlia_cheque_download_current',
-    'qorlia_cheque_sent_load', 'qorlia_cheque_sent_preview', 'qorlia_cheque_sent_run', 'qorlia_cheque_sent_status']) {
+    'qorlia_cheque_sent_load', 'qorlia_cheque_sent_preview', 'qorlia_cheque_sent_run', 'qorlia_cheque_sent_status',
+    'qorlia_cheque_void_load', 'qorlia_cheque_void_preview', 'qorlia_cheque_void_run', 'qorlia_cheque_void_status']) {
     const path = `/web/dataset/call_kw/account.payment/${method}`;
     const params = { model: 'account.payment', method, args: [], kwargs: { payment_id: 1 } };
     assert.equal((await rpc(path, cookie, params)).status, 401);

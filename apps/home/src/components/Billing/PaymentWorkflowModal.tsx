@@ -12,6 +12,7 @@ import {
   recordPaymentWorkflow,
 } from './billingService';
 import { ChequeSentModal } from './ChequeSentModal';
+import { ChequeVoidModal, pendingChequeVoid } from './ChequeVoidModal';
 import { ChequeWorkflowModal } from './ChequeWorkflowModal';
 import { BillingReportsModal } from './InvoiceReportsModal';
 
@@ -20,12 +21,14 @@ export function PaymentWorkflowModal({
   invoiceId,
   close,
   completed,
+  voided,
   reconnect,
 }: {
   uid: number;
   invoiceId: number;
   close: () => void;
   completed: (payment: PaymentWorkflow) => void;
+  voided?: () => void;
   reconnect: () => void;
 }) {
   const [prepared, setPrepared] = useState<PaymentWorkflow | null>(null);
@@ -37,6 +40,19 @@ export function PaymentWorkflowModal({
   const [receipt, setReceipt] = useState<number | null>(null);
   const [cheque, setCheque] = useState<number | null>(null);
   const [chequeSent, setChequeSent] = useState<number | null>(null);
+  const readVoidRecovery = () => {
+    try {
+      return { request: pendingChequeVoid(uid, invoiceId), error: null };
+    } catch {
+      return {
+        request: null,
+        error:
+          'Cheque void recovery is unavailable or invalid. Ask your Billing administrator to check it before another void.',
+      };
+    }
+  };
+  const [voidRecovery, setVoidRecovery] = useState(readVoidRecovery);
+  const [chequeVoid, setChequeVoid] = useState<number | null>(null);
   const busyRef = useRef(false);
   const current = useQuery({
     queryKey: ['billing', 'payment-workflow', uid, invoiceId],
@@ -160,6 +176,29 @@ export function PaymentWorkflowModal({
         </select>
       </label>
     ) : null;
+  if (chequeVoid !== null)
+    return (
+      <ChequeVoidModal
+        uid={uid}
+        invoiceId={invoiceId}
+        paymentId={chequeVoid}
+        reconnect={reconnect}
+        completed={() => {
+          setChequeVoid(null);
+          setVoidRecovery(readVoidRecovery());
+          if (voided) voided();
+          else void current.refetch();
+        }}
+        close={() => {
+          setChequeVoid(null);
+          setVoidRecovery(readVoidRecovery());
+          setPrepared(null);
+          setDraft(null);
+          setReview(null);
+          void current.refetch();
+        }}
+      />
+    );
   if (chequeSent !== null)
     return (
       <ChequeSentModal
@@ -549,6 +588,19 @@ export function PaymentWorkflowModal({
                         >
                           Cheque sent status for {item.name}
                         </Button>
+                        <Button
+                          kind="tertiary"
+                          disabled={
+                            busy ||
+                            uncertain ||
+                            current.isFetching ||
+                            !!voidRecovery.request ||
+                            !!voidRecovery.error
+                          }
+                          onClick={() => setChequeVoid(item.id)}
+                        >
+                          Cheque void review for {item.name}
+                        </Button>
                       </>
                     ) : null}
                   </li>
@@ -558,6 +610,16 @@ export function PaymentWorkflowModal({
               <p>No linked payments.</p>
             )}
           </>
+        ) : null}
+        {voidRecovery.error ? <p role="alert">{voidRecovery.error}</p> : null}
+        {voidRecovery.request ? (
+          <Button
+            kind="tertiary"
+            disabled={busy || uncertain || current.isFetching}
+            onClick={() => setChequeVoid(voidRecovery.request!.payment_id)}
+          >
+            Recover pending cheque void request
+          </Button>
         ) : null}
         {busy ? (
           <p role="status">Working in native Billing. Please wait...</p>

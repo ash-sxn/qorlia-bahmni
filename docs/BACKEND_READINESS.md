@@ -1,5 +1,51 @@
 # Qorlia React frontend backend readiness
 
+## Native cheque void recovery checkpoint (10 October 2026)
+
+Four fixed `account.payment.qorlia_cheque_void_*` actions load, preview, run and
+check an exact request. The Qorlia review calls installed native `action_void_check`
+for posted customer check-printing payments marked sent. It is not a PDC
+cancellation, bank stop-payment instruction, refund or deletion. Native roles,
+company scope, locks and connected reconciliation permissions remain enforced.
+The connected review includes Bahmni's selected credit allocations, exchange and
+cash-basis entries. Unexpected changes to financial fields or existing ledger
+values roll back. Unreconciled selected drafts do not block native void and remain
+unchanged. Reviews currently bound connected journal lines at 1,000.
+
+Same-author exact receipts commit atomically with native cancellation. Duplicate
+accepted requests do not repeat the native write. The modal persists the exact
+request before sending, with explicit status/retry and no automatic write retry.
+Recovery remains available after the cancelled payment disappears from native
+reconciliation history. Document types and states have readable labels.
+
+Installed native suite: 221 tests, zero failures/errors/skips, including actual
+cash-basis reversal and selected foreign-credit cases. Home: 276 tests/37 suites;
+types, lint, seven gateway/webpack checks and the development build pass.
+Raw void/draft/cancel routes remain denied.
+
+Protected browser save, full-page reload, pending-request recovery and explicit
+status checking passed on clearly labelled synthetic payment #2436/refund #17084.
+Independent native readback confirms exactly one accepted receipt, cancelled and
+unsent payment, unchanged cheque number 004322 and financial/old-ledger values,
+two removed allocations, reopened INR 500 refund, INR 500 selected invoice and
+INR 100 selected credit, balanced entries and unchanged protected records/counts.
+The fixture's native bank-matched flag remains unchanged; it does not evidence a
+real bank transaction or clearance. In the label-polished protected build,
+explicit status recovery again returned the accepted receipt. Finishing cleared
+the recovery request; reopening payment review showed INR 500 and no pending
+recovery button. A final independent readback still found exactly one receipt.
+
+The first protected package briefly failed because its gateway was copied as raw
+source. Replacing it with the required bundled gateway restored review service;
+no production service changed. The first package's 83 hosted JS/CSS chunks,
+source/LICENSE/NOTICE and access gates verified. Final `cheque-void-r2-20261010`
+artifact verification also matches all 83 chunks, secret-free source and licences;
+secure HttpOnly tester cookie, clinical session, robots and raw-route gates pass.
+The source archive precedes this final browser-evidence note. Actual bank layouts,
+batch printing, PDC cancellation, bank matching,
+providers, remaining Billing/clinical/separate-product parity are still open.
+Production and the shared public demo remain unchanged.
+
 ## Native cheque sent-status checkpoint (10 October 2026)
 
 Posted cheque/PDC history opens a separate house sent-status review. Four named

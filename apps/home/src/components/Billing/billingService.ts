@@ -3088,6 +3088,156 @@ export const saveChequeSentWorkflow = (request: ChequeSentRequest) =>
 export const getChequeSentRequestStatus = (request: ChequeSentRequest) =>
   chequeSentResult('qorlia_cheque_sent_status', request);
 
+export interface ChequeVoidWorkflow {
+  payment_id: number;
+  name: string;
+  amount: number;
+  currency: [number, string];
+  state: string;
+  check_number: string | false;
+  sent: boolean;
+  bank_matched: boolean;
+  can_void: boolean;
+  reason: string | false;
+  documents: {
+    id: number;
+    name: string;
+    type: string;
+    state: string;
+    total: number;
+    open_amount: number;
+    currency: [number, string];
+  }[];
+  version: string;
+  review_version?: string;
+}
+export type ChequeVoidRequest = Omit<ChequeSentRequest, 'action'>;
+export function checkedChequeVoidRequest(value: ChequeVoidRequest) {
+  if (
+    !value ||
+    Object.keys(value).sort().join(',') !==
+      'payment_id,request_key,review_version,version'
+  )
+    throw new Error(
+      'Invalid cheque void request. Ask your Billing administrator to check it.',
+    );
+  checkedChequeRequest({ ...value, check_number: false });
+  return value;
+}
+function checkedChequeVoid(value: ChequeVoidWorkflow, paymentId: number) {
+  if (
+    !Number.isSafeInteger(paymentId) ||
+    paymentId <= 0 ||
+    value?.payment_id !== paymentId ||
+    typeof value.name !== 'string' ||
+    !Number.isFinite(value.amount) ||
+    value.amount < 0 ||
+    !Array.isArray(value.currency) ||
+    !validRelation(value.currency) ||
+    !['draft', 'posted', 'cancel'].includes(value.state) ||
+    !(value.check_number === false || chequeNumber(value.check_number)) ||
+    ![value.sent, value.bank_matched, value.can_void].every(
+      (item) => typeof item === 'boolean',
+    ) ||
+    !(value.reason === false || typeof value.reason === 'string') ||
+    (value.can_void &&
+      (value.reason || value.state !== 'posted' || !value.sent)) ||
+    typeof value.version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(value.version) ||
+    !Array.isArray(value.documents) ||
+    value.documents.length > 1000 ||
+    new Set(value.documents.map((row) => row?.id)).size !==
+      value.documents.length ||
+    value.documents.some(
+      (row) =>
+        !Number.isSafeInteger(row?.id) ||
+        row.id <= 0 ||
+        typeof row.name !== 'string' ||
+        typeof row.type !== 'string' ||
+        !['draft', 'posted', 'cancel'].includes(row.state) ||
+        !Number.isFinite(row.total) ||
+        !Number.isFinite(row.open_amount) ||
+        !Array.isArray(row.currency) ||
+        !validRelation(row.currency),
+    )
+  )
+    throw new Error(
+      'Invalid cheque void status. Reload before reviewing its allocations.',
+    );
+  return value;
+}
+export async function getChequeVoidWorkflow(paymentId: number) {
+  if (!Number.isSafeInteger(paymentId) || paymentId <= 0)
+    throw new Error('Select a saved cheque payment.');
+  return checkedChequeVoid(
+    await chequeCall<ChequeVoidWorkflow>('qorlia_cheque_void_load', {
+      payment_id: paymentId,
+    }),
+    paymentId,
+  );
+}
+export async function previewChequeVoidWorkflow(payment: ChequeVoidWorkflow) {
+  checkedChequeVoid(payment, payment.payment_id);
+  if (!payment.can_void)
+    throw new Error(
+      'This cheque cannot be voided in its current native state.',
+    );
+  const reviewed = checkedChequeVoid(
+    await chequeCall<ChequeVoidWorkflow>('qorlia_cheque_void_preview', {
+      payment_id: payment.payment_id,
+      version: payment.version,
+    }),
+    payment.payment_id,
+  );
+  if (
+    !reviewed.can_void ||
+    reviewed.version !== payment.version ||
+    (
+      [
+        'name',
+        'amount',
+        'currency',
+        'state',
+        'check_number',
+        'sent',
+        'bank_matched',
+        'documents',
+      ] as const
+    ).some(
+      (field) =>
+        JSON.stringify(reviewed[field]) !== JSON.stringify(payment[field]),
+    ) ||
+    typeof reviewed.review_version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(reviewed.review_version)
+  )
+    throw new Error(
+      'The cheque void review changed. Reload its connected documents.',
+    );
+  return reviewed;
+}
+async function chequeVoidResult(method: string, request: ChequeVoidRequest) {
+  checkedChequeVoidRequest(request);
+  const result = await chequeCall<{
+    accepted: boolean;
+    payment: ChequeVoidWorkflow;
+  }>(method, request);
+  if (
+    typeof result?.accepted !== 'boolean' ||
+    (method === 'qorlia_cheque_void_run' && !result.accepted)
+  )
+    throw new Error(
+      'Cheque void response unavailable. Check the exact request status.',
+    );
+  return {
+    ...result,
+    payment: checkedChequeVoid(result.payment, request.payment_id),
+  };
+}
+export const saveChequeVoidWorkflow = (request: ChequeVoidRequest) =>
+  chequeVoidResult('qorlia_cheque_void_run', request);
+export const getChequeVoidRequestStatus = (request: ChequeVoidRequest) =>
+  chequeVoidResult('qorlia_cheque_void_status', request);
+
 export const getDraftChoices = async (
   kind: DraftChoiceKind,
   search: string,

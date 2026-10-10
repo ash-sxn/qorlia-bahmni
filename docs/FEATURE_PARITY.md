@@ -1,5 +1,36 @@
 # Bahmni workflow parity ledger
 
+## 10 October native cheque void recovery checkpoint
+
+- A house cheque-void review uses four fixed native adapters, installed
+  `action_void_check`, connected allocation review and native accounting controls.
+  It cancels a posted sent check-printing payment, not a PDC or bank transaction.
+- Native roles, company scope and reconciliation locks apply; unexpected finance
+  or existing ledger changes roll back. Selected credit, exchange and cash-basis
+  reversals are included. Unreconciled selected drafts remain unchanged. The
+  current connected-graph cap is 1,000 journal lines.
+- Atomic exact-author receipts prevent repeating accepted cancellation. Pending
+  requests survive full reload and can be recovered after the payment leaves
+  native reconciliation history. Status and identical retry are explicit.
+- Installed suite: 221 native tests, zero failures/errors/skips. Home: 276
+  tests/37 suites. Types, lint, seven gateway/webpack checks and development build
+  pass. Types/states now have readable labels.
+- Protected browser void, full reload, recovery and receipt check passed on
+  synthetic payment #2436/refund #17084. Native readback proves exactly one
+  receipt, unchanged number/financial/old-ledger values, balanced entries,
+  reopened refund/invoice/credit and unchanged protected documents/counts.
+  Label-polished recovery and finish passed: reopening the INR 500 refund's
+  payment review shows no pending request. Final native readback still has one
+  accepted receipt, with all recorded financial invariants intact.
+- The first gateway packaging error was corrected with a bundle; review recovered
+  and all 83 chunks/source/licenses/access gates verified. The final
+  `cheque-void-r2-20261010` package also verifies all 83 chunks, secret-free
+  source/licences, secure cookies and the unchanged clinical/tester/raw-route
+  gates. Its source archive precedes this final browser note. Production and the
+  public demo are unchanged.
+- Batch printing, actual bank layouts, PDC cancellation, bank matching, providers,
+  journal-money parity, stock/POS/sync and clinical/external-module parity remain.
+
 ## 10 October native cheque sent-status checkpoint
 
 - Posted cheque/PDC history offers a distinct Qorlia sent-status review using

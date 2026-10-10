@@ -735,6 +735,18 @@ export function BillingPage() {
               <PaymentWorkflowModal
                 uid={session.data!.uid as number}
                 invoiceId={paymentInvoice}
+                voided={() => {
+                  setPaymentInvoice(null);
+                  setSelected(null);
+                  setInvoiceNotice(
+                    'Cheque void request accepted. Reload the invoice to review its current native balance and allocations. No bank stop-payment instruction was sent.',
+                  );
+                  void queryClient.invalidateQueries({
+                    predicate: (query) =>
+                      query.queryKey[0] === 'billing' &&
+                      query.queryKey[1] !== 'session',
+                  });
+                }}
                 close={() => setPaymentInvoice(null)}
                 reconnect={() => {
                   setPaymentInvoice(null);
