@@ -1,5 +1,30 @@
 # Bahmni workflow parity ledger
 
+## 10 October installment-credit reconciliation checkpoint
+
+- Reproduced the upstream Expected singleton crash on multiple credit
+  payment-term lines. The Qorlia context now reconciles each open installment
+  using native Odoo, retaining native invoice order and existing lifecycle locks,
+  reviews and recovery. Single-term/non-Qorlia paths delegate unchanged.
+- All 283 installed adapter tests pass, with zero failures/errors/skips. Four
+  added tests cover Confirm/retry/Reset, older independent allocation retention,
+  multiple credits/invoices with explicit due-date ordering and foreign currency.
+  The three original failure reproductions also pass. Installed hashes match;
+  analytic settings are restored and isolated Billing is running.
+- Protected artifact `installment-credit-20261010` is published. All 83 chunks,
+  source/licenses and secret-free archive match; access gates, expiry and
+  backends are unchanged. Native authenticated methods and denial boundaries
+  pass. Published source precedes this final release-evidence note.
+- Hosted browser created synthetic #4500 (INR 100) for invoice #24525 (500)
+  and credit #24526 (100), both with two payment terms. Confirm gives residuals
+  300/0; Reset restores 500/100 and Draft. Independent native reads verify one
+  payment, exact post/reset receipts, four document terms, balanced ledger and
+  unchanged protected records and reconciliation/stock/mail counts. No bank
+  transfer occurred. The labelled synthetic fixture remains in isolated staging.
+  No new frontend or gateway API is introduced. Wider ledger/accounting,
+  stock/POS/sync and clinical/separate-product acceptance remain required.
+  Production/shared demo are unchanged.
+
 ## 10 October mixed-currency customer payment checkpoint
 
 - Server-owned customer payment allocation converts readable document balances

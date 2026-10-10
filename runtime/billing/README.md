@@ -3,7 +3,7 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest checkpoint: 279 installed native adapter tests and 331 Home
+Latest checkpoint: 283 installed native adapter tests and the prior 331 Home
 tests pass. Native cheque numbering/PDF/recovery is implemented below, but the
 actual staging company has no bank-compatible cheque layout. The prior protected
 browser save/reload and independent native readback confirm
@@ -18,6 +18,21 @@ for dated evidence and remaining gates. Older counts below describe earlier
 checkpoints, not current total coverage or a product completion percentage.
 
 ## Customer payment history and state controls
+
+Installment-credit checkpoint: the Qorlia-scoped adapter fixes the upstream
+single-payment-term assumption by calling native reconciliation for each open
+credit installment. Single-term and non-Qorlia behavior remains upstream.
+All 283 native tests pass, including preservation of older independent
+allocations, native non-unit exchange, exact retry and Reset. Three original
+failure reproductions pass after the fix. Protected artifact
+`installment-credit-20261010` is published with all 83 chunks, source/licenses
+and native access boundaries verified; gates/expiry/backends are unchanged.
+Hosted browser save/Confirm/Reset passed on synthetic #4500: invoice/credit
+residuals 500/100 become 300/0 then return to 500/100. Independent native reads
+verify one payment, exact post/reset receipts, four document terms, balanced
+ledger and unchanged protected financial records and reconciliation/stock/mail
+counts. No bank transfer occurred. Published source precedes this final evidence
+note; no frontend or gateway API changes. Wider accounting/module parity remains.
 
 Mixed-currency customer drafts now use installed Odoo conversion at the native
 accounting date. Original document balances retain their currency; readonly

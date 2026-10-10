@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 import uuid
+from datetime import timedelta
 from unittest.mock import patch
 
 from odoo import Command, fields
@@ -172,6 +173,82 @@ class PaymentDraftTest(TransactionCase):
         self.env['res.currency.rate'].create({'currency_id': currency.id, 'company_id': self.env.company.id,
             'name': fields.Date.today(), 'rate': rate})
         return currency
+
+    def installment_term(self):
+        return self.env['account.payment.term'].create({'name': 'QorliaQA Credit installments',
+            'line_ids': [Command.clear(), Command.create({'value': 'percent', 'value_amount': 50, 'days': 0}),
+                         Command.create({'value': 'balance', 'days': 30})]})
+
+    def lifecycle_action(self, payment, action):
+        loaded = self.payments.qorlia_payment_state_load(payment.id)
+        review = self.payments.qorlia_payment_state_preview(payment.id, loaded['version'], action)
+        return {'payment_id': payment.id, 'version': loaded['version'], 'review_version': review['review_version'],
+                'request_key': str(uuid.uuid4()), 'action': action}
+
+    def test_installment_credit_confirm_retry_reset_reopens_every_term(self):
+        term = self.installment_term()
+        invoice = self.invoice(invoice_payment_term_id=term.id)
+        credit = self.invoice(100, move_type='out_refund', invoice_payment_term_id=term.id)
+        self.assertEqual(len(credit.line_ids.filtered(lambda row: row.display_type == 'payment_term')), 2)
+        result = self.payments.qorlia_customer_payment_draft_save(**self.request())
+        payment = self.payments.browse(result['payment']['payment_id'])
+        action = self.lifecycle_action(payment, 'post')
+        self.payments.qorlia_payment_state_run(**action)
+        self.assertEqual((invoice.amount_residual, credit.amount_residual), (300, 0))
+        count = self.env['account.partial.reconcile'].search_count([])
+        self.payments.qorlia_payment_state_run(**action)
+        self.assertEqual(self.env['account.partial.reconcile'].search_count([]), count)
+        self.assertFalse((invoice | credit | payment.move_id)._get_unbalanced_moves({'records': invoice | credit | payment.move_id}))
+        self.payments.qorlia_payment_state_run(**self.lifecycle_action(payment, 'reset'))
+        self.assertEqual((invoice.amount_residual, credit.amount_residual), (500, 100))
+
+    def test_partly_used_installment_credit_keeps_earlier_allocation_on_reset(self):
+        term = self.installment_term()
+        older = self.invoice(50)
+        credit = self.invoice(100, move_type='out_refund', invoice_payment_term_id=term.id)
+        terms = credit.line_ids.filtered(lambda row: row.display_type == 'payment_term').sorted('id')
+        older.js_assign_outstanding_line(terms[0].id)
+        self.assertEqual((older.amount_residual, credit.amount_residual), (0, 50))
+        original = older.line_ids.matched_debit_ids | older.line_ids.matched_credit_ids
+        invoice = self.invoice()
+        result = self.payments.qorlia_customer_payment_draft_save(**self.request())
+        payment = self.payments.browse(result['payment']['payment_id'])
+        self.payments.qorlia_payment_state_run(**self.lifecycle_action(payment, 'post'))
+        self.assertEqual((older.amount_residual, invoice.amount_residual, credit.amount_residual), (0, 350, 0))
+        self.payments.qorlia_payment_state_run(**self.lifecycle_action(payment, 'reset'))
+        self.assertEqual((older.amount_residual, invoice.amount_residual, credit.amount_residual), (0, 500, 50))
+        self.assertEqual(original.exists(), original)
+
+    def test_multiple_installment_credits_allocate_across_invoices_oldest_first(self):
+        term = self.installment_term()
+        first = self.invoice(invoice_payment_term_id=term.id)
+        second = self.invoice(200, invoice_date_due=fields.Date.today() + timedelta(days=60))
+        self.assertLess(first.invoice_date_due, second.invoice_date_due)
+        first_credit = self.invoice(100, move_type='out_refund', invoice_payment_term_id=term.id)
+        second_credit = self.invoice(50, move_type='out_refund', invoice_payment_term_id=term.id)
+        result = self.payments.qorlia_customer_payment_draft_save(**self.request(self.payload(amount=400)))
+        payment = self.payments.browse(result['payment']['payment_id'])
+        self.payments.qorlia_payment_state_run(**self.lifecycle_action(payment, 'post'))
+        self.assertEqual((first.amount_residual, second.amount_residual, first_credit.amount_residual,
+                          second_credit.amount_residual), (0, 150, 0, 0))
+        self.payments.qorlia_payment_state_run(**self.lifecycle_action(payment, 'reset'))
+        self.assertEqual((first.amount_residual, second.amount_residual, first_credit.amount_residual,
+                          second_credit.amount_residual), (500, 200, 100, 50))
+
+    def test_foreign_installment_credit_uses_native_exchange_and_reset(self):
+        currency = self.foreign_currency()
+        term = self.installment_term()
+        invoice = self.invoice(currency_id=currency.id, invoice_payment_term_id=term.id)
+        credit = self.invoice(100, move_type='out_refund', currency_id=currency.id, invoice_payment_term_id=term.id)
+        result = self.payments.qorlia_customer_payment_draft_save(**self.request())
+        payment = self.payments.browse(result['payment']['payment_id'])
+        self.payments.qorlia_payment_state_run(**self.lifecycle_action(payment, 'post'))
+        paid = self.env.company.currency_id._convert(100, currency, self.env.company, fields.Date.today())
+        self.assertAlmostEqual(invoice.amount_residual, 400 - paid)
+        self.assertEqual(credit.amount_residual, 0)
+        self.assertFalse((invoice | credit | payment.move_id)._get_unbalanced_moves({'records': invoice | credit | payment.move_id}))
+        self.payments.qorlia_payment_state_run(**self.lifecycle_action(payment, 'reset'))
+        self.assertEqual((invoice.amount_residual, credit.amount_residual), (500, 100))
 
     def test_mixed_currency_preview_converts_before_allocating_and_keeps_document_currency(self):
         currency = self.foreign_currency()

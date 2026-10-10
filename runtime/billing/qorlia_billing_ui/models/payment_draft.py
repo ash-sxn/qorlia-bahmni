@@ -60,6 +60,23 @@ class PaymentDraft(models.Model):
         return document.currency_id._convert(abs(document.amount_residual), self.currency_id,
                                             self.company_id, self.date or fields.Date.context_today(self))
 
+    def assign_credit_invoices_to_outstanding_invoices(self):
+        selected = self.credit_invoice_lines.filtered('selected')
+        if (not self.env.context.get('qorlia_payment_company_scope')
+                or all(len(row.invoice_id.line_ids.filtered(lambda line: line.display_type == 'payment_term')) <= 1
+                       for row in selected)):
+            return super().assign_credit_invoices_to_outstanding_invoices()
+        # Upstream assumes one credit payment-term line; reconcile each open installment natively.
+        for credit in selected:
+            terms = credit.invoice_id.line_ids.filtered(lambda line: line.display_type == 'payment_term')
+            for term in terms.sorted(lambda line: (line.date_maturity or line.date, line.id)):
+                if term.reconciled:
+                    continue
+                for outstanding in self.get_unprocessed_outstanding_invoices():
+                    outstanding.invoice_id.js_assign_outstanding_line(term.id)
+                    if term.reconciled:
+                        break
+
     def _qorlia_lock_payment_currencies(self, documents):
         self.ensure_one()
         currencies = documents.currency_id | self.currency_id | self.company_id.currency_id

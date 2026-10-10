@@ -1,5 +1,38 @@
 # Qorlia React frontend backend readiness
 
+## Installment-credit reconciliation checkpoint (10 October 2026)
+
+Installed Bahmni credit reconciliation assumes one payment-term line and fails
+with an Expected singleton error for installment credits. The Qorlia-scoped
+adapter now reconciles each unreconciled credit installment through native
+Odoo `js_assign_outstanding_line`, keeping native oldest-first invoice selection.
+Single-term credits and non-Qorlia contexts still delegate upstream unchanged.
+No custom ledger calculation, financial sudo or new gateway method is added.
+
+Three native reproductions failed before the fix and pass afterward. All 283
+installed adapter tests pass with zero failures/errors/skips. Added coverage
+includes multiple credits/invoices, preservation of an older independent
+allocation, non-unit foreign-currency conversion, exact Confirm retries and
+Reset reopening original balances. The oldest-first fixture sets explicit due
+dates and checks their order. Installed model/test/manifest hashes match this
+worktree, the analytic setting was restored and isolated Billing is running.
+Protected artifact `installment-credit-20261010` is published with unchanged
+access gates, expiry and backend mounts. All 83 served chunks, source and
+LICENSE/NOTICE match; the source archive is secret-free and authenticated
+native load/onchange/preview and session/mutation boundaries pass. Published
+source precedes this final evidence note.
+
+Hosted browser save/Confirm/Reset passed on synthetic payment #4500 (INR 100),
+invoice #24525 (INR 500) and credit #24526 (INR 100), each document with two terms.
+Confirm changed invoice/credit residuals to 300/0; Reset restored 500/100 and
+Draft. Independent native reads verify one payment, exact post/reset receipts,
+four document payment-term lines, balanced draft ledger and unchanged protected
+documents/payments/ledger and reconciliation/stock/mail counts. No bank funds
+were transferred. The browser fixture remains as labelled staging test data.
+This backend-only change retains the existing frontend; it does not close wider
+ledger, bank matching, stock/POS/sync or full clinical/external-module parity.
+Production and the shared public demo are unchanged.
+
 ## Mixed-currency customer payment checkpoint (10 October 2026)
 
 The native adapter now converts invoice/credit residuals into payment currency
