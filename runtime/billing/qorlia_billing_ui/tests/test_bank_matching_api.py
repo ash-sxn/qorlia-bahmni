@@ -81,6 +81,116 @@ class BankMatchingAPITest(native_tests.NativeBankMatchingContractTest):
         self.assertEqual(self.unchanged(entry, source), before)
         self.assertEqual(len(entry.qorlia_bank_match_receipts), 2)
 
+    def bank_analytics(self):
+        entry, source = self.entry(), self.candidate()
+        plan = self.env['account.analytic.plan'].create({'name': self.prefix + ' matching department',
+            'default_applicability': 'mandatory', 'company_id': self.env.company.id})
+        account = self.env['account.analytic.account'].create({'name': self.prefix + ' department',
+            'plan_id': plan.id, 'company_id': self.env.company.id})
+        payload = {'statement_line_id': entry.id, 'version': entry.qorlia_bank_match_load(entry.id)['version'],
+            'action': 'match', 'allocations': [{'line_id': source.id, 'amount': 100,
+                'analytic_distribution': {str(account.id): 100}}], 'fee_model_id': False}
+        self.env.cr.flush()
+        return entry, source, plan, account, payload
+
+    def test_selected_counterpart_analytics_are_reviewed_saved_recovered_and_undone(self):
+        entry, source, plan, account, payload = self.bank_analytics()
+        before = self.unchanged(entry, source)
+        review = entry.qorlia_bank_match_preview(payload)
+        self.assertEqual(self.unchanged(entry, source), before)
+        new_lines = [row for row in review['after']['account.move.line']['rows'] if isinstance(row['id'], str)]
+        self.assertTrue(any(row['values']['analytic_distribution'] == {str(account.id): 100} for row in new_lines))
+        self.assertTrue(review['after']['account.analytic.line']['rows'])
+        request = {'payload': payload, 'review_version': review['review_version'], 'request_key': str(uuid.uuid4())}
+        saved = entry.qorlia_bank_match_save(**request)
+        self.assertTrue(saved['accepted'] and source.reconciled)
+        counterparts = entry._seek_for_lines()[2]
+        self.assertEqual(counterparts.analytic_distribution, {str(account.id): 100})
+        source.invalidate_recordset()
+        self.assertFalse(source.analytic_distribution)
+        before = self.unchanged(entry, source)
+        self.assertEqual(entry.qorlia_bank_match_status(**request), saved)
+        self.assertEqual(entry.qorlia_bank_match_save(**request), saved)
+        self.assertEqual(self.unchanged(entry, source), before)
+        undo, review = self.request(entry, action='undo')
+        self.assertTrue(review['after']['account.analytic.line']['removed_ids'])
+        entry.qorlia_bank_match_save(**undo)
+        self.assertEqual(source.amount_residual, 100)
+
+    def test_counterpart_analytics_mandatory_percentages_and_invalid_accounts_fail_without_writes(self):
+        entry, source, plan, account, payload = self.bank_analytics()
+        before = self.unchanged(entry, source)
+        foreign = self.env['res.company'].create({'name': self.prefix + ' other company'})
+        other_plan = self.env['account.analytic.plan'].create({'name': self.prefix + ' foreign plan',
+            'company_id': foreign.id})
+        other = self.env['account.analytic.account'].create({'name': self.prefix + ' foreign department',
+            'plan_id': other_plan.id, 'company_id': foreign.id})
+        payload['version'] = entry.qorlia_bank_match_load(entry.id)['version']
+        before = self.unchanged(entry, source)
+        for distribution in (False, {}, {str(account.id): 50}, {str(account.id): -1}, {str(account.id): 101},
+                {str(account.id): float('inf')}, {str(account.id): True}, {'0': 100}, {'01': 100},
+                {'%s,%s' % (account.id, account.id): 100}, {str(other.id): 100}, {'999999999': 100}, []):
+            attempted = copy.deepcopy(payload)
+            attempted['allocations'][0]['analytic_distribution'] = distribution
+            with self.assertRaises(ValidationError):
+                entry.qorlia_bank_match_preview(attempted)
+            self.assertEqual(self.unchanged(entry, source), before)
+        hidden = self.env['ir.rule'].create({'name': self.prefix + ' hidden analytics',
+            'model_id': self.env['ir.model']._get('account.analytic.account').id,
+            'domain_force': "[('id', '!=', %s)]" % account.id})
+        with self.assertRaises(AccessError):
+            entry.with_user(self.user()).qorlia_bank_match_analytics(entry.id, source.id, account.ids)
+        hidden.unlink()
+
+    def test_bank_analytic_metadata_choices_and_permissions_use_native_source_scope(self):
+        entry, source, plan, account, payload = self.bank_analytics()
+        before = self.unchanged(entry, source)
+        metadata = entry.qorlia_bank_match_analytics(entry.id, source.id, account.ids)
+        self.assertEqual(metadata['statement_line_id'], entry.id)
+        self.assertEqual(metadata['source_line_id'], source.id)
+        self.assertEqual(metadata['account_id'], source.account_id.id)
+        self.assertIn({'id': plan.id, 'name': plan.name, 'applicability': 'mandatory'}, metadata['plans'])
+        self.assertEqual(metadata['accounts'], [{'id': account.id, 'name': account.display_name, 'plan_id': plan.id}])
+        choices = entry.qorlia_bank_analytic_choices(entry.id, source.id, plan.id, [], self.prefix)
+        self.assertIn((account.id, account.display_name), choices['rows'])
+        self.assertEqual(self.unchanged(entry, source), before)
+        for index in range(26):
+            account.copy({'name': self.prefix + ' choice %02d' % index})
+        first = entry.qorlia_bank_analytic_choices(entry.id, source.id, plan.id, [], self.prefix)
+        second = entry.qorlia_bank_analytic_choices(entry.id, source.id, plan.id, [], self.prefix, 25)
+        self.assertTrue(first['has_more'])
+        self.assertFalse(set(row[0] for row in first['rows']) & set(row[0] for row in second['rows']))
+        with self.assertRaises(ValidationError):
+            entry.qorlia_bank_analytic_choices(entry.id, source.id, True, [], self.prefix)
+        with self.assertRaises(ValidationError):
+            entry.qorlia_bank_match_analytics(entry.id, True, [])
+        user = self.user()
+        user.groups_id -= self.env.ref('analytic.group_analytic_accounting')
+        self.assertFalse(user.has_group('analytic.group_analytic_accounting'))
+        api = entry.with_user(user)
+        reader = entry.with_user(self.user('account.group_account_readonly'))
+        before = self.unchanged(entry, source)
+        with self.assertRaises(AccessError):
+            api.qorlia_bank_match_analytics(entry.id, source.id, [])
+        with self.assertRaises(AccessError):
+            api.qorlia_bank_match_preview(payload)
+        with self.assertRaises(AccessError):
+            reader.qorlia_bank_analytic_choices(
+                entry.id, source.id, plan.id, [])
+        self.assertEqual(self.unchanged(entry, source), before)
+
+    def test_counterpart_allocation_changes_require_fresh_review(self):
+        entry, source, plan, account, payload = self.bank_analytics()
+        other = account.copy({'name': self.prefix + ' second department'})
+        payload['version'] = entry.qorlia_bank_match_load(entry.id)['version']
+        review = entry.qorlia_bank_match_preview(payload)
+        changed = copy.deepcopy(payload)
+        changed['allocations'][0]['analytic_distribution'] = {str(other.id): 100}
+        before = self.unchanged(entry, source)
+        with self.assertRaises(UserError):
+            entry.qorlia_bank_match_save(changed, review['review_version'], str(uuid.uuid4()))
+        self.assertEqual(self.unchanged(entry, source), before)
+
     def test_undo_receipt_survives_generated_payment_deletion(self):
         entry, source = self.entry(), self.candidate()
         self.apply(entry, [(source, 100)])

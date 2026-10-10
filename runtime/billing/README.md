@@ -3,6 +3,25 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Current checkpoint: bank counterparts accept explicitly selected analytic
+distributions with native company/record permissions and mandatory validation.
+Two named APIs provide source/plan metadata and paginated choices; the TypeScript
+client and existing allocation editor support them. All 469 installed adapter
+tests pass with zero failures/errors/skips on 16.0.1.30.0, including 49 API cases.
+Four changed installed hashes match source; plan #23 remains mandatory. The actual
+TypeScript client previews a balanced native match with required analytics over
+authenticated staging HTTP. Seven graph models validate, preview rolls back and
+independent native reads retain bank/protected records and counts. No accounting
+save or browser save was performed in that HTTP check. Final Home rerun passes
+409 tests/48 suites; library/source-based touched-test types, touched lint, five
+gateway/config guards and development webpack b06f738c401a0465 pass. Existing
+broader test-project type failures and upstream/build warnings remain. The bundle
+includes pre-existing clinical edits, not a clean commit-only release.
+Matching workspace controls,
+gateway writes, browser acceptance and wider configuration/concurrency work remain
+required. Protected tester build and production/public demo are unchanged. Prior
+checkpoint entries below retain their historical scope and verification counts.
+
 Client checkpoint: five named bank matching API clients now validate complete
 native graph/recovery data. Home passes 404 tests/48 suites, library/new-test types,
 lint, five gateway/config guards and direct webpack with explicit Nx task identity.

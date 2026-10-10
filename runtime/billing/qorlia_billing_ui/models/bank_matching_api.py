@@ -217,6 +217,35 @@ class BankMatchingAPI(models.Model):
         rules = rules[offset:offset + 26]
         return {'rows': rules[:25].read(['name', 'rule_type']), 'offset': offset, 'has_more': len(rules) > 25}
 
+    def _qorlia_bank_analytic_scope(self, statement_line_id, source_line_id, account_ids):
+        entry = self._qorlia_bank_api_entry(statement_line_id)
+        if type(source_line_id) is not int or source_line_id <= 0:
+            raise ValidationError('Select a saved bank matching item.')
+        source = entry.env['account.move.line'].browse(source_line_id).exists()
+        source.check_access_rights('read')
+        source.check_access_rule('read')
+        if not source:
+            raise UserError('A matching item is no longer available.')
+        entry._qorlia_bank_match_inputs([{'line_id': source.id, 'amount': abs(source.amount_residual_currency)}])
+        metadata = entry.move_id._qorlia_journal_analytics(entry.move_id, source, source.account_id.id, account_ids)
+        return entry, {key: value for key, value in metadata.items() if key not in ('invoice_id', 'line_id')}
+
+    @api.model
+    def qorlia_bank_match_analytics(self, statement_line_id, source_line_id, account_ids):
+        _entry, metadata = self._qorlia_bank_analytic_scope(statement_line_id, source_line_id, account_ids)
+        return {**metadata, 'statement_line_id': statement_line_id, 'source_line_id': source_line_id}
+
+    @api.model
+    def qorlia_bank_analytic_choices(self, statement_line_id, source_line_id, plan_id, account_ids, search='', offset=0):
+        self._qorlia_bank_page(search, offset)
+        entry, metadata = self._qorlia_bank_analytic_scope(statement_line_id, source_line_id, account_ids)
+        if type(plan_id) is not int or plan_id not in [plan['id'] for plan in metadata['plans']]:
+            raise ValidationError('Select a native analytic plan for this bank matching item.')
+        accounts = entry.env['account.analytic.account'].search([
+            ('company_id', 'in', [False, entry.company_id.id]), ('root_plan_id', '=', plan_id),
+            ('name', 'ilike', search.strip())], offset=offset, limit=26, order='name,id')
+        return {'rows': accounts[:25].name_get(), 'offset': offset, 'has_more': len(accounts) > 25}
+
     def _qorlia_bank_payload(self, payload):
         if (not isinstance(payload, dict) or set(payload) !=
                 {'statement_line_id', 'version', 'action', 'allocations', 'fee_model_id'}

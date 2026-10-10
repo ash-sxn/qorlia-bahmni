@@ -7,6 +7,8 @@ import {
   BillingSessionExpired,
   checkedBankMatchPayload,
   getBankFeeChoices,
+  getBankMatchAnalytics,
+  getBankAnalyticChoices,
   getBankMatch,
   getBankMatchStatus,
   previewBankMatch,
@@ -209,6 +211,97 @@ describe('Reviewed native bank API client', () => {
       { ...undo, fee_model_id: 1 },
     ])
       expect(() => checkedBankMatchPayload(invalid)).toThrow();
+  });
+  it('preserves explicit counterpart analytics and rejects unsafe allocations before RPC', async () => {
+    const selected = {
+      ...payload(),
+      allocations: [
+        { line_id: 81, amount: 2, analytic_distribution: { '11,12': 100 } },
+      ],
+    };
+    reply(review());
+    await previewBankMatch(selected);
+    expect(call().kwargs.payload).toEqual(selected);
+    for (const distribution of [
+      undefined,
+      null,
+      [],
+      { '0': 100 },
+      { '01': 100 },
+      { '11,11': 100 },
+      { '11': NaN },
+      { '11': Infinity },
+      { '11': -1 },
+      { '11': 101 },
+      { '11': true },
+      { '9007199254740992': 100 },
+    ]) {
+      jest.mocked(global.fetch).mockClear();
+      await expect(
+        previewBankMatch({
+          ...payload(),
+          allocations: [
+            {
+              line_id: 81,
+              amount: 2,
+              analytic_distribution: distribution as unknown as Record<
+                string,
+                number
+              >,
+            },
+          ],
+        }),
+      ).rejects.toThrow();
+      expect(global.fetch).not.toHaveBeenCalled();
+    }
+  });
+  it('loads scoped native analytic plans and named choices with paging', async () => {
+    const metadata = {
+      statement_line_id: 7,
+      source_line_id: 81,
+      account_id: 43,
+      plans: [{ id: 3, name: 'Department', applicability: 'mandatory' }],
+      accounts: [{ id: 11, name: 'Outpatient', plan_id: 3 }],
+    };
+    reply(metadata);
+    await expect(getBankMatchAnalytics(7, 81, [11])).resolves.toEqual(metadata);
+    expect(call()).toEqual({
+      model: 'account.bank.statement.line',
+      method: 'qorlia_bank_match_analytics',
+      args: [],
+      kwargs: { statement_line_id: 7, source_line_id: 81, account_ids: [11] },
+    });
+    reply({ rows: [[11, 'Outpatient']], offset: 25, has_more: false });
+    await expect(
+      getBankAnalyticChoices(7, 81, 3, [11], 'Out', 25),
+    ).resolves.toMatchObject({ offset: 25 });
+    expect(call().kwargs).toEqual({
+      statement_line_id: 7,
+      source_line_id: 81,
+      plan_id: 3,
+      account_ids: [11],
+      search: 'Out',
+      offset: 25,
+    });
+    reply({ ...metadata, source_line_id: 82 });
+    await expect(getBankMatchAnalytics(7, 81, [11])).rejects.toThrow('scope');
+    reply({ ...metadata, accounts: [] });
+    await expect(getBankMatchAnalytics(7, 81, [11])).rejects.toThrow('names');
+    reply({
+      rows: [
+        [11, 'Outpatient'],
+        [11, 'Duplicate'],
+      ],
+      offset: 0,
+      has_more: false,
+    });
+    await expect(getBankAnalyticChoices(7, 81, 3, [], '', 0)).rejects.toThrow(
+      'choices',
+    );
+    jest.mocked(global.fetch).mockClear();
+    await expect(getBankMatchAnalytics(7, 81, [11, 11])).rejects.toThrow();
+    await expect(getBankAnalyticChoices(7, 0, 3, [], '', 0)).rejects.toThrow();
+    expect(global.fetch).not.toHaveBeenCalled();
   });
   it('rejects malformed, duplicate, nonfinite, nonpositive and unversioned requests before RPC', async () => {
     for (const invalid of [

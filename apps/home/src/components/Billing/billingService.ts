@@ -457,7 +457,11 @@ export interface BankMatchPayload {
   statement_line_id: number;
   version: string;
   action: 'match' | 'undo';
-  allocations: { line_id: number; amount: number }[];
+  allocations: {
+    line_id: number;
+    amount: number;
+    analytic_distribution?: Record<string, number> | false;
+  }[];
   fee_model_id: number | false;
 }
 export interface BankMatchRequest {
@@ -649,11 +653,29 @@ export function checkedBankMatchPayload(payload: BankMatchPayload) {
     payload.allocations.some(
       (item) =>
         !bankObject(item) ||
-        Object.keys(item).length !== 2 ||
+        Object.keys(item).some(
+          (key) =>
+            !['line_id', 'amount', 'analytic_distribution'].includes(key),
+        ) ||
         !bankId(item.line_id) ||
         typeof item.amount !== 'number' ||
         !Number.isFinite(item.amount) ||
-        item.amount <= 0,
+        item.amount <= 0 ||
+        (Object.prototype.hasOwnProperty.call(item, 'analytic_distribution') &&
+          item.analytic_distribution !== false &&
+          (!bankObject(item.analytic_distribution) ||
+            Object.keys(item.analytic_distribution).length > 100 ||
+            Object.entries(item.analytic_distribution).some(
+              ([key, percent]) =>
+                !/^[1-9]\d*(,[1-9]\d*)*$/.test(key) ||
+                !key.split(',').every((id) => bankId(Number(id))) ||
+                new Set(key.split(',')).size !== key.split(',').length ||
+                typeof percent !== 'number' ||
+                !Number.isFinite(percent) ||
+                percent < 0 ||
+                percent > 100,
+            ) ||
+            journalAnalyticIds(item.analytic_distribution).length > 200)),
     ) ||
     new Set(payload.allocations.map((item) => item.line_id)).size !==
       payload.allocations.length ||
@@ -804,6 +826,91 @@ export async function getBankFeeChoices(
     new Set(result.rows.map((row) => row.id)).size !== result.rows.length
   )
     throw new Error('Invalid applicable native bank fee rules.');
+  return result;
+}
+
+export async function getBankMatchAnalytics(
+  statementLineId: number,
+  sourceLineId: number,
+  accountIds: number[],
+) {
+  if (
+    !bankId(statementLineId) ||
+    !bankId(sourceLineId) ||
+    !Array.isArray(accountIds) ||
+    accountIds.length > 200 ||
+    !accountIds.every(bankId) ||
+    new Set(accountIds).size !== accountIds.length
+  )
+    throw new Error('Select saved matching items and valid analytic accounts.');
+  const result = await bankCall<{
+    statement_line_id: number;
+    source_line_id: number;
+    account_id: number;
+    plans: JournalAnalyticPlan[];
+    accounts: JournalAnalyticAccount[];
+  }>('match_analytics', {
+    statement_line_id: statementLineId,
+    source_line_id: sourceLineId,
+    account_ids: accountIds,
+  });
+  if (
+    result?.statement_line_id !== statementLineId ||
+    result.source_line_id !== sourceLineId ||
+    !bankId(result.account_id)
+  )
+    throw new Error('Invalid bank analytic scope. Reload the matching item.');
+  checkedAnalyticMetadata(result.plans, result.accounts, accountIds);
+  return result;
+}
+
+export async function getBankAnalyticChoices(
+  statementLineId: number,
+  sourceLineId: number,
+  planId: number,
+  accountIds: number[],
+  search = '',
+  offset = 0,
+) {
+  checkedBankSearch(search, offset);
+  if (
+    !bankId(statementLineId) ||
+    !bankId(sourceLineId) ||
+    !bankId(planId) ||
+    !Array.isArray(accountIds) ||
+    accountIds.length > 200 ||
+    !accountIds.every(bankId) ||
+    new Set(accountIds).size !== accountIds.length
+  )
+    throw new Error('Select a native analytic plan and saved matching item.');
+  const result = await bankCall<{
+    rows: [number, string][];
+    offset: number;
+    has_more: boolean;
+  }>('analytic_choices', {
+    statement_line_id: statementLineId,
+    source_line_id: sourceLineId,
+    plan_id: planId,
+    account_ids: accountIds,
+    search,
+    offset,
+  });
+  if (
+    result?.offset !== offset ||
+    typeof result.has_more !== 'boolean' ||
+    !Array.isArray(result.rows) ||
+    result.rows.length > 25 ||
+    (result.has_more && result.rows.length !== 25) ||
+    !result.rows.every(
+      (row) =>
+        Array.isArray(row) &&
+        row.length === 2 &&
+        bankId(row[0]) &&
+        typeof row[1] === 'string',
+    ) ||
+    new Set(result.rows.map(([id]) => id)).size !== result.rows.length
+  )
+    throw new Error('Invalid native bank analytic choices.');
   return result;
 }
 

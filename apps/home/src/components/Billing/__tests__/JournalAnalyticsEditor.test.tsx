@@ -6,6 +6,8 @@ import {
   getJournalAnalytics,
   getJournalDetailChoices,
   JournalDetailValues,
+  getBankMatchAnalytics,
+  getBankAnalyticChoices,
 } from '../billingService';
 import { JournalAnalyticsEditor } from '../JournalAnalyticsEditor';
 
@@ -13,6 +15,8 @@ jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
   getJournalAnalytics: jest.fn(),
   getJournalDetailChoices: jest.fn(),
+  getBankMatchAnalytics: jest.fn(),
+  getBankAnalyticChoices: jest.fn(),
 }));
 const changed = jest.fn(),
   reconnect = jest.fn();
@@ -28,9 +32,11 @@ const accounts = [
 function Form({
   initial = false,
   disabled = false,
+  bank = false,
 }: {
   initial?: JournalDetailValues['analytic_distribution'];
   disabled?: boolean;
+  bank?: boolean;
 }) {
   const [value, setValue] = useState(initial);
   return (
@@ -46,12 +52,14 @@ function Form({
         setValue(next);
       }}
       reconnect={reconnect}
+      bankMatch={bank ? { statementLineId: 7, sourceLineId: 17 } : undefined}
     />
   );
 }
 const show = (
   initial: JournalDetailValues['analytic_distribution'] = false,
   disabled = false,
+  bank = false,
 ) =>
   render(
     <QueryClientProvider
@@ -59,7 +67,7 @@ const show = (
         new QueryClient({ defaultOptions: { queries: { retry: false } } })
       }
     >
-      <Form initial={initial} disabled={disabled} />
+      <Form initial={initial} disabled={disabled} bank={bank} />
     </QueryClientProvider>,
   );
 
@@ -157,5 +165,103 @@ describe('Named native journal analytic allocation', () => {
       screen.getByRole('button', { name: 'Remove allocation for Outpatient' }),
     ).toBeDisabled();
     expect(changed).not.toHaveBeenCalled();
+  });
+  it('reuses named plan allocation for bank counterparts without calling invoice APIs', async () => {
+    jest
+      .mocked(getBankMatchAnalytics)
+      .mockImplementation(async (_entry, _source, ids) => ({
+        statement_line_id: 7,
+        source_line_id: 17,
+        account_id: 2,
+        plans: [{ id: 20, name: 'Departments', applicability: 'mandatory' }],
+        accounts: accounts.filter((account) => ids.includes(account.id)),
+      }));
+    jest.mocked(getBankAnalyticChoices).mockResolvedValue({
+      rows: [[13, 'Laboratory']],
+      offset: 0,
+      has_more: false,
+    });
+    show({ '12': 60 }, false, true);
+    fireEvent.click(
+      await screen.findByRole('combobox', {
+        name: 'Add account to Departments',
+      }),
+    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Laboratory' }));
+    await screen.findByLabelText('Laboratory allocation (%)');
+    expect(changed).toHaveBeenLastCalledWith({ '12': 60, '13': 40 });
+    expect(getBankMatchAnalytics).toHaveBeenCalledWith(7, 17, [12]);
+    expect(getBankAnalyticChoices).toHaveBeenCalledWith(7, 17, 20, [12], '', 0);
+    expect(getJournalAnalytics).not.toHaveBeenCalled();
+    expect(getJournalDetailChoices).not.toHaveBeenCalled();
+  });
+  it('pages bank analytic choices explicitly', async () => {
+    jest.mocked(getBankMatchAnalytics).mockResolvedValue({
+      statement_line_id: 7,
+      source_line_id: 17,
+      account_id: 2,
+      plans: [{ id: 20, name: 'Departments', applicability: 'mandatory' }],
+      accounts: [],
+    });
+    jest
+      .mocked(getBankAnalyticChoices)
+      .mockImplementation(
+        async (_entry, _source, _plan, _ids, _term, offset) => ({
+          rows: [[13, offset === 25 ? 'Next department' : 'Laboratory']],
+          offset: offset ?? 0,
+          has_more: offset === 0,
+        }),
+      );
+    show(false, false, true);
+    const more = await screen.findByRole('button', {
+      name: 'More analytic accounts',
+    });
+    await waitFor(() => expect(more).toBeEnabled());
+    fireEvent.click(more);
+    await waitFor(() =>
+      expect(getBankAnalyticChoices).toHaveBeenCalledWith(
+        7,
+        17,
+        20,
+        [],
+        '',
+        25,
+      ),
+    );
+    await waitFor(() => expect(more).toBeDisabled());
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Previous analytic accounts' }),
+    );
+    await waitFor(() => expect(more).toBeEnabled());
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Add account to Departments' }),
+      {
+        target: { value: 'New search' },
+      },
+    );
+    expect(more).toBeDisabled();
+    await waitFor(() =>
+      expect(getBankAnalyticChoices).toHaveBeenCalledWith(
+        7,
+        17,
+        20,
+        [],
+        'New search',
+        0,
+      ),
+    );
+  });
+  it('retains allocations but prevents editing when the native matching account changed', async () => {
+    jest.mocked(getBankMatchAnalytics).mockResolvedValue({
+      statement_line_id: 7,
+      source_line_id: 17,
+      account_id: 99,
+      plans: [{ id: 20, name: 'Departments', applicability: 'mandatory' }],
+      accounts: [],
+    });
+    show({ '12': 100 }, false, true);
+    await screen.findByText(/The matching account changed/);
+    expect(changed).not.toHaveBeenCalled();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 });

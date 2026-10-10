@@ -4,8 +4,10 @@ import {
   BillingSessionExpired,
   getJournalAnalytics,
   getJournalMoneyAnalytics,
+  getBankMatchAnalytics,
   journalAnalyticIds,
   JournalAnalyticAccount,
+  JournalAnalyticPlan,
   JournalDetailValues,
 } from './billingService';
 import { DraftChoiceInput } from './DraftChoiceInput';
@@ -35,6 +37,7 @@ export function JournalAnalyticsEditor({
   reconnect,
   moneyJournal = false,
   inputPrefix = 'journal',
+  bankMatch,
 }: {
   uid: number;
   invoiceId: number;
@@ -46,9 +49,13 @@ export function JournalAnalyticsEditor({
   reconnect: () => void;
   moneyJournal?: boolean;
   inputPrefix?: string;
+  bankMatch?: { statementLineId: number; sourceLineId: number };
 }) {
   const ids = journalAnalyticIds(value);
-  const metadata = useQuery({
+  const metadata = useQuery<{
+    plans: JournalAnalyticPlan[];
+    accounts: JournalAnalyticAccount[];
+  }>({
     queryKey: [
       'billing',
       'journal-analytics',
@@ -58,11 +65,22 @@ export function JournalAnalyticsEditor({
       accountId,
       ids,
       moneyJournal,
+      bankMatch,
     ],
-    queryFn: () =>
-      moneyJournal
-        ? getJournalMoneyAnalytics(invoiceId, lineId, accountId, ids)
-        : getJournalAnalytics(invoiceId, lineId as number, accountId, ids),
+    queryFn: async () => {
+      const result = await (bankMatch
+        ? getBankMatchAnalytics(
+            bankMatch.statementLineId,
+            bankMatch.sourceLineId,
+            ids,
+          )
+        : moneyJournal
+          ? getJournalMoneyAnalytics(invoiceId, lineId, accountId, ids)
+          : getJournalAnalytics(invoiceId, lineId as number, accountId, ids));
+      if (bankMatch && result.account_id !== accountId)
+        throw new Error('The matching account changed. Reload the bank entry.');
+      return result;
+    },
     retry: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -130,12 +148,14 @@ export function JournalAnalyticsEditor({
                   id={`${inputPrefix}-analytic-plan-${plan.id}`}
                   label={`Add account to ${plan.name}`}
                   uid={uid}
-                  {...(moneyJournal
-                    ? { moneyJournal: { invoiceId, lineId } }
-                    : {
-                        journalInvoiceId: invoiceId,
-                        journalLineId: lineId as number,
-                      })}
+                  {...(bankMatch
+                    ? { bankMatch }
+                    : moneyJournal
+                      ? { moneyJournal: { invoiceId, lineId } }
+                      : {
+                          journalInvoiceId: invoiceId,
+                          journalLineId: lineId as number,
+                        })}
                   kind="analytic"
                   analyticScope={{
                     account_id: accountId,

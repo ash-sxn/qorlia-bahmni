@@ -1,5 +1,32 @@
 # Bahmni workflow parity ledger
 
+## 10 October bank counterpart analytic allocation checkpoint
+
+- Added explicit native counterpart allocations, permission-scoped source/plan
+  metadata and paginated choices. Native mandatory distribution, company and
+  record permissions remain active. Selected allocations are bound to the reviewed
+  request; original source analytics remain unchanged. Save/retry/recovery/undo
+  have native test coverage, not actual browser acceptance in this checkpoint.
+- Reused the journal analytic editor and existing choice input for bank scope,
+  paging and search reset. Typed client checks reject malformed identities,
+  distributions and pages. These controls are not yet wired into bank matching UI.
+- All 469 installed adapter tests pass with zero failures/errors/skips on
+  16.0.1.30.0, including 49 bank API cases. Four changed installed hashes match.
+  Staging runs and plan #23 remains mandatory. Actual client HTTP previews a
+  balanced match with required analytics, validates seven graph models and rejects
+  two unbalanced sources. Preview rolls back; exact-request status remains not
+  accepted. Independent native reads verify unchanged #37/protected accounting
+  and counts. No HTTP accounting save was performed.
+- Final Home rerun passes 409 tests/48 suites; library/source-based touched-test
+  types, touched lint, five gateway/config guards and final development webpack
+  b06f738c401a0465 pass. Broader test-project typing remains unclean on existing
+  declaration/setup issues; upstream/build warnings remain. The working-tree
+  bundle includes pre-existing clinical changes, not a commit-only release.
+- New matching/review/save/undo/recovery workspace, gateway write exposure,
+  browser acceptance and wider concurrency/configuration work are still required.
+  Protected tester artifact/source/gates/expiry and production/public demo are
+  unchanged. This does not complete Banking, Billing or the full redesign.
+
 ## 10 October React bank matching API boundary checkpoint
 
 - Added typed named load/fee/preview/save/status clients, exact reviewed request

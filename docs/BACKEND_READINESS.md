@@ -1,5 +1,42 @@
 # Qorlia React frontend backend readiness
 
+## Bank counterpart analytic allocation checkpoint (10 October 2026)
+
+Native bank allocations now accept explicitly selected counterpart analytic
+distributions. Two named, permission-scoped APIs provide source/account metadata
+and paginated analytic choices. They retain native company, plan, source and
+record permissions and mandatory distribution validation. Preview, reviewed save,
+exact-request recovery and undo retain the chosen distribution without changing
+the original source allocation. Invalid, hidden and cross-company choices fail.
+
+The TypeScript boundary validates these allocations and response identities.
+The existing journal analytic editor and choice input now support bank scope,
+native paging and search reset, retaining selected values on errors. These are
+reusable controls, not yet integrated into the bank-statement matching workspace.
+
+All 469 installed native adapter tests pass with zero failures/errors/skips on
+16.0.1.30.0, including 49 API cases. Four changed installed hashes match source;
+staging is running and native SQL confirms plan #23 remains mandatory. Real
+authenticated HTTP through the actual TypeScript client successfully previews a
+balanced match with the mandatory allocation and verifies all seven graph models.
+Two unbalanced candidates are rejected. The exact request is not accepted, and
+the rolled-back preview retains the original entry/version/graph. Independent
+native reads confirm bank #37 and protected financial records/counts unchanged.
+This HTTP check saves no accounting changes and is not browser save acceptance.
+
+All 409 Home tests in 48 suites pass after the final choice-input changes.
+Home library and source-based touched-test types, touched-file lint, five gateway/
+webpack guards and final development webpack (b06f738c401a0465) pass. The broader
+test-project type check remains failing on stale declarations/setup and existing
+test types; it is not claimed clean. This working-tree build includes pre-existing
+clinical edits and is not a clean commit-only release. Existing upstream/report/
+build warnings remain.
+Matching/review/save/undo/recovery workspace controls, gateway write exposure,
+actual browser acceptance and wider configuration/concurrency checks remain open.
+Protected tester build/source/gates/expiry and production/public demo are unchanged.
+Banking, wider Billing and the complete product remain unfinished. Earlier entries
+below are historical checkpoints.
+
 ## React bank matching API boundary checkpoint (10 October 2026)
 
 The Billing client now implements named bank load/fee/preview/save/status calls.

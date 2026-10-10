@@ -2,6 +2,7 @@
 # Copyright 2026 Qorlia contributors.
 from contextlib import closing
 import math
+import re
 
 from odoo import Command, models, tools
 from odoo.exceptions import AccessError, UserError, ValidationError
@@ -60,7 +61,8 @@ class BankMatching(models.Model):
             raise ValidationError('Select matching items or a native fee rule before reviewing.')
         prepared, seen = [], set()
         for allocation in allocations:
-            if (not isinstance(allocation, dict) or set(allocation) != {'line_id', 'amount'}
+            if (not isinstance(allocation, dict) or not {'line_id', 'amount'} <= set(allocation)
+                    or set(allocation) - {'line_id', 'amount', 'analytic_distribution'}
                     or type(allocation['line_id']) is not int or allocation['line_id'] <= 0
                     or allocation['line_id'] in seen or type(allocation['amount']) not in (int, float)
                     or not math.isfinite(allocation['amount']) or allocation['amount'] <= 0):
@@ -88,6 +90,18 @@ class BankMatching(models.Model):
                     or not math.isclose(amount, currency.round(amount), rel_tol=0,
                         abs_tol=currency.rounding * 1e-9)):
                 raise ValidationError('Use an available rounded amount in the matching item currency.')
+            if 'analytic_distribution' in allocation:
+                distribution = allocation['analytic_distribution']
+                if not self.env.user.has_group('analytic.group_analytic_accounting'):
+                    raise AccessError('Analytic distribution requires native analytic permissions.')
+                if distribution is not False and (not isinstance(distribution, dict) or len(distribution) > 100
+                        or any(not isinstance(key, str) or not re.fullmatch(r'[1-9][0-9]*(,[1-9][0-9]*)*', key)
+                            or len(set(key.split(','))) != len(key.split(','))
+                            or type(percent) not in (int, float) or not math.isfinite(percent)
+                            or percent < 0 or percent > 100 for key, percent in distribution.items())):
+                    raise ValidationError('Use named analytic accounts and percentages between zero and 100.')
+                ids = sorted({int(part) for key in (distribution or {}) for part in key.split(',')})
+                self.move_id._qorlia_journal_analytics(self.move_id, source, source.account_id.id, ids)
             seen.add(source.id)
             prepared.append((source, amount))
         if fee_model_id is not False and (type(fee_model_id) is not int or fee_model_id <= 0):
@@ -172,12 +186,16 @@ class BankMatching(models.Model):
         original_liquidity = reader(liquidity, ('balance', 'amount_currency', 'currency_id', 'account_id'))
         currency = self._get_accounting_amounts_and_currencies()[1]
         values = []
+        distributions = {item['line_id']: item['analytic_distribution'] for item in allocations
+            if 'analytic_distribution' in item}
         for source, amount in sources:
             sign = -1 if source.amount_residual_currency > 0 else 1
             company_amount = source.amount_residual * amount / abs(source.amount_residual_currency)
             amounts = self._prepare_counterpart_amounts_using_st_line_rate(source.currency_id, -company_amount, amount * sign)
             values.append({'name': source.name or self.payment_ref, 'account_id': source.account_id.id,
                 'partner_id': source.partner_id.id, 'currency_id': currency.id, **amounts})
+            if source.id in distributions:
+                values[-1]['analytic_distribution'] = distributions[source.id]
         values.extend(self._qorlia_bank_fee_rows(model,
             suspense.amount_currency - sum(row['amount_currency'] for row in values)) if model else [])
         remaining_balance = suspense.balance - sum(row['balance'] for row in values)

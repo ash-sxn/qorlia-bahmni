@@ -15,6 +15,7 @@ import {
   CustomerPaymentDraftChoiceKind,
   getJournalMoneyChoices,
   JournalMoneyChoice,
+  getBankAnalyticChoices,
 } from './billingService';
 
 export function DraftChoiceInput({
@@ -33,6 +34,7 @@ export function DraftChoiceInput({
   analyticScope,
   paymentValues,
   moneyJournal,
+  bankMatch,
   disabled,
   onChange,
   reconnect,
@@ -45,6 +47,7 @@ export function DraftChoiceInput({
   shopId?: number | false;
   productId?: number | false;
   disabled?: boolean;
+  bankMatch?: { statementLineId: number; sourceLineId: number };
   analyticScope?: {
     account_id: number;
     plan_id: number;
@@ -53,6 +56,16 @@ export function DraftChoiceInput({
   onChange: (value: number | false, name?: string) => void;
   reconnect: () => void;
 } & (
+  | {
+      bankMatch: { statementLineId: number; sourceLineId: number };
+      invoiceId?: undefined;
+      paymentValues?: undefined;
+      advanceOrderId?: undefined;
+      journalInvoiceId?: undefined;
+      journalLineId?: undefined;
+      moneyJournal?: undefined;
+      kind: 'analytic';
+    }
   | {
       invoiceId: number | false;
       paymentValues?: undefined;
@@ -109,7 +122,9 @@ export function DraftChoiceInput({
     }
 )) {
   const [search, setSearch] = useState('');
+  const [bankOffset, setBankOffset] = useState(0);
   const term = useDebounce(search, 250);
+  const bankSearchPending = !!bankMatch && search !== term;
   const choices = useQuery({
     queryKey: [
       'billing',
@@ -126,9 +141,25 @@ export function DraftChoiceInput({
       productId,
       paymentValues,
       moneyJournal,
+      bankMatch,
+      bankOffset,
     ],
-    queryFn: () =>
-      moneyJournal !== undefined
+    queryFn: async () => {
+      if (bankMatch) {
+        if (kind !== 'analytic' || !analyticScope)
+          throw new Error(
+            'Select a native analytic plan for this matching item.',
+          );
+        return getBankAnalyticChoices(
+          bankMatch.statementLineId,
+          bankMatch.sourceLineId,
+          analyticScope.plan_id,
+          analyticScope.account_ids,
+          term,
+          bankOffset,
+        );
+      }
+      const rows = await (moneyJournal !== undefined
         ? getJournalMoneyChoices(
             moneyJournal.invoiceId,
             kind as JournalMoneyChoice,
@@ -168,7 +199,9 @@ export function DraftChoiceInput({
                     term,
                     shopId,
                     productId,
-                  ),
+                  ));
+      return { rows, has_more: false };
+    },
     enabled: !disabled,
     retry: false,
   });
@@ -180,14 +213,19 @@ export function DraftChoiceInput({
       <ComboBox<[number, string]>
         id={id}
         titleText={label}
-        items={choices.data ?? []}
+        items={
+          bankSearchPending || choices.isError ? [] : (choices.data?.rows ?? [])
+        }
         itemToString={(item) => item?.[1] ?? ''}
         selectedItem={selected}
         clearSelectedOnChange={
           kind === 'tax' || kind === 'grid' || kind === 'analytic'
         }
         shouldFilterItem={() => true}
-        onInputChange={setSearch}
+        onInputChange={(value) => {
+          setSearch(value);
+          setBankOffset(0);
+        }}
         onChange={({ selectedItem }) =>
           onChange(selectedItem?.[0] ?? false, selectedItem?.[1])
         }
@@ -195,11 +233,42 @@ export function DraftChoiceInput({
         invalid={choices.isError}
         invalidText={choices.error?.message}
         helperText={
-          choices.isFetching
+          choices.isFetching || bankSearchPending
             ? 'Searching Billing...'
             : 'Search and select a record.'
         }
       />
+      {bankMatch ? (
+        <div>
+          <Button
+            type="button"
+            kind="tertiary"
+            disabled={
+              (disabled ?? false) ||
+              choices.isFetching ||
+              bankSearchPending ||
+              bankOffset === 0
+            }
+            onClick={() => setBankOffset((offset) => Math.max(0, offset - 25))}
+          >
+            Previous analytic accounts
+          </Button>
+          <Button
+            type="button"
+            kind="tertiary"
+            disabled={
+              (disabled ?? false) ||
+              choices.isFetching ||
+              bankSearchPending ||
+              choices.isError ||
+              !choices.data?.has_more
+            }
+            onClick={() => setBankOffset((offset) => offset + 25)}
+          >
+            More analytic accounts
+          </Button>
+        </div>
+      ) : null}
       {choices.error instanceof BillingSessionExpired ? (
         <Button type="button" kind="tertiary" onClick={reconnect}>
           Reconnect Billing
