@@ -453,6 +453,360 @@ export async function getBankCandidates(
   return data;
 }
 
+export interface BankMatchPayload {
+  statement_line_id: number;
+  version: string;
+  action: 'match' | 'undo';
+  allocations: { line_id: number; amount: number }[];
+  fee_model_id: number | false;
+}
+export interface BankMatchRequest {
+  payload: BankMatchPayload;
+  review_version: string;
+  request_key: string;
+}
+export interface BankGraphRow {
+  id: number | string;
+  values: Record<string, unknown>;
+}
+export type BankGraph = Record<
+  string,
+  { rows: BankGraphRow[]; removed_ids: number[] }
+>;
+export interface BankMatchView {
+  statement_line_id: number;
+  entry: BankEntry;
+  version: string;
+  graph: BankGraph;
+  labels: Record<string, string>;
+  company_currency: [number, string];
+  transaction_currency: [number, string];
+  reason: string | false;
+  can_match: boolean;
+  can_undo: boolean;
+  accepted?: true;
+  request_key?: string;
+}
+export interface BankMatchReview {
+  statement_line_id: number;
+  before: BankGraph;
+  after: BankGraph;
+  labels: Record<string, string>;
+  review_version: string;
+}
+const bankGraphFields = {
+  'account.bank.statement.line':
+    'move_id journal_id date payment_ref partner_id amount currency_id amount_currency foreign_currency_id amount_residual is_reconciled to_check payment_ids statement_id transaction_type',
+  'account.move':
+    'name state move_type date company_id journal_id partner_id currency_id amount_total amount_residual payment_state line_ids reversed_entry_id tax_cash_basis_rec_id tax_cash_basis_origin_move_id narration',
+  'account.move.line':
+    'name move_id account_id partner_id date date_maturity debit credit balance currency_id amount_currency amount_residual amount_residual_currency reconciled matched_debit_ids matched_credit_ids full_reconcile_id tax_ids tax_tag_ids tax_repartition_line_id tax_line_id group_tax_id tax_base_amount tax_tag_invert display_type reconcile_model_id analytic_distribution payment_id statement_line_id',
+  'account.partial.reconcile':
+    'debit_move_id credit_move_id amount debit_amount_currency credit_amount_currency full_reconcile_id exchange_move_id max_date',
+  'account.full.reconcile':
+    'name partial_reconcile_ids reconciled_line_ids exchange_move_id',
+  'account.payment':
+    'move_id state amount currency_id payment_type partner_type partner_id journal_id is_matched is_reconciled',
+  'account.analytic.line':
+    'move_line_id account_id date amount unit_amount company_id',
+};
+const bankGraphMoney = new Set(
+  'amount amount_currency amount_residual amount_residual_currency amount_total debit credit balance debit_amount_currency credit_amount_currency tax_base_amount unit_amount'.split(
+    ' ',
+  ),
+);
+const bankGraphFlags = new Set(
+  'is_reconciled is_matched to_check reconciled tax_tag_invert'.split(' '),
+);
+const bankGraphRequiredIds: Record<string, string[]> = {
+  'account.bank.statement.line': ['move_id', 'journal_id', 'currency_id'],
+  'account.move': ['company_id', 'journal_id', 'currency_id'],
+  'account.move.line': ['move_id', 'account_id', 'currency_id'],
+  'account.partial.reconcile': ['debit_move_id', 'credit_move_id'],
+  'account.full.reconcile': [],
+  'account.payment': ['move_id', 'currency_id', 'journal_id'],
+  'account.analytic.line': ['move_line_id', 'account_id', 'company_id'],
+};
+const bankGraphId = (value: unknown, temporary: boolean) =>
+  bankId(value) ||
+  (temporary && typeof value === 'string' && /^new:[1-9]\d*$/.test(value));
+const bankObject = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+function checkedBankGraph(
+  graph: BankGraph,
+  entryId: number,
+  temporary: boolean,
+) {
+  if (
+    !bankObject(graph) ||
+    Object.keys(graph).length !== Object.keys(bankGraphFields).length
+  )
+    throw new Error('The complete native bank effects are unavailable.');
+  for (const [model, fields] of Object.entries(bankGraphFields)) {
+    const part = graph[model];
+    const expected = fields.split(' ');
+    if (
+      !bankObject(part) ||
+      Object.keys(part).length !== 2 ||
+      !Array.isArray(part.rows) ||
+      !Array.isArray(part.removed_ids) ||
+      !part.removed_ids.every(bankId) ||
+      new Set(part.removed_ids).size !== part.removed_ids.length ||
+      (!temporary && part.removed_ids.length) ||
+      new Set(part.rows.map((row) => row?.id)).size !== part.rows.length
+    )
+      throw new Error('Invalid native bank graph rows or deletions.');
+    for (const row of part.rows) {
+      if (
+        !bankObject(row) ||
+        Object.keys(row).length !== 2 ||
+        !bankGraphId(row.id, temporary) ||
+        part.removed_ids.includes(row.id as number) ||
+        !bankObject(row.values) ||
+        Object.keys(row.values).length !== expected.length ||
+        !expected.every((key) => Object.hasOwn(row.values, key))
+      )
+        throw new Error('A native bank effect is incomplete.');
+      for (const [key, value] of Object.entries(row.values)) {
+        let valid: boolean;
+        if (key === 'analytic_distribution') {
+          valid =
+            value === false ||
+            (bankObject(value) &&
+              Object.entries(value).every(
+                ([ids, amount]) =>
+                  /^[1-9]\d*(,[1-9]\d*)*$/.test(ids) &&
+                  typeof amount === 'number' &&
+                  Number.isFinite(amount),
+              ));
+        } else if (bankGraphMoney.has(key)) {
+          valid =
+            typeof value === 'number' &&
+            Number.isFinite(value) &&
+            (!['debit', 'credit'].includes(key) || value >= 0);
+        } else if (bankGraphFlags.has(key)) {
+          valid = typeof value === 'boolean';
+        } else if (key.endsWith('_ids')) {
+          valid =
+            Array.isArray(value) &&
+            value.every((id) => bankGraphId(id, temporary)) &&
+            new Set(value).size === value.length;
+        } else if (key.endsWith('_id')) {
+          valid = value === false || bankGraphId(value, temporary);
+        } else if (['date', 'date_maturity', 'max_date'].includes(key)) {
+          valid = value === false || bankDate(value);
+        } else {
+          valid = bankText(value);
+        }
+        if (!valid) throw new Error('Invalid native bank effect values.');
+      }
+      if (
+        !bankGraphRequiredIds[model].every((key) =>
+          bankGraphId(row.values[key], temporary),
+        )
+      )
+        throw new Error(
+          'A native bank effect is missing its account, journal or currency.',
+        );
+    }
+  }
+  const origin = graph['account.bank.statement.line'].rows.find(
+    (row) => row.id === entryId,
+  );
+  if (
+    !origin ||
+    !bankId(origin.values.move_id) ||
+    !graph['account.move'].rows.some(
+      (row) => row.id === origin.values.move_id,
+    ) ||
+    !graph['account.move.line'].rows.some(
+      (row) => row.values.move_id === origin.values.move_id,
+    )
+  )
+    throw new Error('The reviewed bank entry and ledger are missing.');
+  return graph;
+}
+function checkedBankLabels(labels: Record<string, string>) {
+  if (
+    !bankObject(labels) ||
+    !Object.entries(labels).every(
+      ([key, name]) =>
+        /^[a-z_]+(\.[a-z_]+)*:[1-9]\d*$/.test(key) && typeof name === 'string',
+    )
+  )
+    throw new Error('Invalid native bank labels.');
+}
+export function checkedBankMatchPayload(payload: BankMatchPayload) {
+  if (
+    !bankObject(payload) ||
+    Object.keys(payload).length !== 5 ||
+    !bankId(payload.statement_line_id) ||
+    !bankHash(payload.version) ||
+    !['match', 'undo'].includes(payload.action) ||
+    !(payload.fee_model_id === false || bankId(payload.fee_model_id)) ||
+    !Array.isArray(payload.allocations) ||
+    payload.allocations.length > 1000 ||
+    payload.allocations.some(
+      (item) =>
+        !bankObject(item) ||
+        Object.keys(item).length !== 2 ||
+        !bankId(item.line_id) ||
+        typeof item.amount !== 'number' ||
+        !Number.isFinite(item.amount) ||
+        item.amount <= 0,
+    ) ||
+    new Set(payload.allocations.map((item) => item.line_id)).size !==
+      payload.allocations.length ||
+    (payload.action === 'undo' &&
+      (payload.allocations.length || payload.fee_model_id !== false)) ||
+    (payload.action === 'match' &&
+      !payload.allocations.length &&
+      payload.fee_model_id === false)
+  )
+    throw new Error(
+      'Check the saved bank entry, matching items and source-currency amounts.',
+    );
+  return payload;
+}
+export function checkedBankMatchRequest(request: BankMatchRequest) {
+  if (
+    !bankObject(request) ||
+    Object.keys(request).length !== 3 ||
+    !bankHash(request.review_version) ||
+    typeof request.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      request.request_key,
+    )
+  )
+    throw new Error('Invalid reviewed bank save request.');
+  checkedBankMatchPayload(request.payload);
+  return request;
+}
+function checkedBankMatchView(
+  view: BankMatchView,
+  entryId: number,
+  requestKey?: string,
+) {
+  if (
+    view?.statement_line_id !== entryId ||
+    !validBankEntry(view.entry) ||
+    view.entry.id !== entryId ||
+    !bankHash(view.version) ||
+    ![view.company_currency, view.transaction_currency].every(
+      (value) => Array.isArray(value) && validRelation(value),
+    ) ||
+    !bankText(view.reason) ||
+    typeof view.can_match !== 'boolean' ||
+    typeof view.can_undo !== 'boolean' ||
+    (view.reason !== false && (view.can_match || view.can_undo)) ||
+    (requestKey !== undefined &&
+      (view.request_key !== requestKey || view.accepted !== true))
+  )
+    throw new Error(
+      'Invalid bank access or recovery response. Reload the entry.',
+    );
+  checkedBankGraph(view.graph, entryId, false);
+  checkedBankLabels(view.labels);
+  const origin = view.graph['account.bank.statement.line'].rows.find(
+    (row) => row.id === entryId,
+  )!;
+  if (
+    origin.values.amount !== view.entry.amount ||
+    origin.values.amount_currency !== view.entry.amount_currency ||
+    origin.values.currency_id !== view.entry.currency_id[0] ||
+    origin.values.move_id !== view.entry.move_id[0] ||
+    origin.values.is_reconciled !== view.entry.is_reconciled
+  )
+    throw new Error(
+      'The bank entry does not agree with its native ledger review.',
+    );
+  return view;
+}
+export async function getBankMatch(statementLineId: number) {
+  if (!bankId(statementLineId)) throw new Error('Select a saved bank entry.');
+  return checkedBankMatchView(
+    await bankCall<BankMatchView>('match_load', {
+      statement_line_id: statementLineId,
+    }),
+    statementLineId,
+  );
+}
+export async function previewBankMatch(payload: BankMatchPayload) {
+  checkedBankMatchPayload(payload);
+  const review = await bankCall<BankMatchReview>('match_preview', { payload });
+  if (
+    !review ||
+    review.statement_line_id !== payload.statement_line_id ||
+    !bankHash(review.review_version)
+  )
+    throw new Error('Invalid native bank review identity.');
+  checkedBankGraph(review.before, payload.statement_line_id, false);
+  checkedBankGraph(review.after, payload.statement_line_id, true);
+  checkedBankLabels(review.labels);
+  if (
+    !payload.allocations.every((item) =>
+      review.before['account.move.line'].rows.some(
+        (row) => row.id === item.line_id,
+      ),
+    )
+  )
+    throw new Error('The bank review omits a selected matching item.');
+  return review;
+}
+export async function saveBankMatch(request: BankMatchRequest) {
+  checkedBankMatchRequest(request);
+  return checkedBankMatchView(
+    await bankCall<BankMatchView>('match_save', request),
+    request.payload.statement_line_id,
+    request.request_key,
+  );
+}
+export async function getBankMatchStatus(request: BankMatchRequest) {
+  checkedBankMatchRequest(request);
+  const result = await bankCall<BankMatchView | false>('match_status', request);
+  return result === false
+    ? false
+    : checkedBankMatchView(
+        result,
+        request.payload.statement_line_id,
+        request.request_key,
+      );
+}
+export async function getBankFeeChoices(
+  statementLineId: number,
+  search = '',
+  offset = 0,
+) {
+  checkedBankSearch(search, offset);
+  if (!bankId(statementLineId)) throw new Error('Select a saved bank entry.');
+  const result = await bankCall<{
+    rows: {
+      id: number;
+      name: string;
+      rule_type: 'writeoff_button' | 'writeoff_suggestion';
+    }[];
+    offset: number;
+    has_more: boolean;
+  }>('fee_choices', { statement_line_id: statementLineId, search, offset });
+  if (
+    result?.offset !== offset ||
+    typeof result.has_more !== 'boolean' ||
+    !Array.isArray(result.rows) ||
+    result.rows.length > 25 ||
+    (result.has_more && result.rows.length !== 25) ||
+    result.rows.some(
+      (row) =>
+        !row ||
+        !bankId(row.id) ||
+        typeof row.name !== 'string' ||
+        !['writeoff_button', 'writeoff_suggestion'].includes(row.rule_type),
+    ) ||
+    new Set(result.rows.map((row) => row.id)).size !== result.rows.length
+  )
+    throw new Error('Invalid applicable native bank fee rules.');
+  return result;
+}
+
 export type CutoffValues = {
   date: string;
   percentage: number;

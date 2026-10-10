@@ -1,5 +1,33 @@
 # Qorlia React frontend backend readiness
 
+## React bank matching API boundary checkpoint (10 October 2026)
+
+The Billing client now implements named bank load/fee/preview/save/status calls.
+It checks exact request shape, source-currency allocations, hashes and recovery
+identity. Complete seven-model graph schemas retain financial values, generated
+effects and deleted IDs; missing fields/accounts/currencies, nonfinite values,
+duplicate rows and omitted selected sources fail rather than disappear in review.
+Read-only access and native rejection/session/transport errors remain distinct.
+
+All 404 Home tests in 48 suites pass, including eight new client boundary cases.
+Home library types, source-based types for the new service/tests, touched-file
+lint, five webpack/gateway guards and direct development webpack with explicit
+Nx task identity pass. The full test-project type check still fails on stale
+declaration references, setup TextEncoder and other existing test typing issues;
+it is not claimed clean. Existing build/upstream warnings remain.
+
+Real authenticated staging calls pass the client load/fee checks for all seven
+graph models. An actual preview rejects an unbalanced candidate, then mandatory
+analytic configuration rejects a candidate with no counterpart distribution.
+This exposes remaining support for user-selected counterpart analytic allocations,
+not a reason to disable plan #23. Positive live client preview/save/undo acceptance
+is still unproven. Independent reads retain entry #37, its matching/ledger,
+protected records and financial/stock/mail/statement counts after those failures.
+No new matching UI, gateway allowance or protected publication was made. Backend
+465-test evidence below remains valid for its stated configurations, not all
+staging workflows. Production/public demo and tester gates/source/expiry remain
+unchanged. Wider Billing and full-product parity remain in scope.
+
 ## Reviewed native bank save API checkpoint (10 October 2026)
 
 Five named native APIs now load matching access, list applicable fee rules,

@@ -3,6 +3,17 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Client checkpoint: five named bank matching API clients now validate complete
+native graph/recovery data. Home passes 404 tests/48 suites, library/new-test types,
+lint, five gateway/config guards and direct webpack with explicit Nx task identity.
+Full test-project types still fail on stale declarations and existing typing
+issues. Staging load/fee responses pass actual client checks. Live preview rejects
+an unbalanced candidate and mandatory analytic validation without an allocation.
+Counterpart analytic selection remains required before positive live preview/save
+and matching/undo UI acceptance. No policy was disabled and independent native
+reads confirm unchanged bank/protected accounting and counts. No new matching UI,
+gateway write exposure or protected release is delivered by this client step.
+
 Latest checkpoint: reviewed native bank load/fee/preview/save/status APIs are
 installed in isolated staging. Author/company/configuration-bound reviews, row
 locks, complete native effect comparison and atomic exact-request receipts retain

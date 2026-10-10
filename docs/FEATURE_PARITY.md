@@ -1,5 +1,25 @@
 # Bahmni workflow parity ledger
 
+## 10 October React bank matching API boundary checkpoint
+
+- Added typed named load/fee/preview/save/status clients, exact reviewed request
+  checks and complete seven-model financial graph validation. Missing currencies,
+  fields or chosen sources, duplicate effects/deletions, malformed recovery and
+  nonfinite values fail. Native errors are retained without automatic save retries.
+- Home passes 404 tests/48 suites, including eight new client cases. Library and
+  source-based new-test types, touched lint, five webpack/gateway guards and direct
+  webpack with explicit Nx task identity pass. Full test-project types remain
+  failing on stale declaration references/setup and existing typing issues.
+- Real staging client load/fee validation passes. Live preview correctly rejects
+  an unbalanced candidate, then fails mandatory analytic validation for a source
+  without counterpart allocation. User-selected counterpart analytic support is
+  required next; plan #23 was not disabled. Positive live client preview/save/undo
+  is not accepted. Independent native reads retain #37, matching/ledger, protected
+  records and financial/stock/mail/statement counts after these rejected requests.
+- This is client-layer progress, not new matching UI, gateway exposure or hosted
+  release. Protected build/source/gates/expiry and production/public demo remain
+  unchanged. Bank operations, Billing and the full redesign remain incomplete.
+
 ## 10 October reviewed native bank save API checkpoint
 
 - Five scoped native load/fee/preview/save/status APIs bind reviews to author,
