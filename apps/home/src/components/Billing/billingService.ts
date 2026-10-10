@@ -233,6 +233,30 @@ export interface BankEntry {
   amount_residual: number;
   is_reconciled: boolean;
 }
+export interface BankCheckpoint {
+  id: number;
+  name: string | false;
+  reference: string | false;
+  date: string | false;
+  journal_id: Relation;
+  company_id: Relation;
+  currency_id: Relation;
+  balance_start: number;
+  balance_end: number;
+  balance_end_real: number;
+  is_complete: boolean;
+  is_valid: boolean;
+  problem_description: string | false;
+}
+export interface BankCheckpointDetail {
+  checkpoint_id: number;
+  checkpoint: BankCheckpoint;
+  version: string;
+  after: number | false;
+  next_after: number | false;
+  total_count: number;
+  rows: BankEntry[];
+}
 export interface BankLedgerRow {
   id: number;
   name: string | false;
@@ -342,6 +366,109 @@ const bankCall = <T>(action: string, kwargs: object) =>
       kwargs,
     },
   );
+function validBankCheckpoint(row: BankCheckpoint) {
+  return (
+    row &&
+    bankId(row.id) &&
+    bankText(row.name) &&
+    bankText(row.reference) &&
+    (row.date === false || bankDate(row.date)) &&
+    [row.journal_id, row.company_id, row.currency_id].every(validRelation) &&
+    [row.balance_start, row.balance_end, row.balance_end_real].every(
+      Number.isFinite,
+    ) &&
+    typeof row.is_complete === 'boolean' &&
+    typeof row.is_valid === 'boolean' &&
+    bankText(row.problem_description)
+  );
+}
+const checkpointCall = <T>(action: 'history' | 'detail', kwargs: object) =>
+  rpc<T>(
+    `/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_${action}`,
+    {
+      model: 'account.bank.statement',
+      method: `qorlia_checkpoint_${action}`,
+      args: [],
+      kwargs,
+    },
+  );
+export async function getBankCheckpointHistory(
+  search = '',
+  state = 'all',
+  journalType = 'all',
+  offset = 0,
+) {
+  checkedBankSearch(search, offset);
+  if (
+    !['all', 'invalid', 'empty'].includes(state) ||
+    !['all', 'bank', 'cash'].includes(journalType)
+  )
+    throw new Error('Select a valid checkpoint status and journal type.');
+  const data = await checkpointCall<{
+    rows: BankCheckpoint[];
+    offset: number;
+    has_more: boolean;
+  }>('history', { search, state, journal_type: journalType, offset });
+  if (
+    data?.offset !== offset ||
+    typeof data.has_more !== 'boolean' ||
+    !Array.isArray(data.rows) ||
+    data.rows.length > 25 ||
+    (data.has_more && data.rows.length !== 25) ||
+    !data.rows.every(validBankCheckpoint) ||
+    new Set(data.rows.map((row) => row.id)).size !== data.rows.length
+  )
+    throw new Error('Invalid statement checkpoint history.');
+  return data;
+}
+export async function getBankCheckpointDetail(
+  checkpointId: number,
+  after: number | false = false,
+  version: string | false = false,
+): Promise<BankCheckpointDetail> {
+  if (
+    !bankId(checkpointId) ||
+    !(after === false || bankId(after)) ||
+    !(version === false || bankHash(version)) ||
+    (after !== false && version === false)
+  )
+    throw new Error('Reload a saved statement checkpoint and all its entries.');
+  const data = await checkpointCall<BankCheckpointDetail>('detail', {
+    checkpoint_id: checkpointId,
+    after,
+    version,
+  });
+  if (
+    data?.checkpoint_id !== checkpointId ||
+    !validBankCheckpoint(data.checkpoint) ||
+    data.checkpoint.id !== checkpointId ||
+    data.after !== after ||
+    !bankHash(data.version) ||
+    (version !== false && data.version !== version) ||
+    !Number.isSafeInteger(data.total_count) ||
+    data.total_count < 0 ||
+    !(data.next_after === false || bankId(data.next_after)) ||
+    !Array.isArray(data.rows) ||
+    data.rows.length > 100 ||
+    data.rows.length > data.total_count ||
+    (data.rows.length === 0 && (after !== false || data.total_count !== 0)) ||
+    data.rows.some(
+      (row) =>
+        !validBankEntry(row) ||
+        row.statement_id === false ||
+        row.statement_id[0] !== checkpointId ||
+        row.id === after,
+    ) ||
+    new Set(data.rows.map((row) => row.id)).size !== data.rows.length ||
+    (data.next_after !== false &&
+      (data.rows.length !== 100 || data.next_after !== data.rows[99].id)) ||
+    (after === false &&
+      data.next_after === false &&
+      data.rows.length !== data.total_count)
+  )
+    throw new Error('Invalid statement checkpoint entries. Reload all pages.');
+  return data;
+}
 export async function getBankHistory(search = '', state = 'all', offset = 0) {
   checkedBankSearch(search, offset);
   if (!['all', 'unmatched', 'matched'].includes(state))

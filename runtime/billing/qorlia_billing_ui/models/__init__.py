@@ -24,3 +24,4 @@ from . import invoice_journal_money
 from . import bank_statement
 from . import bank_matching
 from . import bank_matching_api
+from . import bank_checkpoint

@@ -1,5 +1,46 @@
 # Qorlia React frontend backend readiness
 
+## Native statement checkpoint workspace (10 October 2026)
+
+The signed-in Bank statements workspace now includes native balance checkpoints,
+with paged history/search, bank/cash and attention/empty filters, separate
+completeness and continuity status, native explanations, all-entry pagination
+and links to the existing entry ledger/matching workflow. Balances are read from
+Odoo, not recomputed from the currently displayed page. Empty native statements
+retain absent journal/currency/date instead of inventing a currency or total.
+
+Two exact named read APIs enforce internal-account ACLs, company/related-record
+rules and access to every statement entry and its predecessor. Hidden records
+deny the read instead of yielding partial balances or false continuity. Snapshot
+versions include the predecessor's ending balance and currency rounding; changed
+or overlapping pages hide the old balance/entry display. Native non-stored
+continuity is invalidated before reading because its upstream field dependencies
+omit the preceding statement. No create/edit/import/attachment action is added.
+
+All 479 installed adapter tests pass with no failures/errors/skips on 16.0.1.31.0,
+including ten checkpoint tests. The first run found an empty-statement SQL
+integer/false mismatch; an explicit no-journal/index guard fixes it and the full
+rerun passes. The staging harness restored analytic plan #23 to mandatory and
+restarted Billing. All 442 Home tests/51 suites pass; initial selector failures
+were corrected to inspect the dialog rather than Carbon's empty alert or the
+background table heading. Library types, touched lint, seven gateway/webpack
+guards and development build 0bcfb8c6c6b732b2 pass. Existing development-bundle
+size/Browserslist/deprecation warnings remain.
+
+The actual TypeScript client over authenticated isolated staging HTTP matches
+independent native fixtures #77 (complete/valid, INR 50 + 100 - 20 = 130), #78
+(complete but discontinuous) and #79 (empty without journal/currency/date).
+Attention/empty filters and balanced linked entry ledgers pass. Reads preserve
+all eight protected financial documents and existing bank entry #37. Creating
+these clearly labelled synthetic fixtures used a separate staging backup and
+did not disable mandatory analytics. Verification itself saves no accounting.
+
+This source checkpoint is not yet hosted or browser accepted. It preserves nine
+unrelated clinical working-tree edits, does not alter production/public demo and
+does not establish full Banking/Billing or whole-product parity. Native checkpoint
+creation/edit/import/attachments, pivot/graph and wider configuration/concurrency
+remain unfinished. Hosted actual-client and browser acceptance are the next gates.
+
 ## Protected bank matching browser acceptance (10 October 2026)
 
 The protected tester gateway now permits the ten exact native bank read,

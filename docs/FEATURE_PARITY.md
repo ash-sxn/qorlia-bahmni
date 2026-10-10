@@ -1,5 +1,31 @@
 # Bahmni workflow parity ledger
 
+## 10 October native statement checkpoint workspace
+
+- Bank statements now includes native checkpoint history, search/paging,
+  bank/cash and attention/empty filters, separate completeness/continuity,
+  Odoo explanations, versioned entry pages and entry ledger/matching links.
+  All balances come from native fields. Empty statements retain missing
+  journal/currency/date instead of showing invented monetary values.
+- Two named read APIs check all entries and the predecessor under native ACLs
+  and active-company rules. Hidden related records fail closed. Versions include
+  predecessor changes and currency rounding; stale/overlapping pages hide data.
+  Native continuity cache is invalidated because upstream dependencies omit the
+  preceding statement. No checkpoint write/import or attachment UI is delivered.
+- Native 16.0.1.31.0 passes 479 tests with zero failures/errors/skips after fixing
+  an empty-checkpoint SQL false/integer mismatch. Analytics remain mandatory and
+  staging Billing is running. Home passes 442 tests/51 suites; library types,
+  touched lint, seven gateway/config guards and build 0bcfb8c6c6b732b2 pass.
+  Initial dialog-selector test failures were corrected, not counted as passes.
+- Actual-client authenticated staging HTTP matches independent native complete,
+  discontinuous and empty fixtures #77/#78/#79; filters and balanced entry ledgers
+  pass. Eight protected documents and bank #37 remain unchanged. Fixture creation
+  was backed up, synthetic-only and did not disable mandatory analytics.
+- Not yet hosted/browser accepted. Nine unrelated clinical edits remain
+  uncommitted; production/public demo are unchanged. Native checkpoint create,
+  edit/import/attachments, pivot/graph, broader configuration/concurrency and
+  remaining Banking/Billing/clinical/external parity still need completion.
+
 ## 10 October protected bank matching browser acceptance
 
 - Deployed `bank-match-20261010` to the existing protected tester container.

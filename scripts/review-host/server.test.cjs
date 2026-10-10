@@ -135,8 +135,14 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models', name), 'utf8')
       .matchAll(/^    def (qorlia_bank_\w+)\(/gm)].map(match => match[1]));
   assert.equal(bankMethods.length, 10, 'All current named native bank APIs must be covered.');
-  for (const method of bankMethods) {
-    const model = 'account.bank.statement.line';
+  const checkpointMethods = [...readFileSync(resolve(__dirname,
+    '../../runtime/billing/qorlia_billing_ui/models/bank_checkpoint.py'), 'utf8')
+    .matchAll(/^    def (qorlia_checkpoint_\w+)\(/gm)].map(match => match[1]);
+  assert.equal(checkpointMethods.length, 2, 'Both native checkpoint read APIs must be covered.');
+  for (const [model, method] of [
+    ...bankMethods.map(method => ['account.bank.statement.line', method]),
+    ...checkpointMethods.map(method => ['account.bank.statement', method]),
+  ]) {
     const path = `/web/dataset/call_kw/${model}/${method}`;
     const params = {model, method, args: [], kwargs: {}};
     assert.equal((await rpc(path, cookie, params)).status, 401);
@@ -158,6 +164,9 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     'qorlia_bank_match_unknown', 'qorlia_bank_match_fees', '_qorlia_bank_match_apply', '_qorlia_bank_match_undo'])
     assert.equal((await rpc(`/web/dataset/call_kw/account.bank.statement.line/${method}`, allCookies,
       {model: 'account.bank.statement.line', method})).status, 404);
+  for (const method of ['create', 'write', 'unlink', 'default_get', '_qorlia_checkpoint_previous', 'qorlia_checkpoint_save'])
+    assert.equal((await rpc(`/web/dataset/call_kw/account.bank.statement/${method}`, allCookies,
+      {model: 'account.bank.statement', method})).status, 404);
   assert.equal((await request('/openmrs/qorlia-billing-api/report/pdf/account.report_invoice/7',
     { headers: { Cookie: allCookies } })).status, 404);
   for (const model of ['account.payment', 'account.payment.register', 'account.move.reversal', 'sale.advance.payment.inv'])

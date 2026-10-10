@@ -12,8 +12,16 @@ import {
   getBankCandidates,
   getBankDetail,
   getBankHistory,
+  getBankCheckpointHistory,
+  getBankCheckpointDetail,
 } from '../billingService';
-import { bankCandidates, bankDetail, bankEntry } from './bankFixture';
+import {
+  bankCandidates,
+  bankDetail,
+  bankEntry,
+  bankCheckpoint,
+  checkpointDetail,
+} from './bankFixture';
 
 jest.mock('../BankMatchingModal', () => ({
   BankMatchingModal: ({
@@ -41,6 +49,8 @@ jest.mock('../billingService', () => ({
   getBankCandidates: jest.fn(),
   getBankDetail: jest.fn(),
   getBankHistory: jest.fn(),
+  getBankCheckpointHistory: jest.fn(),
+  getBankCheckpointDetail: jest.fn(),
 }));
 const reconnect = jest.fn();
 const show = (uid = 3) =>
@@ -69,6 +79,37 @@ describe('Bank statement native read workspace', () => {
     });
     (getBankDetail as jest.Mock).mockResolvedValue(bankDetail());
     (getBankCandidates as jest.Mock).mockResolvedValue(bankCandidates());
+    (getBankCheckpointHistory as jest.Mock).mockResolvedValue({
+      rows: [bankCheckpoint()],
+      offset: 0,
+      has_more: false,
+    });
+    (getBankCheckpointDetail as jest.Mock).mockResolvedValue(
+      checkpointDetail(),
+    );
+  });
+  it('opens checkpoints on demand and returns a checkpoint entry to its native ledger', async () => {
+    show();
+    await screen.findByRole('button', { name: 'View statement entry 7' });
+    expect(getBankCheckpointHistory).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'View statement checkpoints' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View checkpoint 9' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View entry ledger 7' }),
+    );
+    await screen.findByRole('dialog', {
+      name: 'Statement ledger and possible matches',
+    });
+    await waitFor(() =>
+      expect(getBankDetail).toHaveBeenCalledWith(7, false, false),
+    );
+    expect(
+      screen.queryByRole('dialog', { name: 'Statement checkpoint details' }),
+    ).not.toBeInTheDocument();
   });
   it('opens native detail only on request and renders separate company and transaction residuals', async () => {
     show();

@@ -1,4 +1,35 @@
-import { BankCandidates, BankDetail, BankEntry } from '../billingService';
+import {
+  BankCandidates,
+  BankCheckpoint,
+  BankCheckpointDetail,
+  BankDetail,
+  BankEntry,
+} from '../billingService';
+
+export const bankCheckpoint = (): BankCheckpoint => ({
+  id: 9,
+  name: 'QorliaQA October checkpoint',
+  reference: 'QorliaQA import reference',
+  date: '2026-10-10',
+  journal_id: [4, 'Bank INR'],
+  company_id: [3, 'QorliaQA Isolated Billing'],
+  currency_id: [1, 'INR'],
+  balance_start: 50,
+  balance_end: 150,
+  balance_end_real: 150,
+  is_complete: true,
+  is_valid: false,
+  problem_description: 'Previous ending balance does not match.',
+});
+export const checkpointDetail = (): BankCheckpointDetail => ({
+  checkpoint_id: 9,
+  checkpoint: bankCheckpoint(),
+  version: 'a'.repeat(64),
+  after: false,
+  next_after: false,
+  total_count: 1,
+  rows: [{ ...bankEntry(), statement_id: [9, 'QorliaQA October checkpoint'] }],
+});
 
 export const bankEntry = (): BankEntry => ({
   id: 7,

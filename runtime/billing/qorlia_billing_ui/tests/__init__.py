@@ -25,3 +25,4 @@ from . import test_bank_statements
 from . import test_native_bank_matching_contract
 from . import test_bank_matching
 from . import test_bank_matching_api
+from . import test_bank_checkpoints

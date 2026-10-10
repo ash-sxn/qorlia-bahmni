@@ -1,6 +1,7 @@
 import { Button, Modal, TextInput } from '@bahmni/design-system';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { BankCheckpointsPanel } from './BankCheckpointsPanel';
 import { BankMatchingModal } from './BankMatchingModal';
 import { money } from './billingFormat';
 import styles from './BillingPage.module.scss';
@@ -24,16 +25,44 @@ export function BankStatementsPanel({
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [matching, setMatching] = useState(false);
+  const [checkpoints, setCheckpoints] = useState(false);
   const history = useQuery({
     queryKey: ['billing', 'bank-history', uid, submitted, state, offset],
     queryFn: () => getBankHistory(submitted, state, offset),
     retry: false,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
+    enabled: !checkpoints,
   });
+  if (checkpoints)
+    return (
+      <>
+        <Button kind="tertiary" onClick={() => setCheckpoints(false)}>
+          Back to statement entries
+        </Button>
+        <BankCheckpointsPanel
+          uid={uid}
+          reconnect={reconnect}
+          openEntry={(entryId) => {
+            setMatching(false);
+            setSelected(entryId);
+            setCheckpoints(false);
+          }}
+        />
+      </>
+    );
   return (
     <section className={styles.card} aria-label="Bank and cash statements">
       <h2>Bank and cash statements</h2>
+      <Button
+        kind="tertiary"
+        onClick={() => {
+          setSelected(null);
+          setCheckpoints(true);
+        }}
+      >
+        View statement checkpoints
+      </Button>
       <p>
         Review recorded statement entries and their native ledgers. A customer
         payment is separate from a bank-statement match. Reading this workspace

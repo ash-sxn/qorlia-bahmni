@@ -3,7 +3,20 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Current checkpoint: protected tester artifact `bank-match-20261010` permits all
+Current source checkpoint: statement history now includes native balance
+checkpoints, separate completeness/continuity, filters, versioned entry pages and
+ledger/matching links. Two named read APIs enforce native company/ACL/entry and
+predecessor access, rejecting hidden or stale data rather than showing partial
+balances. Empty statements preserve absent journal/currency/date. No checkpoint
+create/edit/import/attachment capability is added. All 479 native tests pass on
+16.0.1.31.0 after fixing an empty-statement SQL false/integer mismatch; analytics
+remain mandatory and staging Billing is running. Home passes 442 tests/51 suites,
+library types, touched lint, seven gateway/config guards and development build
+0bcfb8c6c6b732b2. Hosted actual-client/browser acceptance is still pending for this
+source checkpoint. Production/public demo are unchanged and full parity remains
+unfinished. See the latest backend-readiness and parity entries for exact scope.
+
+Earlier checkpoint: protected tester artifact `bank-match-20261010` permits all
 ten named bank methods behind unchanged review, clinical and Billing session
 gates. Seven gateway/webpack tests and development build 4ae24d09823d971e pass.
 Hosted files, source/licenses and working-tree manifest hashes match, including
