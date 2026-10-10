@@ -1,5 +1,28 @@
 # Bahmni workflow parity ledger
 
+## 10 October reviewed monetary journal API checkpoint
+
+- Five named APIs now support complete journal load, scoped choices, native
+  monetary review, atomic save and exact-request status/retry in isolated Billing.
+  Field/row validation, native accounting guards, source/configuration locking
+  and author-bound receipts apply. The receipt shares the financial native write
+  to avoid a second write resynchronising product prices and changing the ledger.
+- All 339 installed native tests pass without failures/errors/skips, including
+  13 API cases for company/foreign currency, posted invoice/credit, installments,
+  draft tax/new-row defaults, deletion/retry, changed configuration, permissions,
+  malformed requests, native locks and atomic unexpected-outcome/response failure.
+  Home passes 359 tests/44 suites; eight new client-contract tests, types,
+  touched-file lint, seven gateway/build-config tests and direct webpack pass.
+  Installed source hashes match. Existing upstream/build warnings remain.
+- Independent native reads/exact Cut-Off recovery confirm unchanged protected
+  records, original two entries and receipt, balances, matching and financial/
+  stock/mail counts. Billing is running and analytics is restored to mandatory.
+- This API/client-contract checkpoint does not deliver a React monetary editor,
+  browser acceptance or hosted publication. Those and further native permission/
+  configuration/concurrency cases remain, along with wider Billing and clinical/
+  separate-product parity. The hosted artifact/source/access gates/expiry,
+  production and public demo are unchanged. Older checkpoints are historical.
+
 ## 10 October native-faithful journal simulation checkpoint
 
 - Added a private native-write simulation that always rolls back temporary

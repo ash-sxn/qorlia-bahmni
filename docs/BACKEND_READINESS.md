@@ -1,5 +1,32 @@
 # Qorlia React frontend backend readiness
 
+## Reviewed monetary journal API checkpoint (10 October 2026)
+
+Five named native APIs now load, search, review, save and recover journal money
+changes in isolated Billing. Strict field/row scopes, native ACLs/rules, source
+and configuration locks and author-bound exact-request receipts remain enforced.
+Review uses actual native writes inside rollback, not browser accounting or
+misleading onchange totals. Ledger changes and their receipt use one native write:
+tests caught that a second metadata write could recalculate and change the amount.
+Unreviewed native outcomes and response-read failures roll back the entire save.
+
+All 339 installed native tests pass with zero failures/errors/skips, including
+13 new API tests. Home passes 359 tests in 44 suites, including eight client
+contract tests. Type checking, touched-file lint, seven gateway/build-config
+tests and direct development webpack build pass. Installed model, tests, init and
+manifest hashes match. Existing upstream/report, Browserslist, development bundle
+and normal Nx task-graph limitations remain. Independent native reads and exact
+Cut-Off retry retain the protected records, original entries/receipt, balances,
+matching and financial/stock/mail counts; staging is running again.
+
+The client contract and source gateway allowlist are implemented, but a monetary
+React editor, real browser save/read-back and protected-build publication are not
+delivered by this checkpoint. The existing hosted artifact/gates/expiry and its
+source archive are unchanged and predate this work. More permission/company,
+analytic, currency/tax/onchange and concurrency acceptance remains, followed by
+wider Billing and clinical/external-module parity. Production and the public
+demo are unchanged. Earlier checkpoints below are historical.
+
 ## Native-faithful journal simulation checkpoint (10 October 2026)
 
 A private native calculation helper now reproduces saved monetary rows and

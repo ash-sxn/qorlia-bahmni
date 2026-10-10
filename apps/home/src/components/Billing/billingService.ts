@@ -818,6 +818,415 @@ function journalDetailsRpc<T>(action: string, kwargs: object) {
     kwargs,
   });
 }
+
+export type JournalMoneyValues = Partial<
+  JournalDetailValues & {
+    partner_id: number | false;
+    currency_id: number;
+    amount_currency: number;
+    debit: number;
+    credit: number;
+    tax_ids: number[];
+  }
+>;
+export type JournalMoneyChange =
+  | { id: number | false; values: JournalMoneyValues }
+  | { id: number; delete: true };
+export type JournalMoneyPayload = {
+  invoice_id: number;
+  version: string;
+  changes: JournalMoneyChange[];
+};
+export type JournalMoneyRequest = {
+  payload: JournalMoneyPayload;
+  review_version: string;
+  request_key: string;
+};
+export interface JournalMoneyResult {
+  invoice_id: number;
+  totals: {
+    state: 'draft' | 'posted' | 'cancel';
+    payment_state: string;
+    amount_untaxed: number;
+    amount_tax: number;
+    amount_total: number;
+    invoice_total: number;
+    amount_residual: number;
+  };
+  rows: {
+    id: number | false;
+    values: Omit<
+      JournalDetailValues,
+      'account_id' | 'analytic_distribution'
+    > & {
+      account_id: number | false;
+      analytic_distribution?: Record<string, number> | false;
+      partner_id: number | false;
+      currency_id: number | false;
+      amount_currency: number;
+      debit: number;
+      credit: number;
+      balance: number;
+      tax_ids: number[];
+      product_id: number | false;
+      product_uom_id: number | false;
+      quantity: number;
+      price_unit: number;
+      price_subtotal: number;
+      price_total: number;
+      discount: number;
+      sequence: number;
+      display_type: string | false;
+      qorlia_adjustment_kind: false | 'discount' | 'rounding';
+      amount_residual: number;
+      amount_residual_currency: number;
+      reconciled: boolean;
+      matched_debit_ids: number[];
+      matched_credit_ids: number[];
+      full_reconcile_id: number | false;
+    };
+  }[];
+}
+export interface JournalMoneyView extends JournalMoneyResult {
+  name: string | false;
+  move_type: 'out_invoice' | 'out_refund';
+  version: string;
+  labels: Record<string, string>;
+  company_currency: [number, string];
+  transaction_currency: [number, string];
+  can_edit: boolean;
+  can_add: boolean;
+  can_delete: boolean;
+  editable_fields: (keyof JournalMoneyValues)[];
+  request_key?: string;
+}
+export type JournalMoneyReview = JournalMoneyResult & {
+  review_version: string;
+};
+export type JournalMoneyChoice =
+  | 'account'
+  | 'partner'
+  | 'currency'
+  | 'tax'
+  | 'grid'
+  | 'analytic';
+const journalMoneyFields = [
+  'name',
+  'account_id',
+  'date_maturity',
+  'tax_tag_ids',
+  'analytic_distribution',
+  'discount_date',
+  'discount_amount_currency',
+  'partner_id',
+  'currency_id',
+  'amount_currency',
+  'debit',
+  'credit',
+  'tax_ids',
+];
+const uniqueJournalIds = (value: unknown): value is number[] =>
+  Array.isArray(value) &&
+  value.every(journalId) &&
+  new Set(value).size === value.length;
+
+function checkedJournalMoneyPayload(payload: JournalMoneyPayload) {
+  if (
+    !payload ||
+    Object.keys(payload).length !== 3 ||
+    !journalId(payload.invoice_id) ||
+    !journalHash(payload.version) ||
+    !Array.isArray(payload.changes) ||
+    payload.changes.length < 1 ||
+    payload.changes.length > 1000
+  )
+    throw new Error('Reload the complete journal change request.');
+  const ids = new Set<number>();
+  for (const change of payload.changes) {
+    if (
+      !change ||
+      Object.keys(change).length !== 2 ||
+      !(change.id === false || journalId(change.id)) ||
+      (change.id && ids.has(change.id))
+    )
+      throw new Error('Use distinct saved journal items or new rows.');
+    if (change.id) ids.add(change.id);
+    if ('delete' in change) {
+      if (!change.id || change.delete !== true)
+        throw new Error('Select a saved journal item to remove.');
+      continue;
+    }
+    const values = change.values;
+    if (
+      !values ||
+      typeof values !== 'object' ||
+      Array.isArray(values) ||
+      !Object.keys(values).length ||
+      !Object.keys(values).every((key) => journalMoneyFields.includes(key))
+    )
+      throw new Error('Change only supported journal fields.');
+    const details = {
+      name: false,
+      account_id: 1,
+      date_maturity: false,
+      tax_tag_ids: [],
+      analytic_distribution: false,
+      discount_date: false,
+      discount_amount_currency: 0,
+      ...values,
+    };
+    checkedJournalValues(
+      Object.fromEntries(
+        Object.entries(details).filter(
+          ([key]) =>
+            ![
+              'partner_id',
+              'currency_id',
+              'amount_currency',
+              'debit',
+              'credit',
+              'tax_ids',
+            ].includes(key),
+        ),
+      ) as JournalDetailValues,
+    );
+    if (
+      ('partner_id' in values &&
+        !(values.partner_id === false || journalId(values.partner_id))) ||
+      ('currency_id' in values && !journalId(values.currency_id)) ||
+      ('tax_ids' in values &&
+        (!uniqueJournalIds(values.tax_ids) || values.tax_ids.length > 100)) ||
+      ['amount_currency', 'debit', 'credit'].some(
+        (key) =>
+          key in values &&
+          !Number.isFinite(values[key as keyof JournalMoneyValues]),
+      ) ||
+      (values.debit !== undefined && values.debit < 0) ||
+      (values.credit !== undefined && values.credit < 0) ||
+      (change.id === false && (!values.account_id || !values.name))
+    )
+      throw new Error('Check the journal account, currencies and amounts.');
+  }
+  return payload;
+}
+export function checkedJournalMoneyRequest(request: JournalMoneyRequest) {
+  if (
+    !request ||
+    Object.keys(request).length !== 3 ||
+    !journalHash(request.review_version) ||
+    typeof request.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      request.request_key,
+    )
+  )
+    throw new Error('Invalid reviewed journal save request.');
+  checkedJournalMoneyPayload(request.payload);
+  return request;
+}
+function checkedJournalMoneyResult<T extends JournalMoneyResult>(
+  result: T,
+  invoiceId: number,
+  review = false,
+): T {
+  const totals = result?.totals;
+  if (
+    result?.invoice_id !== invoiceId ||
+    !totals ||
+    !['draft', 'posted', 'cancel'].includes(totals.state) ||
+    typeof totals.payment_state !== 'string' ||
+    ![
+      totals.amount_untaxed,
+      totals.amount_tax,
+      totals.amount_total,
+      totals.invoice_total,
+      totals.amount_residual,
+    ].every(Number.isFinite) ||
+    !Array.isArray(result.rows) ||
+    result.rows.length > 1000
+  )
+    throw new Error('Invalid native journal calculation. Reload the invoice.');
+  const ids = new Set<number>();
+  for (const row of result.rows) {
+    const values = row?.values;
+    if (
+      !row ||
+      !((review && row.id === false) || journalId(row.id)) ||
+      (row.id && ids.has(row.id)) ||
+      !values ||
+      ![
+        values.amount_currency,
+        values.debit,
+        values.credit,
+        values.balance,
+        values.quantity,
+        values.price_unit,
+        values.price_subtotal,
+        values.price_total,
+        values.discount,
+        values.sequence,
+        values.amount_residual,
+        values.amount_residual_currency,
+        values.discount_amount_currency,
+      ].every(Number.isFinite) ||
+      values.debit < 0 ||
+      values.credit < 0 ||
+      ![
+        'account_id',
+        'partner_id',
+        'currency_id',
+        'product_id',
+        'product_uom_id',
+        'full_reconcile_id',
+      ].every(
+        (key) =>
+          values[key as keyof typeof values] === false ||
+          journalId(values[key as keyof typeof values]),
+      ) ||
+      ![
+        values.tax_ids,
+        values.tax_tag_ids,
+        values.matched_debit_ids,
+        values.matched_credit_ids,
+      ].every(uniqueJournalIds) ||
+      !(
+        values.display_type === false || typeof values.display_type === 'string'
+      ) ||
+      ![false, 'discount', 'rounding'].includes(
+        values.qorlia_adjustment_kind,
+      ) ||
+      typeof values.reconciled !== 'boolean'
+    )
+      throw new Error('Invalid native journal rows. Nothing was accepted.');
+    if (row.id) ids.add(row.id);
+    checkedJournalValues({
+      name: values.name,
+      account_id: values.account_id || 1,
+      date_maturity: values.date_maturity,
+      tax_tag_ids: values.tax_tag_ids,
+      analytic_distribution: values.analytic_distribution ?? false,
+      discount_date: values.discount_date,
+      discount_amount_currency: values.discount_amount_currency,
+    });
+  }
+  return result;
+}
+function checkedJournalMoneyView(
+  result: JournalMoneyView,
+  invoiceId: number,
+  requestKey?: string,
+) {
+  checkedJournalMoneyResult(result, invoiceId);
+  if (
+    !journalHash(result.version) ||
+    !(result.name === false || typeof result.name === 'string') ||
+    !['out_invoice', 'out_refund'].includes(result.move_type) ||
+    ![result.company_currency, result.transaction_currency].every(
+      (value) => Array.isArray(value) && validRelation(value),
+    ) ||
+    ![result.can_edit, result.can_add, result.can_delete].every(
+      (value) => typeof value === 'boolean',
+    ) ||
+    !Array.isArray(result.editable_fields) ||
+    !result.editable_fields.every((key) => journalMoneyFields.includes(key)) ||
+    new Set(result.editable_fields).size !== result.editable_fields.length ||
+    (!result.can_edit &&
+      (result.editable_fields.length || result.can_add || result.can_delete)) ||
+    (result.can_delete && result.totals.state !== 'draft') ||
+    (result.can_edit && result.totals.state === 'cancel') ||
+    !result.labels ||
+    typeof result.labels !== 'object' ||
+    Array.isArray(result.labels) ||
+    !Object.entries(result.labels).every(
+      ([key, name]) =>
+        /^[a-z_]+(\.[a-z_]+)*:[1-9]\d*$/.test(key) && typeof name === 'string',
+    ) ||
+    (requestKey !== undefined && result.request_key !== requestKey)
+  )
+    throw new Error(
+      'Invalid journal access or recovery response. Reload the invoice.',
+    );
+  return result;
+}
+function journalMoneyRpc<T>(action: string, kwargs: object) {
+  const method = `qorlia_journal_money_${action}`;
+  return rpc<T>(`/web/dataset/call_kw/account.move/${method}`, {
+    model: 'account.move',
+    method,
+    args: [],
+    kwargs,
+  });
+}
+export async function getJournalMoney(invoiceId: number) {
+  if (!journalId(invoiceId)) throw new Error('Select a saved invoice.');
+  return checkedJournalMoneyView(
+    await journalMoneyRpc<JournalMoneyView>('load', { invoice_id: invoiceId }),
+    invoiceId,
+  );
+}
+export async function previewJournalMoney(payload: JournalMoneyPayload) {
+  checkedJournalMoneyPayload(payload);
+  const result = checkedJournalMoneyResult(
+    await journalMoneyRpc<JournalMoneyReview>('preview', { payload }),
+    payload.invoice_id,
+    true,
+  );
+  if (!journalHash(result.review_version))
+    throw new Error('The journal review token is unavailable.');
+  return result;
+}
+export async function saveJournalMoney(request: JournalMoneyRequest) {
+  checkedJournalMoneyRequest(request);
+  return checkedJournalMoneyView(
+    await journalMoneyRpc<JournalMoneyView>('save', request),
+    request.payload.invoice_id,
+    request.request_key,
+  );
+}
+export async function getJournalMoneyStatus(request: JournalMoneyRequest) {
+  checkedJournalMoneyRequest(request);
+  const result = await journalMoneyRpc<JournalMoneyView | false>(
+    'status',
+    request,
+  );
+  return result === false
+    ? false
+    : checkedJournalMoneyView(
+        result,
+        request.payload.invoice_id,
+        request.request_key,
+      );
+}
+export async function getJournalMoneyChoices(
+  invoiceId: number,
+  kind: JournalMoneyChoice,
+  search = '',
+  lineId: number | false = false,
+) {
+  if (
+    !journalId(invoiceId) ||
+    !(lineId === false || journalId(lineId)) ||
+    !['account', 'partner', 'currency', 'tax', 'grid', 'analytic'].includes(
+      kind,
+    ) ||
+    typeof search !== 'string' ||
+    search.length > 200
+  )
+    throw new Error('Use a valid journal search.');
+  const result = await journalMoneyRpc<[number, string][]>('choices', {
+    invoice_id: invoiceId,
+    kind,
+    search,
+    line_id: lineId,
+  });
+  if (
+    !Array.isArray(result) ||
+    result.length > 26 ||
+    !result.every((value) => Array.isArray(value) && validRelation(value)) ||
+    new Set(result.map(([id]) => id)).size !== result.length
+  )
+    throw new Error('Invalid native journal choices.');
+  return result;
+}
 export async function getJournalDetails(invoiceId: number, lineId: number) {
   if (!journalId(invoiceId) || !journalId(lineId))
     throw new Error('Select a saved invoice journal item.');

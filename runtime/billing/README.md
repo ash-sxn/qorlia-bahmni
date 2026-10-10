@@ -3,12 +3,15 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest backend checkpoint: 326 installed native tests and seven gateway/build-
-config tests pass. A private always-rolled-back native monetary simulation now
-matches native saved ledger rows/totals; it is not yet a public monetary API or
-React editor. Temporary SQL writes can consume surrogate IDs. New native addons
-need a fresh synchronous-hook review. The last frontend checkpoint remains 351
-Home tests in 43 suites; frontend suites/build were not rerun for this backend step.
+Latest checkpoint: 339 installed native tests, 359 Home tests in 44 suites and
+seven gateway/build-config tests pass, along with types, touched-file lint and
+direct development webpack. Five reviewed monetary journal APIs and their client
+contract are implemented. Financial rows and the exact-request receipt share one
+native write; unexpected outcomes roll back. A React monetary editor and real
+browser/hosted acceptance remain unfinished. The native calculation simulation
+temporarily writes and rolls back SQL; surrogate IDs can advance. New native
+addons need a fresh synchronous-hook review. The hosted artifact below is unchanged
+and predates these APIs/client changes; existing upstream/build warnings remain.
 Reviewed Cut-Off load/onchange/preview/save/status and exact-retry recovery are
 integrated. Local browser save/read-back proves two balanced INR 125 entries,
 unchanged source matching and one native match between the new accrual rows.
