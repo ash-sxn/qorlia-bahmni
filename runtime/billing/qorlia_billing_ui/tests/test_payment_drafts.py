@@ -165,14 +165,125 @@ class PaymentDraftTest(TransactionCase):
         with self.assertRaises(AccessError):
             model.qorlia_customer_payment_draft_preview({'id': payment.id, 'version': loaded['version'], 'values': loaded['values']})
 
-    def test_mixed_currency_auto_allocation_is_not_silently_added(self):
-        currency = self.env['res.currency'].search([('id', '!=', self.env.company.currency_id.id)], limit=1)
-        self.assertTrue(currency)
+    def foreign_currency(self, xmlid='base.USD', rate=0.5):
+        currency = self.env.ref(xmlid)
+        self.assertNotEqual(currency, self.env.company.currency_id)
         currency.active = True
+        self.env['res.currency.rate'].create({'currency_id': currency.id, 'company_id': self.env.company.id,
+            'name': fields.Date.today(), 'rate': rate})
+        return currency
+
+    def test_mixed_currency_preview_converts_before_allocating_and_keeps_document_currency(self):
+        currency = self.foreign_currency()
         invoice = self.invoice(currency_id=currency.id)
-        with self.assertRaisesRegex(UserError, 'Mixed-currency'):
-            self.preview()
-        self.assertEqual(invoice.amount_residual, 500)
+        credit = self.invoice(100, move_type='out_refund', currency_id=currency.id)
+        local = self.invoice(100)
+        preview = self.preview()
+        converted = currency._convert(500, self.env.company.currency_id, self.env.company, fields.Date.today())
+        converted_credit = currency._convert(100, self.env.company.currency_id, self.env.company, fields.Date.today())
+        self.assertEqual(preview['totals'], {'current_outstanding': converted - converted_credit + 100,
+            'balance_outstanding': converted - converted_credit})
+        first, second = preview['allocations']['outstanding']
+        self.assertEqual(first['invoice_id'], invoice.id)
+        self.assertEqual(first['document_currency'], [currency.id, currency.name])
+        self.assertEqual((first['open_amount'], first['invoice_amount']), (500, converted))
+        self.assertEqual(first['allocated_amount'], converted_credit + 100)
+        self.assertEqual(second['invoice_id'], local.id)
+        self.assertEqual((second['allocated_amount'], second['selected']), (0, False))
+        self.assertEqual(preview['allocations']['credits'][0]['invoice_amount'], converted_credit)
+        self.assertEqual((invoice.amount_residual, credit.amount_residual, local.amount_residual), (500, 100, 100))
+
+    def test_mixed_currency_save_confirm_reset_use_native_reconciliation_without_duplicates(self):
+        currency = self.foreign_currency()
+        invoice = self.invoice(currency_id=currency.id)
+        credit = self.invoice(100, move_type='out_refund', currency_id=currency.id)
+        request = self.request()
+        result = self.payments.qorlia_customer_payment_draft_save(**request)
+        payment = self.payments.browse(result['payment']['payment_id'])
+        self.assertEqual(self.payments.qorlia_customer_payment_draft_load(payment.id)['allocations'],
+            self.payments.qorlia_customer_payment_draft_preview(request['payload'])['allocations'])
+        loaded = self.payments.qorlia_payment_state_load(payment.id)
+        self.assertFalse(loaded['reasons']['post'])
+        review = self.payments.qorlia_payment_state_preview(payment.id, loaded['version'], 'post')
+        action = {'payment_id': payment.id, 'version': loaded['version'], 'review_version': review['review_version'],
+            'request_key': str(uuid.uuid4()), 'action': 'post'}
+        self.payments.qorlia_payment_state_run(**action)
+        paid = self.env.company.currency_id._convert(100, currency, self.env.company, fields.Date.today())
+        self.assertAlmostEqual(invoice.amount_residual, 400 - paid)
+        self.assertEqual(credit.amount_residual, 0)
+        before = self.payments.search_count([])
+        self.assertEqual(self.payments.qorlia_payment_state_run(**action)['payment']['state'], 'posted')
+        self.assertEqual(self.payments.qorlia_customer_payment_draft_save(**request)['payment']['state'], 'posted')
+        self.assertEqual(self.payments.search_count([]), before)
+        self.assertFalse(payment.move_id._get_unbalanced_moves({'records': payment.move_id}))
+        loaded = self.payments.qorlia_payment_state_load(payment.id)
+        review = self.payments.qorlia_payment_state_preview(payment.id, loaded['version'], 'reset')
+        self.payments.qorlia_payment_state_run(payment.id, loaded['version'], review['review_version'], str(uuid.uuid4()), 'reset')
+        self.assertEqual((invoice.amount_residual, credit.amount_residual), (500, 100))
+
+    def test_foreign_payment_converts_local_and_third_currency_documents(self):
+        currency, third = self.foreign_currency(), self.foreign_currency('base.EUR', 0.25)
+        self.journal.currency_id = currency
+        self.method = self.journal.inbound_payment_method_line_ids.filtered(lambda row: row.code == 'manual')[:1]
+        local, foreign = self.invoice(), self.invoice(100, currency_id=third.id)
+        preview = self.preview(currency_id=currency.id)
+        expected = sum(document.currency_id._convert(document.amount_residual, currency, self.env.company,
+            fields.Date.today()) for document in local | foreign)
+        self.assertEqual(preview['totals']['current_outstanding'], expected)
+        self.assertEqual(preview['allocations']['outstanding'][0]['allocated_amount'], 100)
+        self.assertEqual(preview['allocations']['outstanding'][1]['document_currency'], [third.id, third.name])
+        result = self.payments.qorlia_customer_payment_draft_save(**self.request(self.payload(currency_id=currency.id)))
+        payment = self.payments.browse(result['payment']['payment_id'])
+        self.assertEqual(payment.currency_id, currency)
+        self.assertEqual(payment.amount, 100)
+        self.assertFalse(payment.move_id._get_unbalanced_moves({'records': payment.move_id}))
+
+    def test_document_currency_rate_change_invalidates_draft_save(self):
+        currency = self.foreign_currency()
+        self.invoice(currency_id=currency.id)
+        request = self.request()
+        rate = self.env['res.currency.rate'].search([('currency_id', '=', currency.id),
+            ('company_id', '=', self.env.company.id), ('name', '=', fields.Date.today())], limit=1)
+        rate.rate = 0.25
+        before = self.payments.search_count([])
+        with self.assertRaisesRegex(UserError, 'changed'):
+            self.payments.qorlia_customer_payment_draft_save(**request)
+        self.assertEqual(self.payments.search_count([]), before)
+
+    def test_rate_change_requires_draft_re_review_and_invalidates_confirm_request(self):
+        currency = self.foreign_currency()
+        self.invoice(currency_id=currency.id)
+        result = self.payments.qorlia_customer_payment_draft_save(**self.request())
+        payment = self.payments.browse(result['payment']['payment_id'])
+        loaded = self.payments.qorlia_payment_state_load(payment.id)
+        review = self.payments.qorlia_payment_state_preview(payment.id, loaded['version'], 'post')
+        rate = self.env['res.currency.rate'].search([('currency_id', '=', currency.id),
+            ('company_id', '=', self.env.company.id), ('name', '=', fields.Date.today())], limit=1)
+        rate.rate = 0.25
+        with self.assertRaises(UserError):
+            self.payments.qorlia_payment_state_run(payment.id, loaded['version'], review['review_version'], str(uuid.uuid4()), 'post')
+        self.assertEqual(payment.state, 'draft')
+        self.assertIn('Edit and review', self.payments.qorlia_payment_state_load(payment.id)['reasons']['post'])
+
+    def test_mixed_currency_customer_onchange_preserves_saved_allocation_rows(self):
+        currency = self.foreign_currency()
+        self.invoice(currency_id=currency.id)
+        result = self.payments.qorlia_customer_payment_draft_save(**self.request())
+        payment = self.payments.browse(result['payment']['payment_id'])
+        rows = payment.outstanding_invoice_lines
+        before = rows.read(['invoice_id', 'invoice_amt', 'allocated_amount', 'remaining_amt', 'selected'])
+        loaded = self.payments.qorlia_customer_payment_draft_load(payment.id)
+        self.payments.qorlia_customer_payment_draft_onchange({'id': payment.id, 'version': loaded['version'],
+            'values': {**loaded['values'], 'amount': 150}}, 'amount')
+        self.assertEqual(rows.read(['invoice_id', 'invoice_amt', 'allocated_amount', 'remaining_amt', 'selected']), before)
+
+    def test_mixed_currency_amount_limit_is_in_payment_currency(self):
+        currency = self.foreign_currency()
+        self.invoice(100, currency_id=currency.id)
+        converted = currency._convert(100, self.env.company.currency_id, self.env.company, fields.Date.today())
+        self.assertEqual(self.preview(amount=converted)['totals']['balance_outstanding'], 0)
+        with self.assertRaises(ValidationError):
+            self.preview(amount=converted + 1)
 
     def test_payment_company_outside_active_companies_is_denied(self):
         foreign = self.env['res.company'].create({'name': 'QorliaQA Inactive draft company'})

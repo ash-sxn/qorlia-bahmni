@@ -3464,6 +3464,7 @@ export interface CustomerPaymentAllocation {
   selected: boolean;
   state: string;
   open_amount: number;
+  document_currency: [number, string];
   document_version: string;
 }
 export interface CustomerPaymentDraft extends CustomerPaymentDraftPayload {
@@ -3651,6 +3652,11 @@ function checkedCustomerPaymentDraft(
               row.remaining_amount,
               row.open_amount,
             ].every(Number.isFinite) &&
+            Array.isArray(row.document_currency) &&
+            row.document_currency.length === 2 &&
+            paymentIdentifier(row.document_currency[0]) &&
+            typeof row.document_currency[1] === 'string' &&
+            row.document_currency[1].length > 0 &&
             typeof row.selected === 'boolean' &&
             ['draft', 'posted', 'cancel'].includes(row.state) &&
             paymentHash(row.document_version),

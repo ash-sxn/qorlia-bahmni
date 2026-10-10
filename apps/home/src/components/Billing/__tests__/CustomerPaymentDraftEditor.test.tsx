@@ -120,6 +120,36 @@ describe('Customer payment draft editor and exact save recovery', () => {
     });
   });
   afterEach(() => jest.restoreAllMocks());
+  it('shows original document currency separately from converted allocation amounts', async () => {
+    const fixture = customerPaymentDraftFixture();
+    (previewCustomerPaymentDraft as jest.Mock).mockResolvedValue({
+      ...fixture,
+      allocations: {
+        outstanding: [
+          {
+            ...fixture.allocations.outstanding[0],
+            open_amount: 500,
+            document_currency: [2, 'USD'],
+            invoice_amount: 1000,
+            allocated_amount: 100,
+            remaining_amount: 900,
+          },
+        ],
+        credits: [],
+      },
+    });
+    show();
+    await review();
+    expect(
+      screen.getAllByRole('columnheader', { name: 'Allocated amount (INR)' }),
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByRole('columnheader', { name: 'Remaining amount (INR)' }),
+    ).toHaveLength(2);
+    expect(screen.getByText('$500.00')).toBeInTheDocument();
+    expect(screen.getByText('₹900.00')).toBeInTheDocument();
+    expect(saveCustomerPaymentDraft).not.toHaveBeenCalled();
+  });
   it('requires native review, displays allocation and ledger, persists before explicit save', async () => {
     (saveCustomerPaymentDraft as jest.Mock).mockImplementation((request) => {
       expect(JSON.parse(sessionStorage.getItem(key)!)).toEqual(request);

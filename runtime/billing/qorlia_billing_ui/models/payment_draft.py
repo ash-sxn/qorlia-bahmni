@@ -48,12 +48,81 @@ class PaymentDraft(models.Model):
     def total_credit(self):
         if not self.env.context.get('qorlia_payment_company_scope'):
             return super().total_credit()
-        return sum(abs(move.amount_residual) for move in self._qorlia_payment_balance_documents(credit=True))
+        return sum(self._qorlia_payment_balance_amount(move) for move in self._qorlia_payment_balance_documents(credit=True))
 
     def total_outstanding(self):
         if not self.env.context.get('qorlia_payment_company_scope'):
             return super().total_outstanding()
-        return sum(move.amount_residual for move in self._qorlia_payment_balance_documents())
+        return sum(self._qorlia_payment_balance_amount(move) for move in self._qorlia_payment_balance_documents())
+
+    def _qorlia_payment_balance_amount(self, document):
+        self.ensure_one()
+        return document.currency_id._convert(abs(document.amount_residual), self.currency_id,
+                                            self.company_id, self.date or fields.Date.context_today(self))
+
+    def _qorlia_lock_payment_currencies(self, documents):
+        self.ensure_one()
+        currencies = documents.currency_id | self.currency_id | self.company_id.currency_id
+        self.env.cr.execute('SELECT id FROM res_currency WHERE id IN %s ORDER BY id FOR UPDATE', [tuple(currencies.ids)])
+        rates = self.env['res.currency.rate'].search([('currency_id', 'in', currencies.ids),
+            '|', ('company_id', '=', False), ('company_id', '=', self.company_id.id)])
+        if rates:
+            self.env.cr.execute('SELECT id FROM res_currency_rate WHERE id IN %s ORDER BY id FOR UPDATE', [tuple(rates.ids)])
+
+    @api.onchange('partner_id')
+    def partner_id_onchange(self):
+        if not self.env.context.get('qorlia_payment_company_scope') or not self.is_auto_reconciliation_applicable:
+            return super().partner_id_onchange()
+        outstanding = self._qorlia_payment_balance_documents()
+        credits = self._qorlia_payment_balance_documents(credit=True)
+        if all(document.currency_id == self.currency_id for document in outstanding | credits):
+            return super().partner_id_onchange()
+        self.current_outstanding = self.balance_outstanding = self.total_receivable()
+        result = {}
+        for field, documents, available in (
+                ('outstanding_invoice_lines', outstanding, self.total_credit()),
+                ('credit_invoice_lines', credits, self.total_outstanding())):
+            rows = []
+            for document in documents:
+                amount = self._qorlia_payment_balance_amount(document)
+                allocated = min(amount, max(available, 0))
+                available -= allocated
+                rows.append(Command.create({'invoice_id': document.id, 'partner_id': document.partner_id.id,
+                    'care_setting': document.order_id.care_setting, 'date': document.invoice_date_due,
+                    'invoice_amt': amount, 'allocated_amount': allocated, 'remaining_amt': amount - allocated,
+                    'selected': allocated > 0}))
+            # Unattached forms only; never unlink persisted allocations during preview.
+            result[field] = [Command.clear(), *rows]
+        return {'value': result}
+
+    def _qorlia_payment_currency_state(self):
+        self.ensure_one()
+        documents = self._qorlia_payment_balance_documents() | self._qorlia_payment_balance_documents(credit=True)
+        if not self.is_auto_reconciliation_applicable or all(move.currency_id == self.currency_id for move in documents):
+            return {}, False
+        currencies = documents.currency_id | self.currency_id | self.company_id.currency_id
+        configuration = {
+            'currencies': currencies.read(['write_date', 'rounding', 'active']),
+            'rates': self.env['res.currency.rate'].search([('currency_id', 'in', currencies.ids),
+                '|', ('company_id', '=', False), ('company_id', '=', self.company_id.id)]).read(['write_date', 'name', 'rate']),
+        }
+        if self.state != 'draft':
+            return configuration, False
+        values = self.env['sale.order']._qorlia_read_fields(self, PAYMENT_FIELDS)
+        virtual = self.new({**values, 'partner_type': 'customer', 'is_internal_transfer': False})
+        try:
+            virtual.update(virtual.partner_id_onchange().get('value', {}))
+            virtual.paid_amount_onchange()
+        except UserError as error:
+            return configuration, str(error)
+        columns = ('invoice_id', 'invoice_amt', 'allocated_amount', 'remaining_amt', 'selected')
+        for field in ('outstanding_invoice_lines', 'credit_invoice_lines'):
+            saved = self.env['sale.order']._qorlia_read_fields
+            actual = [saved(row, columns) for row in self[field]]
+            expected = [saved(row, columns) for row in virtual[field]]
+            if actual != expected:
+                return configuration, 'Currency rates or allocations changed. Edit and review this payment draft before confirming.'
+        return configuration, False
 
     def _qorlia_payment_draft_origin(self, payment_id):
         payment = self._qorlia_state_payment(payment_id)
@@ -82,14 +151,12 @@ class PaymentDraft(models.Model):
                 document.check_access_rule('read')
                 if document.company_id != payment.company_id or document.partner_id != payment.partner_id:
                     raise AccessError('Payment allocations must belong to the selected customer and company.')
-                # Native allocation amounts are not converted between currencies.
-                if document.currency_id != payment.currency_id:
-                    raise UserError('Mixed-currency automatic allocation needs native Billing review.')
                 allocations[kind].append({'invoice_id': document.id, 'name': document.name,
                     'date': fields.Date.to_string(row.date) or False, 'care_setting': row.care_setting or False,
                     'invoice_amount': row.invoice_amt, 'allocated_amount': row.allocated_amount,
                     'remaining_amount': row.remaining_amt, 'selected': row.selected,
                     'state': document.state, 'open_amount': document.amount_residual,
+                    'document_currency': [document.currency_id.id, document.currency_id.name],
                     'document_version': _digest(document.read(['write_date', 'state', 'name', 'ref',
                         'invoice_date_due', 'amount_total', 'amount_residual', 'partner_id', 'company_id', 'currency_id']))})
         totals = {'current_outstanding': payment.current_outstanding, 'balance_outstanding': payment.balance_outstanding}
@@ -229,14 +296,16 @@ class PaymentDraft(models.Model):
             records.check_access_rights('read')
             records.check_access_rule('read')
         result['account_labels'] = {str(account.id): account.display_name for account in accounts}
+        documents = payment.outstanding_invoice_lines.invoice_id | payment.credit_invoice_lines.invoice_id
+        currencies = payment.currency_id | payment.company_id.currency_id | documents.currency_id
         configuration = {'journal': payment.journal_id.read(['write_date', 'active', 'type', 'currency_id', 'default_account_id']),
             'method': payment.payment_method_line_id.read(['write_date', 'payment_account_id', 'payment_method_id']),
             'bank': payment.partner_bank_id.read(['write_date', 'acc_number', 'partner_id', 'company_id']),
             'accounts': accounts.read(['write_date', 'deprecated', 'reconcile', 'account_type', 'company_id']),
             'company': payment.company_id.read(['write_date', 'currency_id', 'period_lock_date', 'fiscalyear_lock_date',
                 'tax_lock_date', 'account_journal_payment_debit_account_id', 'account_journal_payment_credit_account_id']),
-            'currencies': (payment.currency_id | payment.company_id.currency_id).read(['write_date', 'rounding', 'active']),
-            'rates': self.env['res.currency.rate'].search([('currency_id', 'in', (payment.currency_id | payment.company_id.currency_id).ids),
+            'currencies': currencies.read(['write_date', 'rounding', 'active']),
+            'rates': self.env['res.currency.rate'].search([('currency_id', 'in', currencies.ids),
                 '|', ('company_id', '=', False), ('company_id', '=', payment.company_id.id)]).read(['write_date', 'name', 'rate']),
             'today': str(fields.Date.context_today(payment))}
         if origin:
@@ -328,6 +397,7 @@ class PaymentDraft(models.Model):
             return {'accepted': True, 'payment': self._qorlia_state_snapshot(origin)}
         payment, origin = self._qorlia_payment_draft_build(payload)
         documents = payment._qorlia_payment_balance_documents() | payment._qorlia_payment_balance_documents(credit=True)
+        payment._qorlia_lock_payment_currencies(documents)
         for table, ids in (('account_move', (documents | origin.move_id).ids),
                 ('account_move_line', (documents.line_ids | origin.move_id.line_ids).ids),
                 ('account_journal', payment.journal_id._origin.ids), ('res_company', payment.company_id._origin.ids)):

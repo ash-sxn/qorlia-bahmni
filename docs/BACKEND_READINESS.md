@@ -1,5 +1,48 @@
 # Qorlia React frontend backend readiness
 
+## Mixed-currency customer payment checkpoint (10 October 2026)
+
+The native adapter now converts invoice/credit residuals into payment currency
+using installed Odoo currency rates at the accounting date. Qorlia's server-owned
+company context and native record rules still bound the readable documents.
+Native readonly oldest-first allocation, payment numbering and reconciliation
+are retained; no browser FX calculation or financial sudo is introduced.
+
+Each allocation carries its original document currency. React shows original
+open balances separately from allocated/remaining payment-currency amounts.
+Actual currency/rate values bind exact draft-save and Confirm reviews. Sorted
+currency/rate locks and cache invalidation precede reviewed financial writes.
+A changed rate or allocation requires Edit Draft and a new native review.
+
+All 279 installed native tests pass without failures/errors/skips, covering
+non-unit rate conversion, local/foreign/third-currency documents, native
+Confirm/reset, accepted duplicate recovery, changed-rate rejection, preservation
+of saved allocation rows during onchange and limits in payment currency.
+The analytic setting was restored and staging is running with adapter hashes
+matching this worktree. All 331 Home tests in 41 suites, Home types, touched-file
+lint, seven gateway/webpack checks and the development build pass. Existing
+Browserslist, development bundle and upstream native metadata warnings remain.
+
+Actual local browser review/save/finish/history passed on synthetic #4083,
+INR 100 with USD 500 invoice #23052 and USD 100 credit #23053. Read-only native
+verification confirms one new draft payment, one payment move and two seeded
+document moves, balanced draft ledger, original residuals unchanged, protected
+payments/documents/ledger unchanged and reconciliation/stock/mail counts intact.
+Existing staging rates were used; native tests separately prove non-unit-rate
+conversion. No browser posting or bank transaction occurred.
+
+Protected artifact `payment-currency-20261010` is published with existing
+gates/expiry/backends unchanged. All 83 hosted chunks, source and LICENSE/NOTICE
+files match; the archive is secret-free. Actual hosted native load/onchange/preview,
+required clinical session and raw/arbitrary mutation/database denial checks pass.
+Hosted browser review shows USD document balances separately from INR allocation
+and remaining values, with balanced draft journal lines. Independent native
+readback after review confirms no further financial changes. Published source
+precedes this final release-evidence note. Wider payment terms,
+journal/writeoff variants, bank matching/providers, stock/POS, Clinical-to-ERP
+sync and clinical/external-module parity remain open. Production/shared demo
+unchanged. Earlier checkpoints below are historical, not current restrictions.
+
 ## Customer payment draft editor candidate (10 October 2026)
 
 The signed-in React payment history now connects New, Edit Draft and independent

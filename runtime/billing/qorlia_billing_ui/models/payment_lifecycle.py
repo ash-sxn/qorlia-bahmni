@@ -85,6 +85,8 @@ class PaymentLifecycle(models.Model):
         except AccessError as error:
             reset_reason = str(error)
         post_reason = common_reason
+        currency_configuration, currency_reason = payment._qorlia_payment_currency_state()
+        post_reason = post_reason or currency_reason
         if not post_reason:
             try:
                 for records, operation in ((moves, 'write'), (moves.line_ids, 'write'),
@@ -110,7 +112,8 @@ class PaymentLifecycle(models.Model):
                  'analytics': analytics.sorted('id').read(['write_date', 'amount', 'move_line_id']),
                  'journal': payment.journal_id.read(['write_date', 'restrict_mode_hash_table', 'check_manual_sequencing']),
                  'company': payment.company_id.read(['write_date', 'period_lock_date', 'fiscalyear_lock_date', 'tax_lock_date']),
-                 'auto_allocate': payment.is_auto_reconciliation_applicable, 'reasons': reasons, 'author': self.env.uid}
+                 'auto_allocate': payment.is_auto_reconciliation_applicable, 'reasons': reasons, 'author': self.env.uid,
+                 'currency_configuration': currency_configuration}
         return {'payment_id': payment.id, 'name': payment.name or '/', 'amount': payment.amount,
                 'date': fields.Date.to_string(payment.date), 'effective_date': fields.Date.to_string(payment.effective_date) or False,
                 'currency': [payment.currency_id.id, payment.currency_id.name], 'state': payment.state,
@@ -160,6 +163,9 @@ class PaymentLifecycle(models.Model):
             return self.qorlia_payment_state_status(payment_id, version, review_version, request_key, action)
         self.qorlia_payment_state_preview(payment_id, version, action)
         moves, _, _ = self._qorlia_void_graph(payment)
+        if action == 'post':
+            payment._qorlia_lock_payment_currencies(moves | payment._qorlia_payment_balance_documents()
+                                                   | payment._qorlia_payment_balance_documents(credit=True))
         partials = moves.line_ids.matched_debit_ids | moves.line_ids.matched_credit_ids
         for table, ids in (('account_move', moves.ids), ('account_move_line', moves.line_ids.ids),
                            ('account_partial_reconcile', partials.ids), ('account_full_reconcile', partials.full_reconcile_id.ids),

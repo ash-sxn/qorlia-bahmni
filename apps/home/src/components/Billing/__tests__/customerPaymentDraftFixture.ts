@@ -44,6 +44,7 @@ export const customerPaymentDraftFixture = (
         selected: true,
         state: 'posted',
         open_amount: 500,
+        document_currency: [1, 'INR'],
         document_version: 'c'.repeat(64),
       },
     ],

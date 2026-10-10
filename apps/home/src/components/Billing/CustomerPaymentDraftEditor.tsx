@@ -472,6 +472,11 @@ export function CustomerPaymentDraftEditor({
                     {money(reviewed.totals.balance_outstanding, currency)}
                   </p>
                   <p>
+                    Document balances retain their original currency. Allocation
+                    and remaining amounts use {currency}, converted by Billing
+                    at the accounting date.
+                  </p>
+                  <p>
                     {reviewed.auto_allocate
                       ? 'Native allocation is calculated oldest first. Saving the draft does not apply these allocations.'
                       : 'Automatic allocation is disabled for this native payment form.'}
@@ -495,8 +500,8 @@ export function CustomerPaymentDraftEditor({
                             <th>Document</th>
                             <th>Date</th>
                             <th>Open amount</th>
-                            <th>Allocated amount</th>
-                            <th>Remaining amount</th>
+                            <th>Allocated amount ({currency})</th>
+                            <th>Remaining amount ({currency})</th>
                             <th>Selected</th>
                           </tr>
                         </thead>
@@ -505,7 +510,12 @@ export function CustomerPaymentDraftEditor({
                             <tr key={row.invoice_id}>
                               <td>{row.name}</td>
                               <td>{row.date || 'Not set'}</td>
-                              <td>{money(row.open_amount, currency)}</td>
+                              <td>
+                                {money(
+                                  row.open_amount,
+                                  row.document_currency[1],
+                                )}
+                              </td>
                               <td>{money(row.allocated_amount, currency)}</td>
                               <td>{money(row.remaining_amount, currency)}</td>
                               <td>{row.selected ? 'Yes' : 'No'}</td>

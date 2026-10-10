@@ -173,6 +173,37 @@ describe('Native customer payment draft API', () => {
       'payment changed',
     );
   });
+  it('retains original document currencies and rejects missing or invalid units', async () => {
+    const fixture = customerPaymentDraftFixture();
+    const row = {
+      ...fixture.allocations.outstanding[0],
+      document_currency: [2, 'USD'],
+      invoice_amount: 1000,
+    };
+    reply({ ...fixture, allocations: { outstanding: [row], credits: [] } });
+    expect(
+      (await previewCustomerPaymentDraft(customerPaymentDraftRequest().payload))
+        .allocations.outstanding[0].document_currency,
+    ).toEqual([2, 'USD']);
+    for (const document_currency of [
+      undefined,
+      false,
+      [0, 'USD'],
+      [2, ''],
+      [2, 'USD', 'extra'],
+    ]) {
+      reply({
+        ...fixture,
+        allocations: {
+          outstanding: [{ ...row, document_currency }],
+          credits: [],
+        },
+      });
+      await expect(
+        previewCustomerPaymentDraft(customerPaymentDraftRequest().payload),
+      ).rejects.toThrow();
+    }
+  });
   it('loads native dependent choices without raw model access', async () => {
     reply([[3, 'Manual']]);
     const values = customerPaymentDraftRequest().payload.values;

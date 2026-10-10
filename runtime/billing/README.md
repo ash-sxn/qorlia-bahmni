@@ -3,7 +3,7 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest checkpoint: 273 installed native adapter tests and 329 Home
+Latest checkpoint: 279 installed native adapter tests and 331 Home
 tests pass. Native cheque numbering/PDF/recovery is implemented below, but the
 actual staging company has no bank-compatible cheque layout. The prior protected
 browser save/reload and independent native readback confirm
@@ -18,6 +18,24 @@ for dated evidence and remaining gates. Older counts below describe earlier
 checkpoints, not current total coverage or a product completion percentage.
 
 ## Customer payment history and state controls
+
+Mixed-currency customer drafts now use installed Odoo conversion at the native
+accounting date. Original document balances retain their currency; readonly
+allocated/remaining amounts use payment currency. Native oldest-first allocation
+and reconciliation remain. Rate/configuration-bound reviews and sorted locks
+reject changed rates before Save or Confirm. No frontend FX or financial sudo.
+Native non-unit-rate, third-currency, Confirm/reset, duplicate recovery and amount
+limit tests pass. Local browser saved synthetic INR 100 draft #4083 against
+USD 500 invoice/USD 100 credit. Readback verifies balanced ledger, exactly one
+payment and unchanged document/protected balances and reconciliation/stock/mail
+counts. Existing staging rates were used. Protected artifact
+`payment-currency-20261010` is published with unchanged gates/expiry/backends.
+All 83 chunks, source/licenses, secret-free archive and actual session/route
+checks pass. Hosted browser review shows original USD balances beside INR
+allocation and remaining amounts and balanced draft journal lines. Independent
+native readback confirms no further financial changes. Published source precedes
+this final evidence note; wider ledger/payment-term and cross-module acceptance
+remains required. Production and shared demo are unchanged.
 
 The local React candidate now connects New/Edit Draft and pending-save recovery
 to six fixed native methods, including computed default/dependent-field onchange.

@@ -1,5 +1,38 @@
 # Bahmni workflow parity ledger
 
+## 10 October mixed-currency customer payment checkpoint
+
+- Server-owned customer payment allocation converts readable document balances
+  with installed Odoo currency/rate logic at the accounting date. Native
+  oldest-first ordering, credit allocation and posting/reconciliation remain.
+  Other native contexts and saved allocation rows during preview are unchanged.
+- React distinguishes original document balances from payment-currency allocated
+  and remaining amounts. Currency metadata is required and validated by the API
+  service. No browser exchange-rate calculation or new dependency is added.
+- Currency/rate configuration binds exact save/Confirm reviews and is locked
+  before financial writes. Changed rates/allocations require draft re-review;
+  accepted UUID retries recover current state without duplicate creation/posting.
+- Installed native suite: 279 tests, zero failures/errors/skips. Tests include
+  non-unit rates, local/foreign/third-currency documents, native Confirm/reset,
+  duplicate recovery, changed-rate rejection and payment-currency amount limits.
+  331 Home tests/41 suites, types, touched-file lint, seven gateway/webpack checks
+  and the development build pass; existing build warnings remain.
+- Local browser saved synthetic #4083 for INR 100 against USD 500 invoice/USD 100
+  credit. Independent native reads verify exactly one new draft and balanced
+  ledger, original document balances, protected financial records and
+  reconciliation/stock/mail counts unchanged. The browser uses existing staging
+  rates, not real-world FX evidence. No browser posting or bank transfer occurred.
+- Protected artifact `payment-currency-20261010` is published with unchanged
+  gates, expiry and backends. All 83 hosted chunks, source/licenses and secret-free
+  archive match. Native authenticated load/onchange/preview and session/route
+  boundaries pass. Hosted browser review shows original USD balances alongside
+  INR allocation/remaining amounts and balanced journal lines. Independent native
+  readback after hosted review confirms the draft and protected records unchanged.
+  Published source precedes this final release-evidence note. Wider
+  payment-term/ledger, journal/writeoff, matching/provider, stock/POS/sync,
+  clinical and separate-product parity remain required. Production/shared demo
+  are unchanged. Older entries below retain their dated scope.
+
 ## 10 October customer payment draft editor candidate
 
 - React New/Edit Draft and independent recovery use six fixed native methods.
