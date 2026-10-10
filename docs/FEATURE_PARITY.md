@@ -1,5 +1,28 @@
 # Bahmni workflow parity ledger
 
+## 10 October batch invoice PDF implementation checkpoint
+
+- Added current-page document selection and a shared native-report modal for
+  one combined invoice/credit-note PDF. Selection is identity/page/result scoped;
+  generation is explicit, never a posting/payment action.
+- Two named APIs enforce 1-25 distinct IDs, each document's native ACL/rules,
+  stable lock order, accounting/adjustment guards, report-group/template checks
+  and the shared 10 MB PDF limit. Odoo renders the selected IDs in their order.
+- All 347 installed native tests, 381 Home tests/45 suites, types/lint, seven
+  gateway/config checks and direct development webpack pass. Installed hashes
+  match. A real native two-page draft invoice/credit-note PDF was visually checked;
+  independent financial/protected records and counts remain unchanged.
+- Protected artifact `invoice-batch-20261010` passes access checks and matches all
+  83 JS/CSS chunks and packaged source/license archive. The browser downloaded a
+  visually checked two-page synthetic draft invoice/posted credit-note PDF.
+  Independent native read-back retains financial/ledger/reconciliation state,
+  protected records and financial/stock/mail counts. Gates/expiry are unchanged.
+  Packaged source includes pre-existing clinical working-tree edits and predates
+  final evidence notes, not a clean commit-only release. Batches larger than one
+  page, hospital-header/archive/currency variants, bank/provider operations and
+  broader Billing/clinical/separate-product parity remain open. No production or
+  shared public-demo changes. This is not full product acceptance.
+
 ## 10 October reviewed monetary journal editor checkpoint
 
 - React now exposes native amount edits, named account/tax/currency choices,
@@ -18,8 +41,12 @@
   product unit price, one new receipt and idempotent exact retry. Browser QA found
   and fixed stale invoice-card totals: closing the journal clears the old card;
   reopening reads the fresh native total. Protected records/counts are unchanged.
-- The existing tester/hospital/Billing gates and expiry are unchanged. This is
-  not full browser lost-response, add/remove, currency/tax or concurrency evidence.
+- Actual protected-browser draft add/remove and accepted-response-loss recovery
+  pass. Independent native review/save agreement, one exact receipt per change
+  and idempotent retry after deletion pass. Native defaults resynchronised this
+  fixture from 650 to 500, explicitly shown in the review. The existing access
+  gates/expiry are unchanged. Full pending reload, currency/tax and concurrency
+  evidence remains incomplete.
 - This checkpoint is not a completion claim for monetary parity, Billing or the
   broader product. Wider permissions/configuration/concurrency acceptance and
   clinical/separate-product scope remain. Production and public demo are unchanged.

@@ -1,5 +1,6 @@
 import {
   Button,
+  Checkbox,
   Loading,
   Tab,
   TabList,
@@ -54,6 +55,11 @@ export function BillingPage() {
   const [tab, setTab] = useState(0);
   const [reviewInvoice, setReviewInvoice] = useState<number | null>(null);
   const [reportInvoice, setReportInvoice] = useState<number | null>(null);
+  const [reportBatch, setReportBatch] = useState<number[] | null>(null);
+  const [printSelection, setPrintSelection] = useState<{
+    page: string;
+    ids: number[];
+  }>({ page: '', ids: [] });
   const [conversationInvoice, setConversationInvoice] = useState<number | null>(
     null,
   );
@@ -110,6 +116,20 @@ export function BillingPage() {
     session.error instanceof BillingSessionExpired ||
     invoices.error instanceof BillingSessionExpired ||
     lines.error instanceof BillingSessionExpired;
+  const printPage = JSON.stringify([
+    session.data?.uid,
+    tab,
+    submittedSearch,
+    offset,
+    invoices.dataUpdatedAt,
+  ]);
+  const printRows = invoices.data?.slice(0, 25) ?? [];
+  const printIds =
+    printSelection.page === printPage
+      ? printRows
+          .filter((row) => printSelection.ids.includes(row.id))
+          .map((row) => row.id)
+      : [];
 
   async function signIn(event: FormEvent) {
     event.preventDefault();
@@ -124,6 +144,8 @@ export function BillingPage() {
       setSelected(null);
       setReviewInvoice(null);
       setReportInvoice(null);
+      setReportBatch(null);
+      setPrintSelection({ page: '', ids: [] });
       setConversationInvoice(null);
       setStatementInvoice(null);
       setJournalInvoice(null);
@@ -232,6 +254,9 @@ export function BillingPage() {
                     await disconnectBilling();
                     queryClient.removeQueries({ queryKey: ['billing'] });
                     setSelected(null);
+                    setReportInvoice(null);
+                    setReportBatch(null);
+                    setPrintSelection({ page: '', ids: [] });
                     setReviewInvoice(null);
                     setStatementInvoice(null);
                     setConversationInvoice(null);
@@ -256,6 +281,7 @@ export function BillingPage() {
               onChange={({ selectedIndex }) => {
                 setTab(selectedIndex);
                 setSelected(null);
+                setPrintSelection({ page: '', ids: [] });
               }}
             >
               <TabList aria-label="Billing workflows">
@@ -281,6 +307,7 @@ export function BillingPage() {
                       onSubmit={(event) => {
                         event.preventDefault();
                         setSubmittedSearch(search.trim());
+                        setPrintSelection({ page: '', ids: [] });
                         setOffset(0);
                         setSelected(null);
                       }}
@@ -297,6 +324,7 @@ export function BillingPage() {
                         kind="tertiary"
                         onClick={() => {
                           setSelected(null);
+                          setPrintSelection({ page: '', ids: [] });
                           void invoices.refetch();
                         }}
                       >
@@ -321,76 +349,139 @@ export function BillingPage() {
                         not invoices.
                       </p>
                     ) : (
-                      <div className={styles.tableScroll}>
-                        <table>
-                          <caption>Customer invoices and credit notes</caption>
-                          <thead>
-                            <tr>
-                              {[
-                                'Invoice',
-                                'Type',
-                                'Customer',
-                                'Date',
-                                'Status',
-                                'Payment',
-                                'Total',
-                                'Open amount',
-                                'Details',
-                              ].map((title) => (
-                                <th key={title} scope="col">
-                                  {title}
+                      <>
+                        <div className={styles.toolbar}>
+                          <span>{printIds.length} selected on this page</span>
+                          <Button
+                            kind="tertiary"
+                            disabled={!printIds.length}
+                            onClick={() => setReportBatch([...printIds])}
+                          >
+                            Batch invoice PDFs
+                          </Button>
+                          <Button
+                            kind="ghost"
+                            disabled={!printIds.length}
+                            onClick={() =>
+                              setPrintSelection({ page: '', ids: [] })
+                            }
+                          >
+                            Clear selection
+                          </Button>
+                        </div>
+                        <div className={styles.tableScroll}>
+                          <table>
+                            <caption>
+                              Customer invoices and credit notes
+                            </caption>
+                            <thead>
+                              <tr>
+                                <th scope="col">
+                                  <Checkbox
+                                    id="billing-print-all"
+                                    labelText="Select this page for PDF"
+                                    checked={
+                                      printRows.length > 0 &&
+                                      printIds.length === printRows.length
+                                    }
+                                    indeterminate={
+                                      printIds.length > 0 &&
+                                      printIds.length < printRows.length
+                                    }
+                                    onChange={(_event, { checked }) =>
+                                      setPrintSelection({
+                                        page: printPage,
+                                        ids: checked
+                                          ? printRows.map((row) => row.id)
+                                          : [],
+                                      })
+                                    }
+                                  />
                                 </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {invoices.data?.slice(0, 25).map((invoice) => (
-                              <tr key={invoice.id}>
-                                <td>{invoiceName(invoice)}</td>
-                                <td>
-                                  {invoice.move_type === 'out_refund'
-                                    ? 'Credit note'
-                                    : 'Invoice'}
-                                </td>
-                                <td>
-                                  {invoice.partner_id
-                                    ? invoice.partner_id[1]
-                                    : 'Not set'}
-                                </td>
-                                <td>{invoice.invoice_date || 'Not set'}</td>
-                                <td>{label(invoice.state)}</td>
-                                <td>
-                                  {invoice.state === 'posted'
-                                    ? label(invoice.payment_state)
-                                    : 'Not posted'}
-                                </td>
-                                <td>
-                                  {money(
-                                    invoice.invoice_total,
-                                    invoice.currency_id[1],
-                                  )}
-                                </td>
-                                <td>
-                                  {invoice.state === 'posted'
-                                    ? money(
-                                        invoice.amount_residual,
-                                        invoice.currency_id[1],
-                                      )
-                                    : 'Not posted'}
-                                </td>
-                                <td>
-                                  <Button
-                                    kind="ghost"
-                                    onClick={() => setSelected(invoice)}
-                                  >
-                                    View {invoiceName(invoice)}
-                                  </Button>
-                                </td>
+                                {[
+                                  'Invoice',
+                                  'Type',
+                                  'Customer',
+                                  'Date',
+                                  'Status',
+                                  'Payment',
+                                  'Total',
+                                  'Open amount',
+                                  'Details',
+                                ].map((title) => (
+                                  <th key={title} scope="col">
+                                    {title}
+                                  </th>
+                                ))}
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                            </thead>
+                            <tbody>
+                              {invoices.data?.slice(0, 25).map((invoice) => (
+                                <tr key={invoice.id}>
+                                  <td>
+                                    <Checkbox
+                                      id={`billing-print-${invoice.id}`}
+                                      labelText={`Select ${invoiceName(invoice)} for PDF`}
+                                      hideLabel
+                                      checked={printIds.includes(invoice.id)}
+                                      onChange={(_event, { checked }) =>
+                                        setPrintSelection({
+                                          page: printPage,
+                                          ids: checked
+                                            ? [...printIds, invoice.id]
+                                            : printIds.filter(
+                                                (id) => id !== invoice.id,
+                                              ),
+                                        })
+                                      }
+                                    />
+                                  </td>
+                                  <td>{invoiceName(invoice)}</td>
+                                  <td>
+                                    {invoice.move_type === 'out_refund'
+                                      ? 'Credit note'
+                                      : 'Invoice'}
+                                  </td>
+                                  <td>
+                                    {invoice.partner_id
+                                      ? invoice.partner_id[1]
+                                      : 'Not set'}
+                                  </td>
+                                  <td>{invoice.invoice_date || 'Not set'}</td>
+                                  <td>{label(invoice.state)}</td>
+                                  <td>
+                                    {invoice.state === 'posted'
+                                      ? label(invoice.payment_state)
+                                      : 'Not posted'}
+                                  </td>
+                                  <td>
+                                    {money(
+                                      invoice.invoice_total,
+                                      invoice.currency_id[1],
+                                    )}
+                                  </td>
+                                  <td>
+                                    {invoice.state === 'posted'
+                                      ? money(
+                                          invoice.amount_residual,
+                                          invoice.currency_id[1],
+                                        )
+                                      : 'Not posted'}
+                                  </td>
+                                  <td>
+                                    <Button
+                                      kind="ghost"
+                                      onClick={() => setSelected(invoice)}
+                                    >
+                                      View {invoiceName(invoice)}
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
                     )}
                     <div className={styles.toolbar}>
                       <Button
@@ -870,6 +961,21 @@ export function BillingPage() {
                   setReportInvoice(null);
                   setSelected(null);
                   setInvoiceNotice('');
+                  queryClient.removeQueries({ queryKey: ['billing'] });
+                  void session.refetch();
+                }}
+              />
+            ) : null}
+            {reportBatch !== null ? (
+              <InvoiceReportsModal
+                uid={session.data!.uid as number}
+                invoiceId={reportBatch[0]}
+                invoiceIds={reportBatch}
+                close={() => setReportBatch(null)}
+                reconnect={() => {
+                  setReportBatch(null);
+                  setPrintSelection({ page: '', ids: [] });
+                  setSelected(null);
                   queryClient.removeQueries({ queryKey: ['billing'] });
                   void session.refetch();
                 }}

@@ -1,6 +1,8 @@
 import {
   downloadInvoiceReport,
+  downloadInvoiceBatchReport,
   getInvoiceReports,
+  getInvoiceBatchReports,
   InvoiceReportKey,
 } from '../billingService';
 
@@ -21,6 +23,54 @@ const reply = (value: unknown) =>
 describe('Invoice report API boundary', () => {
   beforeEach(() => {
     global.fetch = jest.fn();
+  });
+  it('binds a combined PDF to the exact ordered selection and scoped action', async () => {
+    reply({
+      invoice_ids: [7, 9],
+      reports: [{ key: 'invoice', name: 'Invoices' }],
+    });
+    expect(await getInvoiceBatchReports([7, 9])).toHaveLength(1);
+    reply({ ...result(), invoice_ids: [7, 9] });
+    expect(
+      (await downloadInvoiceBatchReport([7, 9], 'invoice')).blob.size,
+    ).toBe(pdf.length);
+    expect(
+      JSON.parse((fetch as jest.Mock).mock.calls[1][1].body).params,
+    ).toEqual({
+      model: 'account.move',
+      method: 'qorlia_invoice_batch_report_download',
+      args: [],
+      kwargs: { invoice_ids: [7, 9], report_key: 'invoice' },
+    });
+  });
+  it('rejects empty, duplicate, oversized or invalid selections without RPC', async () => {
+    for (const ids of [
+      [],
+      [7, 7],
+      [0],
+      [7, NaN],
+      Array.from({ length: 26 }, (_, i) => i + 1),
+    ]) {
+      await expect(getInvoiceBatchReports(ids)).rejects.toThrow('distinct');
+      await expect(downloadInvoiceBatchReport(ids, 'invoice')).rejects.toThrow(
+        'distinct',
+      );
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('rejects reordered, omitted, extra or wrong batch identities and unsafe PDF content', async () => {
+    for (const ids of [[9, 7], [7], [7, 9, 10], [7, '9'], [7, 7], null]) {
+      reply({ invoice_ids: ids, reports: [] });
+      await expect(getInvoiceBatchReports([7, 9])).rejects.toThrow('Invalid');
+      reply({ ...result(), invoice_ids: ids });
+      await expect(
+        downloadInvoiceBatchReport([7, 9], 'invoice'),
+      ).rejects.toThrow('Invalid');
+    }
+    reply({ ...result(), invoice_ids: [7, 9], filename: '../batch.pdf' });
+    await expect(downloadInvoiceBatchReport([7, 9], 'invoice')).rejects.toThrow(
+      'Invalid',
+    );
   });
   it('uses only named report actions without caller context and decodes a PDF', async () => {
     reply({ invoice_id: 7, reports: [{ key: 'invoice', name: 'Invoices' }] });

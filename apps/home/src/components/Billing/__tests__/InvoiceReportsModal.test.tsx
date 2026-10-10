@@ -5,7 +5,9 @@ import {
   downloadDocumentReport,
   getDocumentReports,
   downloadInvoiceReport,
+  downloadInvoiceBatchReport,
   getInvoiceReports,
+  getInvoiceBatchReports,
 } from '../billingService';
 import {
   BillingReportsModal,
@@ -16,6 +18,8 @@ jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
   downloadInvoiceReport: jest.fn(),
   getInvoiceReports: jest.fn(),
+  getInvoiceBatchReports: jest.fn(),
+  downloadInvoiceBatchReport: jest.fn(),
   downloadDocumentReport: jest.fn(),
   getDocumentReports: jest.fn(),
 }));
@@ -53,6 +57,45 @@ describe('Invoice PDF reports', () => {
     });
   });
   afterEach(() => jest.restoreAllMocks());
+  it('shows the exact batch and generates only after an explicit download click', async () => {
+    (getInvoiceBatchReports as jest.Mock).mockResolvedValue([
+      { key: 'invoice', name: 'Invoices' },
+    ]);
+    (downloadInvoiceBatchReport as jest.Mock).mockResolvedValue({
+      filename: 'Invoice_batch.pdf',
+      blob: new Blob(['%PDF-']),
+    });
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
+        <InvoiceReportsModal
+          uid={3}
+          invoiceId={7}
+          invoiceIds={[7, 9]}
+          close={close}
+          reconnect={reconnect}
+        />
+      </QueryClientProvider>,
+    );
+    const button = await screen.findByRole('button', {
+      name: 'Download Invoices',
+    });
+    expect(
+      screen.getByRole('region', { name: 'Batch invoice PDF reports' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Selected 2 documents: #7, #9/),
+    ).toBeInTheDocument();
+    expect(getInvoiceBatchReports).toHaveBeenCalledWith([7, 9]);
+    expect(downloadInvoiceBatchReport).not.toHaveBeenCalled();
+    fireEvent.click(button);
+    await screen.findByText(/PDF download requested/);
+    expect(downloadInvoiceBatchReport).toHaveBeenCalledWith([7, 9], 'invoice');
+    expect(downloadInvoiceReport).not.toHaveBeenCalled();
+  });
   it('loads permitted reports but does not generate a PDF before an explicit click', async () => {
     show();
     await screen.findByRole('button', { name: 'Download Invoices' });

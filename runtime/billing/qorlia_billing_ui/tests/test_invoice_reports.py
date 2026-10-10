@@ -110,3 +110,73 @@ class InvoiceReportTest(TransactionCase):
         self.env.ref('account.account_invoices').report_name = 'account.report_original_vendor_bill'
         with self.assertRaises(UserError):
             self.moves.qorlia_invoice_report_download(invoice.id, 'invoice')
+
+    def test_batch_native_renderer_preserves_selection_order_and_financial_state(self):
+        invoices = self.invoice() + self.invoice(move_type='out_refund')
+        ids = list(reversed(invoices.ids))
+        before = [invoice._qorlia_invoice_snapshot() for invoice in invoices]
+        payments = self.env['account.payment'].search_count([])
+        menu = self.moves.qorlia_invoice_batch_report_list(ids)
+        self.assertEqual(menu['invoice_ids'], ids)
+        self.assertEqual(len(menu['reports']), 2)
+        with patch.object(type(self.reports), '_render_qweb_pdf', return_value=(b'%PDF-1.4\n', 'pdf')) as render:
+            result = self.moves.qorlia_invoice_batch_report_download(ids, 'invoice')
+            self.assertEqual(render.call_args.kwargs, {'res_ids': ids})
+            self.assertEqual(render.call_args.args[0], self.env.ref('account.account_invoices').id)
+        self.assertEqual(result['invoice_ids'], ids)
+        self.assertNotIn('invoice_id', result)
+        self.assertEqual(result['filename'], 'Invoice_batch_2_documents_invoice.pdf')
+        self.assertEqual([invoice._qorlia_invoice_snapshot() for invoice in invoices], before)
+        self.assertEqual(self.env['account.payment'].search_count([]), payments)
+
+    def test_single_document_batch_still_returns_list_identity(self):
+        invoice = self.invoice()
+        with patch.object(type(self.reports), '_render_qweb_pdf', return_value=(b'%PDF-1.4\n', 'pdf')):
+            result = self.moves.qorlia_invoice_batch_report_download(invoice.ids, 'invoice_without_payments')
+        self.assertEqual(result['invoice_ids'], invoice.ids)
+
+    def test_invalid_batch_identity_never_renders(self):
+        invoice = self.invoice()
+        for ids in (None, False, invoice.id, (), [], [True], [0], [-1], ['1'],
+                    [invoice.id, invoice.id], list(range(1, 27))):
+            with patch.object(type(self.reports), '_render_qweb_pdf') as render:
+                with self.assertRaises(ValidationError):
+                    self.moves.qorlia_invoice_batch_report_download(ids, 'invoice')
+                render.assert_not_called()
+
+    def test_mixed_missing_vendor_or_unapplied_batch_fails_before_renderer(self):
+        invoice = self.invoice()
+        vendor = self.invoice(move_type='in_invoice')
+        changed = self.invoice(discount=10)
+        for ids in ([invoice.id, 2147483647], [invoice.id, vendor.id], [invoice.id, changed.id]):
+            with patch.object(type(self.reports), '_render_qweb_pdf') as render:
+                with self.assertRaises(UserError):
+                    self.moves.qorlia_invoice_batch_report_download(ids, 'invoice')
+                render.assert_not_called()
+
+    def test_batch_checks_every_document_record_rule_and_report_group(self):
+        invoices = self.invoice() + self.invoice()
+        user = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'QorliaQA Batch reader', 'login': 'qorliaqa-batch-' + str(uuid.uuid4()),
+            'groups_id': [Command.set(self.env.ref('account.group_account_readonly').ids)],
+            'company_id': self.env.company.id, 'company_ids': [Command.set(self.env.company.ids)]})
+        self.env['ir.rule'].create({'name': 'QorliaQA Hide second batch invoice',
+            'model_id': self.env.ref('account.model_account_move').id,
+            'domain_force': "[('id', '!=', %s)]" % invoices[1].id})
+        with patch.object(type(self.reports), '_render_qweb_pdf') as render:
+            with self.assertRaises(AccessError):
+                self.moves.with_user(user).qorlia_invoice_batch_report_list(invoices.ids)
+            with self.assertRaises(AccessError):
+                self.moves.with_user(user).qorlia_invoice_batch_report_download(invoices.ids, 'invoice')
+            render.assert_not_called()
+        self.env.ref('account.account_invoices').groups_id = [Command.set(self.env.ref('base.group_system').ids)]
+        with self.assertRaises(AccessError):
+            self.moves.with_user(user).qorlia_invoice_batch_report_download(invoices[:1].ids, 'invoice')
+
+    def test_batch_uses_shared_pdf_size_and_template_guards(self):
+        invoices = self.invoice() + self.invoice()
+        with patch.object(type(self.reports), '_render_qweb_pdf', return_value=(b'not PDF', 'pdf')):
+            with self.assertRaises(UserError):
+                self.moves.qorlia_invoice_batch_report_download(invoices.ids, 'invoice')
+        with self.assertRaises(ValidationError):
+            self.moves.qorlia_invoice_batch_report_download(invoices.ids, '../invoice')

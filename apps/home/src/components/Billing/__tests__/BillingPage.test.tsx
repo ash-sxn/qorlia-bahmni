@@ -35,6 +35,8 @@ import {
   saveInvoiceDraft,
   getInvoiceDraftChoices,
   getInvoiceReports,
+  getInvoiceBatchReports,
+  downloadInvoiceBatchReport,
   downloadInvoiceReport,
   getCustomerStatement,
   getInvoiceConversation,
@@ -80,6 +82,8 @@ jest.mock('../billingService', () => ({
   saveInvoiceDraft: jest.fn(),
   getInvoiceDraftChoices: jest.fn(),
   getInvoiceReports: jest.fn(),
+  getInvoiceBatchReports: jest.fn(),
+  downloadInvoiceBatchReport: jest.fn(),
   downloadInvoiceReport: jest.fn(),
   getCustomerStatement: jest.fn(),
   getInvoiceConversation: jest.fn(),
@@ -148,6 +152,76 @@ describe('Billing workspace', () => {
     (getInvoiceReports as jest.Mock).mockResolvedValue([
       { key: 'invoice', name: 'Invoices' },
     ]);
+    (getInvoiceBatchReports as jest.Mock).mockResolvedValue([
+      { key: 'invoice', name: 'Invoices' },
+    ]);
+  });
+  it('selects only checked rows and opens batch reports without automatically generating a PDF', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([
+      invoice,
+      { ...invoice, id: 9, name: 'QorliaQA credit' },
+    ]);
+    show();
+    fireEvent.click(
+      await screen.findByRole('checkbox', {
+        name: 'Select QorliaQA invoice for PDF',
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Select QorliaQA credit for PDF' }),
+    );
+    expect(screen.getByText('2 selected on this page')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Batch invoice PDFs' }));
+    await screen.findByRole('region', { name: 'Batch invoice PDF reports' });
+    expect(getInvoiceBatchReports).toHaveBeenCalledWith([7, 9]);
+    expect(downloadInvoiceBatchReport).not.toHaveBeenCalled();
+  });
+  it('selects only the current 25 rows, not the pagination sentinel, and clears on navigation', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue(
+      Array.from({ length: 26 }, (_, i) => ({
+        ...invoice,
+        id: i + 1,
+        name: `QorliaQA ${i + 1}`,
+      })),
+    );
+    show();
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'Select this page for PDF' }),
+    );
+    expect(screen.getByText('25 selected on this page')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Batch invoice PDFs' }));
+    await screen.findByRole('region', { name: 'Batch invoice PDF reports' });
+    expect(getInvoiceBatchReports).toHaveBeenCalledWith(
+      Array.from({ length: 25 }, (_, i) => i + 1),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Back to invoices' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await waitFor(() => expect(getInvoices).toHaveBeenCalledWith('', 25));
+    expect(
+      await screen.findByText('0 selected on this page'),
+    ).toBeInTheDocument();
+  });
+  it('clears selection on search and refresh without generating reports', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([invoice]);
+    show();
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'Select this page for PDF' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    expect(
+      screen.getByRole('button', { name: 'Batch invoice PDFs' }),
+    ).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Select this page for PDF' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Batch invoice PDFs' }),
+      ).toBeDisabled(),
+    );
+    expect(getInvoiceBatchReports).not.toHaveBeenCalled();
+    expect(downloadInvoiceBatchReport).not.toHaveBeenCalled();
   });
   it('clears the old invoice detail snapshot when journal money is saved', async () => {
     (getInvoices as jest.Mock).mockResolvedValue([invoice]);

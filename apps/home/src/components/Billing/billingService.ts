@@ -2642,22 +2642,78 @@ export async function getInvoiceReports(
     invoice_id: number;
     reports: InvoiceReport[];
   }>('qorlia_invoice_report_list', { invoice_id: invoiceId });
+  if (result?.invoice_id !== invoiceId)
+    throw new Error('Invalid invoice report list.');
+  return checkedInvoiceReports(result.reports);
+}
+
+function checkedInvoiceReports(reports: InvoiceReport[]): InvoiceReport[] {
   if (
-    result?.invoice_id !== invoiceId ||
-    !Array.isArray(result.reports) ||
-    result.reports.length > 2 ||
-    result.reports.some(
+    !Array.isArray(reports) ||
+    reports.length > 2 ||
+    reports.some(
       (report) =>
         !isInvoiceReportKey(report?.key) ||
         typeof report.name !== 'string' ||
         !report.name.trim() ||
         report.name.length > 200,
     ) ||
-    new Set(result.reports.map((report) => report.key)).size !==
-      result.reports.length
+    new Set(reports.map((report) => report.key)).size !== reports.length
   )
     throw new Error('Invalid invoice report list.');
-  return result.reports;
+  return reports;
+}
+
+function checkedReportInvoiceIds(ids: number[]) {
+  if (
+    !Array.isArray(ids) ||
+    ids.length < 1 ||
+    ids.length > 25 ||
+    ids.some((id) => !Number.isInteger(id) || id <= 0) ||
+    new Set(ids).size !== ids.length
+  )
+    throw new Error('Select between 1 and 25 distinct saved invoices.');
+}
+
+function sameReportInvoiceIds(actual: unknown, expected: number[]) {
+  return (
+    Array.isArray(actual) &&
+    actual.length === expected.length &&
+    actual.every((id, index) => id === expected[index])
+  );
+}
+
+export async function getInvoiceBatchReports(
+  invoiceIds: number[],
+): Promise<InvoiceReport[]> {
+  checkedReportInvoiceIds(invoiceIds);
+  const result = await invoiceDraftCall<{
+    invoice_ids: number[];
+    reports: InvoiceReport[];
+  }>('qorlia_invoice_batch_report_list', { invoice_ids: invoiceIds });
+  if (!sameReportInvoiceIds(result?.invoice_ids, invoiceIds))
+    throw new Error('Invalid invoice report list.');
+  return checkedInvoiceReports(result.reports);
+}
+
+export async function downloadInvoiceBatchReport(
+  invoiceIds: number[],
+  reportKey: InvoiceReportKey,
+) {
+  checkedReportInvoiceIds(invoiceIds);
+  if (!isInvoiceReportKey(reportKey))
+    throw new Error('Select an available invoice report.');
+  const result = await invoiceDraftCall<
+    PdfResponse & { invoice_ids: number[] }
+  >('qorlia_invoice_batch_report_download', {
+    invoice_ids: invoiceIds,
+    report_key: reportKey,
+  });
+  return checkedPdf(
+    result,
+    sameReportInvoiceIds(result?.invoice_ids, invoiceIds),
+    'invoice batch',
+  );
 }
 
 export async function downloadInvoiceReport(

@@ -85,6 +85,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
   for (const method of ['qorlia_invoice_workflow_load', 'qorlia_invoice_workflow_post',
     'qorlia_invoice_draft_load', 'qorlia_invoice_draft_preview', 'qorlia_invoice_draft_save', 'qorlia_invoice_draft_choices',
     'qorlia_invoice_report_list', 'qorlia_invoice_report_download', 'qorlia_customer_statement', 'qorlia_customer_statement_download',
+    'qorlia_invoice_batch_report_list', 'qorlia_invoice_batch_report_download',
     'qorlia_invoice_messages', 'qorlia_invoice_note', 'qorlia_invoice_note_status', 'qorlia_invoice_attachment_download', 'qorlia_invoice_journal',
     'qorlia_journal_edit_load', 'qorlia_journal_edit_preview', 'qorlia_journal_edit_choices', 'qorlia_journal_edit_analytics', 'qorlia_journal_edit_save', 'qorlia_journal_edit_status',
     ...['load', 'preview', 'choices', 'analytics', 'save', 'status'].map(action => `qorlia_journal_money_${action}`),

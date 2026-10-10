@@ -1,5 +1,32 @@
 # Qorlia React frontend backend readiness
 
+## Batch invoice PDF implementation checkpoint (10 October 2026)
+
+Invoice-page selection and a native batch-report modal now generate one combined
+PDF for up to 25 selected customer invoices/credit notes, with the shared 10 MB
+download limit. Two named APIs validate distinct IDs, check every document's
+native access rules, lock in stable order and reject unsaved/unbalanced adjustments
+before calling Odoo's installed renderer. No posting/payment or caller-selected
+template/context is introduced. The native report may archive posted PDFs.
+
+All 347 installed native tests pass with zero failures/errors/skips. Home passes
+381 tests/45 suites; types, touched-file lint, seven gateway/config checks and
+direct development webpack pass. Installed hashes match. An actual HTTP download
+produced a visually inspected two-page draft invoice/credit-note PDF, preserving
+native ledger, totals, states, reconciliation and protected-record/count snapshots.
+Selection resets on search/page/session/result changes; download is explicit.
+
+Protected artifact `invoice-batch-20261010` passes access checks; all 83 JS/CSS
+chunks and source/license archive match the packaged build. The browser downloaded
+a visually inspected two-page PDF for a synthetic draft invoice and posted credit
+note. Independent native reads retain their financial/ledger/reconciliation state,
+protected records and financial/stock/mail counts. Existing gates and expiry are
+unchanged. Published source includes pre-existing clinical working-tree edits and
+predates final evidence notes, rather than being a clean commit-only release.
+Larger/asynchronous batches, alternative hospital headers, archive
+and mixed-currency configurations, and wider Billing/product parity remain open.
+Production/public demo are unchanged. Older checkpoints below are historical.
+
 ## Reviewed monetary journal editor checkpoint (10 October 2026)
 
 The React editor now uses native reviewed money APIs, including complete ledger
@@ -18,9 +45,13 @@ is fixed: returning from the journal clears the old card and reopening shows
 the fresh native total. Protected records and financial/stock/mail counts remain
 unchanged. Native mandatory analytics was restored and isolated Billing restarted.
 
-The existing tester/hospital/Billing gates and expiry are unchanged. Further real
-browser lost-response, add/remove, multi-currency/tax, permissions/configuration
-and concurrency acceptance remains; automated coverage is not proof of that full
+Actual protected-browser draft add/remove and accepted-response-loss recovery
+now pass. Native row defaults recalculated the fixture from 650 to 500; the full
+review exposed that change before save. Independent native reads match the review,
+with exactly one receipt for each change and idempotent retry after deletion.
+The existing tester/hospital/Billing gates and expiry are unchanged. Full reload
+while pending, multi-currency/tax, permissions/configuration and concurrency
+acceptance remains; this scoped evidence is not proof of that full
 browser matrix. This checkpoint does not complete monetary, wider Billing or
 clinical/external-module parity. Production and the public demo are unchanged.
 Existing upstream/report, Browserslist, bundle and Nx graph limitations remain.

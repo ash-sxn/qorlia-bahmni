@@ -82,6 +82,7 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
       ...['load', 'post'].map((action) => `/web/dataset/call_kw/account.move/qorlia_invoice_workflow_${action}`),
       ...['load', 'preview', 'save', 'choices'].map((action) => `/web/dataset/call_kw/account.move/qorlia_invoice_draft_${action}`),
       ...['list', 'download'].map((action) => `/web/dataset/call_kw/account.move/qorlia_invoice_report_${action}`),
+      ...['list', 'download'].map((action) => `/web/dataset/call_kw/account.move/qorlia_invoice_batch_report_${action}`),
       ...['list', 'download'].map((action) => `/web/dataset/call_kw/sale.order/qorlia_order_report_${action}`),
       ...['list', 'download'].map((action) => `/web/dataset/call_kw/account.payment/qorlia_payment_report_${action}`),
       ...['load', 'preview', 'print', 'status', 'download', 'download_current'].map((action) => `/web/dataset/call_kw/account.payment/qorlia_cheque_${action}`),

@@ -3,15 +3,26 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest checkpoint: 339 installed native tests, 359 Home tests in 44 suites and
-seven gateway/build-config tests pass, along with types, touched-file lint and
-direct development webpack. Five reviewed monetary journal APIs and their client
-contract are implemented. Financial rows and the exact-request receipt share one
-native write; unexpected outcomes roll back. A React monetary editor and real
-browser/hosted acceptance remain unfinished. The native calculation simulation
-temporarily writes and rolls back SQL; surrogate IDs can advance. New native
-addons need a fresh synchronous-hook review. The hosted artifact below is unchanged
-and predates these APIs/client changes; existing upstream/build warnings remain.
+Latest checkpoint: 347 installed native tests, 381 Home tests in 45 suites and
+seven gateway/build-config tests pass, with types/lint and direct webpack.
+Batch invoice PDFs use two scoped APIs and the installed native renderer, checking
+every selected invoice/credit note before rendering. The UI supports one current
+page (up to 25 documents), one combined PDF and a 10 MB limit. Real HTTP PDF and
+financial/protected-state read-back pass. Protected artifact `invoice-batch-20261010`
+passes access checks and matches all 83 chunks and packaged source/license archive.
+The browser downloaded a visually checked two-page synthetic draft invoice/posted
+credit-note PDF with unchanged native financial/ledger/reconciliation state,
+protected records and financial/stock/mail counts. Gates/expiry are unchanged.
+Packaged source includes pre-existing clinical working-tree edits and predates
+final evidence notes, not a clean commit-only release.
+Larger asynchronous batches and header/archive/currency variants
+remain separate acceptance work.
+The monetary editor is implemented and protected-browser draft save, add/remove
+and accepted-response-loss recovery pass with independent native read-back.
+Full pending reload and broader monetary/configuration/concurrency parity remain.
+Financial rows and exact receipt share one native write; unexpected outcomes
+roll back. Native simulation temporarily writes/rolls back SQL and consumes IDs.
+New addons need fresh hook review. Existing upstream/build warnings remain.
 Reviewed Cut-Off load/onchange/preview/save/status and exact-retry recovery are
 integrated. Local browser save/read-back proves two balanced INR 125 entries,
 unchanged source matching and one native match between the new accrual rows.

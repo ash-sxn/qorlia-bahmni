@@ -34,7 +34,7 @@ def report_menu(env, reports, model, label):
     return result
 
 
-def report_pdf(report, record, key, id_field, label, data=None):
+def report_pdf(report, record, key, id_field, label, data=None, multiple=False):
     # Preserve installed layout and native archive behavior, without caller-selected templates or context.
     values = {'res_ids': record.ids}
     if data is not None:
@@ -45,5 +45,7 @@ def report_pdf(report, record, key, id_field, label, data=None):
     if len(pdf) > MAX_PDF_BYTES:
         raise UserError('This PDF exceeds the download limit. Open it in native Billing.')
     label = re.sub(r'[^A-Za-z0-9_-]+', '_', label).strip('_')[:100] or 'Billing'
-    return {id_field: record.id, 'filename': '%s_%s_%s.pdf' % (label, record.id, key),
+    identity = record.ids if multiple else record.id
+    filename_id = '%s_documents' % len(record) if multiple else record.id
+    return {id_field: identity, 'filename': '%s_%s_%s.pdf' % (label, filename_id, key),
             'mimetype': 'application/pdf', 'byte_count': len(pdf), 'content': base64.b64encode(pdf).decode('ascii')}

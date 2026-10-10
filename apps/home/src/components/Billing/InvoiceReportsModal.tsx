@@ -7,8 +7,10 @@ import {
   DocumentReportKey,
   downloadDocumentReport,
   downloadInvoiceReport,
+  downloadInvoiceBatchReport,
   getDocumentReports,
   getInvoiceReports,
+  getInvoiceBatchReports,
   InvoiceReportKey,
 } from './billingService';
 
@@ -16,18 +18,22 @@ export function BillingReportsModal({
   uid,
   recordId,
   kind,
+  invoiceIds,
   close,
   reconnect,
 }: {
   uid: number;
   recordId: number;
   kind: 'invoice' | 'order' | 'payment';
+  invoiceIds?: number[];
   close: () => void;
   reconnect: () => void;
 }) {
   const title =
     kind === 'invoice'
-      ? 'Invoice PDF reports'
+      ? invoiceIds
+        ? 'Batch invoice PDF reports'
+        : 'Invoice PDF reports'
       : kind === 'order'
         ? 'Quotation and order PDF reports'
         : 'Payment receipt PDF reports';
@@ -36,10 +42,12 @@ export function BillingReportsModal({
   const [notice, setNotice] = useState('');
   const busyRef = useRef(false);
   const reports = useQuery({
-    queryKey: ['billing', `${kind}-reports`, uid, recordId],
+    queryKey: ['billing', `${kind}-reports`, uid, recordId, invoiceIds],
     queryFn: async () =>
       kind === 'invoice'
-        ? getInvoiceReports(recordId)
+        ? invoiceIds
+          ? getInvoiceBatchReports(invoiceIds)
+          : getInvoiceReports(recordId)
         : getDocumentReports(kind, recordId),
     retry: false,
     refetchOnMount: 'always',
@@ -59,7 +67,12 @@ export function BillingReportsModal({
     try {
       const { filename, blob } =
         kind === 'invoice'
-          ? await downloadInvoiceReport(recordId, key as InvoiceReportKey)
+          ? invoiceIds
+            ? await downloadInvoiceBatchReport(
+                invoiceIds,
+                key as InvoiceReportKey,
+              )
+            : await downloadInvoiceReport(recordId, key as InvoiceReportKey)
           : await downloadDocumentReport(
               kind,
               recordId,
@@ -109,6 +122,15 @@ export function BillingReportsModal({
               Download the current saved invoice or credit note using native
               Billing reports. Unsaved edits are not included.
             </p>
+            {invoiceIds ? (
+              <p>
+                Selected {invoiceIds.length} documents:{' '}
+                {invoiceIds.map((id) => `#${id}`).join(', ')}. Download one
+                combined PDF, up to 25 documents and 10 MB. If any document
+                cannot be printed, the whole batch fails. Select fewer documents
+                if needed.
+              </p>
+            ) : null}
             <p>
               Printing does not post a draft or receive money. Native Billing
               may save a PDF attachment for a posted document.
@@ -203,11 +225,13 @@ export function BillingReportsModal({
 export function InvoiceReportsModal({
   uid,
   invoiceId,
+  invoiceIds,
   close,
   reconnect,
 }: {
   uid: number;
   invoiceId: number;
+  invoiceIds?: number[];
   close: () => void;
   reconnect: () => void;
 }) {
@@ -216,6 +240,7 @@ export function InvoiceReportsModal({
       uid={uid}
       kind="invoice"
       recordId={invoiceId}
+      invoiceIds={invoiceIds}
       close={close}
       reconnect={reconnect}
     />
