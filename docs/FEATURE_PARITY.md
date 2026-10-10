@@ -1,5 +1,30 @@
 # Bahmni workflow parity ledger
 
+## 10 October customer payment draft preview foundation
+
+- Staging-only standalone customer draft load/preview uses virtual records and
+  installed native customer/amount onchanges. Saved allocation rows survive
+  preview; it never posts, reconciles or creates a payment.
+- Native allocation tables are readonly and generated oldest-invoice-first. The
+  next React editor must reproduce those tables, not invent manual selection.
+- A server-owned Qorlia context fixes upstream SQL balance sums that omit company
+  scope and record rules. Matching ORM predicates preserve the native balance
+  categories while limiting them to the payment company and readable documents.
+- Finite amounts, dates, draft/version, permissions and native journal/method/bank
+  membership are checked. Actual document values bind review; timestamps alone
+  are insufficient. Caps: 500 rows per table; mixed-currency automatic allocation
+  remains a fail-closed native-review gate.
+- 251 installed native tests pass with no failures/errors/skips; 293 Home tests
+  and seven gateway/webpack checks pass. Native HTTP load/repeated preview and
+  invalid caller allocation rejection passed without financial writes. Existing
+  synthetic INR 500 invoice/INR 100 credit yield INR 400 outstanding, INR 200
+  invoice allocation and INR 300 preview balance for an INR 100 payment.
+  Protected documents/ledger/counts and the fixture's three receipts are unchanged.
+- No new React controls or protected frontend release in this checkpoint. The
+  gateway still denies candidate preview methods. Draft save, choices/date-rule
+  fidelity, exact recovery and browser acceptance are next. All remaining Billing,
+  clinical and external-module work stays in scope. Production/shared demo unchanged.
+
 ## 10 October customer payment lifecycle checkpoint
 
 - Signed-in Billing gains native customer-payment history, search, all three

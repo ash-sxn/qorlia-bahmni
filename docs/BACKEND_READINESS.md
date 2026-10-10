@@ -1,5 +1,46 @@
 # Qorlia React frontend backend readiness
 
+## Customer payment draft preview foundation (10 October 2026)
+
+Two staging-only native adapters load and preview standalone customer payment
+drafts. Preview uses an unattached virtual payment, installed customer/amount
+onchanges and the native journal/direction method and bank-account choices.
+Saved allocation rows are never attached to the virtual record because the
+installed partner onchange unlinks its rows. Tests verify existing rows survive
+preview unchanged. Confirm remains the separate native payment lifecycle.
+
+The installed Bahmni allocation tables are readonly, including selected and
+allocated amount. Native onchange derives oldest-invoice-first rows, rather than
+manual selection controls. Qorlia's server-owned customer context replaces the
+upstream unscoped SQL credit/outstanding sums with matching ORM predicates,
+payment-company scope and native record rules. Other native contexts are not
+changed. No financial sudo, payment creation, posting or reconciliation occurs.
+
+Validation covers exact draft fields, finite nonnegative amounts, canonical dates,
+active companies, journal/method/bank membership, native access rights, draft
+state and stale origin reviews. Reviews include actual document values, not just
+timestamps that can remain equal within one transaction. Allocation snapshots
+are bounded to 500 rows per table. Mixed-currency automatic allocation fails
+closed pending verified native currency handling, rather than adding unlike
+currencies as one balance.
+
+Installed native suite: 251 tests, zero failures/errors/skips, including 13 new
+preview tests. All 293 Home tests/39 suites and seven gateway/webpack tests pass.
+The isolated analytic test setting was restored to mandatory and service restarted.
+Native HTTP JSON load/repeated preview passed for the existing labelled synthetic
+lifecycle fixture without creating another payment. An INR 500 invoice and INR
+100 credit produce INR 400 current outstanding, INR 200 invoice allocation and
+INR 300 preview remaining after an INR 100 payment. Caller allocation commands
+are rejected. Independent before/after reads retain protected documents, ledger
+values, payment/stock/mail counts and exactly three existing lifecycle receipts.
+
+This is a backend foundation, not a released payment editor. The protected
+gateway still denies these two candidate methods, with a regression check; its
+UI/build/source artifact has not been replaced. Creation/edit save, native field
+choices/date restrictions, exact-request recovery and React/browser acceptance
+remain required. Production/shared demo are unchanged. Full Billing and wider
+clinical/external-module parity remain incomplete.
+
 ## Customer payment history and native lifecycle checkpoint (10 October 2026)
 
 The signed-in Billing workspace adds a customer-payment tab with native search,

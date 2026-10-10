@@ -10,6 +10,7 @@ from . import test_document_reports
 from . import test_cheques
 from . import test_cheque_void
 from . import test_payment_lifecycle
+from . import test_payment_drafts
 from . import test_customer_statement
 from . import test_invoice_messages
 from . import test_advance_invoices

@@ -15,7 +15,7 @@ class PaymentLifecycle(models.Model):
         if type(payment_id) is not int or payment_id <= 0:
             raise ValidationError('Select a saved customer payment.')
         # The native customer payment action supplies this context to Bahmni auto-allocation.
-        payment = self.with_context(default_partner_type='customer').browse(payment_id).exists()
+        payment = self._qorlia_customer_payment_context().browse(payment_id).exists()
         if not payment:
             raise UserError('This customer payment is no longer available.')
         payment.check_access_rights('read')

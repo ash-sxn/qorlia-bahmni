@@ -13,6 +13,7 @@ from . import payment_report
 from . import cheque_workflow
 from . import cheque_void_workflow
 from . import payment_lifecycle
+from . import payment_draft
 from . import customer_statement
 from . import invoice_messages
 from . import advance_invoice

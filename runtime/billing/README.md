@@ -3,7 +3,7 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest checkpoint: 238 installed native adapter tests and 293 Home
+Latest checkpoint: 251 installed native adapter tests and 293 Home
 tests pass. Native cheque numbering/PDF/recovery is implemented below, but the
 actual staging company has no bank-compatible cheque layout. The prior protected
 browser save/reload and independent native readback confirm
@@ -18,6 +18,21 @@ for dated evidence and remaining gates. Older counts below describe earlier
 checkpoints, not current total coverage or a product completion percentage.
 
 ## Customer payment history and state controls
+
+The next editor's backend load/preview foundation is installed only in isolated
+staging. Virtual payment onchange generates native readonly invoice/credit rows;
+saved rows are not attached or unlinked. Qorlia's server-owned payment context
+uses company-scoped ORM balance sums with record rules instead of upstream
+unscoped SQL. Native contexts outside that adapter path are unchanged.
+Thirteen new installed tests cover native allocations, no writes, saved-row
+preservation, company/record boundaries, draft versions, method validity,
+permissions, invalid values and mixed-currency denial. HTTP preview/readback
+retains the existing synthetic ledger, documents, counts and three receipts.
+The protected gateway still denies candidate load/preview routes. Draft save,
+native choices/date rules, React editor and exact-request/browser recovery remain
+pending; this checkpoint does not publish those capabilities. Allocation rows
+are capped at 500 per table, and mixed-currency automatic allocation requires
+native review until verified. Production/public demo are unchanged.
 
 The signed-in house Billing UI lists native customer payments with search,
 draft/posted/cancelled filters and 25-row pagination. Unallocated payments are
