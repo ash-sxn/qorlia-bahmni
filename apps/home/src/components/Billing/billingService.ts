@@ -2755,6 +2755,194 @@ export const recordPaymentWorkflow = (review: PaymentWorkflow) =>
     values: review.values,
   });
 
+export interface ChequeWorkflow {
+  payment_id: number;
+  name: string;
+  version: string;
+  amount: number;
+  currency: [number, string];
+  journal: string;
+  manual_sequencing: boolean;
+  check_number: string | false;
+  sent: boolean;
+  bank_matched: boolean;
+  can_print: boolean;
+  reason: string | false;
+  layout: string | false;
+  number_to_print?: string;
+  review_version?: string;
+}
+
+export interface ChequeRequest {
+  payment_id: number;
+  version: string;
+  review_version: string;
+  check_number: string | false;
+  request_key: string;
+}
+
+const chequeCall = <T>(method: string, kwargs: object) =>
+  rpc<T>(`/web/dataset/call_kw/account.payment/${method}`, {
+    model: 'account.payment',
+    method,
+    args: [],
+    kwargs,
+  });
+
+const chequeNumber = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  /^[0-9]{1,19}$/.test(value) &&
+  (value.length < 19 || value <= '9223372036854775807');
+
+export function checkedChequeRequest(value: ChequeRequest): ChequeRequest {
+  if (
+    !value ||
+    Object.keys(value).sort().join(',') !==
+      'check_number,payment_id,request_key,review_version,version' ||
+    !Number.isSafeInteger(value.payment_id) ||
+    value.payment_id <= 0 ||
+    ![value.version, value.review_version].every(
+      (hash) => typeof hash === 'string' && /^[a-f0-9]{64}$/.test(hash),
+    ) ||
+    typeof value.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      value.request_key,
+    ) ||
+    !(value.check_number === false || chequeNumber(value.check_number))
+  )
+    throw new Error(
+      'Invalid cheque request. Check the saved payment before printing again.',
+    );
+  return value;
+}
+
+function checkedCheque(
+  value: ChequeWorkflow,
+  paymentId: number,
+): ChequeWorkflow {
+  if (
+    value?.payment_id !== paymentId ||
+    typeof value.name !== 'string' ||
+    typeof value.version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(value.version) ||
+    !Number.isFinite(value.amount) ||
+    value.amount < 0 ||
+    !Array.isArray(value.currency) ||
+    !validRelation(value.currency) ||
+    typeof value.journal !== 'string' ||
+    ![
+      value.manual_sequencing,
+      value.sent,
+      value.bank_matched,
+      value.can_print,
+    ].every((item) => typeof item === 'boolean') ||
+    !(value.check_number === false || chequeNumber(value.check_number)) ||
+    !(value.reason === false || typeof value.reason === 'string') ||
+    !(value.layout === false || typeof value.layout === 'string') ||
+    (value.can_print && (value.sent || !value.layout || value.reason))
+  )
+    throw new Error('Invalid cheque status. Reload the saved payment.');
+  return value;
+}
+
+export async function getChequeWorkflow(paymentId: number) {
+  if (!Number.isSafeInteger(paymentId) || paymentId <= 0)
+    throw new Error('Select a saved cheque payment.');
+  return checkedCheque(
+    await chequeCall<ChequeWorkflow>('qorlia_cheque_load', {
+      payment_id: paymentId,
+    }),
+    paymentId,
+  );
+}
+
+export async function previewChequeWorkflow(
+  payment: ChequeWorkflow,
+  number: string | false,
+) {
+  checkedCheque(payment, payment.payment_id);
+  if (!payment.can_print || !(number === false || chequeNumber(number)))
+    throw new Error('Enter and review a valid cheque number.');
+  const result = checkedCheque(
+    await chequeCall<ChequeWorkflow>('qorlia_cheque_preview', {
+      payment_id: payment.payment_id,
+      version: payment.version,
+      check_number: number,
+    }),
+    payment.payment_id,
+  );
+  if (
+    result.version !== payment.version ||
+    !chequeNumber(result.number_to_print) ||
+    result.number_to_print !==
+      (number === false ? payment.check_number : number) ||
+    typeof result.review_version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(result.review_version)
+  )
+    throw new Error('Invalid cheque review. Reload before printing.');
+  return result;
+}
+
+export async function printChequeWorkflow(request: ChequeRequest) {
+  checkedChequeRequest(request);
+  const result = await chequeCall<{
+    payment: ChequeWorkflow;
+    pdf: PdfResponse & { payment_id: number };
+  }>('qorlia_cheque_print', request);
+  const payment = checkedCheque(result?.payment, request.payment_id);
+  if (
+    !payment.sent ||
+    payment.can_print ||
+    !payment.check_number ||
+    (request.check_number !== false &&
+      payment.check_number !== request.check_number)
+  )
+    throw new Error(
+      'Cheque response does not match the reviewed number. Check status before another print.',
+    );
+  return {
+    payment,
+    pdf: checkedPdf(
+      result.pdf,
+      result.pdf?.payment_id === request.payment_id,
+      'cheque',
+    ),
+  };
+}
+
+export async function getChequeStatus(request: ChequeRequest) {
+  checkedChequeRequest(request);
+  const result = await chequeCall<{
+    accepted: boolean;
+    payment: ChequeWorkflow;
+  }>('qorlia_cheque_status', request);
+  if (!result || typeof result.accepted !== 'boolean')
+    throw new Error('Cheque request status is unavailable.');
+  return {
+    accepted: result.accepted,
+    payment: checkedCheque(result.payment, request.payment_id),
+  };
+}
+
+export async function downloadCheque(request: ChequeRequest) {
+  checkedChequeRequest(request);
+  const pdf = await chequeCall<PdfResponse & { payment_id: number }>(
+    'qorlia_cheque_download',
+    request,
+  );
+  return checkedPdf(pdf, pdf?.payment_id === request.payment_id, 'cheque');
+}
+
+export async function downloadCurrentCheque(paymentId: number) {
+  if (!Number.isSafeInteger(paymentId) || paymentId <= 0)
+    throw new Error('Select a saved cheque payment.');
+  const pdf = await chequeCall<PdfResponse & { payment_id: number }>(
+    'qorlia_cheque_download_current',
+    { payment_id: paymentId },
+  );
+  return checkedPdf(pdf, pdf?.payment_id === paymentId, 'cheque');
+}
+
 export const getDraftChoices = async (
   kind: DraftChoiceKind,
   search: string,

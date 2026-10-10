@@ -11,6 +11,7 @@ import {
   previewPaymentWorkflow,
   recordPaymentWorkflow,
 } from './billingService';
+import { ChequeWorkflowModal } from './ChequeWorkflowModal';
 import { BillingReportsModal } from './InvoiceReportsModal';
 
 export function PaymentWorkflowModal({
@@ -33,6 +34,7 @@ export function PaymentWorkflowModal({
   const [failure, setFailure] = useState<Error | null>(null);
   const [uncertain, setUncertain] = useState(false);
   const [receipt, setReceipt] = useState<number | null>(null);
+  const [cheque, setCheque] = useState<number | null>(null);
   const busyRef = useRef(false);
   const current = useQuery({
     queryKey: ['billing', 'payment-workflow', uid, invoiceId],
@@ -156,6 +158,20 @@ export function PaymentWorkflowModal({
         </select>
       </label>
     ) : null;
+  if (cheque !== null)
+    return (
+      <ChequeWorkflowModal
+        uid={uid}
+        paymentId={cheque}
+        reconnect={reconnect}
+        close={() => {
+          setCheque(null);
+          setPrepared(null);
+          setReview(null);
+          void current.refetch();
+        }}
+      />
+    );
   if (receipt !== null)
     return (
       <BillingReportsModal
@@ -495,6 +511,19 @@ export function PaymentWorkflowModal({
                         onClick={() => setReceipt(item.id)}
                       >
                         PDF receipts for {item.name}
+                      </Button>
+                    ) : null}
+                    {item.state === 'posted' &&
+                    item.journal_type === 'bank' &&
+                    ['check_printing', 'pdc'].includes(
+                      item.method_code || '',
+                    ) ? (
+                      <Button
+                        kind="tertiary"
+                        disabled={busy || uncertain || current.isFetching}
+                        onClick={() => setCheque(item.id)}
+                      >
+                        Cheque printing for {item.name}
                       </Button>
                     ) : null}
                   </li>

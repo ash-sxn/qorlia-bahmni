@@ -1,5 +1,28 @@
 # Bahmni workflow parity ledger
 
+## 10 October native cheque printing candidate
+
+- Posted cheque/PDC payments open a house printing-review modal with native
+  journal numbering, configured layout, sent state and bank-matching status.
+  Six named backend actions use native permissions, locks, wizard and PDF renderer.
+- Exact author-bound receipts prevent re-numbering on duplicate writes/downloads.
+  Pending requests persist across remounts; response loss requires explicit status
+  checking or identical retry. Invalid or failed PDF generation rolls back.
+- Installed native adapter: 202 passing tests, zero failures/errors/skips, including
+  a real synthetic QWeb/PDF render. Home: 255 tests/33 suites. Types, lint, Python
+  compilation, seven gateway/webpack checks and development build pass.
+- The actual staging layout selection contains only `None`. No production bank
+  layout is installed by these tests, which roll back their synthetic fixture.
+  The missing-layout UI must remain unavailable until bank-compatible acceptance.
+- Physical printing/clearance, batching, void/unmark-sent, matching and wider
+  Billing/clinical/external-module parity remain pending. Production/shared demo
+  are unchanged. This candidate is not complete bank cheque-printing parity.
+- Protected browser opening and status reload show the actual missing-layout
+  reason with no print action. Payment #2003 and invoice #14729 remain unchanged
+  on native readback. All 83 hosted chunks and source/license archive match, with
+  unchanged access/expiry/raw-route protections. The source archive precedes this
+  final browser note; configured-layout browser printing remains unverified.
+
 ## 10 October cheque/PDC recording acceptance checkpoint
 
 - The Qorlia payment modal uses installed native manual, cheque and PDC methods.

@@ -1,5 +1,47 @@
 # Qorlia React frontend backend readiness
 
+## Native cheque printing candidate checkpoint (10 October 2026)
+
+Posted cheque/PDC payments now open a Qorlia printing-review modal. Six named
+`account.payment.qorlia_cheque_*` actions load native configuration, review the
+number, generate the configured PDF, check an exact request and download again.
+Native invoice/payment permissions, company scope, locks and ledger checks apply.
+The installed extension's old `print_checks` entry point is avoided in favour of
+its current native numbering wizard and renderer. No new payment is recorded.
+
+Explicit printing requires a reviewed native layout and stationery number, or
+the number already assigned by a manual-sequencing journal. A same-author exact
+request receipt is stored atomically with the sent state; duplicate requests and
+downloads do not assign another number. A failed PDF transaction rolls back.
+Pending requests survive modal remounts, freeze new numbering and require explicit
+status checking or identical retry. There is no automatic financial write retry.
+
+The isolated native suite passes 202 tests, with zero failures/errors/skips,
+including an actual QWeb/PDF render of a clearly labelled, transaction-rolled-back
+synthetic layout. Home passes 255 tests across 33 suites. Types, lint, Python
+compilation, seven gateway/webpack tests and the development build pass. The
+native web service was restarted after the test suite; the temporary analytic
+test setting was restored. These are candidate checks, not full bank acceptance.
+
+The staging company's actual layout selection currently offers only `None`.
+The UI must show printing unavailable rather than invent a bank-compatible
+layout. A verified bank layout, stationery alignment and physical acceptance
+are still required. PDF generation/marked-sent state do not establish physical
+printing, deposit, future-date posting or bank clearance. Batch printing,
+void/unmark-sent, bank matching, provider collection, remaining Billing and
+clinical/separate-product parity remain open. Production/shared demo are unchanged.
+
+Protected browser acceptance: opening payment #2003 from invoice #14729 and
+reloading cheque status shows the native missing-layout reason, no number field
+and no print action. The existing INR 100 payment, INR 400 invoice residual,
+unassigned number, unsent state and pending bank match are unchanged on native
+readback. The hosted source/LICENSE/NOTICE archive and all 83 JS/CSS chunks match;
+tester expiry, secure cookies, clinical-session gate, robots exclusion and blocked
+raw cheque/financial/mail/report routes remain intact. Source was packaged before
+this final browser note. Successful configured-layout browser printing is still
+unverified; the actual synthetic QWeb/PDF proof comes from the rolled-back native
+suite, not a real bank layout installed into staging.
+
 ## Cheque and post-dated-cheque recording checkpoint (10 October 2026)
 
 The signed-in payment modal now records native manual, cheque and PDC methods

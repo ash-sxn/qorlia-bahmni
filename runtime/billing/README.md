@@ -3,12 +3,40 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest recording checkpoint: 192 installed native adapter tests and 243 Home
-tests pass. Protected browser save/reload and independent native readback confirm
+Latest candidate checkpoint: 202 installed native adapter tests and 255 Home
+tests pass. Native cheque numbering/PDF/recovery is implemented below, but the
+actual staging company has no bank-compatible cheque layout. The prior protected
+browser save/reload and independent native readback confirm
 one INR 100 synthetic PDC, INR 400 remaining, persisted references/effective date,
 balanced entries and unchanged protected records. See the readiness/parity ledgers
 for dated evidence and remaining gates. Older counts below describe earlier
 checkpoints, not current total coverage or a product completion percentage.
+
+## Native cheque printing
+
+Six named `account.payment.qorlia_cheque_*` actions provide `load`, `preview`,
+`print`, `status`, `download` and `download_current`. Only posted customer
+cheque/PDC bank payments are accepted, with native read/write rules, company scope,
+balanced-ledger checks and payment/journal/company locks. Layouts must resolve
+from the native company selection to an authorised account-payment QWeb report.
+No arbitrary report, caller context or elevated financial mutation is accepted.
+
+The native manual-sequencing journal preserves its already assigned number.
+Preprinted stationery requires a reviewed numeric number and uses the installed
+prenumbered-cheque wizard. The old extension's incompatible `print_checks`
+entry point is not called. Native numbering, sent state, financial-state equality,
+valid PDF and an exact author-bound UUID receipt commit atomically or roll back.
+Duplicate writes and accepted/current downloads never re-number the payment.
+The UI stores the exact request before writing and offers explicit status checking
+or identical retry after response loss, never an automatic write retry.
+
+The native 202-test suite includes actual synthetic QWeb/PDF generation. That
+fixture is labelled NOT A BANK CHEQUE and rolls back; it does not install a real
+bank layout. Staging currently offers only the disabled layout, so operational
+printing remains unavailable until an administrator verifies the appropriate
+bank report and stationery. PDF generation and marked-sent state do not establish
+physical printing, deposit or clearance. Batch, void/unmark-sent, bank matching,
+payment providers and remaining financial parity still require implementation.
 
 ## Draft invoice journal details
 
