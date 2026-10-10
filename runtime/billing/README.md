@@ -3,8 +3,10 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest checkpoint: 289 installed native adapter tests and 334 Home
-tests pass. Native cheque numbering/PDF/recovery is implemented below, but the
+Latest checkpoint: 294 installed native tests (including five upstream Cut-Off
+contract tests) pass. The last complete Home suite has 334 passing tests; the
+26 journal-detail tests were rerun successfully after hosted verification.
+Native cheque numbering/PDF/recovery is implemented below, but the
 actual staging company has no bank-compatible cheque layout. The prior protected
 browser save/reload and independent native readback confirm
 one INR 100 synthetic PDC, INR 400 remaining, persisted references/effective date,
@@ -200,6 +202,46 @@ printing remains unavailable until an administrator verifies the appropriate
 bank report and stationery. PDF generation and marked-sent state do not establish
 physical printing, deposit or clearance. Batch, PDC cancellation, bank matching,
 payment providers and remaining financial parity still require implementation.
+
+## Cut-Off native contract (not yet integrated)
+
+The installed native invoice journal view exposes `action_automatic_entry` on
+posted income/expense items with `default_action=change_period`. It opens
+`account.automatic.entry.wizard`; this is revenue/expense recognition, not a
+change to the invoice due date or payment collection. The wizard requires posted,
+unreconciled source items from one company, validates percentages and lock dates,
+and supplies its own onchange and generated-move data.
+
+Native virtual-record preview rounds the adjusting amount in company currency
+and each generated transaction amount in its own currency. It creates no saved
+wizard or entries and does not change company defaults. Native execution creates
+the recognition entry plus the original-date adjusting entry, retains the source
+invoice's monetary rows and balances, and posts or schedules entries using native
+date rules. Creating the saved wizard updates the company's default automatic-entry
+journal and the selected accrual account through native inverse methods. Those
+configuration effects must be shown and permission-scoped, not hidden behind a
+button. The native action itself has no identical-request duplicate protection.
+
+Five `NativeCutoffContractTest` cases pin those behaviors against the installed
+Odoo source, including amount onchange, foreign-currency rounding, locked dates,
+draft/reconciled rejection, future-date scheduling and repeated execution. Their
+full isolated suite passes all 294 tests with no failures, errors or skips.
+Installed test/init hashes match the worktree. The staging service is running
+again, the analytic setting was restored, and independent native/hosted reads
+retain the synthetic saved label, exact receipt and protected balances/counts.
+This is a contract-test foundation,
+not an exposed Qorlia API or React feature. The subsequent adapter must bind the
+source, generated entries and company defaults to a server-owned review, enforce
+native ACLs/rules and locks, and atomically persist exact-request receipts with
+status/retry recovery. The redesigned journal still has no Cut-Off button.
+
+Inspected source: `account/wizard/account_automatic_entry_wizard.py`, its view,
+`account/models/account_move_line.py::action_automatic_entry` and
+`account/views/account_move_views.xml` in the isolated Billing image
+`bahmni/odoo-16@sha256:b3afea0fd5c6b8a6e3f7e70d01306d456c2c9cd1bcf03c17fda9cb52f47e2de8`.
+Wizard source SHA-256:
+`88295cb24991045fe5332f6a5165e3b9303a3d29aa27e0b5b89eb6ba293d213d`.
+No production or shared-demo configuration was changed.
 
 ## Invoice journal details
 

@@ -1,5 +1,24 @@
 # Qorlia React frontend backend readiness
 
+## Native Cut-Off contract checkpoint (10 October 2026)
+
+Five installed-source contract tests prove read-only virtual preview, native
+amount/currency rounding, amount onchange, generated recognition/adjusting
+entries and company-default updates. They retain unchanged source invoice money,
+check native percentage/date/source restrictions, and show future recognition
+auto-post scheduling and duplicate execution without an exact-request guard.
+All 294 native tests pass without failures/errors/skips; installed test/init
+hashes match. Staging is running and the analytic setting was restored. Subsequent
+native/hosted reads retain the posted synthetic label, one save receipt, protected
+balances/counts and the existing artifact/access boundaries.
+
+This is a tests-only prerequisite, not an available Cut-Off API or React screen.
+The integration still needs reviewed generated entries and default-setting effects,
+native ACLs/rules/locks and atomic exact-request save/status/retry. The published
+`posted-journal-20261010` archive predates these five additional tests. Wider
+monetary journal, bank/provider, stock/POS/sync and clinical/external-module parity
+remain unfinished. Production and the shared public demo are unchanged.
+
 ## Posted journal metadata checkpoint (10 October 2026)
 
 Draft and posted invoice/credit journal detail editing now delegates to native

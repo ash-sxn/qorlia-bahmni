@@ -1,5 +1,26 @@
 # Bahmni workflow parity ledger
 
+## 10 October native Cut-Off contract checkpoint
+
+- Inspected the installed Odoo invoice row action, wizard/view and execution,
+  rather than treating Cut-Off as an invoice date edit. Native execution creates
+  adjusting entries, changes company defaults through inverse methods, and
+  schedules future recognition entries. The action is not idempotent.
+- Five native contract tests now cover pure virtual preview, company/transaction
+  currency rounding, amount onchange, two generated entries, unchanged source
+  financial rows/balances, company-default effects, fiscal locks, draft/reconciled
+  rejection, future scheduling and duplicate native execution.
+- All 294 installed tests pass with zero failures/errors/skips. Installed test/init
+  hashes match. Staging is running again and the analytic setting is restored.
+  Independent native/hosted reads retain the posted synthetic label, one receipt,
+  protected records/counts and the unchanged protected artifact/access boundaries.
+- This tests-only foundation adds no Cut-Off API or React control. The adapter
+  still needs server-bound review of entries/default effects, native permissions,
+  locks and atomic exact-request save/status/retry before UI integration. The
+  published `posted-journal-20261010` source archive predates these extra tests.
+  Monetary journal, wider Billing and clinical/separate-product parity remain
+  unfinished. Production and the shared public demo are unchanged.
+
 ## 10 October posted journal metadata checkpoint
 
 - The detail editor now accepts draft and posted invoice/credit journal metadata
