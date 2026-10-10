@@ -1,5 +1,43 @@
 # Qorlia React frontend backend readiness
 
+## Protected bank matching browser acceptance (10 October 2026)
+
+The protected tester gateway now permits the ten exact native bank read,
+matching, fee, analytic, review, save and recovery methods. Tests derive the
+public method set from the adapter to detect allowlist drift. Missing clinical
+sessions, malformed RPC envelopes, cross-origin writes, oversized bodies,
+expired review access and raw/private accounting methods remain rejected.
+The seven gateway/webpack tests and development build 4ae24d09823d971e pass.
+
+The `bank-match-20261010` review artifact is deployed on the existing loopback
+review container, with the same access code, signing key, tunnel and expiry
+(15 October 2026, 18:29:59 UTC). All 83 hosted JS/CSS hashes and protected
+source/license/manifest hashes match the package. The manifest identifies
+8191ba1c and the nine preserved clinical working-tree edits by path/hash;
+this is not a clean commit-only build. No production/public-demo change occurred.
+
+Authenticated browser testing saved a reviewed INR 1 partial match on synthetic
+statement #37/source #51 with 100% QorliaQA Outpatient allocation, then reopened,
+reviewed and saved whole-entry undo. Independent native reads after each action
+confirm source residual 472.50 -> 471.50 -> 472.50, original source analytics
+restored, statement amount 123.45 unchanged, balanced accounting and all eight
+protected documents unchanged. Native undo recreated ledger rows, so restoration
+means original monetary/analytic values, not identical generated IDs/timestamps.
+
+Some initial automated pointer clicks targeted controls outside the scrolled
+modal and had no effect. Keyboard actions and visible pointer search, selection
+and undo actions worked; no frontend handler defect was established. Unsaved
+selection close, keep-editing and explicit discard also pass. Reference-only candidate
+search returned no items because the native search covers document number,
+partner and ledger label, not invoice reference. Neither behavior is treated as
+successful save evidence. The browser displays native acceptance for both saves.
+
+Hosted actual-client load/candidates/analytics/preview/status also pass; preview
+rolls back and protected reads remain unchanged. Lost-response/cross-tab browser
+testing, wider banking configuration/concurrency, import/create/checkpoints and
+remaining Billing/clinical/external parity are still open. Earlier Home/native
+suite results below were not rerun for this gateway-only release.
+
 ## React bank matching workspace checkpoint (10 October 2026)
 
 The signed-in Bank statements panel now opens reviewed match/undo controls using

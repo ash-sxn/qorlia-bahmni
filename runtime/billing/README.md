@@ -3,7 +3,22 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Current checkpoint: signed-in bank history opens a reviewed matching/undo workspace
+Current checkpoint: protected tester artifact `bank-match-20261010` permits all
+ten named bank methods behind unchanged review, clinical and Billing session
+gates. Seven gateway/webpack tests and development build 4ae24d09823d971e pass.
+Hosted files, source/licenses and working-tree manifest hashes match, including
+nine preserved clinical edits recorded separately from commit 8191ba1c. Actual
+browser review/save and reopened reviewed undo pass on synthetic statement #37,
+source #51, INR 1 and mandatory 100% QorliaQA Outpatient allocation. Independent
+native reads verify residual 472.50 -> 471.50 -> 472.50, unchanged original source
+analytics and statement amount 123.45, balanced accounting and eight protected
+documents unchanged. Undo regenerates ledger IDs/timestamps. Access code, signing
+key, tunnel, expiry and production/public demo remain unchanged. Broader banking,
+browser lost-response/concurrency and full Billing/product parity remain open.
+The unchanged Home/native suites were not rerun for this gateway-only release.
+See the newest backend-readiness and parity checkpoints for exact scope/limits.
+
+Earlier checkpoint: signed-in bank history opens a reviewed matching/undo workspace
 with candidate/fee paging, source-currency partial allocations, named counterpart
 analytics and complete seven-model effects. Exact requests persist before send;
 unconfirmed saves block new actions and require explicit status/exact retry.

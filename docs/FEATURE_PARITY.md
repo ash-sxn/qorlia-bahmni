@@ -1,5 +1,29 @@
 # Bahmni workflow parity ledger
 
+## 10 October protected bank matching browser acceptance
+
+- Deployed `bank-match-20261010` to the existing protected tester container.
+  All ten named bank methods are allowed, with malformed/session/origin/expiry
+  and raw accounting guards retained. Seven gateway/webpack tests and build
+  4ae24d09823d971e pass. All 83 hosted JS/CSS files and source/license/manifest
+  hashes match. The manifest records 8191ba1c plus nine preserved clinical edits;
+  it is a working-tree build, not a clean commit-only release.
+- Real browser save and reviewed undo pass for synthetic statement #37/source
+  #51, with INR 1 and mandatory 100% QorliaQA Outpatient allocation. Independent
+  native reads show residual 472.50 -> 471.50 -> 472.50, unchanged original
+  source analytics and statement amount 123.45, balanced accounting and eight
+  protected documents unchanged. Undo regenerates ledger IDs/timestamps.
+- Initial offscreen automated pointer clicks had no effect; keyboard operations
+  and visible pointer search/selection/undo worked. Unsaved close/keep/discard
+  guards pass. No handler defect was established. Native
+  candidate search accepts document number/partner/ledger label, not invoice
+  reference. Browser receipt recovery, concurrency and broader configuration
+  still need acceptance tests. Prior Home/native suite results are historical,
+  not reruns for this gateway release.
+- Access code, signing key, tunnel and expiry remain unchanged. Production and
+  public demo remain unchanged. Statement creation/import/checkpoints, broader
+  Banking/Billing and complete clinical/external workflow parity are unfinished.
+
 ## 10 October React bank matching workspace checkpoint
 
 - Signed-in bank history now opens a separate matching workspace with native
