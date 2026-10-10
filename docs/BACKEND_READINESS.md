@@ -1,5 +1,41 @@
 # Qorlia React frontend backend readiness
 
+## Native bank-matching contract checkpoint (10 October 2026)
+
+Twenty-four installed-source tests pin Odoo's bank engine before reviewed writes
+are exposed. They cover inbound/outbound receivable/payable matching, explicit
+partial allocations, repeated matches, net refunds, deposits from multiple payers,
+transaction/journal/third currencies, native exchange differences, four native
+fee rules and a company-currency tax-exclusive fee. Original statement and
+liquidity amounts remain intact when business-model synchronization is suppressed
+by the server-owned bank context. Native balance and fiscal-lock checks stay active.
+
+Undo tests establish that native undo removes all matches, restores residuals and
+original foreign amounts, and deletes statement-generated payments while retaining
+unrelated payments. Native exchange effects can be attached to partial rather than
+only full reconciliations. Reviewed undo must disclose these complete effects.
+Savepoint tests verify rolled-back matching/undo, not a public preview API or a
+complete callback-isolated simulation implementation.
+
+All 383 installed native adapter tests pass with zero failures/errors/skips.
+Installed hashes match the three touched test files. The older invoice correction
+test now mocks only lock-date fixture setup because an unrelated staged unmatched
+bank entry prevents arranging that fixture; its actual native reset rejection is
+still tested outside the mock. Staging restarted and mandatory analytic policy was
+independently confirmed restored. Subsequent authenticated native reads retain
+entry #37, its ledger/matching state, protected records and financial/stock/mail/
+statement counts. Existing upstream/report warnings remain.
+
+This is test-only progress. No new bank write API, matching/undo UI or frontend
+build/browser acceptance is delivered by this checkpoint. Protected artifact
+`bank-read-20261010`, its source archive, gates and expiry remain unchanged.
+Foreign/included/cash-basis tax and mandatory analytic cases need further acceptance.
+Complete graph/configuration locks, reviewed save/undo, exact-request recovery,
+permissions/concurrency testing and browser save/read-back remain required, as do
+statement creation/import/checkpoints, provider payments and wider product parity.
+Production and the shared public demo are unchanged. Earlier checkpoints below
+are historical, not current completion claims.
+
 ## Native bank-statement read workspace checkpoint (10 October 2026)
 
 Signed-in Billing exposes bank/cash history, a complete native ledger and possible

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 from odoo import Command, fields
 from datetime import timedelta
+from unittest.mock import patch
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
@@ -107,7 +108,9 @@ class InvoiceCorrectionTest(TransactionCase):
         invoice = self.invoice()
         self.moves.search([('company_id', '=', self.env.company.id), ('state', '=', 'draft'),
                            ('date', '<=', invoice.date)]).button_cancel()
-        self.env.company.fiscalyear_lock_date = invoice.date
+        # Arrange the invoice lock without resolving unrelated staged bank transactions.
+        with patch.object(type(self.env.company), '_validate_fiscalyear_lock', return_value=None):
+            self.env.company.fiscalyear_lock_date = invoice.date
         with self.assertRaises(UserError), self.env.cr.savepoint():
             self.correct(invoice, 'reset')
         invoice.invalidate_recordset()

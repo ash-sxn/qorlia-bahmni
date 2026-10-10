@@ -1,5 +1,33 @@
 # Bahmni workflow parity ledger
 
+## 10 October native bank-matching contract checkpoint
+
+- Added 24 installed-native contract tests, not new public accounting endpoints.
+  Odoo handles receivable/payable and net-refund matching, partial/multiple-source
+  allocations, multiple payers, journal/transaction/third currencies, exchange
+  differences, native fixed/percentage/statement-percentage/regex fees and a
+  company-currency tax-exclusive fee. The adapter must preserve original bank
+  amounts explicitly while retaining native balance and fiscal guards.
+- Native undo restores all source residuals and foreign statement amounts, removes
+  every match, and deletes statement-generated payments, not unrelated payments.
+  Reviews must include partial/full exchange and cash-basis effects rather than
+  treating undo as a harmless toggle. Savepoint rollback is tested; a complete
+  public callback-isolated preview is not implemented by these tests.
+- All 383 installed native adapter tests pass with zero failures/errors/skips.
+  Touched test hashes match. The invoice correction fixture mocks only lock-date
+  setup; the actual fiscal rejection remains native and outside that mock.
+  Staging restarted, mandatory analytics was restored, and independent native
+  reads retain entry #37, its ledger/matching state, protected records and counts.
+  Existing upstream/report warnings remain, not a warning-free environment claim.
+- No TSX, gateway, public bank write API or protected release changed. Frontend and
+  browser tests were not rerun for this tests-only step. The published bank-read
+  artifact and source archive predate this checkpoint; gates/expiry are unchanged.
+- Reviewed match/undo, full tax/analytic/configuration and permission/concurrency
+  coverage, exact-request recovery and actual browser save/read-back remain open.
+  Statement import/create/checkpoints, provider payments and wider Billing,
+  clinical and separate-product parity remain required. Production/public demo
+  are unchanged. This does not complete bank matching or the full product.
+
 ## 10 October bank-statement read workspace checkpoint
 
 - Signed-in Billing now has a Bank statements tab with native bank/cash history,

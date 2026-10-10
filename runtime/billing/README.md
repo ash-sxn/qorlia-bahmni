@@ -3,7 +3,21 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest checkpoint: native bank/cash history, complete versioned ledger and possible
+Latest checkpoint: 24 new installed-native bank contract tests establish matching,
+partial allocations, net refunds, multiple payers, currency/exchange behaviour,
+native fee rules and a company-currency tax-exclusive fee. Native undo removes all
+matches and deletes generated payments, so future reviewed undo must expose those
+effects. All 383 native adapter tests pass with zero failures/errors/skips; touched
+test hashes match. Mandatory analytics was restored and authenticated native reads
+retain statement #37, protected financial records and counts after the suite.
+The lock-date fixture correction changes test setup only, not native action guards.
+No new bank write API, UI or protected release is delivered by this tests-only step.
+Foreign/included/cash-basis taxes, mandatory analytics, graph/configuration locks,
+reviewed save/undo and exact-request/browser recovery remain acceptance work.
+Frontend checks were not rerun; published `bank-read-20261010` source predates this
+checkpoint. Production/public demo and existing gates/expiry remain unchanged.
+
+Earlier read checkpoint: native bank/cash history, complete versioned ledger and possible
 matching items are integrated as three permission-scoped read APIs in signed-in
 Billing. All 359 installed native tests and 396 Home tests/47 suites pass, along with
 types/lint, seven gateway/config checks and direct development webpack. Protected
