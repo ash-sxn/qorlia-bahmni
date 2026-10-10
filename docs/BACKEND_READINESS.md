@@ -1,5 +1,31 @@
 # Qorlia React frontend backend readiness
 
+## Native journal monetary contract checkpoint (10 October 2026)
+
+Nine added installed-source tests establish native journal amount/credit
+behaviour, desktop/mobile field differences, dynamic receivable updates,
+draft/posted outcomes, deletion, balance/fiscal/reconciliation guards and
+read-only onchange. Crucially, company-currency onchange totals can differ from
+native write outcomes, and monetary ledger edits do not necessarily reprice the
+product. The forthcoming monetary review must reproduce actual native saved
+rows/totals and expose that difference, not accept a misleading onchange total.
+
+All 317 installed native tests pass with zero failures/errors/skips; final test/
+init hashes match. Seven existing gateway/build-config tests pass. Billing is
+running again and the analytic setting is restored to mandatory. Independent
+native reads and exact Cut-Off status/retry preserve the original two entries,
+one receipt, source/protected records, financial/stock/mail counts and matching.
+All synthetic monetary probes/tests rolled back. Upstream/report-renderer
+warnings remain; this is not a warning-free environment claim.
+
+This is tests-only progress. No new monetary API or UI is available, no frontend
+build/browser acceptance is claimed for it, and the protected artifact/source
+archive is unchanged and predates these tests. Faithful monetary preview,
+review-bound atomic save/status/retry, broader row/tax/currency acceptance and
+browser save/read-back remain required before monetary editing is accepted.
+Full Billing and clinical/external-module parity remain incomplete. Production
+and the shared public demo are unchanged. Older checkpoints below are historical.
+
 ## Reviewed Cut-Off integration checkpoint (10 October 2026)
 
 Six scoped `account.move.qorlia_cutoff_*` methods and the redesigned journal

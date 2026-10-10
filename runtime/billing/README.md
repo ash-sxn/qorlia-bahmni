@@ -337,6 +337,15 @@ covered above; this is not full monetary journal parity.
 
 ## Invoice Journal Items
 
+The 10 October monetary contract suite adds nine native tests, bringing the
+installed adapter suite to 317 passing tests without failures/errors/skips.
+Installed desktop/mobile views and native monetary writes are inspected directly.
+Company-currency onchange totals can differ from the actual saved total, while
+ledger changes can preserve the product price. Read-only onchange alone is not
+a trustworthy financial review. These tests pin the behaviour before monetary
+API/UI implementation; they do not add monetary editing, row creation/removal or
+claim full journal acceptance. The protected build/source archive is unchanged.
+
 `account.move.qorlia_invoice_journal` reads an authorised customer invoice or
 credit note's native financial journal items. It accepts only `invoice_id`, an
 optional native line-ID cursor and a snapshot version. Ordered pages contain up

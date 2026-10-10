@@ -18,3 +18,4 @@ from . import test_invoice_journal
 from . import test_invoice_journal_edit
 from . import test_native_cutoff_contract
 from . import test_invoice_cutoff
+from . import test_native_journal_money_contract

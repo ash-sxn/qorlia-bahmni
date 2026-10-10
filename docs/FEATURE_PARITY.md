@@ -1,5 +1,31 @@
 # Bahmni workflow parity ledger
 
+## 10 October native journal monetary contract checkpoint
+
+- Traced the installed invoice journal tree/mobile form and native line/dynamic
+  synchronisation. Nine contract tests pin desktop/mobile control differences,
+  company/foreign-currency money changes, draft/posted outcomes, payment-term
+  balancing, reconciled/fiscal-locked rejection, deletion and pure onchange.
+- Native amount/credit writes can change invoice totals or company balances while
+  retaining the product price. Company-currency onchange totals can disagree with
+  eventual save outcomes. A monetary review cannot trust onchange alone; it must
+  reproduce native saved rows/totals rather than implement browser accounting.
+- All 317 installed native tests pass with zero failures/errors/skips after
+  strengthening the preview-versus-save regression. Installed test/init hashes
+  match. Seven existing gateway/build-configuration tests pass. No TSX or runtime
+  API changed, so frontend suites/build were not rerun for this tests-only step.
+- Isolated Billing restarted; the mandatory analytic setting is restored.
+  Independent reads and exact Cut-Off status/retry retain the two original
+  entries, one receipt, source/protected records, financial/stock/mail counts and
+  matching. Synthetic monetary probes/tests rolled back. Existing upstream
+  warnings remain, including a report-renderer connection warning in test logs.
+- The protected artifact/access gates/expiry remain unchanged and its source
+  archive predates these extra contract tests. No monetary editing API/UI or row
+  creation/removal has been delivered by this checkpoint. Native-faithful preview,
+  reviewed atomic save/recovery, taxes/rounding/credit/installment acceptance and
+  browser verification are next. Wider Billing and clinical/external-module
+  parity remain unfinished. Production and the public demo are unchanged.
+
 ## 10 October reviewed Cut-Off integration checkpoint
 
 - Eligible posted invoice/credit income or expense rows now open a house-design
