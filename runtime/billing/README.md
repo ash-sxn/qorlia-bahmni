@@ -3,7 +3,25 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest checkpoint: 24 new installed-native bank contract tests establish matching,
+Latest checkpoint: private bank matching/undo and rolled-back native calculations
+now preserve original bank amounts and native balance/fiscal restrictions, reject
+hashed entries and accounting-bypass contexts, and enforce mandatory analytics.
+SQL-complete graphs include partial/full reconciliation, FX and cash-basis moves/
+reversals, generated-payment deletion and analytic items after native ACL/rules.
+Selected tax/currency/analytic/cash-basis previews match actual native saves.
+All 420 installed native adapter tests pass without failures/errors/skips on
+16.0.1.28.0. The new 37-case class includes 24 replayed native contracts and
+13 new simulation/permission/validation cases. Five installed source hashes match;
+staging restarted, mandatory analytics was restored and independent native reads
+retain statement #37, protected financial records and counts. Temporary SQL is
+rolled back, callbacks isolated and prior real tracking flushed; sequences can
+advance. No public bank write API, matching/undo UI or protected build is delivered.
+Complete reviewed save/status/undo, locks, receipts, concurrency/browser recovery,
+forced-account/FX-only and broader fee/tax/rounding acceptance remain required.
+Frontend checks were not rerun. Existing bank-read build/source/gates/expiry and
+production/public demo are unchanged. Wider Billing/product parity remains open.
+
+Earlier checkpoint: 24 new installed-native bank contract tests establish matching,
 partial allocations, net refunds, multiple payers, currency/exchange behaviour,
 native fee rules and a company-currency tax-exclusive fee. Native undo removes all
 matches and deletes generated payments, so future reviewed undo must expose those

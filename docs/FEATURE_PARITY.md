@@ -1,5 +1,31 @@
 # Bahmni workflow parity ledger
 
+## 10 October private native bank calculation checkpoint
+
+- Added private native matching/undo and rolled-back calculation helpers, not
+  public bank writes. Native counterpart/tax/reconciliation methods preserve
+  statement and liquidity amounts; native balance/fiscal checks, explicit hash
+  protection and mandatory analytics remain enforced. Duplicate/excess/sub-cent
+  allocations, unavailable rules and caller accounting-bypass contexts are denied.
+- SQL-complete, native-permission-checked snapshots include partial/full matching,
+  exchange and cash-basis entries/reversals, payment deletions and analytic items.
+  Hidden connected rows or earlier partials fail the review. Preview rolls back
+  temporary SQL and isolates three transaction callback queues; sequence IDs can
+  advance. Earlier real writes/tracking are flushed before the simulation baseline.
+- All 420 installed native adapter tests pass with zero failures/errors/skips on
+  version 16.0.1.28.0. The new 37-case class replays 24 native contracts and adds
+  13 private simulation/permission/validation cases. Selected company/foreign
+  included/exclusive/forced taxes, FX, mandatory analytics and cash-basis matching/
+  undo reproduce actual saves. Installed source hashes match. Staging runs again;
+  mandatory plan #23, statement #37, protected records and financial/stock/mail/
+  statement counts are independently verified unchanged after the suite.
+- Public review/save/status/undo APIs, graph/configuration locks, exact-request
+  recovery, concurrency and browser acceptance are next. Forced-account/FX-only
+  and wider fee/tax/rounding configurations remain open. No frontend rebuild or
+  protected publication was performed; bank-read-20261010 and its source/gates/
+  expiry predate this work. No production/shared-demo changes. Bank operations,
+  Billing, clinical and separate-product parity remain incomplete.
+
 ## 10 October native bank-matching contract checkpoint
 
 - Added 24 installed-native contract tests, not new public accounting endpoints.

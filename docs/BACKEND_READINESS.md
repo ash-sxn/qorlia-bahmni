@@ -1,5 +1,48 @@
 # Qorlia React frontend backend readiness
 
+## Private native bank calculation checkpoint (10 October 2026)
+
+The adapter now implements private matching, undo and rolled-back calculation
+helpers using installed Odoo counterpart, tax and reconciliation methods. It
+preserves original statement/liquidity values and native balance/fiscal guards;
+rejects genuinely hash-protected entries, caller accounting-bypass contexts,
+duplicate/excess/sub-rounding allocations and unavailable fee rules. Native
+mandatory analytic validation is enabled explicitly, not assumed from its name.
+
+Complete graph snapshots traverse native ledger, partial/full reconciliations,
+exchange and cash-basis entries/reversals, generated payments and analytic items.
+SQL enumerates every connected financial row before native ACL/rule checks, so
+hidden rows or prior partial matches fail rather than silently disappear. Undo
+discloses deleted generated payments and preserves unrelated payments. New IDs
+are normalized for comparison; reconciliation sequence names are assigned at
+save, not invented by preview. Preview temporarily writes and rolls back SQL,
+can consume sequence IDs, and quarantines postcommit/prerollback/postrollback
+callbacks. Earlier real writes and their precommit tracking are flushed first.
+
+All 420 installed native adapter tests pass with zero failures/errors/skips on
+version `16.0.1.28.0`. The new class has 37 tests: 24 inherited native contracts
+replayed against the adapter plus 13 simulation/permission/validation cases.
+Selected company/foreign exclusive/included/forced-included fee taxes, native
+exchange effects, mandatory analytics and cash-basis generation/undo agree with
+actual native saves. Tests verify rollback of financial/stock/mail counts and
+callback queues on success/failure. Installed hashes match all five touched
+Python/init/manifest files. Staging restarted; native SQL confirms the installed
+version and restored mandatory plan #23. Independent authenticated native reads
+retain statement #37, its ledger/matching, protected records and financial/stock/
+mail/statement counts after the upgrade and full suite. Existing upstream/report
+warnings remain.
+
+This is private backend progress, not a public bank write API or matching/undo UI.
+Author/configuration-bound reviews, stable graph/configuration locks, atomic
+save/status receipts, exact-request/concurrency recovery and browser save/read-back
+remain required. Forced-account and FX-only residual cases, broader multi-fee/
+tax/rounding/company/permission configurations still need acceptance. Statement
+creation/import/checkpoints, provider payments, stock/POS, clinical synchronisation
+and separate-product redesign remain in the full goal. Frontend checks were not
+rerun and protected artifact `bank-read-20261010`, its source archive, gates and
+expiry remain unchanged and predate this code. Production/public demo are unchanged.
+Earlier checkpoints below describe their historical evidence, not current scope.
+
 ## Native bank-matching contract checkpoint (10 October 2026)
 
 Twenty-four installed-source tests pin Odoo's bank engine before reviewed writes
