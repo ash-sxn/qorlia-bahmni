@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 import copy
 import uuid
+from datetime import date
 from unittest.mock import patch
 
 from odoo import Command
@@ -62,7 +63,7 @@ class InvoiceJournalEditTest(TransactionCase):
         with self.assertRaises(ValidationError):
             self.moves.qorlia_journal_edit_save(**altered)
         invoice.action_post()
-        self.assertFalse(self.moves.qorlia_journal_edit_save(**request)['can_edit'])
+        self.assertEqual(self.moves.qorlia_journal_edit_save(**request)['state'], 'posted')
         self.assertTrue(self.moves.qorlia_journal_edit_status(**request))
 
     def test_account_choices_are_native_company_scoped_and_save_native_reclassification(self):
@@ -88,14 +89,12 @@ class InvoiceJournalEditTest(TransactionCase):
         self.assertEqual(saved['values']['discount_amount_currency'], 10)
         self.assertEqual(invoice.amount_total, 500)
 
-    def test_posted_readonly_cross_invoice_and_denied_line_requests_fail(self):
+    def test_readonly_cross_invoice_and_denied_line_requests_fail(self):
         posted = self.invoice()
-        self.assertFalse(self.moves.qorlia_journal_edit_load(posted.id, posted.invoice_line_ids[0].id)['can_edit'])
-        with self.assertRaises(UserError):
-            self.request(posted, name='QorliaQA Must not edit posted')
         invoice = self.draft()
         reader = self.reader()
         read_only = self.moves.with_user(reader)
+        self.assertFalse(read_only.qorlia_journal_edit_load(posted.id, posted.invoice_line_ids[0].id)['can_edit'])
         loaded = read_only.qorlia_journal_edit_load(invoice.id, invoice.invoice_line_ids[0].id)
         self.assertFalse(loaded['can_edit'])
         with self.assertRaises(AccessError):
@@ -108,6 +107,104 @@ class InvoiceJournalEditTest(TransactionCase):
             'domain_force': repr([('id', '!=', invoice.line_ids[0].id)])})
         with self.assertRaises(AccessError):
             read_only.qorlia_journal_edit_load(invoice.id, invoice.invoice_line_ids[0].id)
+
+    def test_posted_invoice_and_credit_metadata_preserve_state_money_and_exact_retry(self):
+        for move_type in ('out_invoice', 'out_refund'):
+            invoice = self.invoice()
+            if move_type == 'out_refund':
+                invoice = invoice.copy({'move_type': move_type})
+                invoice.action_post()
+            before = invoice.read(['state', 'amount_total', 'amount_tax', 'amount_residual', 'payment_state'])
+            ledger = invoice.line_ids.read(['id', 'debit', 'credit', 'amount_currency', 'amount_residual'])
+            request = self.request(invoice, name='QorliaQA Posted reviewed label')
+            self.assertEqual(invoice.read(['state', 'amount_total', 'amount_tax', 'amount_residual', 'payment_state']), before)
+            saved = self.moves.qorlia_journal_edit_save(**request)
+            self.assertEqual(saved['state'], 'posted')
+            self.assertEqual(saved['values']['name'], request['values']['name'])
+            self.assertEqual(invoice.read(['state', 'amount_total', 'amount_tax', 'amount_residual', 'payment_state']), before)
+            self.assertEqual(invoice.line_ids.read(['id', 'debit', 'credit', 'amount_currency', 'amount_residual']), ledger)
+            self.assertEqual(self.moves.qorlia_journal_edit_save(**request), saved)
+            self.assertTrue(self.moves.qorlia_journal_edit_status(**request))
+
+    def test_posted_reclassification_keeps_native_fiscal_lock_and_review_staleness(self):
+        invoice = self.invoice()
+        line = invoice.invoice_line_ids[0]
+        original_account = line.account_id
+        account = self.env['account.account'].create({'name': 'QorliaQA Posted alternate income',
+            'code': 'QPOSTLOCK', 'account_type': 'income', 'company_id': invoice.company_id.id})
+        request = self.request(invoice, account_id=account.id)
+        # Seed a pre-existing lock despite unrelated staging drafts; the actual line-write guard stays native.
+        with patch.object(type(invoice.company_id), '_validate_fiscalyear_lock', return_value=None):
+            invoice.company_id.fiscalyear_lock_date = max(invoice.date, date.today())
+        with self.assertRaisesRegex(UserError, 'changed'):
+            self.moves.qorlia_journal_edit_save(**request)
+        locked_request = self.request(invoice, account_id=account.id)
+        with self.assertRaises(UserError), self.env.cr.savepoint():
+            self.moves.qorlia_journal_edit_save(**locked_request)
+        self.assertEqual(line.account_id, original_account)
+        self.assertIs(self.moves.qorlia_journal_edit_status(**locked_request), False)
+
+    def test_posted_hashed_journal_keeps_native_integrity_protection(self):
+        invoice = self.draft()
+        invoice.journal_id.restrict_mode_hash_table = True
+        invoice.action_post()
+        self.assertTrue(invoice.inalterable_hash)
+        line = invoice.invoice_line_ids[0]
+        original_account = line.account_id
+        account = self.env['account.account'].create({'name': 'QorliaQA Hashed alternate income',
+            'code': 'QPOSTHASH', 'account_type': 'income', 'company_id': invoice.company_id.id})
+        request = self.request(invoice, account_id=account.id)
+        with self.assertRaisesRegex(UserError, 'hashed'), self.env.cr.savepoint():
+            self.moves.qorlia_journal_edit_save(**request)
+        self.assertEqual(line.account_id, original_account)
+        self.assertTrue(invoice.inalterable_hash)
+        self.assertIs(self.moves.qorlia_journal_edit_status(**request), False)
+
+    def test_paid_posted_label_preserves_reconciliation_and_rejects_account_change(self):
+        invoice = self.invoice()
+        credit = invoice.copy({'move_type': 'out_refund'})
+        credit.action_post()
+        terms = (invoice | credit).line_ids.filtered(lambda line: line.account_type == 'asset_receivable')
+        terms.reconcile()
+        names = ['id', 'amount_residual', 'amount_residual_currency', 'reconciled',
+                 'matched_debit_ids', 'matched_credit_ids', 'full_reconcile_id']
+        before = terms.read(names)
+        self.moves.qorlia_journal_edit_save(**self.request(invoice, name='QorliaQA Paid posted label'))
+        self.assertEqual(terms.read(names), before)
+        line = invoice.line_ids.filtered(lambda item: item.account_type == 'asset_receivable')[0]
+        account = self.env['account.account'].create({'name': 'QorliaQA Alternate receivable',
+            'code': 'QPOSTRECV', 'account_type': 'asset_receivable', 'reconcile': True,
+            'company_id': invoice.company_id.id})
+        request = self.request(invoice, line, account_id=account.id)
+        with self.assertRaises(UserError), self.env.cr.savepoint():
+            self.moves.qorlia_journal_edit_save(**request)
+        self.assertEqual(terms.read(names), before)
+
+    def test_cancelled_journal_is_readonly_and_posted_transition_invalidates_review(self):
+        invoice = self.draft()
+        request = self.request(invoice, name='QorliaQA Before posting')
+        invoice.action_post()
+        with self.assertRaisesRegex(UserError, 'changed'):
+            self.moves.qorlia_journal_edit_save(**request)
+        invoice.button_draft()
+        invoice.button_cancel()
+        loaded = self.moves.qorlia_journal_edit_load(invoice.id, invoice.invoice_line_ids[0].id)
+        self.assertEqual(loaded['state'], 'cancel')
+        self.assertFalse(loaded['can_edit'])
+        with self.assertRaises(UserError):
+            self.request(invoice, name='QorliaQA Cancelled cannot edit')
+
+    def test_transaction_currency_is_distinct_from_company_currency(self):
+        invoice = self.draft()
+        currency = self.env.ref('base.USD')
+        currency.active = True
+        invoice.currency_id = currency
+        line = invoice.line_ids.filtered(lambda item: item.account_type == 'asset_receivable')[0]
+        saved = self.moves.qorlia_journal_edit_save(**self.request(invoice, line,
+            discount_date='2026-11-30', discount_amount_currency=10))
+        self.assertEqual(saved['transaction_currency'], [currency.id, currency.name])
+        self.assertEqual(saved['currency'], [invoice.company_currency_id.id, invoice.company_currency_id.name])
+        self.assertEqual(saved['values']['discount_amount_currency'], 10)
 
     def test_stale_review_and_unsupported_monetary_or_context_fields_are_rejected(self):
         invoice = self.draft()
@@ -304,7 +401,9 @@ class InvoiceJournalEditTest(TransactionCase):
         line = invoice.invoice_line_ids[0]
         line.account_id.deprecated = True
         loaded = self.moves.qorlia_journal_edit_load(invoice.id, line.id)
-        self.assertFalse(loaded['can_edit'])
+        self.assertTrue(loaded['can_edit'])
+        self.moves.qorlia_journal_edit_save(**self.request(invoice, line, name='QorliaQA Deprecated historical label'))
+        self.assertEqual(line.name, 'QorliaQA Deprecated historical label')
         data = self.moves.qorlia_journal_edit_analytics(invoice.id, line.id, line.account_id.id, [])
         self.assertEqual(data['account_id'], line.account_id.id)
         other = invoice.line_ids.filtered(lambda item: item.account_type == 'asset_receivable')[0]

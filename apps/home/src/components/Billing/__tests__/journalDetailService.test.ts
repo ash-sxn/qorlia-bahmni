@@ -36,6 +36,29 @@ describe('Journal detail native API boundary', () => {
       /labels do not match/,
     );
   });
+  it('requires native state and transaction currency and rejects editable cancelled records', async () => {
+    for (const fields of [
+      { state: undefined },
+      { state: 'paid' },
+      { transaction_currency: false },
+      { transaction_currency: [0, 'USD'] },
+      { state: 'cancel', can_edit: true },
+    ]) {
+      reply({ ...journalDetailFixture(), ...fields });
+      await expect(getJournalDetails(7, 17)).rejects.toThrow(
+        /Invalid journal detail response/,
+      );
+    }
+    reply({
+      ...journalDetailFixture(),
+      state: 'posted',
+      transaction_currency: [2, 'USD'],
+    });
+    await expect(getJournalDetails(7, 17)).resolves.toHaveProperty(
+      'state',
+      'posted',
+    );
+  });
   it('reviews and saves only the exact typed request without an automatic retry', async () => {
     const data = journalDetailFixture(),
       request = journalDetailRequest();
@@ -101,6 +124,25 @@ describe('Journal detail native API boundary', () => {
         journalDetailRequest().values,
       ),
     ).rejects.toThrow(/version changed/);
+  });
+  it('rejects a review that changes document state or transaction currency', async () => {
+    for (const fields of [
+      { state: 'posted' },
+      { transaction_currency: [2, 'USD'] },
+    ]) {
+      reply({
+        ...journalDetailFixture(),
+        ...fields,
+        values: journalDetailRequest().values,
+        review_version: journalDetailRequest().review_version,
+      });
+      await expect(
+        previewJournalDetails(
+          journalDetailFixture(),
+          journalDetailRequest().values,
+        ),
+      ).rejects.toThrow(/version changed/);
+    }
   });
   it('bounds native searches and never accepts caller context', async () => {
     reply([[12, '4000 Clinical income']]);

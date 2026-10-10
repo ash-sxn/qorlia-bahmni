@@ -1,5 +1,39 @@
 # Bahmni workflow parity ledger
 
+## 10 October posted journal metadata checkpoint
+
+- The detail editor now accepts draft and posted invoice/credit journal metadata
+  through native Odoo writes, retaining posting state. Native fiscal/tax locks,
+  hashed-journal restrictions and reconciliation guards are not bypassed.
+  Generated document discount/rounding rows still use the invoice calculation
+  editor. Raw monetary row editing, row creation/removal and Cut-Off are unfinished.
+- Every save compares document amounts, state/payment state, all monetary row
+  values and partial/full reconciliation links before accepting one exact request
+  receipt. Historical deprecated accounts can be preserved while changing another
+  detail, but cannot be newly selected. Discount amounts display the actual
+  transaction currency rather than the company currency.
+- All 289 installed native tests pass with zero failures/errors/skips. Added
+  cases cover posted invoices/credits, paid/reconciled records, fiscal locks,
+  hashed entries, stale draft-to-posted review, cancelled records and differing
+  transaction currencies. Installed model/test/manifest hashes match the worktree.
+  Home has 334 passing tests across 41 suites; types, touched-file lint and the
+  development build pass. Existing bundle/Browserslist and upstream native
+  warnings remain. No production/shared-demo changes occurred.
+- Local browser review/save/full reload persisted only the label on synthetic
+  invoice #24525, item #63988. Independent native reads verify one exact receipt,
+  balanced entries and unchanged amounts, posting/payment state, other rows,
+  reconciliation links, protected records and financial/stock/mail counts.
+  This is a metadata-only browser proof, not monetary journal parity.
+- Protected artifact `posted-journal-20261010` is published with unchanged gates,
+  expiry and backends. All 83 chunks, source/licenses and the secret-free source
+  archive match. Native authenticated load/preview and session/route denials pass.
+  Hosted browser loaded the posted editor, reviewed a synthetic label change and
+  discarded it without saving. Independent native reads confirm the saved label,
+  one receipt and protected balances/counts remain unchanged. Published source
+  precedes this final evidence note and includes pre-existing clinical working-tree
+  changes; this is not a clean commit-only production release. Wider Billing,
+  clinical and separate-product acceptance remains required.
+
 ## 10 October installment-credit reconciliation checkpoint
 
 - Reproduced the upstream Expected singleton crash on multiple credit

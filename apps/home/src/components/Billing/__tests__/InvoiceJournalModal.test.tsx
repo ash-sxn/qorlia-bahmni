@@ -43,6 +43,9 @@ describe('Invoice journal view', () => {
     expect(screen.getByText(/QorliaQA Grid/)).toBeInTheDocument();
     expect(screen.getByText(/does not post or reconcile/)).toBeInTheDocument();
     expect(
+      screen.getByRole('button', { name: /Edit details for item/ }),
+    ).toBeEnabled();
+    expect(
       screen.queryByRole('columnheader', { name: 'Analytic distribution' }),
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Back to invoice' }));

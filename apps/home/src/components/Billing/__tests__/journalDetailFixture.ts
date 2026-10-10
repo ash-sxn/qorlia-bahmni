@@ -4,6 +4,7 @@ export const journalDetailFixture = (): JournalDetails => ({
   invoice_id: 7,
   line_id: 17,
   name: 'INV/QorliaQA/7',
+  state: 'draft',
   version: 'a'.repeat(64),
   values: {
     name: 'QorliaQA Consultation',
@@ -21,6 +22,7 @@ export const journalDetailFixture = (): JournalDetails => ({
   analytic_accounts: [],
   can_edit: true,
   currency: [1, 'INR'],
+  transaction_currency: [1, 'INR'],
   debit: 0,
   credit: 500,
 });

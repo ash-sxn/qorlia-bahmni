@@ -299,11 +299,17 @@ function DetailsForm({
             {lineId}
           </h2>
           <p>
-            Change an existing draft item&apos;s accounting details. This does
-            not post the invoice, collect payment or change its amounts.
-            Monetary editing and adding/removing journal rows are not available
-            here yet.
+            Change this item&apos;s accounting details. This does not post the
+            invoice, collect payment or change its amounts. Monetary editing and
+            adding/removing journal rows are not available here yet.
           </p>
+          {initial.state === 'posted' ? (
+            <p role="note">
+              This invoice is posted. Saving keeps it posted. Native Billing
+              still enforces accounting locks, protected entries and
+              reconciliation rules.
+            </p>
+          ) : null}
           <p>
             Debit {money(initial.debit, initial.currency[1])} · Credit{' '}
             {money(initial.credit, initial.currency[1])}
@@ -359,7 +365,7 @@ function DetailsForm({
           />
           <TextInput
             id="journal-discount-amount"
-            labelText="Early-payment discount amount (transaction currency)"
+            labelText={`Early-payment discount amount (${initial.transaction_currency[1]})`}
             type="number"
             min={0}
             step="any"
@@ -439,7 +445,11 @@ function DetailsForm({
                 {review.values.date_maturity || 'Not set'}
               </p>
               <p>
-                Early-payment discount: {review.values.discount_amount_currency}
+                Early-payment discount:{' '}
+                {money(
+                  review.values.discount_amount_currency,
+                  review.transaction_currency[1],
+                )}
                 , date {review.values.discount_date || 'Not set'}
               </p>
               <p>

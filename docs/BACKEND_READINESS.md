@@ -1,5 +1,35 @@
 # Qorlia React frontend backend readiness
 
+## Posted journal metadata checkpoint (10 October 2026)
+
+Draft and posted invoice/credit journal detail editing now delegates to native
+Odoo under the caller's access rules. Locks, protected hashes and reconciliation
+checks still apply. Save verifies unchanged document state/payment state, amounts,
+monetary rows and partial/full reconciliation links, with exact-request recovery.
+Existing deprecated accounts remain preservable; new selection is denied.
+The response binds state and actual transaction currency; React rejects a review
+that changes either and formats early-discount amounts in transaction currency.
+
+The installed 289-test suite passes with zero failures/errors/skips; model/test/
+manifest hashes match. The 334 Home tests/41 suites, type checks, touched-file lint
+and development build pass. Native posted/credit, paid/reconciled, lock/hash,
+cancelled and stale-state checks are covered. Existing upstream and build warnings
+remain. Local browser label save/full reload on synthetic #24525/#63988 and
+independent native reads prove one receipt and unchanged ledger, balances,
+state, matching, protected records and financial/stock/mail counts.
+
+Protected artifact `posted-journal-20261010` is published with unchanged gates,
+expiry and backends. All 83 served chunks, source/licenses and secret-free archive
+match. Native authenticated posted load/preview and session/route denials pass.
+Hosted browser loaded the editor, reviewed a synthetic label change and discarded
+it without saving. Subsequent independent native reads confirm the saved label,
+one exact receipt and protected balances/counts remain unchanged. Published source
+precedes this final evidence note and includes pre-existing clinical working-tree
+changes, not a clean commit-only production release.
+Raw monetary editing, journal row add/remove and Cut-Off remain unfinished,
+alongside wider bank/provider, stock/POS/sync and clinical/external-module parity.
+Production and the shared public demo are unchanged.
+
 ## Installment-credit reconciliation checkpoint (10 October 2026)
 
 Installed Bahmni credit reconciliation assumes one payment-term line and fails

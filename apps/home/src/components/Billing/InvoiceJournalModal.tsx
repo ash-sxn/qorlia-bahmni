@@ -68,8 +68,8 @@ export function InvoiceJournalModal({
         <p>
           Native accounting entries, not just billed products. Debits, credits
           and residuals use the company currency. Reconciliation does not
-          establish bank clearance. Draft items offer a separate reviewed detail
-          editor. This view does not post or reconcile entries.
+          establish bank clearance. Draft and posted items offer a reviewed
+          detail editor. This view does not post or reconcile entries.
         </p>
         {journal.error instanceof BillingSessionExpired ? (
           <div role="alert">
@@ -140,8 +140,8 @@ export function InvoiceJournalModal({
                         <th scope="col">Transaction currency</th>
                         <th scope="col">Residual and matching</th>
                         <th scope="col">Taxes and grids</th>
-                        {data.state === 'draft' ? (
-                          <th scope="col">Draft details</th>
+                        {data.state !== 'cancel' ? (
+                          <th scope="col">Accounting details</th>
                         ) : null}
                         {data.analytics_visible ? (
                           <th scope="col">Analytic distribution</th>
@@ -200,7 +200,7 @@ export function InvoiceJournalModal({
                               .map((grid) => grid[1])
                               .join(', ') || 'None'}
                           </td>
-                          {data.state === 'draft' ? (
+                          {data.state !== 'cancel' ? (
                             <td>
                               {!row.qorlia_adjustment_kind ? (
                                 <Button

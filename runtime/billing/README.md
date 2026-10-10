@@ -3,7 +3,7 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest checkpoint: 283 installed native adapter tests and the prior 331 Home
+Latest checkpoint: 289 installed native adapter tests and 334 Home
 tests pass. Native cheque numbering/PDF/recovery is implemented below, but the
 actual staging company has no bank-compatible cheque layout. The prior protected
 browser save/reload and independent native readback confirm
@@ -201,11 +201,11 @@ bank report and stationery. PDF generation and marked-sent state do not establis
 physical printing, deposit or clearance. Batch, PDC cancellation, bank matching,
 payment providers and remaining financial parity still require implementation.
 
-## Draft invoice journal details
+## Invoice journal details
 
 Six named `account.move.qorlia_journal_edit_*` methods provide `load`, `choices`,
 `analytics`, `preview`, `save` and `status` for an existing customer invoice/credit journal
-item. Editing requires draft state, native invoice/line write rules and the
+item. Editing requires draft or posted state, native invoice/line write rules and the
 invoicing group. No financial `sudo` is used. The exact editable fields are
 `name`, `account_id`, `date_maturity`, `tax_tag_ids`, `analytic_distribution`,
 `discount_date` and `discount_amount_currency`. No caller context or arbitrary
@@ -225,7 +225,8 @@ Dates, percentages and selected native records are validated. Reviews bind the
 invoice/lines and selected accounting configuration without writing records.
 
 Explicit save locks the invoice/lines, rechecks the review and calls native
-invoice write. Monetary totals/entries, all other lines and unreviewed detail
+invoice write. Posting/payment state, monetary totals/entries, partial/full
+reconciliation links, all other lines and unreviewed detail
 changes must remain unchanged or the transaction rolls back. Canonical UUID,
 exact payload and author bind an atomic invoice receipt. Status and identical
 retry return current native detail values when that receipt exists, including
@@ -234,7 +235,21 @@ A missing receipt never proves a delayed save stopped. The UI stores the exact
 request before sending, freezes uncertain saves and offers explicit checking or
 same-request retry. There is no automatic financial write retry.
 
-Installed native suite: 186 passing tests with no failures/errors/skips. Home:
+The posted-metadata checkpoint has 289 native tests and 334 Home tests passing.
+Native tests retain fiscal locks, protected hashes and paid/reconciled history.
+Local browser label save/full reload on synthetic invoice #24525/item #63988
+and independent native reads verify one receipt, balanced entries and unchanged
+state, amounts, matching, protected records and counts. Discount amounts use
+the actual transaction currency. Protected artifact `posted-journal-20261010`
+is published with unchanged gates, expiry and backends. All 83 chunks,
+source/licenses and secret-free source archive match; native load/preview and
+session/route denials pass. Hosted browser loaded the posted editor, reviewed
+and discarded a label change without saving. Independent native reads confirm
+unchanged balances, state, matching, protected records/counts and one exact receipt.
+Published source precedes this final evidence note and contains pre-existing
+clinical working-tree changes, not a clean commit-only production release.
+
+Earlier draft/analytic checkpoint: 186 passing native tests with no failures/errors/skips. Home:
 240 passing tests. The prior HTTP concurrent/save/status and protected browser review/save/
 reload acceptance preserve a balanced INR 250 synthetic draft, all other items,
 payment/stock counts and protected invoices. Protected browser review/save/full
@@ -244,7 +259,8 @@ other items/counts and protected documents. Initial hosted source/license and
 83 chunks match. Fault-injected response-loss browser tests remain pending.
 Compound draft preservation does
 not establish Odoo 16 compound posting compatibility. Monetary journal edits, adding/removing rows,
-posted editing and cut-off actions remain separate parity work.
+and cut-off actions remain separate parity work. Posted metadata editing is
+covered above; this is not full monetary journal parity.
 
 ## Invoice Journal Items
 

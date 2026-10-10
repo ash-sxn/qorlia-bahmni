@@ -244,6 +244,7 @@ export interface JournalDetails {
   invoice_id: number;
   line_id: number;
   name: string | false;
+  state: 'draft' | 'posted' | 'cancel';
   version: string;
   values: JournalDetailValues;
   account: [number, string];
@@ -253,6 +254,7 @@ export interface JournalDetails {
   analytic_accounts: JournalAnalyticAccount[];
   can_edit: boolean;
   currency: [number, string];
+  transaction_currency: [number, string];
   debit: number;
   credit: number;
   review_version?: string;
@@ -406,10 +408,14 @@ function checkedJournalDetails(
     value.line_id !== lineId ||
     !journalHash(value.version) ||
     !(value.name === false || typeof value.name === 'string') ||
+    !['draft', 'posted', 'cancel'].includes(value.state) ||
+    (value.state === 'cancel' && value.can_edit) ||
     !Array.isArray(value.account) ||
     !validRelation(value.account) ||
     !Array.isArray(value.currency) ||
     !validRelation(value.currency) ||
+    !Array.isArray(value.transaction_currency) ||
+    !validRelation(value.transaction_currency) ||
     typeof value.can_edit !== 'boolean' ||
     typeof value.analytics_visible !== 'boolean' ||
     ![value.debit, value.credit].every(
@@ -484,7 +490,11 @@ export async function previewJournalDetails(
     current.line_id,
     true,
   );
-  if (result.version !== current.version)
+  if (
+    result.version !== current.version ||
+    result.state !== current.state ||
+    result.transaction_currency[0] !== current.transaction_currency[0]
+  )
     throw new Error(
       'The journal review version changed. Reload before saving.',
     );

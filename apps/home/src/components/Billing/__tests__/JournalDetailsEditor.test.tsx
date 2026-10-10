@@ -55,7 +55,7 @@ const review = async () => {
   );
   await screen.findByRole('region', { name: 'Reviewed journal details' });
 };
-describe('Native draft journal detail editor', () => {
+describe('Native journal detail editor', () => {
   afterEach(() => jest.restoreAllMocks());
   beforeEach(() => {
     jest.clearAllMocks();
@@ -102,6 +102,26 @@ describe('Native draft journal detail editor', () => {
       }),
     );
     expect(sessionStorage.getItem(storage)).toBeNull();
+  });
+  it('explains posted safeguards and labels discounts in the actual transaction currency', async () => {
+    (getJournalDetails as jest.Mock).mockResolvedValue({
+      ...journalDetailFixture(),
+      state: 'posted',
+      transaction_currency: [2, 'USD'],
+    });
+    show();
+    expect(await screen.findByRole('note')).toHaveTextContent(
+      'Saving keeps it posted',
+    );
+    expect(
+      screen.getByLabelText('Early-payment discount amount (USD)'),
+    ).toBeEnabled();
+    await review();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Save reviewed journal details' }),
+    );
+    await waitFor(() => expect(saved).toHaveBeenCalledTimes(1));
+    expect(saveJournalDetails).toHaveBeenCalledTimes(1);
   });
   it('invalidates review after another edit and protects unsaved entries on close', async () => {
     show();

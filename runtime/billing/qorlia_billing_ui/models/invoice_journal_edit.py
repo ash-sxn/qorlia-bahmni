@@ -57,7 +57,7 @@ class InvoiceJournalEdit(models.Model):
     def _qorlia_journal_edit_version(self):
         self.ensure_one()
         reader = self.env['sale.order']._qorlia_read_fields
-        return _digest({'draft': self._qorlia_invoice_draft_version(), 'author': self.env.uid,
+        return _digest({'document': self._qorlia_invoice_draft_version(), 'author': self.env.uid,
             'analytics': self.env.user.has_group('analytic.group_analytic_accounting'),
             'details': [{'id': line.id, 'values': reader(line, DETAILS)} for line in self.line_ids.sorted('id')]})
 
@@ -81,8 +81,8 @@ class InvoiceJournalEdit(models.Model):
         if not line or line.move_id != invoice or line.display_type in ('line_section', 'line_note'):
             raise ValidationError('This journal item does not belong to the invoice.')
         if operation == 'write':
-            if invoice.state != 'draft':
-                raise UserError('Only draft journal details can be changed here. Reload the invoice.')
+            if invoice.state not in ('draft', 'posted'):
+                raise UserError('Only draft or posted journal details can be changed. Reload the invoice.')
             if not self.env.user.has_group('account.group_account_invoice'):
                 raise AccessError('Your Billing account cannot edit journal details.')
             if line.qorlia_adjustment_kind:
@@ -100,7 +100,7 @@ class InvoiceJournalEdit(models.Model):
         for records in (line.account_id, line.tax_tag_ids):
             records.check_access_rights('read')
             records.check_access_rule('read')
-        editable = invoice.state == 'draft' and not line.qorlia_adjustment_kind
+        editable = invoice.state in ('draft', 'posted') and not line.qorlia_adjustment_kind
         try:
             self._qorlia_invoice(invoice_id, 'write')
             self._qorlia_journal_line(invoice, line_id, 'write')
@@ -109,13 +109,13 @@ class InvoiceJournalEdit(models.Model):
         allocation = self._qorlia_journal_analytics(invoice, line, line.account_id.id,
             sorted({int(part) for key in (line.analytic_distribution or {}) for part in key.split(',')})) if analytics else False
         return {'invoice_id': invoice.id, 'line_id': line.id, 'name': invoice.name or False,
-                'version': invoice._qorlia_journal_edit_version() if invoice.state == 'draft'
-                else self.qorlia_invoice_journal(invoice.id)['version'],
+                'version': invoice._qorlia_journal_edit_version(), 'state': invoice.state,
                 'values': values, 'account': [line.account_id.id, line.account_id.display_name],
                 'tax_grids': line.tax_tag_ids.name_get(), 'analytics_visible': analytics,
                 'analytic_plans': allocation['plans'] if allocation else [],
                 'analytic_accounts': allocation['accounts'] if allocation else [],
                 'can_edit': editable, 'currency': [invoice.company_currency_id.id, invoice.company_currency_id.name],
+                'transaction_currency': [line.currency_id.id, line.currency_id.name],
                 'debit': line.debit, 'credit': line.credit}
 
     def _qorlia_journal_details(self, invoice, line, values):
@@ -138,7 +138,8 @@ class InvoiceJournalEdit(models.Model):
         if len(set(values['tax_tag_ids'])) != len(values['tax_tag_ids']):
             raise ValidationError('Select distinct tax grids.')
         account = self.env['account.account'].browse(values['account_id'])
-        if (not account or account.company_id != invoice.company_id or account.deprecated or account.is_off_balance):
+        if (not account or account.company_id != invoice.company_id
+                or account != line.account_id and (account.deprecated or account.is_off_balance)):
             raise ValidationError('Select an active journal account in this invoice company.')
         receivable = line.account_type == 'asset_receivable'
         if (receivable and account.account_type != 'asset_receivable'
@@ -265,17 +266,23 @@ class InvoiceJournalEdit(models.Model):
             raise UserError('Review the journal details again before saving.')
         amounts = ('amount_total', 'amount_tax', 'invoice_total', 'amount_residual')
         before = invoice.read(list(amounts))[0]
-        ledger = {item.id: (item.debit, item.credit, item.amount_currency) for item in invoice.line_ids}
-        detail_fields = DETAILS + ('tax_ids', 'currency_id', 'partner_id', 'quantity', 'price_unit', 'discount')
+        state = invoice.state
+        payment_state = invoice.payment_state
+        ledger_fields = ('debit', 'credit', 'amount_currency', 'amount_residual',
+                         'amount_residual_currency', 'reconciled', 'matched_debit_ids',
+                         'matched_credit_ids', 'full_reconcile_id')
         reader = self.env['sale.order']._qorlia_read_fields
+        ledger = {item.id: reader(item, ledger_fields) for item in invoice.line_ids}
+        detail_fields = DETAILS + ('tax_ids', 'currency_id', 'partner_id', 'quantity', 'price_unit', 'discount')
         expected = {item.id: reader(item, detail_fields) for item in invoice.line_ids}
         expected[line.id].update({name: values[name] for name in changed})
         invoice.write({'line_ids': [Command.update(line.id, changed)]})
         invoice.invalidate_recordset()
         invoice.line_ids.invalidate_recordset()
-        if (invoice.state != 'draft' or invoice._get_unbalanced_moves({'records': invoice})
+        if (invoice.state != state or invoice.payment_state != payment_state
+                or invoice._get_unbalanced_moves({'records': invoice})
                 or any(not invoice.currency_id.is_zero(invoice[name] - before[name]) for name in amounts)
-                or ledger != {item.id: (item.debit, item.credit, item.amount_currency) for item in invoice.line_ids}):
+                or ledger != {item.id: reader(item, ledger_fields) for item in invoice.line_ids}):
             raise UserError('Native Billing would change monetary entries. Nothing was saved; use the invoice calculation editor.')
         actual = {item.id: reader(item, detail_fields) for item in invoice.line_ids}
         for detail in list(expected.values()) + list(actual.values()):
