@@ -3,7 +3,20 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Current source checkpoint: statement history now includes native balance
+Current hosted checkpoint: `bank-checkpoint-20261010` exposes native statement
+checkpoints behind unchanged review/hospital/Billing gates and expiry. All 83
+hosted JS/CSS files and protected source/license/manifest hashes match source
+2e38bb43 plus nine preserved clinical edits. Installed native code hashes match.
+Hosted actual-client reads and browser complete/discontinuous/empty states,
+filters/search and entry ledger/matching navigation pass. Independent post-browser
+native reads match checkpoint versions/values, existing bank/source accounting
+and eight protected documents (timestamps at native JSON second precision).
+Analytics remain mandatory and verification saves no accounting. Source-release
+479 native and 442 Home tests are not rerun for this documentation-only record.
+Production/public demo remain unchanged. Checkpoint writes/import/attachments,
+pivot/graph, wider banking configurations and complete product parity are open.
+
+Earlier source checkpoint: statement history now includes native balance
 checkpoints, separate completeness/continuity, filters, versioned entry pages and
 ledger/matching links. Two named read APIs enforce native company/ACL/entry and
 predecessor access, rejecting hidden or stale data rather than showing partial

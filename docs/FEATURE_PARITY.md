@@ -1,5 +1,27 @@
 # Bahmni workflow parity ledger
 
+## 10 October protected statement checkpoint browser acceptance
+
+- Deployed `bank-checkpoint-20261010` behind unchanged code/session/expiry gates.
+  All 83 hosted JS/CSS files and source/license/manifest hashes match. Source
+  commit 2e38bb43 and nine preserved clinical working-tree edits are recorded
+  separately. Installed native checkpoint code/manifest/import/tests hashes match.
+- Hosted actual-client reads match native complete/discontinuous/empty fixtures
+  #77/#78/#79. Access and raw/private/malformed RPC guards pass. Browser states,
+  attention/empty filters, submitted no-results search/reset and linked native
+  ledger/matching workspace navigation pass. No accounting save occurred.
+- Post-browser native checkpoint values/versions, bank #37 entry/graph, source
+  #51 balances/analytics and eight protected documents match their baselines.
+  Document timestamps match at Odoo JSON's second precision. Mandatory analytics
+  remain active. Private input permission and Python/HTTP date representation
+  issues in the verifier were corrected without weakening access or changing
+  accounting. The final read-only native run passes and rolls back.
+- The preceding source release passes 479 native tests and 442 Home tests/51
+  suites, types/lint, seven gateway guards and build 0bcfb8c6c6b732b2. These suites
+  were not rerun for this documentation-only record. Production/public demo remain
+  unchanged. Checkpoint writes/import/attachments, pivot/graph, broader banking
+  and complete Billing/clinical/external parity remain unfinished.
+
 ## 10 October native statement checkpoint workspace
 
 - Bank statements now includes native checkpoint history, search/paging,

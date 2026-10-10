@@ -1,5 +1,37 @@
 # Qorlia React frontend backend readiness
 
+## Protected statement checkpoint browser acceptance (10 October 2026)
+
+The `bank-checkpoint-20261010` tester artifact is hosted behind the existing
+review code, hospital/Billing sessions and expiry (15 October 2026, 18:29:59 UTC).
+The tunnel, signing key, backend origins and access scope are unchanged. All 83
+hosted JS/CSS files and protected source/license/manifest hashes match the package.
+The manifest records source commit 2e38bb43 plus the path/hash of nine preserved,
+uncommitted clinical edits. This is not a clean commit-only build. Installed native
+checkpoint code, manifest, model import and tests match repository SHA-256 hashes.
+
+Hosted actual-TypeScript-client checks match independent native complete,
+discontinuous and empty fixtures #77/#78/#79. Review/session gates, no-index
+responses and raw/private/malformed accounting route rejection pass. Browser
+acceptance covers all three states, attention/empty filters, submitted no-results
+search and reset, native entry ledger and opening the reviewed matching workspace.
+No matching or checkpoint accounting save was made during these browser checks.
+
+Independent post-browser native reads match all three checkpoint values/versions,
+bank #37 entry/graph, source #51 balances/analytics and eight protected documents.
+The document timestamp comparison uses Odoo's JSON formatter, matching the earlier
+HTTP baseline's second precision, not a microsecond-level baseline. Analytics #23
+remain mandatory; the read-only verifier rolls back. Initial verifier runs failed
+on a private-file permission boundary and Python/HTTP date representations. Piping
+private input without relaxing permissions and using native wire formatting fixes
+the verifier; no application/accounting change was needed.
+
+The source checkpoint below records the 479 native tests, 442 Home tests/51 suites,
+types/lint, seven gateway guards and build 0bcfb8c6c6b732b2. Those suites were not
+rerun for this documentation-only acceptance record. Production/public demo remain
+unchanged. Checkpoint creation/edit/import/attachments, pivot/graph, broader bank
+configuration/concurrency and remaining Billing/clinical/external parity are open.
+
 ## Native statement checkpoint workspace (10 October 2026)
 
 The signed-in Bank statements workspace now includes native balance checkpoints,
