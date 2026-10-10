@@ -300,8 +300,8 @@ function DetailsForm({
           </h2>
           <p>
             Change this item&apos;s accounting details. This does not post the
-            invoice, collect payment or change its amounts. Monetary editing and
-            adding/removing journal rows are not available here yet.
+            invoice, collect payment or change its amounts. Use the journal
+            amounts and rows editor for monetary changes.
           </p>
           {initial.state === 'posted' ? (
             <p role="note">

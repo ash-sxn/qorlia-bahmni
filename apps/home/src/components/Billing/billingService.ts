@@ -902,6 +902,7 @@ export interface JournalMoneyView extends JournalMoneyResult {
 }
 export type JournalMoneyReview = JournalMoneyResult & {
   review_version: string;
+  labels: Record<string, string>;
 };
 export type JournalMoneyChoice =
   | 'account'
@@ -1170,7 +1171,16 @@ export async function previewJournalMoney(payload: JournalMoneyPayload) {
     payload.invoice_id,
     true,
   );
-  if (!journalHash(result.review_version))
+  if (
+    !journalHash(result.review_version) ||
+    !result.labels ||
+    typeof result.labels !== 'object' ||
+    Array.isArray(result.labels) ||
+    !Object.entries(result.labels).every(
+      ([key, name]) =>
+        /^[a-z_]+(\.[a-z_]+)*:[1-9]\d*$/.test(key) && typeof name === 'string',
+    )
+  )
     throw new Error('The journal review token is unavailable.');
   return result;
 }
@@ -1201,6 +1211,11 @@ export async function getJournalMoneyChoices(
   kind: JournalMoneyChoice,
   search = '',
   lineId: number | false = false,
+  analyticScope?: {
+    account_id: number;
+    plan_id: number;
+    account_ids: number[];
+  },
 ) {
   if (
     !journalId(invoiceId) ||
@@ -1209,7 +1224,13 @@ export async function getJournalMoneyChoices(
       kind,
     ) ||
     typeof search !== 'string' ||
-    search.length > 200
+    search.length > 200 ||
+    (analyticScope &&
+      (kind !== 'analytic' ||
+        !journalId(analyticScope.account_id) ||
+        !journalId(analyticScope.plan_id) ||
+        !uniqueJournalIds(analyticScope.account_ids) ||
+        analyticScope.account_ids.length > 200))
   )
     throw new Error('Use a valid journal search.');
   const result = await journalMoneyRpc<[number, string][]>('choices', {
@@ -1217,6 +1238,7 @@ export async function getJournalMoneyChoices(
     kind,
     search,
     line_id: lineId,
+    ...(analyticScope ?? {}),
   });
   if (
     !Array.isArray(result) ||
@@ -1225,6 +1247,40 @@ export async function getJournalMoneyChoices(
     new Set(result.map(([id]) => id)).size !== result.length
   )
     throw new Error('Invalid native journal choices.');
+  return result;
+}
+
+export async function getJournalMoneyAnalytics(
+  invoiceId: number,
+  lineId: number | false,
+  accountId: number,
+  accountIds: number[],
+) {
+  if (
+    !journalId(invoiceId) ||
+    !(lineId === false || journalId(lineId)) ||
+    !journalId(accountId) ||
+    !uniqueJournalIds(accountIds) ||
+    accountIds.length > 200
+  )
+    throw new Error('Select valid journal and analytic accounts.');
+  const result = await journalMoneyRpc<
+    Omit<JournalAnalytics, 'line_id'> & { line_id: number | false }
+  >('analytics', {
+    invoice_id: invoiceId,
+    line_id: lineId,
+    account_id: accountId,
+    account_ids: accountIds,
+  });
+  if (
+    result?.invoice_id !== invoiceId ||
+    result.line_id !== lineId ||
+    result.account_id !== accountId
+  )
+    throw new Error(
+      'Invalid analytic plan response. Reload this journal item.',
+    );
+  checkedAnalyticMetadata(result.plans, result.accounts, accountIds);
   return result;
 }
 export async function getJournalDetails(invoiceId: number, lineId: number) {

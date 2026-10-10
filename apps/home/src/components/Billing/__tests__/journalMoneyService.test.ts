@@ -3,6 +3,7 @@ import {
   BillingSessionExpired,
   checkedJournalMoneyRequest,
   getJournalMoney,
+  getJournalMoneyAnalytics,
   getJournalMoneyChoices,
   getJournalMoneyStatus,
   JournalMoneyPayload,
@@ -122,6 +123,7 @@ describe('native monetary journal contract', () => {
       totals: view.totals,
       rows: [{ ...view.rows[0], id: false }],
       review_version: 'b'.repeat(64),
+      labels: view.labels,
     };
     reply(review);
     expect(await previewJournalMoney(payload())).toEqual(review);
@@ -264,5 +266,91 @@ describe('native monetary journal contract', () => {
     await expect(saveJournalMoney(request())).rejects.toBeInstanceOf(
       BillingSessionExpired,
     );
+  });
+  it('uses native analytic plans for saved and new rows and validates the complete selected set', async () => {
+    for (const lineId of [14, false] as const) {
+      const result = {
+        invoice_id: 7,
+        line_id: lineId,
+        account_id: 12,
+        plans: [{ id: 3, name: 'Departments', applicability: 'mandatory' }],
+        accounts: [{ id: 9, name: 'Outpatient', plan_id: 3 }],
+      };
+      reply(result);
+      expect(await getJournalMoneyAnalytics(7, lineId, 12, [9])).toEqual(
+        result,
+      );
+      expect(
+        JSON.parse((fetch as jest.Mock).mock.calls.at(-1)[1].body).params
+          .kwargs,
+      ).toEqual({
+        invoice_id: 7,
+        line_id: lineId,
+        account_id: 12,
+        account_ids: [9],
+      });
+      for (const patch of [
+        { line_id: 99 },
+        { account_id: 13 },
+        { accounts: [] },
+        { accounts: [{ id: 9, name: 'Outpatient', plan_id: 4 }] },
+      ]) {
+        reply({ ...result, ...patch });
+        await expect(
+          getJournalMoneyAnalytics(7, lineId, 12, [9]),
+        ).rejects.toThrow();
+      }
+    }
+  });
+  it('scopes analytic choices to native plan metadata and rejects invalid scopes before RPC', async () => {
+    const scope = { account_id: 12, plan_id: 3, account_ids: [9] };
+    reply([[9, 'Outpatient']]);
+    await getJournalMoneyChoices(7, 'analytic', 'Out', false, scope);
+    expect(
+      JSON.parse((fetch as jest.Mock).mock.calls[0][1].body).params.kwargs,
+    ).toEqual({
+      invoice_id: 7,
+      kind: 'analytic',
+      search: 'Out',
+      line_id: false,
+      ...scope,
+    });
+    (fetch as jest.Mock).mockClear();
+    for (const patch of [
+      { account_id: 0 },
+      { plan_id: false },
+      { account_ids: [9, 9] },
+    ])
+      await expect(
+        getJournalMoneyChoices(7, 'analytic', '', false, {
+          ...scope,
+          ...patch,
+        } as never),
+      ).rejects.toThrow();
+    await expect(
+      getJournalMoneyChoices(7, 'tax', '', false, scope),
+    ).rejects.toThrow();
+    await expect(
+      getJournalMoneyAnalytics(7, false, 12, [9, 9]),
+    ).rejects.toThrow();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('rejects unnamed or malformed relation labels in the native review', async () => {
+    const view = journalMoneyFixture();
+    for (const labels of [
+      undefined,
+      [],
+      { bad: 'Income' },
+      { 'account.account:12': 12 },
+    ]) {
+      reply({
+        invoice_id: 7,
+        totals: view.totals,
+        rows: view.rows,
+        review_version: 'b'.repeat(64),
+        labels,
+      });
+      await expect(previewJournalMoney(payload())).rejects.toThrow();
+    }
   });
 });

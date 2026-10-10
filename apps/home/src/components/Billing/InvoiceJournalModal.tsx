@@ -1,24 +1,29 @@
 import { Button, Modal } from '@bahmni/design-system';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { invoiceName, money } from './billingFormat';
 import styles from './BillingPage.module.scss';
 import { BillingSessionExpired, getInvoiceJournal } from './billingService';
 import { CutoffModal } from './CutoffModal';
 import { JournalDetailsEditor } from './JournalDetailsEditor';
+import { JournalMoneyEditor } from './JournalMoneyEditor';
 
 export function InvoiceJournalModal({
   uid,
   invoiceId,
   close,
   reconnect,
+  saved,
 }: {
   uid: number;
   invoiceId: number;
   close: () => void;
   reconnect: () => void;
+  saved?: () => void;
 }) {
   const [editing, setEditing] = useState<number | null>(null);
+  const [amounts, setAmounts] = useState(false);
+  const queryClient = useQueryClient();
   const [cutoff, setCutoff] = useState<number | null>(null);
   const journal = useInfiniteQuery({
     queryKey: ['billing', 'invoice-journal', uid, invoiceId],
@@ -39,6 +44,24 @@ export function InvoiceJournalModal({
   });
   const data = journal.data?.pages[0];
   const rows = journal.data?.pages.flatMap((page) => page.rows) ?? [];
+  if (amounts)
+    return (
+      <JournalMoneyEditor
+        uid={uid}
+        invoiceId={invoiceId}
+        close={() => setAmounts(false)}
+        reconnect={reconnect}
+        saved={() => {
+          setAmounts(false);
+          saved?.();
+          void queryClient.invalidateQueries({
+            predicate: (query) =>
+              query.queryKey[0] === 'billing' &&
+              query.queryKey[1] !== 'session',
+          });
+        }}
+      />
+    );
   if (cutoff !== null)
     return (
       <CutoffModal
@@ -104,6 +127,11 @@ export function InvoiceJournalModal({
         ) : data ? (
           <>
             <h2>{invoiceName({ id: data.invoice_id, name: data.name })}</h2>
+            {data.state !== 'cancel' && data.balanced ? (
+              <Button kind="tertiary" onClick={() => setAmounts(true)}>
+                Edit journal amounts and rows
+              </Button>
+            ) : null}
             <p>
               {data.state} · {data.journal} · {data.company} · Accounting date:{' '}
               {data.date || 'Not set'}

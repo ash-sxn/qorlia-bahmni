@@ -710,6 +710,7 @@ export function BillingPage() {
                 uid={session.data!.uid as number}
                 invoiceId={journalInvoice}
                 close={() => setJournalInvoice(null)}
+                saved={() => setSelected(null)}
                 reconnect={() => {
                   setJournalInvoice(null);
                   setSelected(null);

@@ -8,20 +8,36 @@ jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
   getInvoiceJournal: jest.fn(),
 }));
+jest.mock('../JournalMoneyEditor', () => ({
+  JournalMoneyEditor: ({
+    invoiceId,
+    saved,
+    close,
+  }: {
+    invoiceId: number;
+    saved: () => void;
+    close: () => void;
+  }) => (
+    <section aria-label={`Money editor invoice ${invoiceId}`}>
+      <button onClick={saved}>Save reviewed money</button>
+      <button onClick={close}>Return without saving</button>
+    </section>
+  ),
+}));
 const close = jest.fn(),
-  reconnect = jest.fn();
-const show = () =>
+  reconnect = jest.fn(),
+  saved = jest.fn();
+const show = (
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) =>
   render(
-    <QueryClientProvider
-      client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      }
-    >
+    <QueryClientProvider client={client}>
       <InvoiceJournalModal
         uid={3}
         invoiceId={7}
         close={close}
         reconnect={reconnect}
+        saved={saved}
       />
     </QueryClientProvider>,
   );
@@ -149,6 +165,61 @@ describe('Invoice journal view', () => {
     await screen.findByText('No accounting journal items are present.');
     expect(
       screen.queryByRole('button', { name: 'Load more journal items' }),
+    ).not.toBeInTheDocument();
+  });
+  it('opens the native money editor and refreshes financial queries but not the ERP session after save', async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const invalidate = jest.spyOn(client, 'invalidateQueries');
+    show(client);
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Edit journal amounts and rows',
+      }),
+    );
+    expect(
+      screen.getByRole('region', { name: 'Money editor invoice 7' }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Save reviewed money' }),
+    );
+    await screen.findByRole('table');
+    expect(invalidate).toHaveBeenCalledTimes(1);
+    expect(saved).toHaveBeenCalledTimes(1);
+    const predicate = invalidate.mock.calls[0][0]?.predicate;
+    expect(
+      predicate?.({ queryKey: ['billing', 'invoice-journal', 3, 7] } as never),
+    ).toBe(true);
+    expect(
+      predicate?.({ queryKey: ['billing', 'invoice', 3, 7] } as never),
+    ).toBe(true);
+    expect(predicate?.({ queryKey: ['billing', 'session', 3] } as never)).toBe(
+      false,
+    );
+    expect(predicate?.({ queryKey: ['clinical', 'patient'] } as never)).toBe(
+      false,
+    );
+  });
+  it('does not offer monetary editing for cancelled or unbalanced journals', async () => {
+    (getInvoiceJournal as jest.Mock).mockResolvedValue({
+      ...invoiceJournalFixture(),
+      state: 'cancel',
+    });
+    const shown = show();
+    await screen.findByRole('table');
+    expect(
+      screen.queryByRole('button', { name: 'Edit journal amounts and rows' }),
+    ).not.toBeInTheDocument();
+    shown.unmount();
+    (getInvoiceJournal as jest.Mock).mockResolvedValue({
+      ...invoiceJournalFixture(),
+      balanced: false,
+    });
+    show();
+    await screen.findByRole('table');
+    expect(
+      screen.queryByRole('button', { name: 'Edit journal amounts and rows' }),
     ).not.toBeInTheDocument();
   });
 });

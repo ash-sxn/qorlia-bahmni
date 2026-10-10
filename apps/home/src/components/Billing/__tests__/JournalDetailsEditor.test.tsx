@@ -81,7 +81,7 @@ describe('Native journal detail editor', () => {
       screen.getByRole('button', { name: 'Save reviewed journal details' }),
     ).toBeDisabled();
     expect(
-      screen.getByText(/Monetary editing and adding\/removing/),
+      screen.getByText(/Use the journal amounts and rows editor/),
     ).toBeInTheDocument();
     expect(
       screen.queryByLabelText(/Analytic distribution/),

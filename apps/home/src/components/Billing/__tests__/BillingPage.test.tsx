@@ -1,6 +1,12 @@
 import { useUserPrivilege } from '@bahmni/widgets';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { BillingPage } from '../BillingPage';
 import {
@@ -87,6 +93,11 @@ jest.mock('@bahmni/widgets', () => ({
 jest.mock('../../HomePageHeader', () => ({
   HomePageHeader: () => <header>Qorlia</header>,
 }));
+jest.mock('../JournalMoneyEditor', () => ({
+  JournalMoneyEditor: ({ saved }: { saved: () => void }) => (
+    <button onClick={saved}>Complete reviewed monetary save</button>
+  ),
+}));
 const show = () =>
   render(
     <MemoryRouter>
@@ -137,6 +148,43 @@ describe('Billing workspace', () => {
     (getInvoiceReports as jest.Mock).mockResolvedValue([
       { key: 'invoice', name: 'Invoices' },
     ]);
+  });
+  it('clears the old invoice detail snapshot when journal money is saved', async () => {
+    (getInvoices as jest.Mock).mockResolvedValue([invoice]);
+    (getInvoiceLines as jest.Mock).mockResolvedValue([]);
+    (getInvoiceJournal as jest.Mock).mockResolvedValue(invoiceJournalFixture());
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    expect(await screen.findByText('Final total')).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Journal items', exact: true }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Edit journal amounts and rows',
+      }),
+    );
+    (getInvoices as jest.Mock).mockResolvedValue([
+      { ...invoice, invoice_total: 600 },
+    ]);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Complete reviewed monetary save' }),
+    );
+    await screen.findByRole('table', { name: 'Native invoice journal items' });
+    expect(screen.queryByText('Final total')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to invoice' }));
+    expect(
+      screen.queryByRole('region', { name: 'Invoice details' }),
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(getInvoices).toHaveBeenCalledTimes(2));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'View QorliaQA invoice' }),
+    );
+    await within(
+      await screen.findByRole('region', { name: 'Invoice details' }),
+    ).findByText('₹600.00');
   });
   it('opens native conversation only from a selected signed-in invoice without posting automatically', async () => {
     (getInvoices as jest.Mock).mockResolvedValue([invoice]);

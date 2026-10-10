@@ -1,5 +1,30 @@
 # Bahmni workflow parity ledger
 
+## 10 October reviewed monetary journal editor checkpoint
+
+- React now exposes native amount edits, named account/tax/currency choices,
+  draft add/remove with undo, and plan-scoped analytic allocations. Review shows
+  the complete recalculated ledger, generated rows and product prices separately.
+- Durable exact-request recovery locks uncertain saves, including remounts after
+  a row has disappeared. An absent receipt does not prove the first request stopped.
+  No automatic resubmission or client-side accounting is introduced.
+- All 341 installed native adapter tests pass without failures/errors/skips.
+  The two new cases cover new/saved analytic rows, native plans/names and denied
+  malformed/cross-invoice scopes. Protected Cut-Off/source records and counts
+  remain unchanged after the suite. Home passes 374 tests/45 suites, types/lint,
+  seven gateway/config tests and direct development webpack.
+- The protected tester build saved a synthetic draft monetary edit. Independent
+  native reads verify complete review/save agreement, balanced ledger, unchanged
+  product unit price, one new receipt and idempotent exact retry. Browser QA found
+  and fixed stale invoice-card totals: closing the journal clears the old card;
+  reopening reads the fresh native total. Protected records/counts are unchanged.
+- The existing tester/hospital/Billing gates and expiry are unchanged. This is
+  not full browser lost-response, add/remove, currency/tax or concurrency evidence.
+- This checkpoint is not a completion claim for monetary parity, Billing or the
+  broader product. Wider permissions/configuration/concurrency acceptance and
+  clinical/separate-product scope remain. Production and public demo are unchanged.
+  Earlier checkpoints below are historical.
+
 ## 10 October reviewed monetary journal API checkpoint
 
 - Five named APIs now support complete journal load, scoped choices, native

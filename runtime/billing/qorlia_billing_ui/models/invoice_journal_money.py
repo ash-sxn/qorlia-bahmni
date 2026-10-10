@@ -85,9 +85,7 @@ class InvoiceJournalMoney(models.Model):
             'author': self.env.uid, 'analytics': self.env.user.has_group('analytic.group_analytic_accounting'),
             'multi_currency': self.env.user.has_group('base.group_multi_currency')})
 
-    def _qorlia_journal_money_view(self):
-        self.ensure_one()
-        result = self._qorlia_journal_money_snapshot(set(self.line_ids.ids))
+    def _qorlia_journal_money_labels(self, result):
         labels = {}
         for row in result['rows']:
             for name, value in row['values'].items():
@@ -98,6 +96,19 @@ class InvoiceJournalMoney(models.Model):
                 records.check_access_rights('read')
                 records.check_access_rule('read')
                 labels.update({'%s:%s' % (record._name, record.id): record.display_name for record in records})
+            analytic_ids = sorted({int(part) for key in (row['values'].get('analytic_distribution') or {})
+                for part in key.split(',')})
+            if analytic_ids:
+                accounts = self.env['account.analytic.account'].browse(analytic_ids)
+                accounts.check_access_rights('read')
+                accounts.check_access_rule('read')
+                labels.update({'account.analytic.account:%s' % account.id: account.display_name for account in accounts})
+        return labels
+
+    def _qorlia_journal_money_view(self):
+        self.ensure_one()
+        result = self._qorlia_journal_money_snapshot(set(self.line_ids.ids))
+        labels = self._qorlia_journal_money_labels(result)
         can_edit = True
         try:
             self._qorlia_journal_money_permission(self)
@@ -283,6 +294,7 @@ class InvoiceJournalMoney(models.Model):
         if payload['version'] != invoice._qorlia_journal_money_version():
             raise UserError('The invoice or accounting configuration changed. Reload the journal.')
         result = invoice._qorlia_journal_money_simulate(commands)
+        result['labels'] = invoice._qorlia_journal_money_labels(result)
         result['review_version'] = _digest({'payload': payload, 'result': result,
             'configuration': configuration, 'author': self.env.uid})
         return invoice, commands, result
@@ -292,7 +304,14 @@ class InvoiceJournalMoney(models.Model):
         return self._qorlia_journal_money_prepare(payload)[-1]
 
     @api.model
-    def qorlia_journal_money_choices(self, invoice_id, kind, search='', line_id=False):
+    def qorlia_journal_money_analytics(self, invoice_id, line_id, account_id, account_ids):
+        invoice = self._qorlia_journal_document(invoice_id)
+        line = self._qorlia_journal_line(invoice, line_id) if line_id is not False else self.env['account.move.line']
+        return {**self._qorlia_journal_analytics(invoice, line, account_id, account_ids), 'line_id': line_id}
+
+    @api.model
+    def qorlia_journal_money_choices(self, invoice_id, kind, search='', line_id=False,
+            account_id=False, plan_id=False, account_ids=None):
         invoice = self._qorlia_journal_document(invoice_id)
         line = self._qorlia_journal_line(invoice, line_id) if line_id is not False else self.env['account.move.line']
         if not isinstance(search, str) or len(search) > 200:
@@ -317,6 +336,18 @@ class InvoiceJournalMoney(models.Model):
         if kind == 'analytic' and not self.env.user.has_group('analytic.group_analytic_accounting'):
             raise AccessError('Analytic distribution requires native analytic permissions.')
         model, domain = choices[kind]
+        if kind == 'analytic':
+            allocation = self._qorlia_journal_analytics(invoice, line, account_id or line.account_id.id,
+                account_ids if account_ids is not None else sorted({int(part) for key in
+                    (line.analytic_distribution or {}) for part in key.split(',')}))
+            plans = [plan['id'] for plan in allocation['plans']]
+            if plan_id is not False:
+                if type(plan_id) is not int or plan_id not in plans:
+                    raise ValidationError('Select a native analytic plan for this journal item.')
+                plans = [plan_id]
+            domain += [('root_plan_id', 'in', plans)]
+        elif account_id is not False or plan_id is not False or account_ids is not None:
+            raise ValidationError('Analytic search scope is only allowed for analytic choices.')
         return self.env[model].name_search(name=search, args=domain, operator='ilike', limit=26)
 
     def _qorlia_journal_money_request(self, payload, review_version, request_key):
@@ -358,7 +389,7 @@ class InvoiceJournalMoney(models.Model):
         invoice, commands, review = self._qorlia_journal_money_prepare(payload, lock=True)
         if review['review_version'] != review_version:
             raise UserError('Review the native journal calculation again before saving.')
-        expected = {name: value for name, value in review.items() if name != 'review_version'}
+        expected = {name: value for name, value in review.items() if name not in ('review_version', 'labels')}
         source_ids = set(invoice.line_ids.ids)
         with self.env.cr.savepoint():
             receipts = dict(invoice.qorlia_journal_money_receipts or {})

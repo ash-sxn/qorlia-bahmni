@@ -13,6 +13,8 @@ import {
   getCustomerPaymentDraftChoices,
   CustomerPaymentDraftValues,
   CustomerPaymentDraftChoiceKind,
+  getJournalMoneyChoices,
+  JournalMoneyChoice,
 } from './billingService';
 
 export function DraftChoiceInput({
@@ -30,6 +32,7 @@ export function DraftChoiceInput({
   journalLineId,
   analyticScope,
   paymentValues,
+  moneyJournal,
   disabled,
   onChange,
   reconnect,
@@ -57,6 +60,7 @@ export function DraftChoiceInput({
       journalInvoiceId?: undefined;
       journalLineId?: undefined;
       kind: InvoiceDraftChoiceKind;
+      moneyJournal?: undefined;
     }
   | {
       invoiceId?: undefined;
@@ -65,6 +69,7 @@ export function DraftChoiceInput({
       journalInvoiceId?: undefined;
       journalLineId?: undefined;
       kind: DraftChoiceKind;
+      moneyJournal?: undefined;
     }
   | {
       invoiceId?: undefined;
@@ -73,6 +78,7 @@ export function DraftChoiceInput({
       journalInvoiceId?: undefined;
       journalLineId?: undefined;
       kind: 'account' | 'tax';
+      moneyJournal?: undefined;
     }
   | {
       invoiceId?: undefined;
@@ -81,6 +87,7 @@ export function DraftChoiceInput({
       paymentValues?: undefined;
       journalLineId: number;
       kind: 'account' | 'grid' | 'analytic';
+      moneyJournal?: undefined;
     }
   | {
       paymentValues: CustomerPaymentDraftValues;
@@ -89,6 +96,16 @@ export function DraftChoiceInput({
       journalInvoiceId?: undefined;
       journalLineId?: undefined;
       kind: CustomerPaymentDraftChoiceKind;
+      moneyJournal?: undefined;
+    }
+  | {
+      moneyJournal: { invoiceId: number; lineId: number | false };
+      invoiceId?: undefined;
+      advanceOrderId?: undefined;
+      journalInvoiceId?: undefined;
+      journalLineId?: undefined;
+      paymentValues?: undefined;
+      kind: JournalMoneyChoice;
     }
 )) {
   const [search, setSearch] = useState('');
@@ -108,37 +125,50 @@ export function DraftChoiceInput({
       shopId,
       productId,
       paymentValues,
+      moneyJournal,
     ],
     queryFn: () =>
-      paymentValues !== undefined
-        ? getCustomerPaymentDraftChoices(
-            paymentValues,
-            kind as CustomerPaymentDraftChoiceKind,
+      moneyJournal !== undefined
+        ? getJournalMoneyChoices(
+            moneyJournal.invoiceId,
+            kind as JournalMoneyChoice,
             term,
+            moneyJournal.lineId,
+            analyticScope,
           )
-        : journalInvoiceId !== undefined
-          ? getJournalDetailChoices(
-              journalInvoiceId,
-              journalLineId!,
-              kind as 'account' | 'grid' | 'analytic',
+        : paymentValues !== undefined
+          ? getCustomerPaymentDraftChoices(
+              paymentValues,
+              kind as CustomerPaymentDraftChoiceKind,
               term,
-              analyticScope,
             )
-          : advanceOrderId !== undefined
-            ? getAdvanceChoices(advanceOrderId, kind as 'account' | 'tax', term)
-            : invoiceId !== undefined
-              ? getInvoiceDraftChoices(
-                  invoiceId,
-                  kind as InvoiceDraftChoiceKind,
+          : journalInvoiceId !== undefined
+            ? getJournalDetailChoices(
+                journalInvoiceId,
+                journalLineId!,
+                kind as 'account' | 'grid' | 'analytic',
+                term,
+                analyticScope,
+              )
+            : advanceOrderId !== undefined
+              ? getAdvanceChoices(
+                  advanceOrderId,
+                  kind as 'account' | 'tax',
                   term,
-                  productId,
                 )
-              : getDraftChoices(
-                  kind as DraftChoiceKind,
-                  term,
-                  shopId,
-                  productId,
-                ),
+              : invoiceId !== undefined
+                ? getInvoiceDraftChoices(
+                    invoiceId,
+                    kind as InvoiceDraftChoiceKind,
+                    term,
+                    productId,
+                  )
+                : getDraftChoices(
+                    kind as DraftChoiceKind,
+                    term,
+                    shopId,
+                    productId,
+                  ),
     enabled: !disabled,
     retry: false,
   });

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   BillingSessionExpired,
   getJournalAnalytics,
+  getJournalMoneyAnalytics,
   journalAnalyticIds,
   JournalAnalyticAccount,
   JournalDetailValues,
@@ -32,15 +33,19 @@ export function JournalAnalyticsEditor({
   disabled,
   change,
   reconnect,
+  moneyJournal = false,
+  inputPrefix = 'journal',
 }: {
   uid: number;
   invoiceId: number;
-  lineId: number;
+  lineId: number | false;
   accountId: number;
   value: JournalDetailValues['analytic_distribution'];
   disabled: boolean;
   change: (value: JournalDetailValues['analytic_distribution']) => void;
   reconnect: () => void;
+  moneyJournal?: boolean;
+  inputPrefix?: string;
 }) {
   const ids = journalAnalyticIds(value);
   const metadata = useQuery({
@@ -52,8 +57,12 @@ export function JournalAnalyticsEditor({
       lineId,
       accountId,
       ids,
+      moneyJournal,
     ],
-    queryFn: () => getJournalAnalytics(invoiceId, lineId, accountId, ids),
+    queryFn: () =>
+      moneyJournal
+        ? getJournalMoneyAnalytics(invoiceId, lineId, accountId, ids)
+        : getJournalAnalytics(invoiceId, lineId as number, accountId, ids),
     retry: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -118,11 +127,15 @@ export function JournalAnalyticsEditor({
                   {Number.isFinite(total) ? `${total}%` : 'invalid percentage'}
                 </p>
                 <DraftChoiceInput
-                  id={`journal-analytic-plan-${plan.id}`}
+                  id={`${inputPrefix}-analytic-plan-${plan.id}`}
                   label={`Add account to ${plan.name}`}
                   uid={uid}
-                  journalInvoiceId={invoiceId}
-                  journalLineId={lineId}
+                  {...(moneyJournal
+                    ? { moneyJournal: { invoiceId, lineId } }
+                    : {
+                        journalInvoiceId: invoiceId,
+                        journalLineId: lineId as number,
+                      })}
                   kind="analytic"
                   analyticScope={{
                     account_id: accountId,
@@ -151,7 +164,7 @@ export function JournalAnalyticsEditor({
             return (
               <div key={key}>
                 <TextInput
-                  id={`journal-analytic-${key.replaceAll(',', '-')}`}
+                  id={`${inputPrefix}-analytic-${key.replaceAll(',', '-')}`}
                   labelText={`${label} allocation (%)`}
                   type="number"
                   min={0}

@@ -228,3 +228,42 @@ class InvoiceJournalMoneyAPITest(TransactionCase):
                 self.moves.qorlia_journal_money_choices(invoice.id, kind)
         with self.assertRaises(ValidationError):
             self.moves.qorlia_journal_money_choices(invoice.id, 'account', search='x' * 201)
+
+    def test_new_and_saved_row_analytics_use_native_plans_and_names(self):
+        invoice = self.invoice()
+        plan = self.env['account.analytic.plan'].create({'name': 'QorliaQA Money Departments',
+            'company_id': invoice.company_id.id, 'default_applicability': 'optional'})
+        other_plan = self.env['account.analytic.plan'].create({'name': 'QorliaQA Money Projects',
+            'company_id': invoice.company_id.id, 'default_applicability': 'optional'})
+        account = self.env['account.analytic.account'].create({'name': 'QorliaQA Money OPD',
+            'plan_id': plan.id, 'company_id': invoice.company_id.id})
+        other = self.env['account.analytic.account'].create({'name': 'QorliaQA Money Pilot',
+            'plan_id': other_plan.id, 'company_id': invoice.company_id.id})
+        for identifier in [False, invoice.invoice_line_ids.id]:
+            metadata = self.moves.qorlia_journal_money_analytics(invoice.id, identifier,
+                invoice.invoice_line_ids.account_id.id, [account.id, other.id])
+            self.assertEqual(metadata['line_id'], identifier)
+            self.assertEqual({item['id'] for item in metadata['accounts']}, {account.id, other.id})
+            choices = self.moves.qorlia_journal_money_choices(invoice.id, 'analytic', 'QorliaQA Money',
+                identifier, invoice.invoice_line_ids.account_id.id, plan.id, [account.id, other.id])
+            self.assertEqual([item[0] for item in choices], [account.id])
+        request, review = self.request(invoice, credit=600, analytic_distribution={str(account.id): 100})
+        self.assertEqual(review['labels']['account.analytic.account:%s' % account.id], account.display_name)
+        self.assertEqual(review['labels']['account.account:%s' % invoice.invoice_line_ids.account_id.id],
+            invoice.invoice_line_ids.account_id.display_name)
+        self.assertEqual(self.moves.qorlia_journal_money_save(**request)['totals'], review['totals'])
+
+    def test_money_analytic_scope_rejects_denied_cross_invoice_and_invalid_inputs(self):
+        invoice = self.invoice()
+        other = self.invoice()
+        account_id = invoice.invoice_line_ids.account_id.id
+        with self.assertRaises(AccessError):
+            self.moves.with_user(self.reader()).qorlia_journal_money_analytics(invoice.id, False, account_id, [])
+        for identifier, account_ids in [(other.invoice_line_ids.id, []), (False, [True]), (False, [1, 1])]:
+            with self.assertRaises(ValidationError):
+                self.moves.qorlia_journal_money_analytics(invoice.id, identifier, account_id, account_ids)
+        with self.assertRaises(ValidationError):
+            self.moves.qorlia_journal_money_choices(invoice.id, 'analytic', account_id=account_id,
+                plan_id=-1, account_ids=[])
+        with self.assertRaises(ValidationError):
+            self.moves.qorlia_journal_money_choices(invoice.id, 'tax', account_id=account_id)

@@ -1,5 +1,31 @@
 # Qorlia React frontend backend readiness
 
+## Reviewed monetary journal editor checkpoint (10 October 2026)
+
+The React editor now uses native reviewed money APIs, including complete ledger
+review, named choices and native analytic plans for saved/new rows. Draft removal
+has undo. Pending save requests are stored before submission and recovered only
+with the same reviewed payload; uncertain outcomes remain locked until resolved.
+Storage failures do not silently discard the request or allow a new save.
+
+All 341 installed native adapter tests pass with zero failures/errors/skips.
+Home passes 374 tests in 45 suites; types, touched-file lint, seven gateway/config
+tests and direct development webpack pass. The protected tester build saved a
+synthetic draft monetary edit, then independently verified the entire native
+review/saved ledger, balanced totals, unchanged unit price, one new receipt and
+idempotent exact retry. The stale invoice-card snapshot found during browser QA
+is fixed: returning from the journal clears the old card and reopening shows
+the fresh native total. Protected records and financial/stock/mail counts remain
+unchanged. Native mandatory analytics was restored and isolated Billing restarted.
+
+The existing tester/hospital/Billing gates and expiry are unchanged. Further real
+browser lost-response, add/remove, multi-currency/tax, permissions/configuration
+and concurrency acceptance remains; automated coverage is not proof of that full
+browser matrix. This checkpoint does not complete monetary, wider Billing or
+clinical/external-module parity. Production and the public demo are unchanged.
+Existing upstream/report, Browserslist, bundle and Nx graph limitations remain.
+Earlier checkpoints below are historical.
+
 ## Reviewed monetary journal API checkpoint (10 October 2026)
 
 Five named native APIs now load, search, review, save and recover journal money
