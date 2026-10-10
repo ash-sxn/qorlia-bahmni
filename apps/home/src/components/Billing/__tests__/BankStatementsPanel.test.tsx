@@ -15,6 +15,27 @@ import {
 } from '../billingService';
 import { bankCandidates, bankDetail, bankEntry } from './bankFixture';
 
+jest.mock('../BankMatchingModal', () => ({
+  BankMatchingModal: ({
+    uid,
+    entryId,
+    saved,
+    close,
+  }: {
+    uid: number;
+    entryId: number;
+    saved: () => void;
+    close: () => void;
+  }) => (
+    <section aria-label="Matching test workspace">
+      <p>
+        Matching user {uid}, entry {entryId}
+      </p>
+      <button onClick={saved}>Accepted matching receipt</button>
+      <button onClick={close}>Close matching workspace</button>
+    </section>
+  ),
+}));
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
   getBankCandidates: jest.fn(),
@@ -63,7 +84,9 @@ describe('Bank statement native read workspace', () => {
       screen.getByText(/Company-currency ledger: debit/),
     ).toHaveTextContent('₹100.00');
     expect(
-      screen.getByText(/this view cannot reconcile entries/),
+      screen.getByText(
+        /Reading these candidate rows does not reconcile entries/,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /^Match|^Reconcile|^Undo/ }),
@@ -113,6 +136,52 @@ describe('Bank statement native read workspace', () => {
         0,
       ),
     );
+  });
+  it('replaces detail with matching for the selected user and entry, then refreshes history after acceptance', async () => {
+    show(12);
+    await open();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Review matching and undo' }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review matching and undo' }),
+    );
+    expect(screen.getByText('Matching user 12, entry 7')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(getBankHistory).toHaveBeenCalledTimes(1);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Accepted matching receipt' }),
+    );
+    await waitFor(() => expect(getBankHistory).toHaveBeenCalledTimes(2));
+    expect(
+      screen.getByLabelText('Matching test workspace'),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close matching workspace' }),
+    );
+    expect(
+      screen.queryByLabelText('Matching test workspace'),
+    ).not.toBeInTheDocument();
+    await open();
+    expect(
+      await screen.findByRole('button', { name: 'Review matching and undo' }),
+    ).toBeInTheDocument();
+  });
+  it('does not open matching when the native statement detail cannot load', async () => {
+    (getBankDetail as jest.Mock).mockRejectedValue(
+      new Error('Statement detail unavailable'),
+    );
+    show();
+    await open();
+    await screen.findByText(/Statement detail unavailable/);
+    expect(
+      screen.getByRole('button', { name: 'Review matching and undo' }),
+    ).toBeDisabled();
+    expect(
+      screen.queryByLabelText('Matching test workspace'),
+    ).not.toBeInTheDocument();
   });
   it('loads later ledger rows with the original version and hides all prior rows on stale-page failure', async () => {
     (getBankDetail as jest.Mock)

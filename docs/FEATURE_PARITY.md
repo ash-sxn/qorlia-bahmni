@@ -1,5 +1,37 @@
 # Bahmni workflow parity ledger
 
+## 10 October React bank matching workspace checkpoint
+
+- Signed-in bank history now opens a separate matching workspace with native
+  candidate paging/search, retained source-currency partial allocations, explicit
+  counterpart analytics, applicable fee rules and reviewed whole-entry undo.
+  Every selected change invalidates review. Different initial entry snapshots
+  fail closed and require reload. Native accounting and permissions remain the
+  authority; this does not connect to a bank or establish clearance.
+- Review renders all seven native groups, all fields and deleted records, including
+  reconciliation, payment, analytic, exchange and cash-basis effects. Exact requests
+  persist before send. Lost responses block new actions and permit only explicit
+  status checks or exact retry. Corrupt/unavailable storage fails closed. Receipt
+  recovery shows native state at the response, not historical proof that an earlier
+  match still exists. Accepted requests require reopening before another action.
+- Home passes 428 tests/49 suites, including 17 matching-modal and nine statement
+  panel cases. Library and source-based touched-test types, touched lint, five
+  gateway guards and development webpack 8aefdbafe7819a6f pass. Existing build
+  warnings remain. This working-tree bundle includes unrelated clinical edits;
+  those edits are not staged as part of this checkpoint.
+- Actual TypeScript client HTTP on isolated staging performs reviewed matching,
+  status lookup and reviewed undo on synthetic statement #37/source #51. Original
+  source balances/analytics and statement monetary values are restored; protected
+  documents remain unchanged. Accepted-match retry after undo returns current
+  state and does not repeat accounting. A first verifier wrongly expected a frozen
+  receipt; the expectation and UI wording were corrected to the native contract,
+  and the full live sequence passed. The unchanged adapter suite was not rerun.
+- Browser matching/save/undo acceptance is outstanding because the local session
+  expired. The protected bank-read artifact still permits only the three bank read
+  APIs; no matching write publication occurred. Production/public demo are unchanged.
+  Wider banking configuration/concurrency, statement import/create/checkpoints,
+  hosted acceptance and all remaining Billing/clinical/external parity remain open.
+
 ## 10 October bank counterpart analytic allocation checkpoint
 
 - Added explicit native counterpart allocations, permission-scoped source/plan

@@ -3,7 +3,27 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Current checkpoint: bank counterparts accept explicitly selected analytic
+Current checkpoint: signed-in bank history opens a reviewed matching/undo workspace
+with candidate/fee paging, source-currency partial allocations, named counterpart
+analytics and complete seven-model effects. Exact requests persist before send;
+unconfirmed saves block new actions and require explicit status/exact retry.
+Corrupt storage fails closed. Recovery shows current native accounting rather
+than a historical original-save snapshot. Different initial entry snapshots require
+reload. Home passes 428 tests/49 suites; library and source-based touched-test types,
+touched lint, five gateway guards and development webpack 8aefdbafe7819a6f pass.
+Actual TypeScript-client staging HTTP saves a reviewed synthetic partial match,
+verifies status, saves reviewed undo and restores original source balances/analytics
+and statement monetary values; protected documents stay unchanged. Accepted retry
+after undo does not repeat accounting. The first verifier's frozen-snapshot
+expectation was corrected to native current-state semantics and the full sequence
+passed. The unchanged native adapter suite was not rerun for this UI step.
+Local browser save acceptance is pending after session expiry. Protected bank-read
+artifact/API gates and production/public demo are unchanged; matching writes are
+not hosted there. The working-tree build includes unrelated clinical edits, not a
+clean commit-only release. Existing warnings/type-project limitations and wider
+banking/Billing/whole-product gaps remain. Earlier entries are historical checkpoints.
+
+Earlier checkpoint: bank counterparts accept explicitly selected analytic
 distributions with native company/record permissions and mandatory validation.
 Two named APIs provide source/plan metadata and paginated choices; the TypeScript
 client and existing allocation editor support them. All 469 installed adapter

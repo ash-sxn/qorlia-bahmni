@@ -1,6 +1,7 @@
 import { Button, Modal, TextInput } from '@bahmni/design-system';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { BankMatchingModal } from './BankMatchingModal';
 import { money } from './billingFormat';
 import styles from './BillingPage.module.scss';
 import {
@@ -22,6 +23,7 @@ export function BankStatementsPanel({
   const [state, setState] = useState('all');
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
+  const [matching, setMatching] = useState(false);
   const history = useQuery({
     queryKey: ['billing', 'bank-history', uid, submitted, state, offset],
     queryFn: () => getBankHistory(submitted, state, offset),
@@ -155,7 +157,10 @@ export function BankStatementsPanel({
                       <Button
                         kind="tertiary"
                         disabled={history.isFetching}
-                        onClick={() => setSelected(row.id)}
+                        onClick={() => {
+                          setMatching(false);
+                          setSelected(row.id);
+                        }}
                       >
                         View statement entry {row.id}
                       </Button>
@@ -196,12 +201,23 @@ export function BankStatementsPanel({
         </>
       ) : null}
       {selected !== null ? (
-        <BankStatementDetail
-          uid={uid}
-          entryId={selected}
-          close={() => setSelected(null)}
-          reconnect={reconnect}
-        />
+        matching ? (
+          <BankMatchingModal
+            uid={uid}
+            entryId={selected}
+            close={() => setSelected(null)}
+            saved={() => void history.refetch()}
+            reconnect={reconnect}
+          />
+        ) : (
+          <BankStatementDetail
+            uid={uid}
+            entryId={selected}
+            close={() => setSelected(null)}
+            reconnect={reconnect}
+            manage={() => setMatching(true)}
+          />
+        )
       ) : null}
     </section>
   );
@@ -212,11 +228,13 @@ function BankStatementDetail({
   entryId,
   close,
   reconnect,
+  manage,
 }: {
   uid: number;
   entryId: number;
   close: () => void;
   reconnect: () => void;
+  manage: () => void;
 }) {
   const [search, setSearch] = useState('');
   const [submitted, setSubmitted] = useState('');
@@ -378,8 +396,10 @@ function BankStatementDetail({
                 <p>
                   These rows follow native account, company and reconciliation
                   rules. They are not automatic recommendations. Matching,
-                  partial allocation, fees and undo are still under integration;
-                  this view cannot reconcile entries.
+                  partial allocation, fees and undo are available in the
+                  separate reviewed matching workspace, subject to native
+                  permissions. Reading these candidate rows does not reconcile
+                  entries.
                 </p>
                 <form
                   className={styles.toolbar}
@@ -499,6 +519,12 @@ function BankStatementDetail({
           </>
         ) : null}
         <div className={styles.toolbar}>
+          <Button
+            disabled={detail.isFetching || detail.isError || !data}
+            onClick={manage}
+          >
+            Review matching and undo
+          </Button>
           <Button
             kind="tertiary"
             disabled={detail.isFetching}

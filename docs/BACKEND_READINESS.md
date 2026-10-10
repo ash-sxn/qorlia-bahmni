@@ -1,5 +1,43 @@
 # Qorlia React frontend backend readiness
 
+## React bank matching workspace checkpoint (10 October 2026)
+
+The signed-in Bank statements panel now opens reviewed match/undo controls using
+the named native APIs. Candidate and fee search/paging retains selected sources,
+amounts and counterpart analytic allocations. Mismatched initial entry snapshots
+fail closed. The review presents all seven accounting groups and complete native
+fields/deletions rather than only a shortlist of invoice effects. No bank connection
+or bank-clearance claim is introduced.
+
+Exact requests are persisted before send; missing responses lock new actions.
+Recovery checks/retries are explicit and preserve the original payload, review and
+identifier. Storage failures, corrupt recovery and unconfirmed receipt absence do
+not permit a fresh action. Confirmed rejection retains inputs for another review.
+Receipt recovery returns current native state, not a frozen original-save snapshot;
+the UI labels that distinction and requires reopening before another action.
+
+All 428 Home tests/49 suites, library and source-based touched-test types, touched
+lint, five gateway guards and development webpack 8aefdbafe7819a6f pass. The first
+source-type check invocation had compiler-option errors; corrected options pass
+with no source or dependency diagnostics. Broader test-project typing was not
+rerun or claimed clean. Existing build warnings remain; the working-tree bundle
+contains unrelated clinical edits, which are not included in this commit.
+
+Authenticated actual-client HTTP on isolated loopback staging reviewed/saved a
+partial match on synthetic statement #37/source #51, verified accepted status,
+reviewed/saved undo and restored original source balances/analytics and statement
+monetary values. Protected documents remain unchanged. Retrying the accepted match
+after undo returns current state without repeating accounting. The first verifier's
+frozen-receipt expectation failed after the successful undo; it was corrected to
+the documented native contract and the complete sequence passed. The unchanged
+469-case native adapter suite was not rerun for this frontend checkpoint.
+
+Browser save/undo acceptance remains pending after local session expiry. Protected
+bank-read build/source/gates/expiry remain unchanged, with bank write APIs still
+blocked there. No production/public-demo deployment occurred. Banking configuration,
+concurrency, create/import/checkpoints, wider Billing and full product parity are
+not complete. Earlier entries below are historical checkpoints.
+
 ## Bank counterpart analytic allocation checkpoint (10 October 2026)
 
 Native bank allocations now accept explicitly selected counterpart analytic
