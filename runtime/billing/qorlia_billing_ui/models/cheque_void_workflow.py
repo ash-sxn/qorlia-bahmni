@@ -48,7 +48,7 @@ class ChequeVoidWorkflow(models.Model):
             moves |= connected
             stamps.append(stamp)
             # An unreconciled selected document is reviewed but native void does not modify it.
-            if seed == payment.move_id or stamp['partials']:
+            if (seed == payment.move_id and seed.state == 'posted') or stamp['partials']:
                 removable = removable and allowed
         if len(moves.line_ids) > 1000:
             raise UserError('This cheque involves more than 1000 journal lines. Review its native allocations first.')

@@ -3238,6 +3238,200 @@ export const saveChequeVoidWorkflow = (request: ChequeVoidRequest) =>
 export const getChequeVoidRequestStatus = (request: ChequeVoidRequest) =>
   chequeVoidResult('qorlia_cheque_void_status', request);
 
+export type PaymentStateAction = 'post' | 'reset' | 'cancel';
+export interface CustomerPaymentRow {
+  payment_id: number;
+  name: string;
+  date: string;
+  customer: string;
+  amount: number;
+  currency: [number, string];
+  journal: string;
+  method: string;
+  direction: 'inbound' | 'outbound';
+  state: 'draft' | 'posted' | 'cancel';
+  reference: string;
+}
+export interface PaymentStateWorkflow
+  extends Omit<ChequeVoidWorkflow, 'can_void' | 'reason'> {
+  state: 'draft' | 'posted' | 'cancel';
+  date: string;
+  effective_date: string | false;
+  customer: string;
+  journal: string;
+  method: string;
+  auto_allocate: boolean;
+  reasons: Record<PaymentStateAction, string | false>;
+  action?: PaymentStateAction;
+}
+export interface PaymentStateRequest extends ChequeVoidRequest {
+  action: PaymentStateAction;
+}
+const paymentActions: PaymentStateAction[] = ['post', 'reset', 'cancel'];
+const paymentDate = (value: unknown) =>
+  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+export function checkedPaymentStateRequest(value: PaymentStateRequest) {
+  if (
+    !value ||
+    Object.keys(value).sort().join(',') !==
+      'action,payment_id,request_key,review_version,version' ||
+    !paymentActions.includes(value.action)
+  )
+    throw new Error(
+      'Invalid payment recovery request. Ask your Billing administrator to review it.',
+    );
+  checkedChequeVoidRequest({
+    payment_id: value.payment_id,
+    version: value.version,
+    review_version: value.review_version,
+    request_key: value.request_key,
+  });
+  return value;
+}
+function checkedPaymentState(value: PaymentStateWorkflow, paymentId: number) {
+  checkedChequeVoid({ ...value, can_void: false, reason: false }, paymentId);
+  if (
+    !paymentDate(value.date) ||
+    !(value.effective_date === false || paymentDate(value.effective_date)) ||
+    ![value.customer, value.journal, value.method].every(
+      (item) => typeof item === 'string',
+    ) ||
+    typeof value.auto_allocate !== 'boolean' ||
+    !value.reasons ||
+    Object.keys(value.reasons).sort().join(',') !== 'cancel,post,reset' ||
+    paymentActions.some(
+      (action) =>
+        !(
+          value.reasons[action] === false ||
+          typeof value.reasons[action] === 'string'
+        ),
+    ) ||
+    (value.state !== 'draft' &&
+      (!value.reasons.post || !value.reasons.cancel)) ||
+    (value.state === 'draft' && !value.reasons.reset)
+  )
+    throw new Error(
+      'Invalid native payment state. Reload before another action.',
+    );
+  return value;
+}
+export async function getCustomerPaymentHistory(
+  search: string,
+  offset = 0,
+  state = 'all',
+) {
+  if (
+    typeof search !== 'string' ||
+    search.length > 160 ||
+    !Number.isSafeInteger(offset) ||
+    offset < 0 ||
+    offset > 2147483647 ||
+    !['all', 'draft', 'posted', 'cancel'].includes(state)
+  )
+    throw new Error('Use a valid customer payment search and page.');
+  const result = await chequeCall<{
+    rows: CustomerPaymentRow[];
+    offset: number;
+    has_more: boolean;
+  }>('qorlia_payment_history', { search, offset, state });
+  if (
+    result?.offset !== offset ||
+    typeof result.has_more !== 'boolean' ||
+    !Array.isArray(result.rows) ||
+    result.rows.length > 25 ||
+    new Set(result.rows.map((row) => row?.payment_id)).size !==
+      result.rows.length ||
+    result.rows.some(
+      (row) =>
+        !Number.isSafeInteger(row?.payment_id) ||
+        row.payment_id <= 0 ||
+        !paymentDate(row.date) ||
+        ![row.name, row.customer, row.journal, row.method, row.reference].every(
+          (item) => typeof item === 'string',
+        ) ||
+        !Number.isFinite(row.amount) ||
+        row.amount < 0 ||
+        !Array.isArray(row.currency) ||
+        !validRelation(row.currency) ||
+        !['draft', 'posted', 'cancel'].includes(row.state) ||
+        !['inbound', 'outbound'].includes(row.direction),
+    )
+  )
+    throw new Error(
+      'Invalid payment history. Reload before reviewing a payment.',
+    );
+  return result;
+}
+export async function getPaymentStateWorkflow(paymentId: number) {
+  if (!Number.isSafeInteger(paymentId) || paymentId <= 0)
+    throw new Error('Select a saved customer payment.');
+  return checkedPaymentState(
+    await chequeCall<PaymentStateWorkflow>('qorlia_payment_state_load', {
+      payment_id: paymentId,
+    }),
+    paymentId,
+  );
+}
+export async function previewPaymentStateWorkflow(
+  payment: PaymentStateWorkflow,
+  action: PaymentStateAction,
+) {
+  checkedPaymentState(payment, payment.payment_id);
+  if (!paymentActions.includes(action) || payment.reasons[action])
+    throw new Error(
+      'This native payment action is unavailable. Reload its state.',
+    );
+  const reviewed = checkedPaymentState(
+    await chequeCall<PaymentStateWorkflow>('qorlia_payment_state_preview', {
+      payment_id: payment.payment_id,
+      version: payment.version,
+      action,
+    }),
+    payment.payment_id,
+  );
+  if (
+    Object.keys(payment)
+      .filter((field) => field !== 'action' && field !== 'review_version')
+      .some(
+        (field) =>
+          JSON.stringify(reviewed[field as keyof PaymentStateWorkflow]) !==
+          JSON.stringify(payment[field as keyof PaymentStateWorkflow]),
+      ) ||
+    reviewed.action !== action ||
+    typeof reviewed.review_version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(reviewed.review_version)
+  )
+    throw new Error('The payment review changed. Reload before confirming.');
+  return reviewed;
+}
+async function paymentStateResult(
+  method: string,
+  request: PaymentStateRequest,
+) {
+  checkedPaymentStateRequest(request);
+  const result = await chequeCall<{
+    accepted: boolean;
+    action: PaymentStateAction;
+    payment: PaymentStateWorkflow;
+  }>(method, request);
+  if (
+    typeof result?.accepted !== 'boolean' ||
+    result.action !== request.action ||
+    (method === 'qorlia_payment_state_run' && !result.accepted)
+  )
+    throw new Error(
+      'Payment response unavailable. Check this exact request before another action.',
+    );
+  return {
+    ...result,
+    payment: checkedPaymentState(result.payment, request.payment_id),
+  };
+}
+export const savePaymentStateWorkflow = (request: PaymentStateRequest) =>
+  paymentStateResult('qorlia_payment_state_run', request);
+export const getPaymentStateRequestStatus = (request: PaymentStateRequest) =>
+  paymentStateResult('qorlia_payment_state_status', request);
+
 export const getDraftChoices = async (
   kind: DraftChoiceKind,
   search: string,

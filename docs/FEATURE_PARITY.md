@@ -1,5 +1,36 @@
 # Bahmni workflow parity ledger
 
+## 10 October customer payment lifecycle checkpoint
+
+- Signed-in Billing gains native customer-payment history, search, all three
+  states and pagination, including unallocated drafts and retained cancellations.
+- Fixed load/preview/run/status adapters invoke native Confirm, Reset to Draft
+  and Cancel. Posted cancellation requires native reset first. Native customer
+  context preserves Bahmni auto-allocation, numbering and accounting dates.
+- Connected selection/reconciliation review, roles/company scope, locks, ledger
+  balance and immutable financial checks apply. Context-cache refresh fixes a
+  false stale review without removing concurrency protection.
+- Atomic exact-author receipts and persisted requests recover after reload with
+  explicit checking/identical retry. Old accepted requests do not restore an old
+  state. Accounting cancellation is not bank stop-payment or money transfer.
+- 238 installed native tests pass without failures/errors/skips; 293 Home tests
+  in 39 suites, types, lint, seven gateway/webpack tests and development build pass.
+  Native tests cover selected credits, auto-allocation, PDC, numbering replay,
+  permissions, stale review and unexpected-change rollback.
+- Protected browser Confirm, Reset to Draft and Cancel passed on synthetic PDC
+  payment #2720. Native readback verified one receipt per action, balanced entries,
+  unchanged financial/old-ledger values and protected records/counts. Confirm
+  changed INR 500 invoice/INR 100 selected credit balances to INR 300/zero with two
+  allocations; reset reopened INR 500/INR 100 and removed the allocations. Cancel
+  kept the payment searchable in cancelled history.
+- Full reload recovery, explicit status and finish passed after Confirm and
+  Cancel without duplicate writes. All 83 hosted chunks, source/licenses,
+  secret-free archive, tester/clinical gates, secure cookie, robots and raw-route
+  denial verified. Published source precedes this final browser-evidence note.
+  Production/shared demo are unchanged. Standalone payment editing/selection,
+  matching/providers, batch/actual bank printing, journal money, stock/POS/sync and
+  full clinical/external-module parity remain incomplete.
+
 ## 10 October native cheque void recovery checkpoint
 
 - A house cheque-void review uses four fixed native adapters, installed

@@ -3,7 +3,7 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest candidate checkpoint: 221 installed native adapter tests and 276 Home
+Latest checkpoint: 238 installed native adapter tests and 293 Home
 tests pass. Native cheque numbering/PDF/recovery is implemented below, but the
 actual staging company has no bank-compatible cheque layout. The prior protected
 browser save/reload and independent native readback confirm
@@ -16,6 +16,41 @@ The label-polished hosted build verifies all 83 chunks, source/licenses and
 unchanged access gates. See the readiness/parity ledgers
 for dated evidence and remaining gates. Older counts below describe earlier
 checkpoints, not current total coverage or a product completion percentage.
+
+## Customer payment history and state controls
+
+The signed-in house Billing UI lists native customer payments with search,
+draft/posted/cancelled filters and 25-row pagination. Unallocated payments are
+included. Four `account.payment.qorlia_payment_state_*` methods load, preview,
+run and check an exact action; `qorlia_payment_history` supplies the list.
+Confirm, Reset to Draft and Cancel call the installed native methods without
+financial `sudo`, raw browser mutation routes or automatic write retry. Posted
+payments must be reset before cancellation. PDC uses this generic native
+lifecycle, not the check-printing-only void action.
+
+Active-company and native role/record rules, connected allocation review, locks
+and ledger/financial checks apply. Native customer action context preserves
+Bahmni's selected-credit auto-allocation. A context-cache refresh compensates for
+the upstream computed flag's missing context dependency. Preview does not invoke
+posting or consume native cheque numbers; actual native numbering/date decisions
+are displayed after acceptance.
+
+Author-bound exact UUID receipts commit with the action, prevent duplicate writes
+and return current state after later transitions. The frontend persists uncertain
+requests before submission, offers recovery independently of invoice allocation
+history and requires explicit status checking/identical retry. Finishing requires
+a fresh accepted status. These controls change accounting state, not funds, bank
+stop-payment or clearance. Protected browser Confirm, Reset to Draft and Cancel
+passed on synthetic PDC payment #2720. Independent native readback found exactly
+three receipts, balanced entries, unchanged financial/old-ledger values and
+protected records/counts. Confirm allocated the selected INR 100 credit and
+payment against an INR 500 invoice, leaving INR 300 open; reset reopened the
+invoice and credit to INR 500/INR 100, then cancellation retained payment history.
+Full reload/status/finish recovery passed after confirmation and cancellation
+without duplicate writes. All 83 hosted chunks, source/licenses and unchanged
+access gates verified; published source precedes the final evidence note.
+Standalone payment editing/selection, bank matching, providers and wider parity
+remain open. Production/public demo are unchanged.
 
 ## Native cheque printing
 
@@ -49,7 +84,8 @@ The financial snapshot and cheque number must remain unchanged. The Qorlia modal
 persists uncertain requests before sending and requires explicit check/retry,
 then fresh read before finishing. Sent is not printed, delivered or bank-cleared.
 Unmark warns about eligibility for another print review. Native cheque void is
-described above; PDC cancellation remains pending.
+described above; generic PDC accounting cancellation is covered by the payment
+lifecycle checkpoint, not bank stop-payment or clearance.
 
 Six named `account.payment.qorlia_cheque_*` actions provide `load`, `preview`,
 `print`, `status`, `download` and `download_current`. Only posted customer

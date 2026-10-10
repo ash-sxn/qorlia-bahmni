@@ -1,5 +1,60 @@
 # Qorlia React frontend backend readiness
 
+## Customer payment history and native lifecycle checkpoint (10 October 2026)
+
+The signed-in Billing workspace adds a customer-payment tab with native search,
+state filters and 25-row pagination, including unallocated drafts and cancelled
+records. Four fixed `qorlia_payment_state_*` methods load, preview, run and check
+Confirm, Reset to Draft and Cancel. Only customer, non-internal payments in the
+active companies are accepted. Posted payments must be reset before cancellation.
+Native `action_post`, `action_draft` and `action_cancel` remain responsible for
+numbering, accounting dates and Bahmni's selected-credit/receivable allocations.
+
+Reviews bind connected documents, selection rows and accounting configuration.
+Permissions, locks, ledger balance and financial invariants remain enforced.
+The installed Bahmni context-sensitive auto-allocation compute lacks a context
+cache dependency; the adapter refreshes it in the native customer action context
+before review, with a regression test for a cache warmed in another context.
+No posting simulation consumes cheque sequence numbers during preview.
+
+Exact-author UUID receipts commit atomically with each transition. Duplicate
+accepted requests return current state without repeating an old action. Pending
+requests persist before write and recover through explicit status/identical retry
+after reload, independently of whether a payment appears in invoice history.
+No financial write is retried automatically. These are accounting state actions,
+not bank stop-payment, fund transfer or bank clearance instructions.
+
+Installed native suite: 238 tests, zero failures/errors/skips. Home: 293 tests
+across 39 suites. Types, lint, seven gateway/webpack tests and the development
+build pass. Native tests include selected-credit reopening, real auto-allocation,
+PDC transitions, manual cheque sequence replay, readonly/record-rule denial,
+stale reviews and rollback of unexpected financial changes. The isolated test
+setting was restored and web service restarted.
+
+Protected browser Confirm, Reset to Draft and Cancel passed for labelled synthetic
+PDC payment #2720 (`PQLBR/2026/00001`). Confirm reduced invoice #18196 from INR 500
+to INR 300 and selected credit #18197 from INR 100 to zero, with two native
+allocations. Reset reopened both balances and removed those allocations. Cancel
+retained the INR 100 payment in searchable cancelled history. Independent native
+readback after each action and after recovery found exactly three author-bound
+receipts, unchanged financial/old-ledger values, balanced entries and unchanged
+protected records and payment/move/stock/mail counts. Native bank-matched state
+remained unchanged; this is not evidence of a bank transaction or clearance.
+
+Full-page reload recovery, read-only receipt checking and explicit finish passed
+after Confirm and Cancel without duplicate writes. The verifier compares stable
+move IDs rather than native state-dependent display labels; all ledger amounts
+and other financial comparisons remain intact. The `payment-lifecycle-20261010`
+protected artifact matches all 83 hosted chunks, source/LICENSE/NOTICE and a
+secret-free archive. Tester gate, secure HttpOnly cookie, required clinical
+session, robots exclusion and raw-mutation denial remain verified. The published
+source archive precedes this final browser-evidence note. Production and the
+public/shared demo remain unchanged.
+
+Remaining parity includes editing and creating standalone payment selections,
+batch printing, actual bank layouts, bank matching/provider collection, monetary
+journal editing, stock/POS/Clinical-to-ERP sync and clinical/external modules.
+
 ## Native cheque void recovery checkpoint (10 October 2026)
 
 Four fixed `account.payment.qorlia_cheque_void_*` actions load, preview, run and

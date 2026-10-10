@@ -27,6 +27,7 @@ import {
 import { ChargeOrdersPanel } from './ChargeOrdersPanel';
 import { CorrectionWorkflowModal } from './CorrectionWorkflowModal';
 import { CreditWorkflowModal } from './CreditWorkflowModal';
+import { CustomerPaymentsPanel } from './CustomerPaymentsPanel';
 import { CustomerStatementModal } from './CustomerStatementModal';
 import { InvoiceConversationModal } from './InvoiceConversationModal';
 import { InvoiceDraftEditor } from './InvoiceDraftEditor';
@@ -260,6 +261,7 @@ export function BillingPage() {
               <TabList aria-label="Billing workflows">
                 <Tab>Invoices and credit notes</Tab>
                 <Tab>Charge orders</Tab>
+                <Tab>Customer payments</Tab>
               </TabList>
               <TabPanels>
                 <TabPanel>
@@ -629,6 +631,17 @@ export function BillingPage() {
                         setSelected(invoice);
                         setTab(0);
                       }}
+                      reconnect={() => {
+                        queryClient.removeQueries({ queryKey: ['billing'] });
+                        void session.refetch();
+                      }}
+                    />
+                  ) : null}
+                </TabPanel>
+                <TabPanel>
+                  {tab === 2 ? (
+                    <CustomerPaymentsPanel
+                      uid={session.data!.uid as number}
                       reconnect={() => {
                         queryClient.removeQueries({ queryKey: ['billing'] });
                         void session.refetch();
