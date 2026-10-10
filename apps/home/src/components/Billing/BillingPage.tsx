@@ -14,6 +14,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HomePageHeader } from '../HomePageHeader';
+import { BankStatementsPanel } from './BankStatementsPanel';
 import { invoiceName, money } from './billingFormat';
 import styles from './BillingPage.module.scss';
 import {
@@ -288,6 +289,7 @@ export function BillingPage() {
                 <Tab>Invoices and credit notes</Tab>
                 <Tab>Charge orders</Tab>
                 <Tab>Customer payments</Tab>
+                <Tab>Bank statements</Tab>
               </TabList>
               <TabPanels>
                 <TabPanel>
@@ -732,6 +734,17 @@ export function BillingPage() {
                 <TabPanel>
                   {tab === 2 ? (
                     <CustomerPaymentsPanel
+                      uid={session.data!.uid as number}
+                      reconnect={() => {
+                        queryClient.removeQueries({ queryKey: ['billing'] });
+                        void session.refetch();
+                      }}
+                    />
+                  ) : null}
+                </TabPanel>
+                <TabPanel>
+                  {tab === 3 ? (
+                    <BankStatementsPanel
                       uid={session.data!.uid as number}
                       reconnect={() => {
                         queryClient.removeQueries({ queryKey: ['billing'] });

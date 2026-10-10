@@ -1,5 +1,36 @@
 # Bahmni workflow parity ledger
 
+## 10 October bank-statement read workspace checkpoint
+
+- Signed-in Billing now has a Bank statements tab with native bank/cash history,
+  state/search filtering, journal detail and possible ledger matches. Three named
+  read APIs retain native account/company/record permissions. No bank connection,
+  reconciliation, match recommendation or generic mutation endpoint is introduced.
+- Complete ledger totals either include every native row or fail on denied rows.
+  Ledger pagination uses a version-bound positive-ID cursor; stale entry/journal/
+  ledger changes reject continuation. Journal/foreign amounts and company-currency
+  totals/residuals remain distinct. Candidate paging uses the native matching domain.
+- All 359 installed native adapter tests pass with zero failures/errors/skips,
+  including read-only users, hidden ledger rows, inactive companies, currencies,
+  102-row pagination and stale versions. Mandatory analytic configuration was
+  restored. Home passes 396 tests/47 suites; types, touched-file lint, seven gateway/
+  configuration tests and direct development webpack pass. Existing build warnings
+  and the Nx graph limitation remain, not a green whole-repository CI claim.
+- Protected artifact `bank-read-20261010` matches all 83 JS/CSS chunks and the
+  packaged source/license archive. Existing tester/hospital/Billing gates and expiry
+  remain unchanged; all three bank reads require the hospital session and raw bank
+  writes/reconciliation/undo remain blocked. Source includes pre-existing clinical
+  working-tree edits and predates these final evidence notes.
+- Actual protected-browser search/filter, ledger open, candidate search/pagination
+  and matched-empty state pass for synthetic bank entry #37, INR 123.45. Independent
+  native reads verify two balanced liquidity/suspense rows and candidate monetary
+  values; browser reads preserve its financial/reconciliation state, protected
+  records and financial/stock/mail/statement counts. No real bank transaction occurs.
+- This is progress toward full bank integration, not bank-matching completion.
+  Reviewed match writes, partial allocations, fees/write-offs, recovery and safe
+  undo remain required, alongside wider Billing and clinical/separate-product
+  parity. Production and the shared public demo are unchanged.
+
 ## 10 October batch invoice PDF implementation checkpoint
 
 - Added current-page document selection and a shared native-report modal for

@@ -21,3 +21,4 @@ from . import invoice_journal
 from . import invoice_journal_edit
 from . import invoice_cutoff
 from . import invoice_journal_money
+from . import bank_statement

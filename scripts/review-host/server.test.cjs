@@ -130,6 +130,18 @@ test('review gate protects UI, clinical API and named Billing actions with isola
   }
   assert.equal((await rpc('/web/dataset/call_kw/ir.actions.report/_render_qweb_pdf', allCookies,
     { model: 'ir.actions.report', method: '_render_qweb_pdf' })).status, 404);
+  for (const action of ['history', 'detail', 'candidates']) {
+    const model = 'account.bank.statement.line', method = `qorlia_bank_${action}`;
+    const path = `/web/dataset/call_kw/${model}/${method}`;
+    const params = {model, method, args: [], kwargs: {}};
+    assert.equal((await rpc(path, cookie, params)).status, 401);
+    assert.equal((await rpc(path, allCookies, params)).status, 200);
+    for (const change of [{method: 'write'}, {model: 'account.move'}, {args: [1]}, {kwargs: {context: {uid: 1}}}])
+      assert.equal((await rpc(path, allCookies, {...params, ...change})).status, 400);
+  }
+  for (const method of ['create', 'write', 'unlink', 'action_undo_reconciliation'])
+    assert.equal((await rpc(`/web/dataset/call_kw/account.bank.statement.line/${method}`, allCookies,
+      {model: 'account.bank.statement.line', method})).status, 404);
   assert.equal((await request('/openmrs/qorlia-billing-api/report/pdf/account.report_invoice/7',
     { headers: { Cookie: allCookies } })).status, 404);
   for (const model of ['account.payment', 'account.payment.register', 'account.move.reversal', 'sale.advance.payment.inv'])

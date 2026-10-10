@@ -1,5 +1,43 @@
 # Qorlia React frontend backend readiness
 
+## Native bank-statement read workspace checkpoint (10 October 2026)
+
+Signed-in Billing exposes bank/cash history, a complete native ledger and possible
+matching items through three scoped read APIs. History/candidates page by 25;
+ledger pages by 100 with an author/company/source-version-bound positive-ID cursor.
+Full totals are calculated over every journal item after native ACL/rule checks,
+not over a permission-filtered One2many. Missing/inaccessible rows fail closed.
+Journal, foreign and company-currency monetary values are labelled separately.
+Candidates use the installed native matching domain, not a Qorlia ranking engine.
+
+The installed suite passes 359 tests with zero failures/errors/skips. New tests
+cover read-only accounting access, hidden entries/ledger rows, inactive companies,
+invalid inputs, native currency values, 26-item pagination, complete 102-row totals
+and stale versions/cursors. Mandatory analytics was independently confirmed restored.
+Home passes 396 tests/47 suites; types, touched-file lint, seven gateway/config
+checks and direct development webpack pass. Existing upstream/build warnings and
+Nx graph limitations remain. These checks do not establish whole-product acceptance.
+
+Protected artifact `bank-read-20261010` passes access checks, with matching hashes
+for all 83 JS/CSS chunks and packaged source/license archive. Its three bank reads
+require the existing hospital session; raw create/write/unlink/reconciliation/undo
+are blocked. Tester/Billing gates and expiry are unchanged. The archive includes
+pre-existing clinical working-tree edits and precedes these final evidence notes.
+
+Actual protected-browser bank search/state filtering, ledger viewing and candidate
+search/pagination pass for synthetic entry #37 (INR 123.45). Independent HTTP/native
+reads agree on the two liquidity/suspense rows, debit/credit totals and candidate
+residuals. A subsequent independent read confirms unchanged financial/matching
+state, protected records and financial/stock/mail/statement counts after the browser
+reads. Only the explicitly labelled isolated synthetic fixture was created.
+
+Full match/reconciliation writes, partial allocations, fees/write-offs, exact-request
+recovery and safe undo are not yet implemented here and remain required. The native
+undo method can delete generated payments, so it must not be exposed as a generic
+harmless reversal. Bank operations and the wider Billing/clinical/external-module
+goal remain incomplete. Production/public demo are unchanged. Older checkpoints
+below are historical.
+
 ## Batch invoice PDF implementation checkpoint (10 October 2026)
 
 Invoice-page selection and a native batch-report modal now generate one combined

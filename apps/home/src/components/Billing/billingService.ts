@@ -217,6 +217,242 @@ export async function getInvoiceJournal(
 
 type Relation = [number, string] | false;
 
+export interface BankEntry {
+  id: number;
+  date: string;
+  payment_ref: string | false;
+  partner_id: Relation;
+  journal_id: [number, string];
+  statement_id: Relation;
+  move_id: [number, string];
+  state: 'draft' | 'posted' | 'cancel';
+  amount: number;
+  currency_id: [number, string];
+  foreign_currency_id: Relation;
+  amount_currency: number;
+  amount_residual: number;
+  is_reconciled: boolean;
+}
+export interface BankLedgerRow {
+  id: number;
+  name: string | false;
+  account_id: [number, string];
+  partner_id: Relation;
+  date: string;
+  debit: number;
+  credit: number;
+  currency_id: Relation;
+  amount_currency: number;
+  amount_residual: number;
+  amount_residual_currency: number;
+  reconciled: boolean;
+}
+export interface BankDetail {
+  statement_line_id: number;
+  version: string;
+  after: number | false;
+  next_after: number | false;
+  total_count: number;
+  entry: BankEntry;
+  company: string;
+  company_currency: [number, string];
+  debit: number;
+  credit: number;
+  balanced: boolean;
+  rows: (BankLedgerRow & {
+    balance: number;
+    matching_number: string | false;
+    kind: 'liquidity' | 'suspense' | 'counterpart';
+  })[];
+}
+export interface BankCandidates {
+  statement_line_id: number;
+  version: string;
+  offset: number;
+  has_more: boolean;
+  rows: (BankLedgerRow & { move_id: [number, string] })[];
+}
+const bankId = (value: unknown) =>
+  Number.isSafeInteger(value) && Number(value) > 0;
+const bankHash = (value: unknown) =>
+  typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+const bankDate = (value: unknown) =>
+  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+const bankText = (value: unknown) =>
+  value === false || typeof value === 'string';
+function checkedBankSearch(search: string, offset: number) {
+  if (
+    typeof search !== 'string' ||
+    search.length > 160 ||
+    !Number.isSafeInteger(offset) ||
+    offset < 0 ||
+    offset > 2147483647
+  )
+    throw new Error('Use a valid statement search and page.');
+}
+function validBankEntry(row: BankEntry) {
+  return (
+    row &&
+    bankId(row.id) &&
+    bankDate(row.date) &&
+    bankText(row.payment_ref) &&
+    ['draft', 'posted', 'cancel'].includes(row.state) &&
+    typeof row.is_reconciled === 'boolean' &&
+    [
+      row.partner_id,
+      row.journal_id,
+      row.statement_id,
+      row.move_id,
+      row.currency_id,
+      row.foreign_currency_id,
+    ].every(validRelation) &&
+    [row.journal_id, row.move_id, row.currency_id].every(Array.isArray) &&
+    [row.amount, row.amount_currency, row.amount_residual].every(
+      Number.isFinite,
+    )
+  );
+}
+function validBankLedger(row: BankLedgerRow) {
+  return (
+    row &&
+    bankId(row.id) &&
+    bankText(row.name) &&
+    bankDate(row.date) &&
+    Array.isArray(row.account_id) &&
+    [row.account_id, row.partner_id, row.currency_id].every(validRelation) &&
+    [
+      row.debit,
+      row.credit,
+      row.amount_currency,
+      row.amount_residual,
+      row.amount_residual_currency,
+    ].every(Number.isFinite) &&
+    row.debit >= 0 &&
+    row.credit >= 0 &&
+    typeof row.reconciled === 'boolean'
+  );
+}
+const bankCall = <T>(action: string, kwargs: object) =>
+  rpc<T>(
+    `/web/dataset/call_kw/account.bank.statement.line/qorlia_bank_${action}`,
+    {
+      model: 'account.bank.statement.line',
+      method: `qorlia_bank_${action}`,
+      args: [],
+      kwargs,
+    },
+  );
+export async function getBankHistory(search = '', state = 'all', offset = 0) {
+  checkedBankSearch(search, offset);
+  if (!['all', 'unmatched', 'matched'].includes(state))
+    throw new Error('Select a statement matching state.');
+  const data = await bankCall<{
+    rows: BankEntry[];
+    offset: number;
+    has_more: boolean;
+  }>('history', { search, state, offset });
+  if (
+    data?.offset !== offset ||
+    typeof data.has_more !== 'boolean' ||
+    !Array.isArray(data.rows) ||
+    data.rows.length > 25 ||
+    (data.has_more && data.rows.length !== 25) ||
+    !data.rows.every(validBankEntry) ||
+    new Set(data.rows.map((row) => row.id)).size !== data.rows.length
+  )
+    throw new Error('Invalid bank statement history.');
+  return data;
+}
+export async function getBankDetail(
+  statementLineId: number,
+  after: number | false = false,
+  version: string | false = false,
+): Promise<BankDetail> {
+  if (
+    !bankId(statementLineId) ||
+    !(after === false || bankId(after)) ||
+    !(version === false || bankHash(version)) ||
+    (after !== false && version === false)
+  )
+    throw new Error('Reload a saved statement entry and its ledger.');
+  const data = await bankCall<BankDetail>('detail', {
+    statement_line_id: statementLineId,
+    after,
+    version,
+  });
+  if (
+    data?.statement_line_id !== statementLineId ||
+    data.after !== after ||
+    !bankHash(data.version) ||
+    (version !== false && data.version !== version) ||
+    !validBankEntry(data.entry) ||
+    data.entry.id !== statementLineId ||
+    typeof data.company !== 'string' ||
+    !Array.isArray(data.company_currency) ||
+    !validRelation(data.company_currency) ||
+    ![data.debit, data.credit].every(Number.isFinite) ||
+    data.debit < 0 ||
+    data.credit < 0 ||
+    typeof data.balanced !== 'boolean' ||
+    !Number.isSafeInteger(data.total_count) ||
+    data.total_count < 0 ||
+    !(data.next_after === false || bankId(data.next_after)) ||
+    !Array.isArray(data.rows) ||
+    data.rows.length > 100 ||
+    data.rows.length > data.total_count ||
+    (after === false && data.rows.length === 0 && data.total_count !== 0) ||
+    data.rows.some(
+      (row, index) =>
+        !validBankLedger(row) ||
+        !Number.isFinite(row.balance) ||
+        !bankText(row.matching_number) ||
+        !['liquidity', 'suspense', 'counterpart'].includes(row.kind) ||
+        row.id <= (index ? data.rows[index - 1].id : after || 0),
+    ) ||
+    (data.next_after !== false &&
+      (data.rows.length !== 100 || data.next_after !== data.rows[99].id))
+  )
+    throw new Error('Invalid statement ledger. Reload all pages.');
+  return data;
+}
+export async function getBankCandidates(
+  statementLineId: number,
+  version: string,
+  search = '',
+  offset = 0,
+): Promise<BankCandidates> {
+  checkedBankSearch(search, offset);
+  if (!bankId(statementLineId) || !bankHash(version))
+    throw new Error(
+      'Reload the statement entry before finding possible matches.',
+    );
+  const data = await bankCall<BankCandidates>('candidates', {
+    statement_line_id: statementLineId,
+    version,
+    search,
+    offset,
+  });
+  if (
+    data?.statement_line_id !== statementLineId ||
+    data.version !== version ||
+    data.offset !== offset ||
+    typeof data.has_more !== 'boolean' ||
+    !Array.isArray(data.rows) ||
+    data.rows.length > 25 ||
+    (data.has_more && data.rows.length !== 25) ||
+    data.rows.some(
+      (row) =>
+        !validBankLedger(row) ||
+        row.reconciled ||
+        !Array.isArray(row.move_id) ||
+        !validRelation(row.move_id),
+    ) ||
+    new Set(data.rows.map((row) => row.id)).size !== data.rows.length
+  )
+    throw new Error('Invalid possible statement matches.');
+  return data;
+}
+
 export type CutoffValues = {
   date: string;
   percentage: number;

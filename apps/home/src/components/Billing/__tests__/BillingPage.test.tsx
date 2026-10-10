@@ -42,6 +42,7 @@ import {
   getInvoiceConversation,
   postInvoiceNote,
   getInvoiceJournal,
+  getBankHistory,
 } from '../billingService';
 import { correctionWorkflowFixture } from './correctionWorkflowFixture';
 import { creditWorkflowFixture } from './creditWorkflowFixture';
@@ -89,6 +90,7 @@ jest.mock('../billingService', () => ({
   getInvoiceConversation: jest.fn(),
   postInvoiceNote: jest.fn(),
   getInvoiceJournal: jest.fn(),
+  getBankHistory: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({
   useUserPrivilege: jest.fn(),
@@ -135,6 +137,19 @@ const invoice = {
   currency_id: [1, 'INR'],
 };
 describe('Billing workspace', () => {
+  it('mounts the bank workspace only behind the signed-in Billing tab', async () => {
+    (getBankHistory as jest.Mock).mockResolvedValue({
+      rows: [],
+      offset: 0,
+      has_more: false,
+    });
+    show();
+    const tab = await screen.findByRole('tab', { name: 'Bank statements' });
+    expect(getBankHistory).not.toHaveBeenCalled();
+    fireEvent.click(tab);
+    await screen.findByRole('heading', { name: 'Bank and cash statements' });
+    expect(getBankHistory).toHaveBeenCalledWith('', 'all', 0);
+  });
   beforeEach(() => {
     jest.clearAllMocks();
     (useUserPrivilege as jest.Mock).mockReturnValue({

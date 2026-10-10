@@ -3,7 +3,23 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest checkpoint: 347 installed native tests, 381 Home tests in 45 suites and
+Latest checkpoint: native bank/cash history, complete versioned ledger and possible
+matching items are integrated as three permission-scoped read APIs in signed-in
+Billing. All 359 installed native tests and 396 Home tests/47 suites pass, along with
+types/lint, seven gateway/config checks and direct development webpack. Protected
+artifact `bank-read-20261010` matches all 83 chunks and packaged source/license
+archive, with unchanged gates/expiry and blocked raw bank mutations. Native and
+protected-browser reads verify synthetic entry #37 (INR 123.45), balanced
+liquidity/suspense rows, candidate search/pagination and unchanged accounting/
+protected-record/count snapshots. Mandatory analytic configuration is restored.
+Complete totals fail on inaccessible ledger rows rather than silently omit them.
+Company, journal and foreign values remain separate; stale cursor/version reads fail.
+The archive includes pre-existing clinical edits and precedes final evidence notes.
+Matching writes, partial allocation, fees/write-offs, recovery and safe undo remain
+required. This read workspace does not complete bank matching or broader Billing.
+Production/public demo are unchanged. Existing upstream/build limitations remain.
+
+Earlier batch-report checkpoint: 347 installed native tests, 381 Home tests in 45 suites and
 seven gateway/build-config tests pass, with types/lint and direct webpack.
 Batch invoice PDFs use two scoped APIs and the installed native renderer, checking
 every selected invoice/credit note before rendering. The UI supports one current
