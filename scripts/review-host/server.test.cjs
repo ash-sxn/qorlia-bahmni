@@ -2,6 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const { resolve } = require('node:path');
+const { readFileSync } = require('node:fs');
 const { createReviewApp } = require('./server.cjs');
 
 test('review gate protects UI, clinical API and named Billing actions with isolated cookies', async (t) => {
@@ -130,16 +131,31 @@ test('review gate protects UI, clinical API and named Billing actions with isola
   }
   assert.equal((await rpc('/web/dataset/call_kw/ir.actions.report/_render_qweb_pdf', allCookies,
     { model: 'ir.actions.report', method: '_render_qweb_pdf' })).status, 404);
-  for (const action of ['history', 'detail', 'candidates']) {
-    const model = 'account.bank.statement.line', method = `qorlia_bank_${action}`;
+  const bankMethods = ['bank_statement.py', 'bank_matching_api.py'].flatMap(name =>
+    [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models', name), 'utf8')
+      .matchAll(/^    def (qorlia_bank_\w+)\(/gm)].map(match => match[1]));
+  assert.equal(bankMethods.length, 10, 'All current named native bank APIs must be covered.');
+  for (const method of bankMethods) {
+    const model = 'account.bank.statement.line';
     const path = `/web/dataset/call_kw/${model}/${method}`;
     const params = {model, method, args: [], kwargs: {}};
     assert.equal((await rpc(path, cookie, params)).status, 401);
+    assert.equal((await rpc(path, `${cookie}; JSESSIONID=invalid`, params)).status, 401);
     assert.equal((await rpc(path, allCookies, params)).status, 200);
+    assert.equal(seenClinical, 'JSESSIONID=valid');
+    assert.equal(seenBilling, 'session_id=erp-current');
+    assert.equal(seenBillingAuth, undefined);
     for (const change of [{method: 'write'}, {model: 'account.move'}, {args: [1]}, {kwargs: {context: {uid: 1}}}])
       assert.equal((await rpc(path, allCookies, {...params, ...change})).status, 400);
+    assert.equal((await rpc(path, allCookies, params, 'write')).status, 400);
+    assert.equal((await rpc(path, allCookies, { ...params, kwargs: { payload: 'x'.repeat(40000) } })).status, 400);
+    assert.equal((await request(`/openmrs/qorlia-billing-api${path}`, { headers: { Cookie: allCookies } })).status, 404);
+    assert.equal((await request(`/openmrs/qorlia-billing-api${path}`, { method: 'POST',
+      headers: { Cookie: allCookies, Origin: 'https://evil.example', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params }) })).status, 403);
   }
-  for (const method of ['create', 'write', 'unlink', 'action_undo_reconciliation'])
+  for (const method of ['create', 'write', 'unlink', 'action_undo_reconciliation', 'reconcile',
+    'qorlia_bank_match_unknown', 'qorlia_bank_match_fees', '_qorlia_bank_match_apply', '_qorlia_bank_match_undo'])
     assert.equal((await rpc(`/web/dataset/call_kw/account.bank.statement.line/${method}`, allCookies,
       {model: 'account.bank.statement.line', method})).status, 404);
   assert.equal((await request('/openmrs/qorlia-billing-api/report/pdf/account.report_invoice/7',
@@ -165,4 +181,7 @@ test('expired review link fails closed', async (t) => {
   await new Promise((r) => server.once('listening', r));
   t.after(() => { server.closeAllConnections(); server.close(); });
   assert.equal((await fetch(`http://127.0.0.1:${server.address().port}/bahmni-v2/login`)).status, 410);
+  for (const action of ['load', 'fees', 'preview', 'save', 'status', 'analytics'])
+    assert.equal((await fetch(`http://127.0.0.1:${server.address().port}/openmrs/qorlia-billing-api/web/dataset/call_kw/account.bank.statement.line/qorlia_bank_match_${action}`,
+      { method: 'POST' })).status, 410);
 });
