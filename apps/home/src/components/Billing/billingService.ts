@@ -3763,6 +3763,15 @@ export async function getCheckpointAttachments(
       kwargs: { checkpoint_id: checkpointId, after, version },
     },
   );
+  return checkedCheckpointAttachmentPage(result, checkpointId, after, version);
+}
+
+function checkedCheckpointAttachmentPage(
+  result: CheckpointAttachmentsPage,
+  checkpointId: number,
+  after: number | false = false,
+  version: string | false = false,
+) {
   if (
     result?.checkpoint_id !== checkpointId ||
     result.after !== after ||
@@ -3773,6 +3782,9 @@ export async function getCheckpointAttachments(
     !Array.isArray(result.rows) ||
     result.rows.length > 30 ||
     result.total_count < result.rows.length ||
+    (after === false &&
+      (result.rows.length !== Math.min(result.total_count, 30) ||
+        (result.next_after !== false) !== result.total_count > 30)) ||
     result.rows.some(
       (file, index) =>
         !file ||
@@ -3790,6 +3802,79 @@ export async function getCheckpointAttachments(
     throw new Error('Invalid checkpoint attachment page.');
   return result;
 }
+
+export interface CheckpointAttachmentRequest {
+  checkpoint_id: number;
+  version: string;
+  uploads: InvoiceUpload[];
+  remove_ids: number[];
+}
+
+export interface CheckpointAttachmentReceipt {
+  checkpoint_id: number;
+  request_key: string;
+  accepted: boolean;
+  attachments: CheckpointAttachmentsPage | false;
+}
+
+async function checkpointAttachmentAction(
+  action: 'save' | 'status',
+  payload: CheckpointAttachmentRequest,
+  requestKey: string,
+) {
+  if (
+    !payload ||
+    Object.keys(payload).sort().join(',') !==
+      'checkpoint_id,remove_ids,uploads,version' ||
+    !bankId(payload.checkpoint_id) ||
+    !bankHash(payload.version) ||
+    !Array.isArray(payload.remove_ids) ||
+    !payload.remove_ids.every(bankId) ||
+    new Set(payload.remove_ids).size !== payload.remove_ids.length ||
+    typeof requestKey !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+      requestKey,
+    )
+  )
+    throw new Error('Use a complete checkpoint attachment save request.');
+  checkedUploads(payload.uploads);
+  if (!payload.uploads.length && !payload.remove_ids.length)
+    throw new Error('Select files to upload or remove from this checkpoint.');
+  const method = `qorlia_checkpoint_attachment_${action}`;
+  const result = await rpc<CheckpointAttachmentReceipt>(
+    `/web/dataset/call_kw/account.bank.statement/${method}`,
+    {
+      model: 'account.bank.statement',
+      method,
+      args: [],
+      kwargs: { payload, request_key: requestKey },
+    },
+  );
+  if (
+    result?.checkpoint_id !== payload.checkpoint_id ||
+    result.request_key !== requestKey ||
+    typeof result.accepted !== 'boolean' ||
+    (action === 'save' && !result.accepted) ||
+    (!result.accepted && result.attachments !== false)
+  )
+    throw new Error('Invalid checkpoint attachment save receipt.');
+  if (result.accepted)
+    checkedCheckpointAttachmentPage(
+      result.attachments as CheckpointAttachmentsPage,
+      payload.checkpoint_id,
+    );
+  return result;
+}
+
+export const saveCheckpointAttachments = (
+  payload: CheckpointAttachmentRequest,
+  requestKey: string,
+) => checkpointAttachmentAction('save', payload, requestKey);
+
+export const getCheckpointAttachmentStatus = (
+  payload: CheckpointAttachmentRequest,
+  requestKey: string,
+) => checkpointAttachmentAction('status', payload, requestKey);
 
 export async function downloadCheckpointAttachment(
   checkpointId: number,

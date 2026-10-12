@@ -96,6 +96,7 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
       ...['history', 'detail'].map((action) => `/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_${action}`),
       ...['load', 'preview', 'save', 'status'].map((action) => `/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_editor_${action}`),
       ...['attachments', 'attachment_download'].map((action) => `/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_${action}`),
+      ...['save', 'status'].map((action) => `/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_attachment_${action}`),
       ...['load', 'preview', 'run', 'status'].map((action) => `/web/dataset/call_kw/account.payment/qorlia_payment_state_${action}`),
       ...['load', 'choices', 'onchange', 'preview', 'save', 'status'].map((action) => `/web/dataset/call_kw/account.payment/qorlia_customer_payment_draft_${action}`),
       '/web/dataset/call_kw/account.move/qorlia_customer_statement',
@@ -122,9 +123,11 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
       next();
     } catch { res.status(503).json({ error: 'Hospital session verification is unavailable.' }); }
   }, (req, res, next) => {
-    // Only atomic note uploads need the larger bound; authentication runs first.
+    // Only named atomic file uploads/recovery need the larger bound; authentication runs first.
     const upload = ['/web/dataset/call_kw/account.move/qorlia_invoice_note',
-      '/web/dataset/call_kw/account.move/qorlia_invoice_note_status'].includes(req.path);
+      '/web/dataset/call_kw/account.move/qorlia_invoice_note_status',
+      '/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_attachment_save',
+      '/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_attachment_status'].includes(req.path);
     express.json({ limit: upload ? '15mb' : '32kb' })(req, res, next);
   }, (req, res, next) => {
     // Expose only named adapter actions, never raw financial create/write/confirm calls.

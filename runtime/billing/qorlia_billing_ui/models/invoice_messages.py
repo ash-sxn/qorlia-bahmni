@@ -25,6 +25,29 @@ def safe_filename(name):
                 char in '/\\' or unicodedata.category(char).startswith('C') for char in name))
 
 
+def attachment_upload_values(uploads):
+    if not isinstance(uploads, list) or len(uploads) > 5:
+        raise ValidationError('Attach up to five files, totalling at most 10 MiB.')
+    files, identities, total = [], [], 0
+    for upload in uploads:
+        if (not isinstance(upload, dict) or set(upload) != {'name', 'content'}
+                or not safe_filename(upload['name']) or not isinstance(upload['content'], str)
+                or len(upload['content']) > 4 * ((MAX_ATTACHMENT_BYTES + 2) // 3)):
+            raise ValidationError('Use a valid attachment name and base64 file content.')
+        try:
+            raw = base64.b64decode(upload['content'], validate=True)
+        except (ValueError, binascii.Error):
+            raise ValidationError('Use valid base64 file content.')
+        if base64.b64encode(raw).decode() != upload['content']:
+            raise ValidationError('Use canonical base64 file content.')
+        total += len(raw)
+        if total > MAX_ATTACHMENT_BYTES:
+            raise ValidationError('Attachments may total at most 10 MiB.')
+        files.append((upload['name'], raw))
+        identities.append([upload['name'], len(raw), hashlib.sha256(raw).hexdigest()])
+    return files, identities
+
+
 def attachment_download_values(attachment):
     # Callers must first authorize both the attachment and its linked parent.
     if attachment.type == 'url':
@@ -139,25 +162,7 @@ class InvoiceMessages(models.Model):
         if (not isinstance(body, str) or (not body.strip() and not uploads) or len(body) > 5000
                 or '\x00' in body):
             raise ValidationError('Enter a note of up to 5,000 characters or attach a file.')
-        if not isinstance(uploads, list) or len(uploads) > 5:
-            raise ValidationError('Attach up to five files, totalling at most 10 MiB.')
-        files, identities, total = [], [], 0
-        for upload in uploads:
-            if (not isinstance(upload, dict) or set(upload) != {'name', 'content'}
-                    or not safe_filename(upload['name']) or not isinstance(upload['content'], str)
-                    or len(upload['content']) > 4 * ((MAX_ATTACHMENT_BYTES + 2) // 3)):
-                raise ValidationError('Use a valid attachment name and base64 file content.')
-            try:
-                raw = base64.b64decode(upload['content'], validate=True)
-            except (ValueError, binascii.Error):
-                raise ValidationError('Use valid base64 file content.')
-            if base64.b64encode(raw).decode() != upload['content']:
-                raise ValidationError('Use canonical base64 file content.')
-            total += len(raw)
-            if total > MAX_ATTACHMENT_BYTES:
-                raise ValidationError('Attachments may total at most 10 MiB.')
-            files.append((upload['name'], raw))
-            identities.append([upload['name'], len(raw), hashlib.sha256(raw).hexdigest()])
+        files, identities = attachment_upload_values(uploads)
         # Keep request hashes compatible with notes saved before file uploads existed.
         payload = json.dumps([body, identities], ensure_ascii=False, separators=(',', ':')) if files else body
         return hashlib.sha256(payload.encode()).hexdigest(), files

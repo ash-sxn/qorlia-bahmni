@@ -1,5 +1,30 @@
 # Bahmni workflow parity ledger
 
+## 12 October native checkpoint attachment upload/removal source checkpoint
+
+- Adapter 16.0.1.34.0 and the TypeScript client add exact named save/status APIs.
+  Versioned requests, native permissions/locks, protected editor receipts and
+  author/company/request identity prevent stale or duplicate mutations. Uploads
+  create/link atomically; removal only unlinks the statement relation, retaining
+  stored bytes and other links like the installed native widget. Shared invoice
+  parsing keeps existing hashes and five-file/10 MiB bounds. Unrelated file or
+  accounting changes roll back, including newly created files and callbacks.
+- All 515 native tests (23 attachment cases) and 486 Home tests/56 suites pass.
+  Seven gateway/config checks, library/new source-test types, lint/diff and build
+  b75bf737062d0c80 pass. The shared first-page decoder rejects missing rows and
+  false paging totals. Runtime hashes match; analytics remain mandatory and
+  isolated Billing runs. Existing build/native-report warnings remain.
+- Actual client/private HTTP on fresh synthetic #732 verifies simultaneous exact
+  uploads, byte-identical empty/binary files, retries, relation removal, stale
+  rejection and current-state recovery. Independent native reads prove two unique
+  receipts, no orphan/duplicate uploads, retained removed bytes, private/company
+  scope, unchanged balances/seven-model accounting and earlier protected records.
+- No new upload/removal controls are rendered yet. Source gateway routes are not
+  deployed; the hosted build remains checkpoint-attachments-20261012 with read/
+  download only. Durable UI recovery, browser saves, larger-file streaming,
+  imports/pivot/graph and remaining Banking/Billing/clinical/external parity stay
+  open. Production/public demo and preserved clinical edits are unchanged.
+
 ## 12 October protected checkpoint attachment browser acceptance
 
 - Hosted checkpoint-attachments-20261012 records source 0642e5a2 plus nine

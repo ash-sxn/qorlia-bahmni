@@ -27,3 +27,4 @@ from . import bank_matching_api
 from . import bank_checkpoint
 from . import bank_checkpoint_editor
 from . import bank_checkpoint_attachments
+from . import bank_checkpoint_attachment_edit

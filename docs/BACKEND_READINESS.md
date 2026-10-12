@@ -1,5 +1,56 @@
 # Qorlia React frontend backend readiness
 
+## Native checkpoint attachment upload/removal APIs (12 October 2026)
+
+Isolated adapter 16.0.1.34.0 adds named attachment save/status APIs and matching
+TypeScript boundary validation. Requests bind the checkpoint, source version,
+ordered file names/byte hashes, removed relation IDs, author, active companies
+and UUID. The editor's protected receipt/key namespace is reused, with native
+journal/company/financial graph and attachment locks. New requests must match
+the current complete file list. Exact accepted retries return the current list,
+not a stale saved snapshot. Caller context/default/accounting bypasses are denied.
+
+The installed native many2many-binary widget removes relation links, not the
+stored files. This adapter therefore uses native Command.unlink on the statement
+relation, preserving bytes and links elsewhere. New files use native create/link
+in the same savepoint, with native create/write/read and original-parent checks.
+The existing invoice-note parser is factored and reused, preserving its hashes
+and five-file/10 MiB aggregate limit. Native post-processing is disabled; final
+byte/name/company/privacy checks, complete relation checks and unchanged original
+file/accounting checks fail closed. Save failure restores callback queues and
+rolls back new files, links and receipts. Raw attachment CRUD remains unexposed.
+
+All 515 native adapter tests pass with no failures/errors/skips, including 23
+attachment tests (14 new mutation cases). Mandatory analytics were restored and
+isolated Billing is running on the unchanged pinned image. Full Home verification
+passes 486 tests/56 suites; seven gateway/config checks, Home library and new
+source-based test types, touched lint/diff and build b75bf737062d0c80 pass. The
+shared first-page decoder also rejects missing rows and false paging totals.
+Initial
+Jest config loading failed on inherited bundler/customConditions settings; the
+command-local node-resolution/null-conditions override runs the existing config.
+One new test initially omitted the native error arguments and was corrected.
+Existing missing Yarn, Browserslist, development size and native report warnings
+remain. Installed model/helper/test/manifest hashes match source.
+
+The actual TypeScript client over private isolated HTTP uploads non-UTF-8 and
+zero-byte files while removing an original link on fresh synthetic checkpoint
+#732/journal #2717. Two simultaneous requests with the same UUID, later identical
+retry, removal retry, stale new request denial and status after subsequent edits
+all pass. Independent native read-back proves exactly two receipts, no duplicate
+or orphan uploads, all three stored files retained, only the intended empty file
+still linked, correct private/company scope and unchanged seven-model accounting
+and checkpoint balances. Earlier #263/#267, eight protected documents, bank #37
+and original download-fixture bytes remain unchanged. Read-only checks roll back.
+
+This is a backend/client source checkpoint, not an upload/removal UI release.
+The source review gateway permits only the two new named methods with its existing
+gates and authenticated upload-size bound; that gateway is not yet deployed.
+Hosted checkpoint-attachments-20261012 still exposes read/download only. Upload/
+removal controls, durable browser recovery and save acceptance, >10 MiB streaming,
+import/pivot/graph, wider Banking/Billing and complete clinical/external parity
+remain open. Production/public demo and nine unrelated clinical edits are unchanged.
+
 ## Protected checkpoint attachment browser acceptance (12 October 2026)
 
 The protected tester host now serves checkpoint-attachments-20261012 from source

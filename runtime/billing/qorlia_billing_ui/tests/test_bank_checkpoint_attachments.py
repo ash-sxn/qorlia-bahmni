@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 import base64
 import uuid
+from unittest.mock import patch
 from odoo import Command
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
@@ -32,6 +33,252 @@ class BankCheckpointAttachmentTest(TransactionCase):
             'res_model': 'account.bank.statement', 'res_id': checkpoint.id, **values})
         checkpoint.attachment_ids |= result
         return result
+
+    def edit_request(self, checkpoint, uploads=None, remove_ids=None):
+        return {'checkpoint_id': checkpoint.id,
+            'version': self.checkpoints.qorlia_checkpoint_attachments(checkpoint.id)['version'],
+            'uploads': [{'name': self.prefix + '.bin', 'content': base64.b64encode(b'Native\x00\xff').decode()}]
+                if uploads is None else uploads,
+            'remove_ids': [] if remove_ids is None else remove_ids}
+
+    def test_atomic_upload_empty_file_and_exact_retry_preserve_native_accounting(self):
+        checkpoint = self.checkpoint()
+        old = self.file(checkpoint)
+        before = self.checkpoints._qorlia_checkpoint_editor_result(checkpoint, checkpoint,
+            checkpoint.line_ids, self.checkpoints._qorlia_checkpoint_editor_graph(checkpoint.line_ids))
+        payload = self.edit_request(checkpoint)
+        payload['uploads'].append({'name': self.prefix + '.empty', 'content': ''})
+        key = str(uuid.uuid4())
+        self.assertFalse(self.checkpoints.qorlia_checkpoint_attachment_status(payload, key)['accepted'])
+        result = self.checkpoints.qorlia_checkpoint_attachment_save(payload, key)
+        self.assertTrue(result['accepted'])
+        self.assertEqual(result['attachments']['total_count'], 3)
+        self.assertEqual(self.checkpoints.qorlia_checkpoint_attachment_save(payload, key), result)
+        self.assertEqual(self.checkpoints.qorlia_checkpoint_attachment_status(payload, key), result)
+        files = checkpoint.attachment_ids - old
+        self.assertEqual(len(files), 2)
+        for file in files:
+            upload = next(item for item in payload['uploads'] if item['name'] == file.name)
+            self.assertEqual(file.raw or b'', base64.b64decode(upload['content']))
+            self.assertEqual(file.company_id, checkpoint.company_id)
+            self.assertFalse(file.public or file.access_token or file.res_field)
+            self.assertEqual((file.res_model, file.res_id), (checkpoint._name, checkpoint.id))
+        self.assertEqual(self.checkpoints._qorlia_checkpoint_editor_result(checkpoint, checkpoint,
+            checkpoint.line_ids, self.checkpoints._qorlia_checkpoint_editor_graph(checkpoint.line_ids)), before)
+
+    def test_removal_only_unlinks_native_relation_and_retains_shared_file(self):
+        checkpoint = self.checkpoint()
+        other = self.checkpoint()
+        file = self.file(other)
+        checkpoint.attachment_ids |= file
+        file.write({'res_model': checkpoint._name, 'res_id': other.id})
+        before = file.read(['name', 'checksum', 'res_model', 'res_id', 'write_date'])
+        payload = self.edit_request(checkpoint, uploads=[], remove_ids=file.ids)
+        result = self.checkpoints.qorlia_checkpoint_attachment_save(payload, str(uuid.uuid4()))
+        self.assertTrue(result['accepted'])
+        self.assertEqual(result['attachments']['rows'], [])
+        self.assertTrue(file.exists())
+        self.assertIn(file, other.attachment_ids)
+        self.assertEqual(file.read(['name', 'checksum', 'res_model', 'res_id', 'write_date']), before)
+
+    def test_combined_upload_removal_and_recovery_return_current_list(self):
+        checkpoint = self.checkpoint()
+        old = self.file(checkpoint)
+        payload = self.edit_request(checkpoint, remove_ids=old.ids)
+        key = str(uuid.uuid4())
+        result = self.checkpoints.qorlia_checkpoint_attachment_save(payload, key)
+        self.assertEqual(result['attachments']['total_count'], 1)
+        saved = checkpoint.attachment_ids
+        later = self.file(checkpoint, name=self.prefix + '-later.txt')
+        recovered = self.checkpoints.qorlia_checkpoint_attachment_save(payload, key)
+        self.assertTrue(recovered['accepted'])
+        self.assertEqual({row['id'] for row in recovered['attachments']['rows']}, set((saved | later).ids))
+        self.assertNotEqual(recovered['attachments']['version'], result['attachments']['version'])
+        self.assertTrue(old.exists())
+
+    def test_invalid_attachment_edit_payloads_and_metadata_injection_rejected(self):
+        checkpoint = self.checkpoint()
+        payload = self.edit_request(checkpoint)
+        invalid = [dict(payload, checkpoint_id=True), dict(payload, version='bad'),
+            dict(payload, remove_ids=[True]), dict(payload, remove_ids=[1, 1]),
+            dict(payload, remove_ids=False), dict(payload, uploads=[], remove_ids=[]),
+            dict(payload, uploads=[{'name': '../bad', 'content': ''}]),
+            dict(payload, uploads=[{'name': 'bad\x00name', 'content': ''}]),
+            dict(payload, uploads=[{'name': 'bad.txt', 'content': 'YR=='}]),
+            dict(payload, uploads=[{'name': 'bad.txt', 'content': '!!!!'}]),
+            dict(payload, uploads=[dict(payload['uploads'][0], res_id=1)]),
+            dict(payload, uploads=payload['uploads'] * 6), dict(payload, foreign=True)]
+        for values in invalid:
+            with self.assertRaises(ValidationError):
+                self.checkpoints.qorlia_checkpoint_attachment_save(values, str(uuid.uuid4()))
+        for key in ('bad', True, str(uuid.uuid4()).upper()):
+            with self.assertRaises(ValidationError):
+                self.checkpoints.qorlia_checkpoint_attachment_status(payload, key)
+        self.assertFalse(checkpoint.attachment_ids)
+
+    def test_stale_version_and_unlinked_removal_create_no_orphan_files(self):
+        checkpoint = self.checkpoint()
+        payload = self.edit_request(checkpoint)
+        self.file(checkpoint)
+        count = self.env['ir.attachment'].search_count([])
+        with self.assertRaises(UserError):
+            self.checkpoints.qorlia_checkpoint_attachment_save(payload, str(uuid.uuid4()))
+        other = self.file(self.checkpoint())
+        payload = self.edit_request(checkpoint, remove_ids=other.ids)
+        count += 1
+        with self.assertRaises(AccessError):
+            self.checkpoints.qorlia_checkpoint_attachment_save(payload, str(uuid.uuid4()))
+        self.assertEqual(self.env['ir.attachment'].search_count([]), count)
+        self.assertFalse(checkpoint.qorlia_checkpoint_edit_receipts)
+
+    def test_exact_request_binds_upload_content_order_removal_and_author(self):
+        checkpoint = self.checkpoint()
+        payload = self.edit_request(checkpoint)
+        key = str(uuid.uuid4())
+        self.checkpoints.qorlia_checkpoint_attachment_save(payload, key)
+        for values in (dict(payload, uploads=[{'name': 'Other.txt', 'content': ''}]),
+                dict(payload, version='0' * 64), dict(payload, remove_ids=[1])):
+            with self.assertRaises(ValidationError):
+                self.checkpoints.qorlia_checkpoint_attachment_status(values, key)
+        reader = self.env['res.users'].with_context(no_reset_password=True).create({'name': self.prefix,
+            'login': uuid.uuid4().hex, 'groups_id': [Command.set(self.env.ref('account.group_account_readonly').ids)]})
+        with self.assertRaises(ValidationError):
+            self.checkpoints.with_user(reader).qorlia_checkpoint_attachment_status(payload, key)
+
+    def test_readonly_public_and_foreign_company_cannot_change_files(self):
+        checkpoint = self.checkpoint()
+        reader = self.env['res.users'].with_context(no_reset_password=True).create({'name': self.prefix,
+            'login': uuid.uuid4().hex, 'groups_id': [Command.set(self.env.ref('account.group_account_readonly').ids)]})
+        api = self.checkpoints.with_user(reader)
+        payload = self.edit_request(checkpoint)
+        payload['version'] = api.qorlia_checkpoint_attachments(checkpoint.id)['version']
+        with self.assertRaises(AccessError):
+            api.qorlia_checkpoint_attachment_save(payload, str(uuid.uuid4()))
+        with self.assertRaises(AccessError):
+            self.checkpoints.with_user(self.env.ref('base.public_user')).qorlia_checkpoint_attachment_save(payload, str(uuid.uuid4()))
+        other = self.env['res.company'].create({'name': self.prefix + ' foreign'})
+        with self.assertRaises(AccessError):
+            self.checkpoints.with_context(allowed_company_ids=other.ids).qorlia_checkpoint_attachment_save(payload, str(uuid.uuid4()))
+
+    def test_hidden_original_parent_blocks_shared_attachment_removal(self):
+        checkpoint, other = self.checkpoint(), self.checkpoint()
+        file = self.file(other)
+        checkpoint.attachment_ids |= file
+        file.write({'res_model': checkpoint._name, 'res_id': other.id})
+        user = self.env['res.users'].with_context(no_reset_password=True).create({'name': self.prefix,
+            'login': uuid.uuid4().hex, 'groups_id': [Command.set(self.env.ref('account.group_account_user').ids)]})
+        api = self.checkpoints.with_user(user)
+        payload = self.edit_request(checkpoint, uploads=[], remove_ids=file.ids)
+        payload['version'] = api.qorlia_checkpoint_attachments(checkpoint.id)['version']
+        self.env['ir.rule'].create({'name': self.prefix + ' hidden original parent',
+            'model_id': self.env.ref('account.model_account_bank_statement').id,
+            'domain_force': "[('id', '!=', %s)]" % other.id})
+        with self.assertRaises(AccessError):
+            api.qorlia_checkpoint_attachment_save(payload, str(uuid.uuid4()))
+
+    def test_failed_native_link_write_rolls_back_files_receipt_and_callbacks(self):
+        checkpoint = self.checkpoint()
+        payload = self.edit_request(checkpoint)
+        key = str(uuid.uuid4())
+        count = self.env['ir.attachment'].search_count([])
+        callbacks = self.env.cr.postcommit
+        original = type(checkpoint).write
+        added = lambda: None
+
+        def fail_after_link(records, values):
+            result = original(records, values)
+            if 'attachment_ids' in values:
+                self.env.cr.postcommit.add(added)
+                raise UserError('Synthetic link failure')
+            return result
+
+        with patch.object(type(checkpoint), 'write', fail_after_link):
+            with self.assertRaisesRegex(UserError, 'Synthetic link failure'):
+                self.checkpoints.qorlia_checkpoint_attachment_save(payload, key)
+        self.assertIs(self.env.cr.postcommit, callbacks)
+        self.assertNotIn(added, callbacks._funcs)
+        self.assertFalse(checkpoint.attachment_ids or checkpoint.qorlia_checkpoint_edit_receipts)
+        self.assertEqual(self.env['ir.attachment'].search_count([]), count)
+        self.assertFalse(self.checkpoints.qorlia_checkpoint_attachment_status(payload, key)['accepted'])
+
+    def test_native_file_transform_is_detected_and_rolls_back(self):
+        checkpoint = self.checkpoint()
+        payload = self.edit_request(checkpoint)
+        count = self.env['ir.attachment'].search_count([])
+        original = type(self.env['ir.attachment']).create
+
+        def transform(records, values):
+            result = original(records, values)
+            result.write({'name': 'Unexpected native transformation'})
+            return result
+
+        with patch.object(type(self.env['ir.attachment']), 'create', transform):
+            with self.assertRaisesRegex(UserError, 'differs from the requested file'):
+                self.checkpoints.qorlia_checkpoint_attachment_save(payload, str(uuid.uuid4()))
+        self.assertEqual(self.env['ir.attachment'].search_count([]), count)
+        self.assertFalse(checkpoint.qorlia_checkpoint_edit_receipts)
+
+    def test_bypass_context_and_receipt_namespace_collision_are_rejected(self):
+        checkpoint = self.checkpoint()
+        payload = self.edit_request(checkpoint)
+        for context in ({'default_public': True}, {'check_move_validity': False},
+                {'skip_account_move_synchronization': True}, {'force_delete': True}):
+            with self.assertRaises(ValidationError):
+                self.checkpoints.with_context(**context).qorlia_checkpoint_attachment_save(payload, str(uuid.uuid4()))
+        editor = self.checkpoints.qorlia_checkpoint_editor_load(checkpoint_id=checkpoint.id)
+        editing = {name: editor[name] for name in ('checkpoint_id', 'entry_ids', 'split_line_id', 'version', 'values')}
+        review = self.checkpoints.qorlia_checkpoint_editor_preview(editing)
+        key = str(uuid.uuid4())
+        self.checkpoints.qorlia_checkpoint_editor_save(editing, review['review_version'], key)
+        with self.assertRaises(ValidationError):
+            self.checkpoints.qorlia_checkpoint_attachment_status(payload, key)
+
+    def test_upload_size_boundary_is_shared_with_invoice_note_parser(self):
+        checkpoint = self.checkpoint()
+        payload = self.edit_request(checkpoint)
+        payload['uploads'] = [{'name': 'Large.bin', 'content': base64.b64encode(b'x' * (10 * 1024 * 1024 + 1)).decode()}]
+        with self.assertRaises(ValidationError):
+            self.checkpoints.qorlia_checkpoint_attachment_save(payload, str(uuid.uuid4()))
+        self.assertFalse(checkpoint.attachment_ids)
+
+    def test_attachment_create_acl_denial_leaves_no_receipt(self):
+        checkpoint = self.checkpoint()
+        payload = self.edit_request(checkpoint)
+        original = type(self.env['ir.attachment']).check_access_rights
+
+        def deny_create(records, operation, *args, **kwargs):
+            if operation == 'create':
+                raise AccessError('Synthetic attachment create denied')
+            return original(records, operation, *args, **kwargs)
+
+        with patch.object(type(self.env['ir.attachment']), 'check_access_rights', deny_create):
+            with self.assertRaises(AccessError):
+                self.checkpoints.qorlia_checkpoint_attachment_save(payload, str(uuid.uuid4()))
+        self.assertFalse(checkpoint.attachment_ids or checkpoint.qorlia_checkpoint_edit_receipts)
+
+    def test_unexpected_financial_hook_rolls_back_accounting_and_files(self):
+        checkpoint = self.checkpoint()
+        payload = self.edit_request(checkpoint)
+        entry = checkpoint.line_ids[0]
+        plan = self.env['account.analytic.plan'].create({'name': self.prefix})
+        account = self.env['account.analytic.account'].create({'name': self.prefix, 'plan_id': plan.id})
+        before = self.env['account.analytic.line'].search_count([])
+        files_before = self.env['ir.attachment'].search_count([])
+        original = type(checkpoint).write
+
+        def hook(records, values):
+            result = original(records, values)
+            if 'attachment_ids' in values:
+                self.env['account.analytic.line'].create({'name': self.prefix, 'account_id': account.id,
+                    'move_line_id': entry.move_id.line_ids[0].id, 'amount': 1})
+            return result
+
+        with patch.object(type(checkpoint), 'write', hook):
+            with self.assertRaisesRegex(UserError, 'changed unrelated files or accounting'):
+                self.checkpoints.qorlia_checkpoint_attachment_save(payload, str(uuid.uuid4()))
+        self.assertEqual(self.env['account.analytic.line'].search_count([]), before)
+        self.assertEqual(self.env['ir.attachment'].search_count([]), files_before)
+        self.assertFalse(checkpoint.attachment_ids or checkpoint.qorlia_checkpoint_edit_receipts)
 
     def test_list_and_binary_download_preserve_bytes_and_accounting(self):
         checkpoint = self.checkpoint()

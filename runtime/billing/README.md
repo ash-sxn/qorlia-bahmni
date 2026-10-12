@@ -3,6 +3,20 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest mutation API source checkpoint: 16.0.1.34.0 adds
+`qorlia_checkpoint_attachment_save` and `qorlia_checkpoint_attachment_status`.
+Native file create/link and relation-only removal preserve original bytes and
+other links. Exact reviewed-list versions, native locks/permissions, protected
+editor receipts and byte/privacy/accounting checks prevent duplicate or unrelated
+effects. Invoice-note upload parsing is reused with unchanged hashes/limits.
+All 515 native and 486 Home tests pass; seven gateway/config checks, types/lint
+and build b75bf737062d0c80 pass. Private actual-client HTTP and independent native
+read-back verify simultaneous exact upload retries, empty/binary bytes, removal,
+current-state recovery and unchanged accounting/protected records. Source/runtime
+hashes match and analytics remain mandatory. Upload/removal UI and durable browser
+recovery are not implemented; new source gateway routes are not deployed. Larger
+file streaming and full parity remain open. Production/public demo are unchanged.
+
 Latest hosted attachment acceptance: checkpoint-attachments-20261012 serves
 0642e5a2 plus nine separately hashed clinical edits. Build 387706e11ce29d56,
 all 83 hosted chunks and source/licenses match behind unchanged access gates,

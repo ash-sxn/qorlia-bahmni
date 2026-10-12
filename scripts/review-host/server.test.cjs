@@ -135,10 +135,10 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models', name), 'utf8')
       .matchAll(/^    def (qorlia_bank_\w+)\(/gm)].map(match => match[1]));
   assert.equal(bankMethods.length, 10, 'All current named native bank APIs must be covered.');
-  const checkpointMethods = ['bank_checkpoint.py', 'bank_checkpoint_editor.py', 'bank_checkpoint_attachments.py'].flatMap(name =>
+  const checkpointMethods = ['bank_checkpoint.py', 'bank_checkpoint_editor.py', 'bank_checkpoint_attachments.py', 'bank_checkpoint_attachment_edit.py'].flatMap(name =>
     [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models', name), 'utf8')
       .matchAll(/^    def (qorlia_checkpoint_\w+)\(/gm)].map(match => match[1]));
-  assert.equal(checkpointMethods.length, 8, 'All native checkpoint read, attachment and reviewed editor APIs must be covered.');
+  assert.equal(checkpointMethods.length, 10, 'All native checkpoint read, attachment and reviewed editor APIs must be covered.');
   for (const [model, method] of [
     ...bankMethods.map(method => ['account.bank.statement.line', method]),
     ...checkpointMethods.map(method => ['account.bank.statement', method]),
@@ -154,7 +154,12 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     for (const change of [{method: 'write'}, {model: 'account.move'}, {args: [1]}, {kwargs: {context: {uid: 1}}}])
       assert.equal((await rpc(path, allCookies, {...params, ...change})).status, 400);
     assert.equal((await rpc(path, allCookies, params, 'write')).status, 400);
-    assert.equal((await rpc(path, allCookies, { ...params, kwargs: { payload: 'x'.repeat(40000) } })).status, 400);
+    const isUpload = ['qorlia_checkpoint_attachment_save', 'qorlia_checkpoint_attachment_status'].includes(method);
+    assert.equal((await rpc(path, allCookies, { ...params, kwargs: { payload: 'x'.repeat(40000) } })).status, isUpload ? 200 : 400);
+    if (isUpload) {
+      assert.equal((await rpc(path, cookie, { ...params, kwargs: { payload: 'x'.repeat(40000) } })).status, 401);
+      assert.equal((await rpc(path, allCookies, { ...params, kwargs: { payload: 'x'.repeat(16 * 1024 * 1024) } })).status, 400);
+    }
     assert.equal((await request(`/openmrs/qorlia-billing-api${path}`, { headers: { Cookie: allCookies } })).status, 404);
     assert.equal((await request(`/openmrs/qorlia-billing-api${path}`, { method: 'POST',
       headers: { Cookie: allCookies, Origin: 'https://evil.example', 'Content-Type': 'application/json' },
