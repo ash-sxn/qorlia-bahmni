@@ -3,6 +3,17 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest hosted editor acceptance: bank-checkpoint-editor-r2-20261010 serves
+05defb41 plus the nine separately hashed clinical edits behind unchanged gates
+and expiry. All 83 chunks and source/licenses match. Browser create #263, edit
+and split #267 pass on fresh synthetic journal #2483. Independent native read-back
+verifies grouping/unique receipts and unchanged seven-model accounting, protected
+documents and bank #37, with mandatory analytics preserved. The first package
+missed bundled gateway dependencies and was rolled back; the separately named r2
+bundle passes startup and hosted guards. Production/public demo are unchanged.
+Browser recovery/concurrency and whole-product parity remain open. Earlier suite
+counts below are dated source verification, not new reruns for this acceptance.
+
 Latest React source checkpoint: native create, contiguous selection, split and
 edit controls are wired to all four checkpoint editor APIs. Complete affected
 checkpoint/unchanged accounting review remains native. Per-user/tab exact-request

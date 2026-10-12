@@ -1,5 +1,26 @@
 # Bahmni workflow parity ledger
 
+## 12 October protected checkpoint editor browser acceptance
+
+- Hosted bank-checkpoint-editor-r2-20261010 records source 05defb41 plus nine
+  separately hashed clinical edits. All 83 JS/CSS files and source/licenses match.
+  Six named checkpoint methods retain code/hospital-session, origin/context and
+  expiry gates; raw/private and malformed routes stay blocked.
+- Browser create #263, reference/ending-balance edit and split #267 pass on
+  synthetic journal #2483. Whole-journal native preview shows the resulting
+  incomplete/discontinuous status; close/keep guards pass. Independent native
+  read-back verifies grouping/receipt uniqueness and unchanged seven-model
+  accounting, eight protected documents, bank #37 and the preceding checkpoint.
+  Mandatory analytics remain active. The verifier rolls back.
+- A packaging error omitted gateway dependencies. The failed first deployment
+  was rolled back, then the separately named bundled r2 artifact passed startup
+  and hosted verification. Production/public demo and access scope are unchanged.
+- Earlier 469 Home tests/53 suites, seven gateway/config checks and build
+  68949d1a0d2a3838 are unchanged source-release evidence, not fresh reruns. The
+  three touched tests additionally pass source-based type checking with jest-dom.
+  Browser lost-response recovery, concurrency, import/attachment/pivot/graph,
+  wider bank settings, POS/stock/provider payments, sync and full parity remain.
+
 ## 10 October React statement checkpoint editor source checkpoint
 
 - Native create/contiguous selection/split/edit entry points now use the shared

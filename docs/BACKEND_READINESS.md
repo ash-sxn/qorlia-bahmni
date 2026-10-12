@@ -1,5 +1,35 @@
 # Qorlia React frontend backend readiness
 
+## Protected checkpoint editor browser acceptance (12 October 2026)
+
+The tester host now serves bank-checkpoint-editor-r2-20261010 from commit
+05defb41 plus the nine separately hashed, preserved clinical edits. Its 83 JS/CSS
+files and protected source/license/manifest match the local package. All six
+checkpoint methods require the existing code and hospital session; raw/private
+and malformed routes remain denied. Actual TypeScript load/review clients work
+through the protected host. Access scope, signing key and expiry are unchanged.
+
+Real browser creation #263 from entries #2438/#2439, reference/ending-balance
+editing and native split #267 pass in fresh synthetic journal #2483. Native
+review exposes all three affected checkpoints and correctly distinguishes an
+incomplete ending balance from discontinuity after splitting. Unsaved close/keep
+guards pass. Independent native read-back verifies exact grouping, fields and
+receipt uniqueness; all seven accounting-model snapshots, eight protected
+documents, bank #37 and the earlier checkpoint match their pre-test baseline.
+Mandatory analytics remain active. The read-only verifier rolls back.
+
+The first deployment omitted bundled gateway dependencies and returned 502.
+It was immediately rolled back to the prior artifact. The corrected, separately
+named r2 package bundles the installed dependencies, passes a standalone startup
+and access-denial smoke test, and then passes the hosted checks above. No new
+dependency or production/public-demo change was made. The earlier 469 Home tests,
+seven gateway/config tests and build are source-release evidence, not reruns for
+this documentation update. Source-based types for the three touched test files
+also pass after including the existing jest-dom matcher augmentation.
+Browser lost-response/reload recovery and broader concurrency/configuration
+acceptance remain open; automated recovery tests are not browser proof. Full
+Billing/clinical/external parity remains unfinished.
+
 ## React statement checkpoint editor source checkpoint (10 October 2026)
 
 Bank statements now opens native create, multi-selection, split and existing
