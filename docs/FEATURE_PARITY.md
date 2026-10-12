@@ -1,5 +1,29 @@
 # Bahmni workflow parity ledger
 
+## 12 October native checkpoint attachment source checkpoint
+
+- Two named list/download APIs preserve native statement M2M links, with complete
+  parent/file/original-parent permission checks, canonical versioned pagination,
+  exact bytes, safe filenames/URLs and forced octet-stream downloads. Hidden files
+  deny reads instead of yielding partial lists. The React checkpoint details view
+  reuses house styles and hides stale/overlapping lists, with explicit reload and
+  expiry recovery. Only named routes are allowed; raw attachment routes stay denied.
+- All 501 native tests and 480 Home tests/55 suites pass. Nine new native tests,
+  ten new attachment UI/client tests and the shared logout-ack test cover the
+  changes. Library/source-based touched-test types, lint/diff, seven gateway guards
+  and build 387706e11ce29d56 pass. Mandatory analytics are restored; Billing runs.
+- Native link writes reparent attachments, requiring corrected shared-parent test
+  fixtures. The real HTTP check found cache-order-sensitive version hashing and
+  Odoo's result-less logout acknowledgement. Canonical linked IDs and a narrowly
+  validated logout-only acknowledgement fix them; financial receipts stay strict.
+- Actual client HTTP matches a read-only native page and text/non-UTF-8/empty file
+  hashes, rejects stale/unlinked downloads and verifies logout. Independent native
+  file/accounting snapshots are unchanged and installed source hashes match.
+- Not yet hosted/browser accepted. The tester artifact remains
+  bank-checkpoint-editor-r2-20261010, with production/public demo and nine clinical
+  edits unchanged. Attachment upload/removal, streaming above 10 MiB, import,
+  pivot/graph, broader banking, stock/POS/provider/sync and full parity are open.
+
 ## 12 October protected checkpoint editor browser acceptance
 
 - Hosted bank-checkpoint-editor-r2-20261010 records source 05defb41 plus nine

@@ -25,6 +25,33 @@ def safe_filename(name):
                 char in '/\\' or unicodedata.category(char).startswith('C') for char in name))
 
 
+def attachment_download_values(attachment):
+    # Callers must first authorize both the attachment and its linked parent.
+    if attachment.type == 'url':
+        try:
+            parsed = urlsplit(attachment.url or '')
+            valid = (parsed.scheme in ('https', 'http') and parsed.hostname
+                     and not parsed.username and not parsed.password
+                     and not any(char.isspace() or unicodedata.category(char).startswith('C')
+                                 for char in attachment.url))
+            parsed.port
+        except ValueError:
+            valid = False
+        if not valid:
+            raise ValidationError('This attachment link is not a supported HTTP or HTTPS address.')
+        return {'kind': 'url', 'url': attachment.url}
+    # shortcut: Downloads above 10 MiB need native Billing until authenticated streaming is implemented.
+    if attachment.file_size > MAX_ATTACHMENT_BYTES:
+        raise ValidationError('Download attachments larger than 10 MiB through native Billing.')
+    raw = attachment.with_context(bin_size=False).raw or b''
+    if len(raw) != attachment.file_size or len(raw) > MAX_ATTACHMENT_BYTES:
+        raise ValidationError('The stored attachment is unavailable or has an invalid size.')
+    return {'kind': 'binary',
+            'filename': attachment.name if safe_filename(attachment.name) else 'Attachment-%s' % attachment.id,
+            'mimetype': 'application/octet-stream', 'byte_count': len(raw),
+            'content': base64.b64encode(raw).decode()}
+
+
 class Message(models.Model):
     _inherit = 'mail.message'
 
@@ -201,24 +228,4 @@ class InvoiceMessages(models.Model):
                 or attachment.res_model != 'account.move' or attachment.res_id != invoice.id):
             raise AccessError('This attachment does not belong to the selected invoice message.')
         result = {'invoice_id': invoice.id, 'message_id': message.id, 'attachment_id': attachment.id}
-        if attachment.type == 'url':
-            try:
-                parsed = urlsplit(attachment.url or '')
-                valid = (parsed.scheme in ('https', 'http') and parsed.hostname
-                         and not parsed.username and not parsed.password
-                         and not any(char.isspace() or unicodedata.category(char).startswith('C')
-                                     for char in attachment.url))
-                parsed.port
-            except ValueError:
-                valid = False
-            if not valid:
-                raise ValidationError('This attachment link is not a supported HTTP or HTTPS address.')
-            return dict(result, kind='url', url=attachment.url)
-        if attachment.file_size > MAX_ATTACHMENT_BYTES:
-            raise ValidationError('Download attachments larger than 10 MiB through native Billing.')
-        raw = attachment.with_context(bin_size=False).raw or b''
-        if len(raw) != attachment.file_size or len(raw) > MAX_ATTACHMENT_BYTES:
-            raise ValidationError('The stored attachment is unavailable or has an invalid size.')
-        return dict(result, kind='binary',
-                    filename=attachment.name if safe_filename(attachment.name) else 'Attachment-%s' % attachment.id,
-                    mimetype='application/octet-stream', byte_count=len(raw), content=base64.b64encode(raw).decode())
+        return dict(result, **attachment_download_values(attachment))

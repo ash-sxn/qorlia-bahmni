@@ -27,3 +27,4 @@ from . import test_bank_matching
 from . import test_bank_matching_api
 from . import test_bank_checkpoints
 from . import test_bank_checkpoint_editor
+from . import test_bank_checkpoint_attachments

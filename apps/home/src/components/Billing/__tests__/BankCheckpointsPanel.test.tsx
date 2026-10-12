@@ -28,6 +28,19 @@ jest.mock('../BankCheckpointEditorModal', () => ({
     </section>
   ),
 }));
+jest.mock('../BankCheckpointAttachments', () => ({
+  BankCheckpointAttachments: ({
+    uid,
+    checkpointId,
+  }: {
+    uid: number;
+    checkpointId: number;
+  }) => (
+    <section aria-label="Checkpoint attachment test workspace">
+      {uid}:{checkpointId}
+    </section>
+  ),
+}));
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
   getBankCheckpointDetail: jest.fn(),
@@ -109,6 +122,11 @@ describe('Statement balance checkpoint workspace', () => {
       ),
     ).toBeInTheDocument();
     expect(getBankCheckpointDetail).toHaveBeenCalledWith(9, false, false);
+    expect(
+      within(dialog).getByRole('region', {
+        name: 'Checkpoint attachment test workspace',
+      }),
+    ).toHaveTextContent('3:9');
     fireEvent.click(
       within(dialog).getByRole('button', { name: 'View entry ledger 7' }),
     );

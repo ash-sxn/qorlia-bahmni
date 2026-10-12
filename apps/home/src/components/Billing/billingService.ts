@@ -2707,7 +2707,13 @@ async function rpc<T>(path: string, params: object): Promise<T> {
       'Billing access failed. Check your billing account permissions.',
     );
   }
-  if (!Object.hasOwn(body, 'result'))
+  // Native Odoo logout returns None, encoded as this exact void acknowledgement.
+  const nativeLogoutAck =
+    path === '/web/session/destroy' &&
+    body.jsonrpc === '2.0' &&
+    body.id === 1 &&
+    Object.keys(body).sort().join(',') === 'id,jsonrpc';
+  if (!Object.hasOwn(body, 'result') && !nativeLogoutAck)
     throw new Error('Invalid billing response.');
   return body.result;
 }
@@ -3635,6 +3641,53 @@ export async function readInvoiceUploads(
   );
 }
 
+interface BillingAttachmentResult {
+  kind: string;
+  filename: string;
+  mimetype: string;
+  byte_count: number;
+  content: string;
+  url: string;
+}
+function checkedAttachmentDownload(
+  result: BillingAttachmentResult,
+  message: string,
+):
+  | { kind: 'binary'; filename: string; blob: Blob }
+  | { kind: 'url'; url: string } {
+  if (result.kind === 'url') {
+    let url: URL;
+    try {
+      url = new URL(result.url);
+    } catch {
+      throw new Error('Invalid attachment link.');
+    }
+    if (
+      typeof result.url !== 'string' ||
+      /[\p{C}\s]/u.test(result.url) ||
+      !['https:', 'http:'].includes(url.protocol) ||
+      !url.hostname ||
+      url.username ||
+      url.password
+    )
+      throw new Error('Invalid attachment link.');
+    return { kind: 'url', url: result.url };
+  }
+  if (
+    result.kind !== 'binary' ||
+    !safeAttachmentName(result.filename) ||
+    result.mimetype !== 'application/octet-stream'
+  )
+    throw new Error(message);
+  return {
+    kind: 'binary',
+    filename: result.filename,
+    blob: new Blob([attachmentBytes(result.content, result.byte_count)], {
+      type: 'application/octet-stream',
+    }),
+  };
+}
+
 export async function downloadInvoiceAttachment(
   invoiceId: number,
   messageId: number,
@@ -3670,37 +3723,110 @@ export async function downloadInvoiceAttachment(
     result.attachment_id !== attachmentId
   )
     throw new Error('Invalid invoice attachment response.');
-  if (result.kind === 'url') {
-    let url: URL;
-    try {
-      url = new URL(result.url);
-    } catch {
-      throw new Error('Invalid attachment link.');
-    }
-    if (
-      typeof result.url !== 'string' ||
-      /[\p{C}\s]/u.test(result.url) ||
-      !['https:', 'http:'].includes(url.protocol) ||
-      !url.hostname ||
-      url.username ||
-      url.password
-    )
-      throw new Error('Invalid attachment link.');
-    return { kind: 'url', url: result.url };
-  }
+  return checkedAttachmentDownload(
+    result,
+    'Invalid invoice attachment response.',
+  );
+}
+
+export interface CheckpointAttachmentsPage {
+  checkpoint_id: number;
+  version: string;
+  after: number | false;
+  next_after: number | false;
+  total_count: number;
+  rows: {
+    id: number;
+    name: string;
+    kind: 'binary' | 'url';
+    byte_count: number;
+  }[];
+}
+
+export async function getCheckpointAttachments(
+  checkpointId: number,
+  after: number | false = false,
+  version: string | false = false,
+) {
   if (
-    result.kind !== 'binary' ||
-    !safeAttachmentName(result.filename) ||
-    result.mimetype !== 'application/octet-stream'
+    !bankId(checkpointId) ||
+    (after !== false && (!bankId(after) || !version)) ||
+    (version !== false && !bankHash(version))
   )
-    throw new Error('Invalid invoice attachment response.');
-  return {
-    kind: 'binary',
-    filename: result.filename,
-    blob: new Blob([attachmentBytes(result.content, result.byte_count)], {
-      type: 'application/octet-stream',
-    }),
-  };
+    throw new Error('Reload attachments for a saved checkpoint.');
+  const result = await rpc<CheckpointAttachmentsPage>(
+    '/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_attachments',
+    {
+      model: 'account.bank.statement',
+      method: 'qorlia_checkpoint_attachments',
+      args: [],
+      kwargs: { checkpoint_id: checkpointId, after, version },
+    },
+  );
+  if (
+    result?.checkpoint_id !== checkpointId ||
+    result.after !== after ||
+    !bankHash(result.version) ||
+    (version !== false && result.version !== version) ||
+    !Number.isSafeInteger(result.total_count) ||
+    result.total_count < 0 ||
+    !Array.isArray(result.rows) ||
+    result.rows.length > 30 ||
+    result.total_count < result.rows.length ||
+    result.rows.some(
+      (file, index) =>
+        !file ||
+        !bankId(file.id) ||
+        !safeAttachmentName(file.name) ||
+        !['binary', 'url'].includes(file.kind) ||
+        !Number.isSafeInteger(file.byte_count) ||
+        file.byte_count < 0 ||
+        (after !== false && file.id >= after) ||
+        (index > 0 && file.id >= result.rows[index - 1].id),
+    ) ||
+    (result.next_after !== false &&
+      (result.rows.length !== 30 || result.next_after !== result.rows[29].id))
+  )
+    throw new Error('Invalid checkpoint attachment page.');
+  return result;
+}
+
+export async function downloadCheckpointAttachment(
+  checkpointId: number,
+  attachmentId: number,
+  version: string,
+) {
+  if (![checkpointId, attachmentId].every(bankId) || !bankHash(version))
+    throw new Error('Select an attachment from the current checkpoint list.');
+  const result = await rpc<
+    BillingAttachmentResult & {
+      checkpoint_id: number;
+      attachment_id: number;
+      version: string;
+    }
+  >(
+    '/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_attachment_download',
+    {
+      model: 'account.bank.statement',
+      method: 'qorlia_checkpoint_attachment_download',
+      args: [],
+      kwargs: {
+        checkpoint_id: checkpointId,
+        attachment_id: attachmentId,
+        version,
+      },
+    },
+  );
+  if (
+    result?.checkpoint_id !== checkpointId ||
+    result.attachment_id !== attachmentId ||
+    result.version !== version
+  )
+    throw new Error('Invalid checkpoint attachment response.');
+  return checkedAttachmentDownload(
+    result,
+    'Invalid checkpoint attachment response.',
+  );
 }
 
 export type InvoiceReportKey = 'invoice' | 'invoice_without_payments';

@@ -3,6 +3,19 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest source checkpoint: 16.0.1.33.0 adds scoped checkpoint attachment lists and
+downloads with complete native file/parent permissions, canonical versions and
+safe exact-byte delivery through the existing invoice helper. React details now
+offers paged downloads with stale/error hiding and explicit reload. Raw attachment
+routes remain denied. All 501 native tests, 480 Home tests/55 suites, seven gateway
+guards, library/touched-test types, lint/diff and build 387706e11ce29d56 pass.
+Real client/native HTTP verifies text, non-UTF-8 and empty file hashes, rejected
+stale/unlinked requests and unchanged accounting. A logout-only native void-ack
+fix retains strict financial responses. Mandatory analytics are restored and
+installed source matches. This source is not yet hosted/browser accepted;
+upload/removal, streaming above 10 MiB and full parity remain open. Production and
+public demo are unchanged; the dated hosted artifact below remains authoritative.
+
 Latest hosted editor acceptance: bank-checkpoint-editor-r2-20261010 serves
 05defb41 plus the nine separately hashed clinical edits behind unchanged gates
 and expiry. All 83 chunks and source/licenses match. Browser create #263, edit

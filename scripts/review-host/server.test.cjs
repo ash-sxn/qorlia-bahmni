@@ -135,10 +135,10 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models', name), 'utf8')
       .matchAll(/^    def (qorlia_bank_\w+)\(/gm)].map(match => match[1]));
   assert.equal(bankMethods.length, 10, 'All current named native bank APIs must be covered.');
-  const checkpointMethods = ['bank_checkpoint.py', 'bank_checkpoint_editor.py'].flatMap(name =>
+  const checkpointMethods = ['bank_checkpoint.py', 'bank_checkpoint_editor.py', 'bank_checkpoint_attachments.py'].flatMap(name =>
     [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models', name), 'utf8')
       .matchAll(/^    def (qorlia_checkpoint_\w+)\(/gm)].map(match => match[1]));
-  assert.equal(checkpointMethods.length, 6, 'All native checkpoint read and reviewed editor APIs must be covered.');
+  assert.equal(checkpointMethods.length, 8, 'All native checkpoint read, attachment and reviewed editor APIs must be covered.');
   for (const [model, method] of [
     ...bankMethods.map(method => ['account.bank.statement.line', method]),
     ...checkpointMethods.map(method => ['account.bank.statement', method]),

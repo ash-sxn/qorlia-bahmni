@@ -1,5 +1,6 @@
 import {
   BillingSessionExpired,
+  disconnectBilling,
   getBillingSession,
   getInvoices,
   getInvoiceLines,
@@ -63,6 +64,31 @@ describe('billing API', () => {
       status: 200,
       json: async () => body,
     });
+  it('accepts only native logout void acknowledgement, not a missing financial or session response', async () => {
+    reply({ jsonrpc: '2.0', id: 1 });
+    await expect(disconnectBilling()).resolves.toBeUndefined();
+    await expect(getBillingSession()).rejects.toThrow(
+      'Invalid billing response',
+    );
+    await expect(getInvoices('', 0)).rejects.toThrow('Invalid billing response');
+    await expect(postInvoiceWorkflow(invoiceWorkflowFixture())).rejects.toThrow(
+      'Invalid billing response',
+    );
+    for (const body of [
+      { id: 1 },
+      { jsonrpc: '2.0', id: 2 },
+      { jsonrpc: '2.0', id: 1, extra: true },
+    ]) {
+      reply(body);
+      await expect(disconnectBilling()).rejects.toThrow(
+        'Invalid billing response',
+      );
+    }
+    reply({ error: { code: 100 } });
+    await expect(disconnectBilling()).rejects.toBeInstanceOf(
+      BillingSessionExpired,
+    );
+  });
   it('uses only named correction actions with the reviewed invoice and version', async () => {
     const review = correctionWorkflowFixture();
     reply({ result: review });

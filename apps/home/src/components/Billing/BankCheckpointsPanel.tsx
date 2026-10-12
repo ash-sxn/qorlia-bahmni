@@ -1,6 +1,7 @@
 import { Button, Modal, TextInput } from '@bahmni/design-system';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { BankCheckpointAttachments } from './BankCheckpointAttachments';
 import { BankCheckpointEditorModal } from './BankCheckpointEditorModal';
 import { money } from './billingFormat';
 import styles from './BillingPage.module.scss';
@@ -443,6 +444,12 @@ function CheckpointDetail({
               Load more checkpoint entries
             </Button>
           ) : null}
+          <BankCheckpointAttachments
+            key={`${uid}:${checkpointId}`}
+            uid={uid}
+            checkpointId={checkpointId}
+            reconnect={reconnect}
+          />
         </>
       ) : null}
     </Modal>

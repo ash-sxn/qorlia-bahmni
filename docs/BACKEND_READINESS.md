@@ -1,5 +1,44 @@
 # Qorlia React frontend backend readiness
 
+## Native checkpoint attachment read/download source checkpoint (12 October 2026)
+
+Adapter 16.0.1.33.0 adds two named, parent-scoped attachment list/download APIs.
+All native relation links are checked under statement, file and original-parent
+permissions. Hidden attachments deny the read instead of disappearing from a
+partial list. The version includes canonical linked IDs, metadata, user and active
+companies; changed versions, unrelated files/cursors and unsafe links are rejected.
+Binary delivery reuses the invoice helper with exact byte validation, safe names
+and forced octet-stream downloads. The React details workspace uses house styles,
+complete paged lists, explicit refresh, stale/overlap hiding and session recovery.
+Only the two named routes join the gateway allowlist; raw attachment routes remain
+blocked. Upload/removal and authenticated streaming above 10 MiB are still open.
+
+All 501 native tests pass with no failures/errors/skips, including nine attachment
+tests. Initial shared-parent test failures were fixture errors: native statement
+link writes reassign attachment ownership. The corrected fixtures explicitly
+preserve the original parent, and hidden-file rules are separately tested. Real
+HTTP exposed cache-sensitive relation ordering in the version hash; canonical
+relation IDs fix it. A read-only native export verifies cache-reload stability,
+unchanged file hashes and all seven connected accounting snapshots. Installed
+model/helper/test/manifest hashes match source; mandatory analytics were restored
+and isolated Billing is running.
+
+The actual TypeScript client over isolated HTTP matches the native page and three
+file hashes (text, non-UTF-8 and empty), rejects a stale version and unlinked file,
+and leaves the list unchanged. Its initial failure also exposed Odoo's void logout
+acknowledgement. The shared RPC helper now accepts that exact acknowledgement only
+for logout; missing session/financial responses still fail closed. Native logout
+is verified without weakening save receipt checks. Private verifier input is piped
+into the isolated process without relaxing its file permissions.
+
+Home passes 480 tests/55 suites. Seven gateway/config guards, library and touched
+source-test types, touched lint/diff and build 387706e11ce29d56 pass. Existing
+development size, missing Yarn and Browserslist warnings remain. The protected
+tester artifact is still bank-checkpoint-editor-r2-20261010: attachment controls
+are not yet hosted or browser accepted. Production/public demo and nine unrelated
+clinical edits are unchanged. Import, pivot/graph, wider banking, stock/POS/provider
+payments, cross-module sync and full clinical/external parity remain unfinished.
+
 ## Protected checkpoint editor browser acceptance (12 October 2026)
 
 The tester host now serves bank-checkpoint-editor-r2-20261010 from commit
