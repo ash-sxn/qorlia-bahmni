@@ -1,5 +1,26 @@
 # Bahmni workflow parity ledger
 
+## 12 October protected checkpoint attachment browser acceptance
+
+- Hosted checkpoint-attachments-20261012 records source 0642e5a2 plus nine
+  separately hashed clinical edits. Build 387706e11ce29d56, all 83 JS/CSS files
+  and the source/license archive match. Bundled gateway startup passes; eight
+  named checkpoint methods retain the existing gates, destinations and expiry.
+  Raw/private and malformed routes remain blocked.
+- Actual browser downloads from #263 match the native text/non-UTF-8/empty file
+  hashes and sizes (33/3/0 bytes). All three files remain visible after reload.
+  Disconnect clears the Billing workspace to its login form without signing out
+  the hospital session. Hosted actual-client byte, stale-version, checkpoint,
+  filter and ledger checks pass.
+- Post-browser native read-back confirms unchanged files, canonical cache-stable
+  versions, grouping/unique receipts, seven-model accounting, eight protected
+  documents, bank #37 and the preceding checkpoint. Analytics remain mandatory;
+  read-only verifiers roll back. No financial browser writes were made.
+- Prior source suite/type/lint/build results are not fresh reruns. Upload/removal,
+  >10 MiB streaming, browser permission/error/recovery acceptance, import,
+  pivot/graph, wider banking, stock/POS/provider/sync and full product parity stay
+  open. Production/public demo and preserved clinical edits remain unchanged.
+
 ## 12 October native checkpoint attachment source checkpoint
 
 - Two named list/download APIs preserve native statement M2M links, with complete

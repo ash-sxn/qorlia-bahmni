@@ -1,5 +1,42 @@
 # Qorlia React frontend backend readiness
 
+## Protected checkpoint attachment browser acceptance (12 October 2026)
+
+The protected tester host now serves checkpoint-attachments-20261012 from source
+0642e5a2 plus nine separately hashed, preserved clinical working-tree edits. Build
+387706e11ce29d56, all 83 hosted JS/CSS files and the protected source/license
+package match. The source archive hash is
+7ead7629bbad977fdbff8818be20725d03d08cb411d1aeac7bba281a724bacb9.
+The gateway is bundled with existing installed dependencies and passes startup
+checks. The review code, signing key, backend destinations and 15 October expiry
+are unchanged. All eight named checkpoint routes require the existing access and
+hospital-session gates; raw/private and malformed routes remain denied.
+
+Actual browser downloads from checkpoint #263 produce the native text file
+(33 bytes), non-UTF-8 binary (3 bytes) and empty file (0 bytes), with all SHA-256
+hashes matching the independent native fixture. The saved list shows all three
+attachments and explicit reload preserves it. Disconnect Billing returns to the
+Billing login form with no invoice/banking view remaining; the hospital session
+stays signed in. The hosted actual TypeScript client also matches native bytes,
+rejects stale attachment versions and verifies checkpoint/filter/ledger reads.
+
+After browser testing, independent read-only native checks verify unchanged file
+bytes, stable canonical versions, grouping/receipt uniqueness, all seven connected
+accounting-model snapshots, eight protected documents, bank #37 and the preceding
+checkpoint. Mandatory analytics remain active. The verifiers roll back; browser
+testing made no financial writes. Initial screenshot evidence validation caught
+JPEG bytes saved with a PNG suffix; the files were renamed to their actual format
+and the validator corrected. This was an evidence-file issue, not a UI failure.
+
+The earlier 501 native and 480 Home tests/55 suites, seven gateway/config tests,
+type/lint checks and build are source-release evidence, not reruns for this
+acceptance record. Browser upload/removal, streaming above 10 MiB, permission/error
+and lost-response recovery remain unverified or unimplemented. Import, pivot/graph,
+wider banking, stock/POS/provider payments, cross-module sync and complete clinical
+and external-product parity remain open. Production/public demo and the nine
+unrelated clinical edits are unchanged. This supersedes only the not-hosted and
+not-browser-accepted attachment status in the source checkpoint below.
+
 ## Native checkpoint attachment read/download source checkpoint (12 October 2026)
 
 Adapter 16.0.1.33.0 adds two named, parent-scoped attachment list/download APIs.

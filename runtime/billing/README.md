@@ -3,6 +3,19 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest hosted attachment acceptance: checkpoint-attachments-20261012 serves
+0642e5a2 plus nine separately hashed clinical edits. Build 387706e11ce29d56,
+all 83 hosted chunks and source/licenses match behind unchanged access gates,
+backend destinations and expiry. Actual browser text/non-UTF-8/empty downloads
+match native hashes and sizes; list reload passes. Disconnect Billing clears its
+workspace while retaining the hospital session. Independent post-browser reads
+confirm unchanged files, canonical versions, grouping/receipts, seven-model
+accounting, eight protected documents, bank #37 and mandatory analytics. Hosted
+actual-client/access checks pass. Earlier source suites are not reruns for this
+acceptance. Upload/removal, >10 MiB streaming, browser error/permission/recovery
+checks and full parity remain open. Production/public demo are unchanged. The
+source and older hosted checkpoints below are historical.
+
 Latest source checkpoint: 16.0.1.33.0 adds scoped checkpoint attachment lists and
 downloads with complete native file/parent permissions, canonical versions and
 safe exact-byte delivery through the existing invoice helper. React details now
