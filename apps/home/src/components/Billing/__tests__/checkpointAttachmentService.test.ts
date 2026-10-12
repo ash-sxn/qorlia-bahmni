@@ -11,6 +11,8 @@ const page = () => ({
   after: false,
   next_after: false,
   total_count: 1,
+  can_upload: true,
+  can_remove: true,
   rows: [{ id: 5, name: 'QorliaQA.txt', kind: 'binary', byte_count: 2 }],
 });
 const binary = () => ({
@@ -83,6 +85,8 @@ describe('Native checkpoint attachment clients', () => {
       { after: 31 },
       { version: 'bad' },
       { total_count: -1 },
+      { can_upload: 'yes' },
+      { can_remove: undefined },
       { rows: [{ ...page().rows[0], name: '../bad' }] },
       { next_after: 5 },
       { rows: [page().rows[0], page().rows[0]], total_count: 2 },

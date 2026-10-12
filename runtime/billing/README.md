@@ -3,6 +3,22 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest editor source checkpoint: 16.0.1.35.0 supplies version-bound native upload/
+removal capabilities. The React attachment editor uses house styles, complete
+pages, atomic save/status APIs and exact IndexedDB recovery per user/site. New
+saves wait for storage transaction completion; unconfirmed requests and accepted
+saves with failed cleanup stay locked. Resume, expired-session, discard and
+browser-leave controls are wired. No new dependency was added. Local recovery
+contains unencrypted file contents; browser-data clearing/eviction, another origin
+or device loss cannot guarantee recovery. Conditional cleanup preserves newer
+cross-tab requests; discard confirmation locks the underlying save controls.
+All 506 Home and 515 native tests pass;
+seven gateway/config checks, library/six source-test types, lint/diff and build
+ea94145aafa6f714 pass. Runtime hashes match and analytics remain mandatory. This
+UI is not packaged/hosted/browser-save accepted: the protected artifact remains
+checkpoint-attachments-20261012. Browser recovery/concurrency, >10 MiB streaming
+and full parity remain open. Production/public demo are unchanged.
+
 Latest mutation API source checkpoint: 16.0.1.34.0 adds
 `qorlia_checkpoint_attachment_save` and `qorlia_checkpoint_attachment_status`.
 Native file create/link and relation-only removal preserve original bytes and

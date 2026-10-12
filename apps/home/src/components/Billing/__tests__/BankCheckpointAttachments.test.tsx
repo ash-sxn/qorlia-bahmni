@@ -26,11 +26,14 @@ const page = (): CheckpointAttachmentsPage => ({
   after: false,
   next_after: false,
   total_count: 1,
+  can_upload: true,
+  can_remove: true,
   rows: [file()],
 });
 const get = jest.mocked(getCheckpointAttachments);
 const download = jest.mocked(downloadCheckpointAttachment);
 const reconnect = jest.fn();
+const manage = jest.fn();
 const show = () =>
   render(
     <QueryClientProvider
@@ -44,6 +47,7 @@ const show = () =>
         uid={3}
         checkpointId={9}
         reconnect={reconnect}
+        manage={manage}
       />
     </QueryClientProvider>,
   );
@@ -54,6 +58,28 @@ describe('Checkpoint attachment workspace', () => {
     get.mockResolvedValue(page());
     URL.createObjectURL = jest.fn(() => 'blob:synthetic-file');
     URL.revokeObjectURL = jest.fn();
+  });
+  it('offers management only when the current native snapshot allows changes', async () => {
+    get.mockResolvedValueOnce({
+      ...page(),
+      can_upload: false,
+      can_remove: false,
+    });
+    show();
+    await screen.findByText('Showing 1 of 1 saved attachments.');
+    expect(
+      screen.queryByRole('button', { name: 'Manage checkpoint attachments' }),
+    ).not.toBeInTheDocument();
+    get.mockResolvedValue(page());
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reload checkpoint attachments' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Manage checkpoint attachments',
+      }),
+    );
+    expect(manage).toHaveBeenCalledTimes(1);
   });
   it('lists all native pages and downloads only the selected snapshot file', async () => {
     const rows = Array.from({ length: 30 }, (_, index) => file(60 - index));

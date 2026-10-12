@@ -11,6 +11,16 @@ from .invoice_messages import attachment_download_values, safe_filename
 class BankCheckpointAttachments(models.Model):
     _inherit = 'account.bank.statement'
 
+    def _qorlia_checkpoint_attachment_capabilities(self, checkpoint):
+        try:
+            checkpoint.check_access_rights('write')
+            checkpoint.check_access_rule('write')
+            can_remove = True
+        except AccessError:
+            can_remove = False
+        can_upload = can_remove and self.env['ir.attachment'].check_access_rights('create', raise_exception=False)
+        return {'can_upload': bool(can_upload), 'can_remove': can_remove}
+
     def _qorlia_checkpoint_attachment_snapshot(self, checkpoint_id):
         if type(checkpoint_id) is not int or checkpoint_id <= 0:
             raise ValidationError('Select a saved statement checkpoint.')
@@ -29,6 +39,7 @@ class BankCheckpointAttachments(models.Model):
         attachments.check_access_rule('read')
         attachments.check('read')
         version = _digest({'author': self.env.uid, 'companies': self.env.companies.ids,
+            'capabilities': self._qorlia_checkpoint_attachment_capabilities(checkpoint),
             'checkpoint': checkpoint.read(['write_date']), 'attachment_ids': attachments.ids,
             'attachments': attachments.read(['write_date', 'name', 'type', 'file_size', 'checksum',
                 'url', 'res_model', 'res_id', 'res_field'])})
@@ -49,6 +60,7 @@ class BankCheckpointAttachments(models.Model):
         start = attachments.ids.index(after) + 1 if after else 0
         page = attachments[start:start + 31]
         return {'checkpoint_id': checkpoint.id, 'version': current, 'after': after,
+            **self._qorlia_checkpoint_attachment_capabilities(checkpoint),
             'total_count': len(attachments), 'next_after': page[29].id if len(page) > 30 else False,
             'rows': [{'id': row.id,
                 'name': row.name if safe_filename(row.name) else 'Attachment-%s' % row.id,

@@ -13,10 +13,12 @@ export function BankCheckpointAttachments({
   uid,
   checkpointId,
   reconnect,
+  manage,
 }: {
   uid: number;
   checkpointId: number;
   reconnect: () => void;
+  manage?: () => void;
 }) {
   const client = useQueryClient();
   const queryKey = ['billing', 'checkpoint-attachments', uid, checkpointId];
@@ -108,8 +110,8 @@ export function BankCheckpointAttachments({
       <h3>Checkpoint attachments</h3>
       <p>
         Saved files linked to this native checkpoint. Binary downloads here are
-        limited to 10 MiB. Upload, removal and larger-file streaming are not
-        available in this workspace yet.
+        limited to 10 MiB. Manage attachments to upload files or remove their
+        checkpoint links. Larger-file streaming is not available yet.
       </p>
       {files.isFetching ? (
         <p role="status">Loading saved checkpoint attachments...</p>
@@ -128,7 +130,7 @@ export function BankCheckpointAttachments({
           <p>
             Showing {rows.length} of {first.total_count} saved attachments.
           </p>
-          <ul>
+          <ul className={styles.attachmentList}>
             {rows.map((row) => (
               <li key={row.id}>
                 <span>
@@ -180,6 +182,11 @@ export function BankCheckpointAttachments({
       >
         Reload checkpoint attachments
       </Button>
+      {manage && ready && (first.can_upload || first.can_remove) ? (
+        <Button disabled={busy || files.isFetching} onClick={manage}>
+          Manage checkpoint attachments
+        </Button>
+      ) : null}
       {failure ? (
         <p role="alert">
           {failure instanceof BillingSessionExpired

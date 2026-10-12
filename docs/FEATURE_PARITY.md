@@ -1,5 +1,30 @@
 # Bahmni workflow parity ledger
 
+## 12 October React checkpoint attachment editor source checkpoint
+
+- House components/styles wire upload and relation-only removal to the native
+  save/status APIs. Detail replaces itself with the editor; a separate entry point
+  resumes the stored checkpoint rather than another selection. Native 16.0.1.35.0
+  capabilities/version binding hide read-only mutation controls. Complete paging
+  and unchanged permissions are required for a new save.
+- Versioned IndexedDB recovery keeps one exact pending request per Billing user
+  and site, including file bytes. API writes wait for transaction completion;
+  another tab's request cannot be overwritten or cleared. Unknown saves retain
+  exact status/retry, session recovery and replacement-write guards. Accepted
+  saves with cleanup failure stay locked. Discard/browser-leave guards protect
+  unsaved selections. No dependency was added. Storage is local and unencrypted;
+  clearing/eviction, another origin or device loss cannot guarantee recovery.
+- Accepted-result cleanup preserves newer cross-tab requests without trapping
+  the older result. Discard confirmation locks underlying save controls.
+- All 506 Home tests/58 suites and 515 native tests pass. Seven gateway/config
+  tests, library and six source-test types, lint/diff and build ea94145aafa6f714
+  pass. Runtime hashes match; analytics are mandatory and isolated Billing runs.
+  Unit storage mocks do not prove actual browser persistence or multi-tab races.
+- Not yet packaged/hosted/browser accepted. Protected download-only artifact
+  checkpoint-attachments-20261012 remains deployed. Browser writes/recovery,
+  >10 MiB streaming, imports/pivot/graph and all remaining Banking/Billing/clinical/
+  external parity stay open. Production/public demo and clinical edits are intact.
+
 ## 12 October native checkpoint attachment upload/removal source checkpoint
 
 - Adapter 16.0.1.34.0 and the TypeScript client add exact named save/status APIs.

@@ -1,6 +1,7 @@
 import { Button, Modal, TextInput } from '@bahmni/design-system';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { BankCheckpointAttachmentEditorModal } from './BankCheckpointAttachmentEditorModal';
 import { BankCheckpointAttachments } from './BankCheckpointAttachments';
 import { BankCheckpointEditorModal } from './BankCheckpointEditorModal';
 import { money } from './billingFormat';
@@ -34,6 +35,9 @@ export function BankCheckpointsPanel({
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [editing, setEditing] = useState<number | null>(null);
+  const [attachmentEditing, setAttachmentEditing] = useState<
+    number | false | null
+  >(null);
   const history = useQuery({
     queryKey: [
       'billing',
@@ -53,6 +57,15 @@ export function BankCheckpointsPanel({
   return (
     <section className={styles.card} aria-label="Statement checkpoints">
       <h2>Statement checkpoints</h2>
+      <Button
+        kind="tertiary"
+        onClick={() => {
+          setSelected(null);
+          setAttachmentEditing(false);
+        }}
+      >
+        Resume pending attachment save
+      </Button>
       <p>
         Compare the recorded opening and ending balances. Completeness checks
         the entries within a statement. Continuity checks its opening balance
@@ -242,6 +255,10 @@ export function BankCheckpointsPanel({
             setSelected(null);
             setEditing(selected);
           }}
+          manage={() => {
+            setSelected(null);
+            setAttachmentEditing(selected);
+          }}
         />
       ) : null}
       {editing !== null ? (
@@ -257,6 +274,15 @@ export function BankCheckpointsPanel({
           reconnect={reconnect}
         />
       ) : null}
+      {attachmentEditing !== null ? (
+        <BankCheckpointAttachmentEditorModal
+          key={`${uid}:${attachmentEditing}`}
+          uid={uid}
+          selection={attachmentEditing || null}
+          close={() => setAttachmentEditing(null)}
+          reconnect={reconnect}
+        />
+      ) : null}
     </section>
   );
 }
@@ -268,6 +294,7 @@ function CheckpointDetail({
   reconnect,
   openEntry,
   edit,
+  manage,
 }: {
   uid: number;
   checkpointId: number;
@@ -275,6 +302,7 @@ function CheckpointDetail({
   reconnect: () => void;
   openEntry: (entryId: number) => void;
   edit: () => void;
+  manage: () => void;
 }) {
   const detail = useInfiniteQuery({
     queryKey: ['billing', 'checkpoint-detail', uid, checkpointId],
@@ -449,6 +477,7 @@ function CheckpointDetail({
             uid={uid}
             checkpointId={checkpointId}
             reconnect={reconnect}
+            manage={manage}
           />
         </>
       ) : null}

@@ -3585,6 +3585,8 @@ function checkedUploads(uploads: InvoiceUpload[]) {
   for (const file of uploads) {
     if (
       !file ||
+      typeof file !== 'object' ||
+      Array.isArray(file) ||
       Object.keys(file).sort().join(',') !== 'content,name' ||
       !safeAttachmentName(file.name) ||
       typeof file.content !== 'string' ||
@@ -3735,6 +3737,8 @@ export interface CheckpointAttachmentsPage {
   after: number | false;
   next_after: number | false;
   total_count: number;
+  can_upload: boolean;
+  can_remove: boolean;
   rows: {
     id: number;
     name: string;
@@ -3779,6 +3783,8 @@ function checkedCheckpointAttachmentPage(
     (version !== false && result.version !== version) ||
     !Number.isSafeInteger(result.total_count) ||
     result.total_count < 0 ||
+    typeof result.can_upload !== 'boolean' ||
+    typeof result.can_remove !== 'boolean' ||
     !Array.isArray(result.rows) ||
     result.rows.length > 30 ||
     result.total_count < result.rows.length ||
@@ -3817,13 +3823,27 @@ export interface CheckpointAttachmentReceipt {
   attachments: CheckpointAttachmentsPage | false;
 }
 
-async function checkpointAttachmentAction(
-  action: 'save' | 'status',
-  payload: CheckpointAttachmentRequest,
-  requestKey: string,
-) {
+export interface CheckpointAttachmentSaveRequest {
+  payload: CheckpointAttachmentRequest;
+  request_key: string;
+}
+
+export function checkedCheckpointAttachmentRequest(
+  value: unknown,
+): CheckpointAttachmentSaveRequest {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Array.isArray(value) ||
+    Object.keys(value).sort().join(',') !== 'payload,request_key'
+  )
+    throw new Error('Use a complete checkpoint attachment save request.');
+  const { payload, request_key: requestKey } =
+    value as CheckpointAttachmentSaveRequest;
   if (
     !payload ||
+    typeof payload !== 'object' ||
+    Array.isArray(payload) ||
     Object.keys(payload).sort().join(',') !==
       'checkpoint_id,remove_ids,uploads,version' ||
     !bankId(payload.checkpoint_id) ||
@@ -3840,6 +3860,26 @@ async function checkpointAttachmentAction(
   checkedUploads(payload.uploads);
   if (!payload.uploads.length && !payload.remove_ids.length)
     throw new Error('Select files to upload or remove from this checkpoint.');
+  return {
+    payload: {
+      checkpoint_id: payload.checkpoint_id,
+      version: payload.version,
+      uploads: payload.uploads.map(({ name, content }) => ({ name, content })),
+      remove_ids: [...payload.remove_ids],
+    },
+    request_key: requestKey,
+  };
+}
+
+async function checkpointAttachmentAction(
+  action: 'save' | 'status',
+  payload: CheckpointAttachmentRequest,
+  requestKey: string,
+) {
+  const request = checkedCheckpointAttachmentRequest({
+    payload,
+    request_key: requestKey,
+  });
   const method = `qorlia_checkpoint_attachment_${action}`;
   const result = await rpc<CheckpointAttachmentReceipt>(
     `/web/dataset/call_kw/account.bank.statement/${method}`,
@@ -3847,7 +3887,7 @@ async function checkpointAttachmentAction(
       model: 'account.bank.statement',
       method,
       args: [],
-      kwargs: { payload, request_key: requestKey },
+      kwargs: request,
     },
   );
   if (

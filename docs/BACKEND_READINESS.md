@@ -1,5 +1,52 @@
 # Qorlia React frontend backend readiness
 
+## React checkpoint attachment editor source checkpoint (12 October 2026)
+
+The house-styled checkpoint details now opens a separate attachment editor, not
+a nested dialog. A Banking entry point resumes a pending request without choosing
+another checkpoint. Native adapter 16.0.1.35.0 publishes upload/removal capabilities
+and binds them into file-list versions. Read-only users retain downloads without
+mutation controls. All pages and capabilities must agree before a new save; native
+permissions are still rechecked by the existing atomic save API.
+
+Exact request/file recovery uses the browser's IndexedDB, with one pending request
+per Billing user/site across tabs. Schema and DTO validation reject malformed,
+foreign-user and changed requests. Readwrite transactions prevent replacing or
+clearing another pending request; conditional cleanup returns a newer request
+without deleting it, allowing an older accepted result to close. Their complete event must occur before the API
+save starts. Strict durability is requested. File bytes, source version, ordered
+uploads, removals and UUID remain frozen after an uncertain save. Status and exact
+retry retain the request until native acceptance and conditional cleanup both
+succeed. Storage failures fail closed; accepted saves with failed cleanup stay
+locked. Unsaved selections have discard/reload and browser-leave warnings. An
+expired session can reconnect and resume. Recovery contains file contents on the
+staff device; it is not encrypted storage or a guarantee against browser-data
+clearing, eviction, origin changes or device loss. The UI warns not to clear data
+while a request is pending. No new dependency was added.
+
+All 506 Home tests/58 suites and 515 native adapter tests pass, with no native
+failures/errors/skips. New editor/storage and entry-point cases cover storage
+commit ordering, exact remount/retry, current-user scope, malformed storage,
+cleanup/quota failures, newer cross-tab request retention, permissions, paging,
+expired sessions and guarded discard. Discard confirmation locks the underlying save controls.
+The IndexedDB unit mock is not actual browser concurrency/persistence proof.
+Initial lint/fixture failures were corrected, including Carbon's danger-button
+accessible-name prefix. Seven gateway/config checks, Home library types, six
+source-based touched-test types, touched lint/diff and final build
+ea94145aafa6f714 pass. The first direct Webpack invocation lacked Nx target
+context and failed; the corrected command-local target context builds successfully.
+Existing Yarn/Browserslist/development bundle and native
+report warnings remain. Runtime model/test/manifest hashes match; isolated Billing
+is running on the same pinned image and mandatory analytics were restored.
+
+This editor source is not yet packaged, hosted or browser-save accepted. The
+protected host remains checkpoint-attachments-20261012 with download-only UI.
+Actual browser upload/removal, reload/session recovery and multi-tab storage
+acceptance, >10 MiB streaming, imports/pivot/graph, wider banking and complete
+Billing/clinical/external parity remain open. Production/public demo and nine
+unrelated clinical edits are unchanged. Earlier HTTP mutation evidence below is
+the API checkpoint, not browser acceptance of this new editor.
+
 ## Native checkpoint attachment upload/removal APIs (12 October 2026)
 
 Isolated adapter 16.0.1.34.0 adds named attachment save/status APIs and matching

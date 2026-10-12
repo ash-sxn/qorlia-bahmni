@@ -151,7 +151,10 @@ class BankCheckpointAttachmentTest(TransactionCase):
             'login': uuid.uuid4().hex, 'groups_id': [Command.set(self.env.ref('account.group_account_readonly').ids)]})
         api = self.checkpoints.with_user(reader)
         payload = self.edit_request(checkpoint)
-        payload['version'] = api.qorlia_checkpoint_attachments(checkpoint.id)['version']
+        readonly = api.qorlia_checkpoint_attachments(checkpoint.id)
+        self.assertFalse(readonly['can_upload'] or readonly['can_remove'])
+        self.assertTrue(self.checkpoints.qorlia_checkpoint_attachments(checkpoint.id)['can_upload'])
+        payload['version'] = readonly['version']
         with self.assertRaises(AccessError):
             api.qorlia_checkpoint_attachment_save(payload, str(uuid.uuid4()))
         with self.assertRaises(AccessError):
@@ -248,10 +251,16 @@ class BankCheckpointAttachmentTest(TransactionCase):
 
         def deny_create(records, operation, *args, **kwargs):
             if operation == 'create':
+                if kwargs.get('raise_exception') is False:
+                    return False
                 raise AccessError('Synthetic attachment create denied')
             return original(records, operation, *args, **kwargs)
 
         with patch.object(type(self.env['ir.attachment']), 'check_access_rights', deny_create):
+            capabilities = self.checkpoints.qorlia_checkpoint_attachments(checkpoint.id)
+            self.assertFalse(capabilities['can_upload'])
+            self.assertTrue(capabilities['can_remove'])
+            payload['version'] = capabilities['version']
             with self.assertRaises(AccessError):
                 self.checkpoints.qorlia_checkpoint_attachment_save(payload, str(uuid.uuid4()))
         self.assertFalse(checkpoint.attachment_ids or checkpoint.qorlia_checkpoint_edit_receipts)

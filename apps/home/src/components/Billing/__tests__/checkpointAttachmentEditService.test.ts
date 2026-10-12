@@ -19,6 +19,8 @@ const page = () => ({
   after: false,
   next_after: false,
   total_count: 1,
+  can_upload: true,
+  can_remove: true,
   rows: [{ id: 8, name: 'Synthetic.bin', kind: 'binary', byte_count: 8 }],
 });
 const receipt = () => ({

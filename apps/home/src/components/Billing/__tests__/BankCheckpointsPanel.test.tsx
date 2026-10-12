@@ -32,12 +32,31 @@ jest.mock('../BankCheckpointAttachments', () => ({
   BankCheckpointAttachments: ({
     uid,
     checkpointId,
+    manage,
   }: {
     uid: number;
     checkpointId: number;
+    manage: () => void;
   }) => (
     <section aria-label="Checkpoint attachment test workspace">
       {uid}:{checkpointId}
+      <button onClick={manage}>Manage attachment test files</button>
+    </section>
+  ),
+}));
+jest.mock('../BankCheckpointAttachmentEditorModal', () => ({
+  BankCheckpointAttachmentEditorModal: ({
+    uid,
+    selection,
+    close,
+  }: {
+    uid: number;
+    selection: number | null;
+    close: () => void;
+  }) => (
+    <section aria-label="Attachment editor test workspace">
+      {uid}:{String(selection)}
+      <button onClick={close}>Close attachment editor</button>
     </section>
   ),
 }));
@@ -104,6 +123,28 @@ describe('Statement balance checkpoint workspace', () => {
     ).toHaveTextContent(
       '{"checkpoint_id":9,"entry_ids":[],"split_line_id":false}',
     );
+  });
+  it('opens attachment management from detail and exposes pending recovery separately', async () => {
+    show();
+    await open();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Manage attachment test files',
+      }),
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'Attachment editor test workspace' }),
+    ).toHaveTextContent('3:9');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close attachment editor' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Resume pending attachment save' }),
+    );
+    expect(
+      screen.getByRole('region', { name: 'Attachment editor test workspace' }),
+    ).toHaveTextContent('3:null');
   });
   it('keeps native completeness separate from continuity and opens details on demand', async () => {
     show();
