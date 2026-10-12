@@ -57,6 +57,14 @@ export function BankCheckpointAnalysis({
     date_to: false,
   });
   const [filters, setFilters] = useState(draft);
+  const changeDraft = (
+    field: keyof CheckpointAnalysisFilters,
+    value: string,
+  ) => {
+    const next =
+      field === 'date_from' || field === 'date_to' ? value || false : value;
+    setDraft((prior) => ({ ...prior, [field]: next }));
+  };
   const [view, setView] = useState<'pivot' | 'graph'>('pivot');
   const [measure, setMeasure] = useState<Measure>('balance_end');
   const result = useQuery({
@@ -96,18 +104,14 @@ export function BankCheckpointAnalysis({
           labelText="Statement, external reference or journal"
           value={draft.search}
           maxLength={160}
-          onChange={(event) =>
-            setDraft({ ...draft, search: event.target.value })
-          }
+          onChange={(event) => changeDraft('search', event.target.value)}
         />
         <label className={styles.select} htmlFor="analysis-state">
           Checkpoint status
           <select
             id="analysis-state"
             value={draft.state}
-            onChange={(event) =>
-              setDraft({ ...draft, state: event.target.value })
-            }
+            onChange={(event) => changeDraft('state', event.target.value)}
           >
             <option value="all">All checkpoints</option>
             <option value="invalid">Needs attention</option>
@@ -120,7 +124,7 @@ export function BankCheckpointAnalysis({
             id="analysis-journal"
             value={draft.journal_type}
             onChange={(event) =>
-              setDraft({ ...draft, journal_type: event.target.value })
+              changeDraft('journal_type', event.target.value)
             }
           >
             <option value="all">Bank and cash</option>
@@ -133,9 +137,7 @@ export function BankCheckpointAnalysis({
           <select
             id="analysis-period"
             value={draft.period}
-            onChange={(event) =>
-              setDraft({ ...draft, period: event.target.value })
-            }
+            onChange={(event) => changeDraft('period', event.target.value)}
           >
             {checkpointAnalysisPeriods.map((period) => (
               <option value={period} key={period}>
@@ -151,8 +153,9 @@ export function BankCheckpointAnalysis({
           type="date"
           labelText="From posted date"
           value={draft.date_from || ''}
-          onChange={(event) =>
-            setDraft({ ...draft, date_from: event.target.value || false })
+          onChange={(event) => changeDraft('date_from', event.target.value)}
+          onInput={(event) =>
+            changeDraft('date_from', event.currentTarget.value)
           }
         />
         <TextInput
@@ -160,9 +163,8 @@ export function BankCheckpointAnalysis({
           type="date"
           labelText="Through posted date"
           value={draft.date_to || ''}
-          onChange={(event) =>
-            setDraft({ ...draft, date_to: event.target.value || false })
-          }
+          onChange={(event) => changeDraft('date_to', event.target.value)}
+          onInput={(event) => changeDraft('date_to', event.currentTarget.value)}
         />
         <Button type="submit" disabled={result.isFetching}>
           Apply analysis filters
@@ -222,9 +224,11 @@ export function BankCheckpointAnalysis({
       {result.data && !result.isFetching && !result.isError ? (
         <>
           <p>
-            {result.data.total_count} checkpoints in {rows.length} native
-            journal/period groups. All matching checkpoints are included, not
-            just the history page.
+            {result.data.total_count}{' '}
+            {result.data.total_count === 1 ? 'checkpoint' : 'checkpoints'} in{' '}
+            {rows.length} native journal/period{' '}
+            {rows.length === 1 ? 'group' : 'groups'}. All matching checkpoints
+            are included, not just the history page.
           </p>
           {!rows.length ? (
             <p>No checkpoints match these analysis filters.</p>

@@ -1,5 +1,20 @@
 # Qorlia React frontend backend readiness
 
+## Analysis date-input corrective source checkpoint (12 October 2026)
+
+The first analysis package was published and its hosted assets/API/access checks
+passed, but browser date controls displayed values without submitting them.
+The tester host was rolled back to checkpoint-attachment-editor-20261012 while
+the issue is corrected; that first analysis package is not browser accepted.
+Dates now handle native input as well as change events, and every draft-field
+update uses captured values with functional state updates. A regression covers
+batched input-only date edits, a grouping change, exact submission and explicit
+date clearing. Singular count/group copy is corrected in the same view.
+517 Home tests/60 suites, library/three source-test types, touched lint/diff and
+build 90825d4fd53dfa3f pass. Native adapter 36 is unchanged; its prior 521-test
+pass was not rerun for this frontend correction. Corrected package/browser date
+acceptance and full parity remain open. Production/public demo are unchanged.
+
 ## Native checkpoint analysis source checkpoint (12 October 2026)
 
 The installed, role-combined Odoo pivot and graph views use account.bank.statement,

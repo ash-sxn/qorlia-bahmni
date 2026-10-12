@@ -3,6 +3,14 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest frontend correction: the first analysis package passed hosted API/assets,
+but browser-selected dates were not submitted. The host was rolled back to the
+attachment editor. Native input/change date events and functional draft updates
+now retain batched filter edits; date-clearing regression and singular copy pass.
+517 Home/60 suites, types/lint/diff and build 90825d4fd53dfa3f pass. Native 36 and
+its recorded 521 tests are unchanged, not rerun here. Corrected browser acceptance
+and full parity remain open. Production/public demo are unchanged.
+
 Latest analysis source checkpoint: 16.0.1.36.0 supplies read-only
 qorlia_checkpoint_analysis using native read_group on statement checkpoints.
 Installed merged pivot/graph definitions were inspected. Shared filters, inclusive

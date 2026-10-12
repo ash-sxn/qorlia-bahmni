@@ -1,5 +1,16 @@
 # Bahmni workflow parity ledger
 
+## 12 October analysis date-input correction
+
+- First analysis host/API/asset checks pass, but browser dates were not submitted.
+  Host rolled back to the attachment editor. Native input/change date handling
+  and functional draft updates now prevent missed or overwritten filter values.
+  Batched-input/clearing regression and singular count copy are included.
+- 517 Home/60 suites, source/library types, lint/diff and build 90825d4fd53dfa3f
+  pass. Native 36/recorded 521 tests are unchanged, not rerun for this correction.
+  Corrected hosted/browser acceptance and full parity remain open; no production
+  or public-demo changes.
+
 ## 12 October checkpoint analysis source checkpoint
 
 - Installed merged pivot/graph views target account.bank.statement with date and

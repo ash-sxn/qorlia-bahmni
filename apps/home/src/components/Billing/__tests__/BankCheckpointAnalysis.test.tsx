@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -148,6 +149,58 @@ describe('Statement checkpoint pivot and graph', () => {
         date_from: '2026-01-01',
         date_to: '2026-03-31',
       }),
+    );
+  });
+  it('retains native input-only dates across batched grouping changes and clears them explicitly', async () => {
+    show();
+    await screen.findByRole('table');
+    act(() => {
+      fireEvent.input(screen.getByLabelText('From posted date'), {
+        target: { value: '2026-10-10' },
+      });
+      fireEvent.input(screen.getByLabelText('Through posted date'), {
+        target: { value: '2026-10-10' },
+      });
+      fireEvent.change(screen.getByLabelText('Group by'), {
+        target: { value: 'day' },
+      });
+    });
+    expect(screen.getByLabelText('From posted date')).toHaveValue('2026-10-10');
+    expect(screen.getByLabelText('Through posted date')).toHaveValue(
+      '2026-10-10',
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Apply analysis filters' }),
+    );
+    await waitFor(() =>
+      expect(get).toHaveBeenLastCalledWith({
+        ...filters,
+        period: 'day',
+        date_from: '2026-10-10',
+        date_to: '2026-10-10',
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Apply analysis filters' }),
+      ).toBeEnabled(),
+    );
+    act(() => {
+      fireEvent.input(screen.getByLabelText('From posted date'), {
+        target: { value: '' },
+      });
+      fireEvent.input(screen.getByLabelText('Through posted date'), {
+        target: { value: '' },
+      });
+      fireEvent.change(screen.getByLabelText('Group by'), {
+        target: { value: 'journal' },
+      });
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Apply analysis filters' }),
+    );
+    await waitFor(() =>
+      expect(get).toHaveBeenLastCalledWith({ ...filters, period: 'journal' }),
     );
   });
   it('hides previous totals when refresh fails and offers Billing reconnect', async () => {
