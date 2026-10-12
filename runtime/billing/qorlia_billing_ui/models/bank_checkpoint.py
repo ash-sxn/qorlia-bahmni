@@ -59,9 +59,8 @@ class BankCheckpoint(models.Model):
             previous._qorlia_checkpoint_lines()
         return previous
 
-    @api.model
-    def qorlia_checkpoint_history(self, search='', state='all', journal_type='all', offset=0):
-        self.env['account.bank.statement.line']._qorlia_bank_page(search, offset)
+    def _qorlia_checkpoint_domain(self, search, state, journal_type):
+        self.env['account.bank.statement.line']._qorlia_bank_page(search, 0)
         self._qorlia_checkpoint_access()
         if state not in ('all', 'invalid', 'empty') or journal_type not in ('all', 'bank', 'cash'):
             raise ValidationError('Select a valid checkpoint status and journal type.')
@@ -75,6 +74,12 @@ class BankCheckpoint(models.Model):
         if search.strip():
             domain += ['|', '|', ('name', 'ilike', search.strip()),
                 ('reference', 'ilike', search.strip()), ('journal_id.name', 'ilike', search.strip())]
+        return domain
+
+    @api.model
+    def qorlia_checkpoint_history(self, search='', state='all', journal_type='all', offset=0):
+        self.env['account.bank.statement.line']._qorlia_bank_page(search, offset)
+        domain = self._qorlia_checkpoint_domain(search, state, journal_type)
         records = self.search(domain, offset=offset, limit=26, order='first_line_index desc,id desc')
         return {'rows': [row._qorlia_checkpoint_row() for row in records[:25]],
             'offset': offset, 'has_more': len(records) > 25}

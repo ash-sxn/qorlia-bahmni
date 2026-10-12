@@ -3,6 +3,21 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest analysis source checkpoint: 16.0.1.36.0 supplies read-only
+qorlia_checkpoint_analysis using native read_group on statement checkpoints.
+Installed merged pivot/graph definitions were inspected. Shared filters, inclusive
+calendar dates, all six journal/date groupings, counts and native balance sums are
+validated. Journals/currencies remain separate; hidden linked entries/predecessors
+fail access. House-styled fixed matrix and signed graph use all matching records,
+not the visible history page. No sample values or mixed-currency grand total.
+516 Home/60 suites, 521 native tests, seven guards, types/lint/build
+88adb932323ec5de pass. Runtime hashes and mandatory analytics match. Actual client/
+private HTTP independently matches native values without financial writes.
+The corrected client verifier disconnects successfully; the SSH forward is stopped.
+UI/gateway not packaged/hosted/browser accepted: the protected artifact remains
+checkpoint-attachment-editor-20261012. Expanded pivot/graph controls, imports,
+larger files and full parity remain open. Production/public demo are unchanged.
+
 Latest hosted editor acceptance: checkpoint-attachment-editor-20261012 serves
 be6c9ad4 plus nine preserved/hash-recorded clinical edits, build ea94145aafa6f714.
 All 83 hosted assets, source/licenses and manifest match behind unchanged gates,

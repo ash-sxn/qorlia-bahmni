@@ -386,6 +386,7 @@ const checkpointCall = <T>(
   action:
     | 'history'
     | 'detail'
+    | 'analysis'
     | 'editor_load'
     | 'editor_preview'
     | 'editor_save'
@@ -428,6 +429,113 @@ export async function getBankCheckpointHistory(
     new Set(data.rows.map((row) => row.id)).size !== data.rows.length
   )
     throw new Error('Invalid statement checkpoint history.');
+  return data;
+}
+export interface CheckpointAnalysisFilters {
+  search: string;
+  state: string;
+  journal_type: string;
+  period: string;
+  date_from: string | false;
+  date_to: string | false;
+}
+export interface CheckpointAnalysisRow {
+  journal_id: Relation;
+  currency_id: Relation;
+  period_label: string;
+  period_from: string | false;
+  period_to: string | false;
+  count: number;
+  balance_start: number;
+  balance_end: number;
+  balance_end_real: number;
+}
+export interface CheckpointAnalysis extends CheckpointAnalysisFilters {
+  total_count: number;
+  rows: CheckpointAnalysisRow[];
+}
+export const checkpointAnalysisPeriods = [
+  'day',
+  'week',
+  'month',
+  'quarter',
+  'year',
+  'journal',
+] as const;
+const analysisDate = (value: unknown) =>
+  value === false ||
+  (bankDate(value) &&
+    Number.isFinite(Date.parse(`${value}T00:00:00Z`)) &&
+    new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value);
+export async function getCheckpointAnalysis(
+  filters: CheckpointAnalysisFilters,
+): Promise<CheckpointAnalysis> {
+  checkedBankSearch(filters.search, 0);
+  if (
+    Object.keys(filters).sort().join(',') !==
+      'date_from,date_to,journal_type,period,search,state' ||
+    !['all', 'invalid', 'empty'].includes(filters.state) ||
+    !['all', 'bank', 'cash'].includes(filters.journal_type) ||
+    !checkpointAnalysisPeriods.includes(
+      filters.period as (typeof checkpointAnalysisPeriods)[number],
+    ) ||
+    !analysisDate(filters.date_from) ||
+    !analysisDate(filters.date_to) ||
+    (filters.date_from &&
+      filters.date_to &&
+      filters.date_from > filters.date_to)
+  )
+    throw new Error(
+      'Select valid checkpoint analysis filters and calendar dates.',
+    );
+  const data = await checkpointCall<CheckpointAnalysis>('analysis', filters);
+  if (
+    !data ||
+    Object.entries(filters).some(
+      ([key, value]) => data[key as keyof CheckpointAnalysisFilters] !== value,
+    ) ||
+    !Number.isSafeInteger(data.total_count) ||
+    data.total_count < 0 ||
+    !Array.isArray(data.rows) ||
+    !data.rows.every(
+      (row) =>
+        row &&
+        [row.journal_id, row.currency_id].every(validRelation) &&
+        typeof row.period_label === 'string' &&
+        row.period_label.length > 0 &&
+        [row.period_from, row.period_to].every(analysisDate) &&
+        ((row.period_from === false && row.period_to === false) ||
+          (typeof row.period_from === 'string' &&
+            typeof row.period_to === 'string' &&
+            row.period_from < row.period_to &&
+            filters.period !== 'journal')) &&
+        Number.isSafeInteger(row.count) &&
+        row.count > 0 &&
+        [row.balance_start, row.balance_end, row.balance_end_real].every(
+          Number.isFinite,
+        ),
+    ) ||
+    data.rows.reduce((count, row) => count + row.count, 0) !==
+      data.total_count ||
+    new Set(
+      data.rows.map((row) =>
+        JSON.stringify([row.journal_id && row.journal_id[0], row.period_from]),
+      ),
+    ).size !== data.rows.length
+  )
+    throw new Error(
+      'Invalid native checkpoint analysis. Reload before using these totals.',
+    );
+  const currencies = new Map<number | false, string>();
+  for (const row of data.rows) {
+    const journal = row.journal_id && row.journal_id[0];
+    const currency = JSON.stringify(row.currency_id);
+    if (currencies.has(journal) && currencies.get(journal) !== currency)
+      throw new Error(
+        'Checkpoint journal currencies changed. Reload the analysis.',
+      );
+    currencies.set(journal, currency);
+  }
   return data;
 }
 export interface BankCheckpointSelection {

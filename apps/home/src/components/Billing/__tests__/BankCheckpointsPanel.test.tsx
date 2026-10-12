@@ -28,6 +28,23 @@ jest.mock('../BankCheckpointEditorModal', () => ({
     </section>
   ),
 }));
+jest.mock('../BankCheckpointAnalysis', () => ({
+  BankCheckpointAnalysis: ({
+    uid,
+    search,
+    state,
+    journalType,
+  }: {
+    uid: number;
+    search: string;
+    state: string;
+    journalType: string;
+  }) => (
+    <section aria-label="Native analysis test workspace">
+      {uid}:{search}:{state}:{journalType}
+    </section>
+  ),
+}));
 jest.mock('../BankCheckpointAttachments', () => ({
   BankCheckpointAttachments: ({
     uid,
@@ -96,6 +113,45 @@ describe('Statement balance checkpoint workspace', () => {
     (getBankCheckpointDetail as jest.Mock).mockResolvedValue(
       checkpointDetail(),
     );
+  });
+  it('opens native analysis within the signed-in workspace and retains the active checkpoint filters', async () => {
+    show(4);
+    await screen.findByRole('table');
+    fireEvent.change(
+      screen.getByLabelText('Statement, external reference or journal'),
+      { target: { value: 'Synthetic' } },
+    );
+    fireEvent.change(screen.getByLabelText('Checkpoint status'), {
+      target: { value: 'invalid' },
+    });
+    fireEvent.change(screen.getByLabelText('Journal type'), {
+      target: { value: 'cash' },
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Search checkpoints' }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Search checkpoints' }));
+    await waitFor(() =>
+      expect(getBankCheckpointHistory).toHaveBeenLastCalledWith(
+        'Synthetic',
+        'invalid',
+        'cash',
+        0,
+      ),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Analyse statement checkpoints' }),
+    );
+    expect(
+      screen.getByRole('region', { name: 'Native analysis test workspace' }),
+    ).toHaveTextContent('4:Synthetic:invalid:cash');
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Back to checkpoint history' }),
+    );
+    await screen.findByRole('table');
   });
   it('opens the native edit selection from history and replaces detail rather than nesting dialogs', async () => {
     show();

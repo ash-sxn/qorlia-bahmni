@@ -1,5 +1,26 @@
 # Bahmni workflow parity ledger
 
+## 12 October checkpoint analysis source checkpoint
+
+- Installed merged pivot/graph views target account.bank.statement with date and
+  opening/computed ending balances, not individual transaction amounts. Native
+  read_group backs a named read-only API in adapter 16.0.1.36.0. Shared history
+  filters, inclusive date bounds and all date/journal groupings retain source
+  semantics. Linked-entry/previous-checkpoint and journal/currency checks prevent
+  partial denied balances. No sudo, samples or mixed-currency grand total.
+- Fixed date/journal matrix and signed bar graph use house components and native
+  complete aggregates. Measure selection, explicit submitted filters, reload/error
+  hiding and reconnect are wired from signed-in Banking. No new dependency.
+- 516 Home/60 suites, 521 native tests, seven guards, library/three source-test
+  types, lint/diff and build 88adb932323ec5de pass. Installed hashes and mandatory
+  analytics match. Actual client/private HTTP independently matches native counts,
+  sums, currencies, groupings and filters; read-only native verification rolls back.
+- Not packaged/hosted/browser accepted. Protected UI remains the attachment
+  editor artifact. Pivot expansion/transposition/export, further graph modes/
+  drilldown and wider analysis acceptance remain open, alongside imports, larger
+  file streaming, remaining Banking/Billing/clinical/external parity. Production,
+  public demo and nine clinical edits are unchanged.
+
 ## 12 October protected checkpoint attachment editor browser acceptance
 
 - Hosted checkpoint-attachment-editor-20261012 matches be6c9ad4 plus nine hashed

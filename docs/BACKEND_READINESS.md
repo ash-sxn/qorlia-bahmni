@@ -1,5 +1,55 @@
 # Qorlia React frontend backend readiness
 
+## Native checkpoint analysis source checkpoint (12 October 2026)
+
+The installed, role-combined Odoo pivot and graph views use account.bank.statement,
+date, balance_start and balance_end. They do not analyse individual statement-line
+amounts. Their installed XML and the actual get_view result were inspected.
+Native ORM grouping is reused, not aggregation of the 25-row history page.
+See the [Odoo 16 ORM implementation](https://github.com/odoo/odoo/blob/16.0/odoo/models.py)
+for read_group. The official documentation request timed out; installed source
+and merged native view definitions are the primary contract for this work.
+
+Adapter 16.0.1.36.0 adds a named read-only checkpoint analysis API. The history
+domain is shared, preserving all/invalid/empty and bank/cash/no-journal filters.
+Native read_group supplies counts and opening/computed/recorded ending sums by
+day/week/month/quarter/year or journal. Optional calendar-date bounds are inclusive.
+Journals remain separate because native checkpoint currency is not a stored
+groupable field. Related journal/currency permissions and complete linked-entry/
+previous-checkpoint access are checked without sudo; hidden entries fail instead
+of leaking stored balances. Empty checkpoints retain false currency/date values.
+
+Qorlia house components provide a fixed date-row/journal-column pivot, measure
+selection and signed accessible per-journal bar graph. Status/date/type/search
+filters apply on submission. Native totals include all matching checkpoints; no
+sample data or cross-currency grand total is invented. Refresh hides stale/error
+results and offers session reconnect. The caption explains that sums of checkpoint
+balances are not cash flow or a current closing bank balance. The signed-in Banking
+workspace opens this analysis with its active history filters. No dependency added.
+
+All 516 Home tests/60 suites, 521 native adapter tests (16 checkpoint cases), seven
+gateway/config checks, Home library/three source-test types, touched lint/diff and
+build 88adb932323ec5de pass. Initial fixture/type failures were corrected: Carbon
+also emits alert elements, filter changes temporarily disable Search, native
+session expiry uses code 100, and Testing Library role queries differ from browser
+locators. The expiry copy now names an expired Billing session explicitly.
+Installed model/test hashes match; analytics were restored to mandatory and the
+isolated service runs on the unchanged pinned image.
+
+Actual TypeScript/private HTTP matches independent native balances, counts and
+currencies for #77/#78/#79, all six groupings, status/empty and inclusive date
+filters. Native fields remain unchanged and verifiers roll back. The first client
+verifier used a nonexistent cleanup function; the rerun uses disconnectBilling
+and completes. The temporary SSH forward is stopped.
+
+This analysis UI/gateway source is not packaged, hosted or browser accepted.
+The protected host remains checkpoint-attachment-editor-20261012, with private
+backend 36 retaining its existing APIs. Native pivot expansion/transposition/
+export, additional graph modes/drilldown and wider analysis configurations remain
+open. Imports, larger-file streaming, wider Banking/Billing, stock/POS, sync and
+complete clinical/external parity also remain open. Production/public demo and nine
+preserved clinical edits are unchanged. Earlier entries below are dated history.
+
 ## Protected checkpoint attachment editor browser acceptance (12 October 2026)
 
 The protected host serves checkpoint-attachment-editor-20261012 from be6c9ad4

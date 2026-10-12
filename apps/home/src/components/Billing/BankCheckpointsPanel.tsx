@@ -1,6 +1,7 @@
 import { Button, Modal, TextInput } from '@bahmni/design-system';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { BankCheckpointAnalysis } from './BankCheckpointAnalysis';
 import { BankCheckpointAttachmentEditorModal } from './BankCheckpointAttachmentEditorModal';
 import { BankCheckpointAttachments } from './BankCheckpointAttachments';
 import { BankCheckpointEditorModal } from './BankCheckpointEditorModal';
@@ -34,6 +35,7 @@ export function BankCheckpointsPanel({
   const [journalType, setJournalType] = useState('all');
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
+  const [analysis, setAnalysis] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
   const [attachmentEditing, setAttachmentEditing] = useState<
     number | false | null
@@ -53,10 +55,35 @@ export function BankCheckpointsPanel({
     retry: false,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
+    enabled: !analysis,
   });
+  if (analysis)
+    return (
+      <>
+        <Button kind="tertiary" onClick={() => setAnalysis(false)}>
+          Back to checkpoint history
+        </Button>
+        <BankCheckpointAnalysis
+          uid={uid}
+          search={submitted}
+          state={state}
+          journalType={journalType}
+          reconnect={reconnect}
+        />
+      </>
+    );
   return (
     <section className={styles.card} aria-label="Statement checkpoints">
       <h2>Statement checkpoints</h2>
+      <Button
+        kind="tertiary"
+        onClick={() => {
+          setSelected(null);
+          setAnalysis(true);
+        }}
+      >
+        Analyse statement checkpoints
+      </Button>
       <Button
         kind="tertiary"
         onClick={() => {

@@ -155,3 +155,83 @@ class BankCheckpointTest(TransactionCase):
             'domain_force': "[('id', '!=', %s)]" % previous.id})
         with self.assertRaises(AccessError):
             self.checkpoints.with_user(user).qorlia_checkpoint_detail(checkpoint.id)
+
+    def test_analysis_native_monthly_balances_count_and_inclusive_dates(self):
+        first = self.checkpoint(self.entry(date='2026-01-03', amount=100), balance_start=50, balance_end_real=150)
+        second = self.checkpoint(self.entry(date='2026-01-20', amount=20), balance_start=150, balance_end_real=170)
+        third = self.checkpoint(self.entry(date='2026-02-10', amount=-10), balance_start=170, balance_end_real=160)
+        before = (first | second | third).read(['write_date', 'balance_start', 'balance_end', 'balance_end_real'])
+        result = self.checkpoints.qorlia_checkpoint_analysis(self.prefix)
+        self.assertEqual(result['total_count'], 3)
+        self.assertEqual(len(result['rows']), 2)
+        january, february = result['rows']
+        self.assertEqual(january['period_from'], '2026-01-01')
+        self.assertEqual(january['period_to'], '2026-02-01')
+        self.assertEqual((january['count'], january['balance_start'], january['balance_end'], january['balance_end_real']), (2, 200, 320, 320))
+        self.assertEqual(february['count'], 1)
+        self.assertEqual(self.checkpoints.qorlia_checkpoint_analysis(self.prefix, date_from='2026-02-10', date_to='2026-02-10')['total_count'], 1)
+        self.assertEqual((first | second | third).read(['write_date', 'balance_start', 'balance_end', 'balance_end_real']), before)
+
+    def test_analysis_all_native_date_granularities_and_journal_only(self):
+        self.checkpoint(self.entry(date='2026-02-10'))
+        for period in ('day', 'week', 'month', 'quarter', 'year', 'journal'):
+            result = self.checkpoints.qorlia_checkpoint_analysis(self.prefix, period=period)
+            self.assertEqual(result['period'], period)
+            self.assertEqual(result['total_count'], 1)
+            self.assertEqual(result['rows'][0]['journal_id'][0], self.journal.id)
+            self.assertEqual(result['rows'][0]['currency_id'][0], self.env.company.currency_id.id)
+            self.assertEqual(bool(result['rows'][0]['period_from']), period != 'journal')
+
+    def test_analysis_empty_and_status_filters_do_not_invent_currency_or_sample_data(self):
+        empty = self.checkpoint(self.entries.browse())
+        result = self.checkpoints.qorlia_checkpoint_analysis(self.prefix, state='empty')
+        self.assertEqual(result['total_count'], 1)
+        row = result['rows'][0]
+        self.assertFalse(row['journal_id'])
+        self.assertFalse(row['currency_id'])
+        self.assertFalse(row['period_from'])
+        self.assertEqual(row['period_label'], 'No posted date')
+        self.assertFalse(self.checkpoints.qorlia_checkpoint_analysis('No matching ' + self.prefix)['rows'])
+        self.assertEqual(self.checkpoints.qorlia_checkpoint_analysis(self.prefix, state='invalid')['total_count'], 1)
+        self.assertEqual(empty.balance_start, row['balance_start'])
+
+    def test_analysis_rejects_invalid_grouping_calendar_dates_and_filters(self):
+        for kwargs in ({'period': False}, {'period': 'partner_id'}, {'period': 'date:month'},
+                {'date_from': True}, {'date_from': '2026-02-30'}, {'date_to': '2026-2-1'},
+                {'date_from': '2026-03-01', 'date_to': '2026-02-01'}, {'search': False},
+                {'state': 'posted'}, {'journal_type': 'sale'}):
+            with self.assertRaises(ValidationError):
+                self.checkpoints.qorlia_checkpoint_analysis(**kwargs)
+
+    def test_analysis_readonly_and_hidden_entry_prevent_partial_balances(self):
+        checkpoint = self.checkpoint()
+        user = self.env['res.users'].with_context(no_reset_password=True).create({'name': self.prefix,
+            'login': uuid.uuid4().hex, 'groups_id': [Command.set(self.env.ref('account.group_account_readonly').ids)]})
+        reader = self.checkpoints.with_user(user)
+        self.assertFalse(reader.check_access_rights('write', raise_exception=False))
+        self.assertEqual(reader.qorlia_checkpoint_analysis(self.prefix)['total_count'], 1)
+        with self.assertRaises(AccessError):
+            self.checkpoints.with_user(self.env.ref('base.public_user')).qorlia_checkpoint_analysis()
+        self.env['ir.rule'].create({'name': self.prefix + ' hide analysis entry',
+            'model_id': self.env.ref('account.model_account_bank_statement_line').id,
+            'domain_force': "[('id', '!=', %s)]" % checkpoint.line_ids[0].id})
+        with self.assertRaises(AccessError):
+            reader.qorlia_checkpoint_analysis(self.prefix)
+
+    def test_analysis_keeps_journals_currencies_and_inactive_companies_separate(self):
+        self.checkpoint(self.entry(amount=100))
+        foreign = self.env.ref('base.USD')
+        if foreign == self.env.company.currency_id:
+            foreign = self.env.ref('base.EUR')
+        foreign.active = True
+        journal = self.env['account.journal'].create({'name': self.prefix + ' foreign',
+            'code': uuid.uuid4().hex[:5], 'type': 'cash', 'currency_id': foreign.id,
+            'default_account_id': self.bank.id, 'suspense_account_id': self.suspense.id})
+        self.checkpoint(self.entry(journal_id=journal.id, amount=25))
+        rows = self.checkpoints.qorlia_checkpoint_analysis(self.prefix, period='journal')['rows']
+        self.assertEqual(len(rows), 2)
+        self.assertEqual({row['journal_id'][0] for row in rows}, {self.journal.id, journal.id})
+        self.assertEqual({row['currency_id'][0] for row in rows}, {foreign.id, self.env.company.currency_id.id})
+        self.assertEqual(self.checkpoints.qorlia_checkpoint_analysis(self.prefix, journal_type='cash')['total_count'], 1)
+        other = self.env['res.company'].create({'name': self.prefix + ' other'})
+        self.assertFalse(self.checkpoints.with_context(allowed_company_ids=[other.id]).qorlia_checkpoint_analysis(self.prefix)['rows'])

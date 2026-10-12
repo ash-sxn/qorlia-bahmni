@@ -25,6 +25,7 @@ from . import bank_statement
 from . import bank_matching
 from . import bank_matching_api
 from . import bank_checkpoint
+from . import bank_checkpoint_analysis
 from . import bank_checkpoint_editor
 from . import bank_checkpoint_attachments
 from . import bank_checkpoint_attachment_edit

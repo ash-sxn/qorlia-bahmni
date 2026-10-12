@@ -93,7 +93,7 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
       ...['load', 'preview', 'save', 'status', 'analytics'].map((action) => `/web/dataset/call_kw/account.bank.statement.line/qorlia_bank_match_${action}`),
       '/web/dataset/call_kw/account.bank.statement.line/qorlia_bank_fee_choices',
       '/web/dataset/call_kw/account.bank.statement.line/qorlia_bank_analytic_choices',
-      ...['history', 'detail'].map((action) => `/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_${action}`),
+      ...['history', 'detail', 'analysis'].map((action) => `/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_${action}`),
       ...['load', 'preview', 'save', 'status'].map((action) => `/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_editor_${action}`),
       ...['attachments', 'attachment_download'].map((action) => `/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_${action}`),
       ...['save', 'status'].map((action) => `/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_attachment_${action}`),
