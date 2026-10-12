@@ -1,5 +1,26 @@
 # Bahmni workflow parity ledger
 
+## 12 October protected checkpoint attachment editor browser acceptance
+
+- Hosted checkpoint-attachment-editor-20261012 matches be6c9ad4 plus nine hashed
+  clinical edits, build ea94145aafa6f714 and all 83 JS/CSS/source/license assets.
+  Shared code, expiry, backends and hospital-session gates are unchanged. Ten
+  named checkpoint routes are allowed; raw/private/malformed calls stay denied.
+- Browser #732 accepts link removal and text upload. Save-only network failure
+  preserves exact file/UUID in IndexedDB; a second tab resumes/checks/retries it,
+  and the original tab confirms the same acceptance without a new save. The test
+  network block is removed. Download bytes match; reload after acceptance shows
+  no pending recovery and refreshed editor shows the new file.
+- Independent native reads prove two new receipts, one private/company upload,
+  retained previous files, unchanged seven-model accounting/balances, eight
+  protected documents and bank #37. Mandatory analytics and runtime hashes pass.
+  This turn has 506 Home/58 suites, seven guards, types/lint/build passing; the
+  recorded 515 native-suite result was not rerun for browser acceptance.
+- Quota/cleanup failures and a newer different-request race are unit-only;
+  pending full reload/session expiry, >10 MiB streaming, import/pivot/graph and
+  remaining Banking/Billing/clinical/external parity remain open. PR #1 is open
+  without reported checks, not merged. Production/public demo are unchanged.
+
 ## 12 October React checkpoint attachment editor source checkpoint
 
 - House components/styles wire upload and relation-only removal to the native

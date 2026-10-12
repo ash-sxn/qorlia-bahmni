@@ -1,5 +1,42 @@
 # Qorlia React frontend backend readiness
 
+## Protected checkpoint attachment editor browser acceptance (12 October 2026)
+
+The protected host serves checkpoint-attachment-editor-20261012 from be6c9ad4
+plus nine separately hashed, preserved clinical edits. Build ea94145aafa6f714,
+all 83 hosted JS/CSS assets, manifest/source/licenses match. The source archive
+SHA-256 is 0613e8bd78d2f711b9678460b7ced06b04c89c8b8687474347191b12f4e2f966.
+The same shared-code, expiry, backend destinations and hospital-session gates
+remain in place. Ten named checkpoint APIs are allowed; raw/private and malformed
+routes remain denied. The old package/compose is retained for rollback. The first
+hosted verifier hit a cross-JavaScript-realm comparison issue; its same-realm
+execution passes the existing checks without relaxing native/access assertions.
+
+Actual browser saves on synthetic checkpoint #732 remove the previous empty-file
+link and upload a new 55-byte text file. A temporary save-only network block
+produces an uncertain upload; another tab resumes the stored file/UUID, checks
+status and retries that exact request successfully. The original tab confirms the
+same receipt by status without another save. The temporary block is removed.
+Download matches original bytes. A full page reload after acceptance finds no
+pending recovery, and the refreshed editor shows the saved file. The visible file
+chooser button works; a direct input click initially timed out.
+
+Independent before/after native reads prove exactly two new receipts, one private
+company-scoped upload, retained original file bytes, unchanged seven-model
+accounting and balances, eight protected documents and bank #37. Mandatory
+analytics are preserved and read-only verification rolls back. Native adapter
+35 source/runtime hashes match; its recorded 515-test pass is not a fresh full
+native-suite rerun for this browser check. This turn's 506 Home tests/58 suites,
+seven gateway/config checks, library/six source-test types, lint and build pass.
+PR #1 is open, not merged; no GitHub status checks were reported at inspection.
+
+Storage quota/cleanup failure and a newer different-request race have unit tests,
+not browser acceptance. Pending full-page reload and session expiry were not
+exercised in this run. >10 MiB streaming, imports/pivot/graph, wider Banking,
+provider payments, stock/POS, Clinical-to-ERP sync and full clinical/external
+module parity remain open. Production/public demo and preserved clinical edits
+are unchanged. Earlier source-only checkpoints below are dated history.
+
 ## React checkpoint attachment editor source checkpoint (12 October 2026)
 
 The house-styled checkpoint details now opens a separate attachment editor, not

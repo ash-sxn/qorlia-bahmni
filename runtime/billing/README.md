@@ -3,6 +3,21 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest hosted editor acceptance: checkpoint-attachment-editor-20261012 serves
+be6c9ad4 plus nine preserved/hash-recorded clinical edits, build ea94145aafa6f714.
+All 83 hosted assets, source/licenses and manifest match behind unchanged gates,
+destinations and expiry. Browser synthetic #732 accepts relation removal and a
+55-byte text upload. Interrupted save recovery resumes the same file/UUID in a
+second tab; original-tab status confirms without another save. The temporary
+network block is removed; download bytes match and reload after acceptance finds
+no pending recovery. Independent native reads prove two new receipts, one private
+company upload, retained old bytes and unchanged accounting/protected records.
+506 Home/58 suites, seven guards, types/lint/build pass; the recorded 515 native
+suite is not a rerun for this browser acceptance. Quota/cleanup failures and a
+newer different-request race are unit-only. Pending full reload/session expiry,
+>10 MiB streaming and whole-product parity remain open. Production/public demo
+are unchanged; PR #1 is open, not merged. Source-only entries below are historical.
+
 Latest editor source checkpoint: 16.0.1.35.0 supplies version-bound native upload/
 removal capabilities. The React attachment editor uses house styles, complete
 pages, atomic save/status APIs and exact IndexedDB recovery per user/site. New
