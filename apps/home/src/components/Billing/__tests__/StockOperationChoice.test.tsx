@@ -109,8 +109,8 @@ describe('Native operation relation choices with house ComboBox', () => {
       ),
     );
     expect(
-      screen.getByRole('button', { name: 'Previous batch choices' }),
-    ).toBeDisabled();
+      screen.queryByRole('button', { name: 'Previous batch choices' }),
+    ).not.toBeInTheDocument();
   });
   it('clears a selection only through the explicit clear control and reloads failed searches', async () => {
     get.mockRejectedValueOnce(new Error('Search failed'));
@@ -123,9 +123,32 @@ describe('Native operation relation choices with house ComboBox', () => {
         screen.getByRole('button', { name: 'More batch choices' }),
       ).toBeEnabled(),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Clear batch' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Clear selected item' }),
+    );
     expect(change).toHaveBeenCalledWith(false);
     expect(get).toHaveBeenCalledTimes(2);
+  });
+  it('does not clutter a single native page with unused paging or duplicate clear buttons', async () => {
+    get.mockResolvedValue({
+      rows: [[6, 'QA-BATCH']],
+      has_more: false,
+      offset: 0,
+    });
+    show();
+    await screen.findByText('Search and select a native record.');
+    expect(
+      screen.queryByRole('button', { name: 'More batch choices' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Previous batch choices' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Clear batch' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole('button', { name: 'Clear selected item' }),
+    ).toHaveLength(1);
   });
   it('does not query disabled/readonly choices and offers reconnect after an expired search', async () => {
     const first = show(true);

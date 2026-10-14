@@ -1,5 +1,30 @@
 # Qorlia React frontend backend readiness
 
+## Protected manual operation editor acceptance (14 October 2026)
+
+stock-operation-edit-20261014 is published from 59ba37b6 plus nine preserved
+clinical hashes. Build 744405c851222e3f, 83 served assets, source/licences match;
+gates/code/expiry/destinations and prior rollback packages remain unchanged.
+Hosted native form/choice/rollback review, deleted-row receipts/status/identical
+retries, named-route denials and prior stock/checkpoint/attachment/ledger/eight
+Excel checks pass before browser writes.
+
+Browser create/edit/delete preview/save pass. Parent reload shows recorded two,
+then three, then zero done units. Close-before-Finish and full reload preserve exact
+create/delete recovery; deletion is accepted even after its row is gone. Independent
+native reads prove six operation receipts (three private API/three browser), sixteen
+unchanged preparation receipts, no remaining operation, ten physical/five demanded
+units, zero final reserved/done/delivered and unchanged protected finance/valuation/
+bank/other stock. No financial or delivery browser action.
+
+Visual review prompted a choice-control correction in source: the house ComboBox
+clear now clears the native selection, with no duplicate button or unused paging.
+Search typing still preserves selection. Fresh 595 Home/69 suites, seven test-source
+and library types, touched lint/diff and build 01c92a12bdb90486 pass. This correction
+still needs publication and actual browser clear/reselect acceptance. Native 43
+source is unchanged; prior installed-hash-matched 28/578 native pass is not rerun
+for a frontend-only correction. Whole-product and fulfillment gates remain open.
+
 ## Native operation editor source/private API checkpoint (14 October 2026)
 
 The integrated React editor and adapter 43 now support scoped new/saved operation

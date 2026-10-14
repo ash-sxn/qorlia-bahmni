@@ -1,5 +1,31 @@
 # Bahmni workflow parity ledger
 
+## 14 October protected operation editor acceptance and choice correction
+
+- Published stock-operation-edit-20261014 from 59ba37b6 plus nine unchanged
+  clinical hashes, build 744405c851222e3f and 83 matching assets/source/licences.
+  Existing code/gates/expiry/backends remain; prior compose/artifact retained.
+- Hosted new form/choices/rollback preview and deleted-row receipt/status/identical
+  retry pass, including six named-route denial checks and earlier stock, checkpoint,
+  attachment, ledger and eight Excel regressions before browser writes.
+- Browser native quantity/batch create, edit and delete preview/save pass. Closing
+  before Finish refreshes parent quantities. Full reload resumes exact create and
+  deletion requests, including when the operation is gone; status/Finish clears
+  accepted recovery and reloads native state.
+- Independent native read-back confirms three browser operation receipts, six
+  total including private API acceptance, sixteen unchanged preparation receipts,
+  no remaining operation, physical ten/demand five, zero final reserved/done/
+  delivered, confirmed transfer and unchanged protected accounting/valuation/
+  bank/other stock. No delivery or financial browser action.
+- Visual review prompted a UI-only correction: use the house ComboBox's native
+  clear control, avoid duplicate clearing buttons and show paging only when needed.
+  Search typing does not clear the native selection. Fresh 595 Home/69 suites,
+  seven test-source/library types, lint/diff and build 01c92a12bdb90486 pass.
+  Correction publication and browser clear/reselect acceptance remain pending.
+  Native adapter 43 is unchanged; prior 28/578 pass is not rerun for this UI change.
+- Full fulfillment/Billing/clinical/separate-product parity and packaged/large-data
+  acceptance still remain. PR #4 stays draft, production/public demo unchanged.
+
 ## 14 October native operation editor source and private API acceptance
 
 - Adapter 43 adds scoped native operation create/edit/delete preview/save/status,

@@ -2,6 +2,7 @@ import { Button, ComboBox } from '@bahmni/design-system';
 import { useDebounce } from '@bahmni/widgets';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import styles from './BillingPage.module.scss';
 import {
   BillingSessionExpired,
   getStockOperationChoices,
@@ -75,6 +76,9 @@ export function StockOperationChoice({
           setOffset(0);
         }}
         onChange={({ selectedItem }) => {
+          if (disabled) return;
+          // Carbon's explicit clear emits null; search typing does not clear the native value.
+          if (selectedItem === null && value !== false) change(false);
           if (
             selectedItem &&
             selectedItem[0] !== value &&
@@ -86,40 +90,34 @@ export function StockOperationChoice({
             change(selectedItem[0]);
         }}
       />
-      {value ? (
-        <Button
-          type="button"
-          kind="ghost"
-          disabled={disabled}
-          onClick={() => change(false)}
-        >
-          Clear {label.toLowerCase()}
-        </Button>
+      {offset > 0 || choices.data?.has_more ? (
+        <div className={styles.toolbar}>
+          <Button
+            type="button"
+            kind="tertiary"
+            disabled={
+              disabled || choices.isFetching || searchPending || offset === 0
+            }
+            onClick={() => setOffset((value) => Math.max(0, value - 25))}
+          >
+            Previous {label.toLowerCase()} choices
+          </Button>
+          <Button
+            type="button"
+            kind="tertiary"
+            disabled={
+              disabled ||
+              choices.isFetching ||
+              searchPending ||
+              choices.isError ||
+              !choices.data?.has_more
+            }
+            onClick={() => setOffset((value) => value + 25)}
+          >
+            More {label.toLowerCase()} choices
+          </Button>
+        </div>
       ) : null}
-      <Button
-        type="button"
-        kind="tertiary"
-        disabled={
-          disabled || choices.isFetching || searchPending || offset === 0
-        }
-        onClick={() => setOffset((value) => Math.max(0, value - 25))}
-      >
-        Previous {label.toLowerCase()} choices
-      </Button>
-      <Button
-        type="button"
-        kind="tertiary"
-        disabled={
-          disabled ||
-          choices.isFetching ||
-          searchPending ||
-          choices.isError ||
-          !choices.data?.has_more
-        }
-        onClick={() => setOffset((value) => value + 25)}
-      >
-        More {label.toLowerCase()} choices
-      </Button>
       {choices.error instanceof BillingSessionExpired ? (
         <Button type="button" kind="tertiary" onClick={reconnect}>
           Reconnect Billing
