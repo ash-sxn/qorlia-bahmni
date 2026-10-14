@@ -301,6 +301,9 @@ export function OrderDeliveriesPanel({
           close={() => {
             setReservation(null);
             void client.invalidateQueries({
+              queryKey: ['billing', 'order-deliveries', uid, orderId],
+            });
+            void client.invalidateQueries({
               queryKey: ['billing', 'reservation-recovery', uid],
             });
           }}

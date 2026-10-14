@@ -3,6 +3,16 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Hosted/browser reservation checkpoint: stock-reservation-20261014 from 849a891b
+has 83 matching protected assets/source/licences. Hosted exact receipts/status/
+retries and denied stock routes pass, preserving the previous eight Excel and
+checkpoint/attachment/ledger checks. Synthetic browser reserve/unreserve preview,
+save, close/reopen recovery and finish reload pass. A stale parent table after
+closing before Finish is fixed in source with a regression: 554 Home/65 suites
+and build 97d821d9ad88cda2 pass. Correction publication/browser replay pending.
+Native 40 unchanged; prior 544-test result not rerun for the UI fix. No financial
+or delivery browser action, production/public-demo or clinical edit.
+
 Reservation source/private HTTP checkpoint (14 October): adapter 40 adds scoped
 native reservation/unreserve load/preview/save/status. Rollback preview, locked
 inventory/configuration, native permissions, protected exact author/company

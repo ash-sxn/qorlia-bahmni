@@ -1,5 +1,24 @@
 # Qorlia React frontend backend readiness
 
+## Protected reservation browser checks and close-refresh correction (14 October 2026)
+
+Published stock-reservation-20261014 from 849a891b plus the nine preserved
+clinical edits. All 83 hosted/source/licence assets match. Protected TypeScript
+checks recover four accepted stock requests and safely replay their identical
+receipts, deny anonymous/clinical-missing/malformed/raw stock routes, and retain
+the earlier transfer, checkpoint, attachment, ledger and eight Excel checks.
+Shared access code/expiry/destinations remain unchanged; previous build retained.
+
+Browser native batch/expiry/unit preview, reserve save, close/reopen recovery,
+receipt status/finish, unreserve preview/save and finish reload pass on the synthetic
+order. No invoice/payment/delivery action. Closing before Finish exposed stale
+quantities in the underlying table. The corrected close handler invalidates the
+selected order read as well as recovery, with a regression test. Fresh 554 Home/
+65-suite checks pass and build 97d821d9ad88cda2 succeeds. The close-refresh correction
+still needs publication/browser replay. Native adapter 40 is unchanged; its earlier
+544-test result is not a rerun for this frontend-only fix. Large-data and injected
+browser failure/expiry cases remain open. Full fulfillment/product parity unfinished.
+
 ## Native reservation source and private HTTP acceptance (14 October 2026)
 
 Adapter 40 adds order-scoped transfer load, native action_assign/do_unreserve

@@ -14,6 +14,11 @@ import { loadStockReservationRecovery } from '../stockReservationRecovery';
 jest.mock('../stockReservationRecovery', () => ({
   loadStockReservationRecovery: jest.fn(),
 }));
+jest.mock('../StockReservationModal', () => ({
+  StockReservationModal: ({ close }: { close: () => void }) => (
+    <button onClick={close}>Return from reservation</button>
+  ),
+}));
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
@@ -121,5 +126,29 @@ describe('Order stock transfer review', () => {
       screen.getByRole('button', { name: 'All order transfers' }),
     );
     await waitFor(() => expect(screen.getByRole('table')).toBeInTheDocument());
+  });
+  it('reloads saved transfer quantities when a reservation view closes before finish', async () => {
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View transfer QORLIAQA/OUT/11',
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review stock reservation' }),
+    );
+    const refreshed = orderDeliveryFixture();
+    refreshed.rows[0].moves[0].reserved = 12;
+    get.mockResolvedValue(refreshed);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Return from reservation' }),
+    );
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+    const table = await screen.findByRole('table', {
+      name: /Demand and reservation quantities/,
+    });
+    await waitFor(() =>
+      expect(within(table).getAllByText('12')).toHaveLength(2),
+    );
   });
 });

@@ -1,5 +1,20 @@
 # Bahmni workflow parity ledger
 
+## 14 October hosted reservation and close-refresh correction
+
+- Published 849a891b stock-reservation-20261014 with 83 matching assets/legal source,
+  unchanged gate/expiry/backends and nine clinical edits preserved.
+- Hosted accepted-request/status/idempotent retry and denied route checks pass,
+  along with earlier transfer/checkpoint/attachment/ledger/eight Excel checks.
+- Browser reserve/unreserve preview/save, native units/batch/expiry, close/reopen
+  recovery and status/finish reload pass on the synthetic transfer.
+- Closing before Finish revealed stale parent quantities. Source correction now
+  invalidates the order read and recovery. 554 Home/65 suites and new development
+  build 97d821d9ad88cda2 pass; correction publication/browser replay still pending.
+- Native 40 unchanged, prior 544-test result not rerun for this UI fix. No financial
+  or delivery browser action, production/public-demo change or unrelated clinical
+  edit. Full stock/Billing/clinical/external parity and large-data tests remain.
+
 ## 14 October native reservation source and private save acceptance
 
 - Adapter 40 mirrors native Check availability and Unreserve visibility/actions,
