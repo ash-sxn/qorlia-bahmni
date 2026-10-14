@@ -28,6 +28,7 @@ const filters: CheckpointAnalysisFilters = {
 };
 const fixture = () => ({
   ...filters,
+  version: 'a'.repeat(64),
   total_count: 3,
   rows: [
     {
@@ -281,7 +282,12 @@ describe('Statement checkpoint pivot and graph', () => {
     expect(reconnect).toHaveBeenCalledTimes(1);
   });
   it('does not fabricate charts or sample data for an empty result', async () => {
-    get.mockResolvedValue({ ...filters, rows: [], total_count: 0 });
+    get.mockResolvedValue({
+      ...filters,
+      version: 'a'.repeat(64),
+      rows: [],
+      total_count: 0,
+    });
     show(4);
     await screen.findByText('No checkpoints match these analysis filters.');
     expect(screen.queryByRole('table')).not.toBeInTheDocument();

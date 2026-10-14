@@ -14,6 +14,7 @@ const filters: CheckpointAnalysisFilters = {
 };
 const analysisFixture = () => ({
   ...filters,
+  version: 'a'.repeat(64),
   total_count: 3,
   rows: [
     {
@@ -106,10 +107,11 @@ describe('Checkpoint analysis native boundary', () => {
       reply({ ...fixture, ...change });
       await expect(getCheckpointAnalysis(filters)).rejects.toThrow();
     }
-    reply({ ...filters, total_count: 0, rows: [] });
+    reply({ ...filters, version: 'a'.repeat(64), total_count: 0, rows: [] });
     expect((await getCheckpointAnalysis(filters)).rows).toEqual([]);
     reply({
       ...filters,
+      version: 'a'.repeat(64),
       total_count: 1,
       rows: [
         {

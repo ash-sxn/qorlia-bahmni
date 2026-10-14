@@ -1,6 +1,6 @@
 import { Button, TextInput } from '@bahmni/design-system';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { money } from './billingFormat';
 import styles from './BillingPage.module.scss';
 import {
@@ -8,6 +8,7 @@ import {
   CheckpointAnalysisFilters,
   CheckpointAnalysisRow,
   checkpointAnalysisPeriods,
+  downloadCheckpointAnalysis,
   getCheckpointAnalysis,
 } from './billingService';
 
@@ -68,13 +69,71 @@ export function BankCheckpointAnalysis({
   const [view, setView] = useState<'pivot' | 'graph'>('pivot');
   const [transposed, setTransposed] = useState(false);
   const [measure, setMeasure] = useState<Measure>('balance_end');
+  const [exporting, setExporting] = useState(false);
+  const exportBusy = useRef(false);
+  const active = useRef(true);
+  const [exportError, setExportError] = useState<Error | null>(null);
+  const [exportNotice, setExportNotice] = useState('');
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
   const result = useQuery({
     queryKey: ['billing', 'checkpoint-analysis', uid, filters],
     queryFn: () => getCheckpointAnalysis(filters),
     retry: false,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
+  const download = async () => {
+    if (
+      exportBusy.current ||
+      result.isFetching ||
+      result.isError ||
+      !result.data?.rows.length
+    )
+      return;
+    exportBusy.current = true;
+    setExporting(true);
+    setExportError(null);
+    setExportNotice('');
+    try {
+      const { filename, blob } = await downloadCheckpointAnalysis(
+        filters,
+        result.data.version,
+        measure,
+        transposed,
+      );
+      if (!active.current) return;
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      try {
+        anchor.click();
+      } finally {
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      setExportNotice(
+        'Excel download requested for the displayed filters, measure and orientation.',
+      );
+    } catch (error) {
+      if (active.current)
+        setExportError(
+          error instanceof Error
+            ? error
+            : new Error('Checkpoint Excel download failed.'),
+        );
+    } finally {
+      exportBusy.current = false;
+      if (active.current) setExporting(false);
+    }
+  };
   const rows = result.data?.rows ?? [];
   const journals = [
     ...new Map(rows.map((row) => [journalKey(row), row])).values(),
@@ -176,12 +235,12 @@ export function BankCheckpointAnalysis({
           onChange={(event) => changeDraft('date_to', event.target.value)}
           onInput={(event) => changeDraft('date_to', event.currentTarget.value)}
         />
-        <Button type="submit" disabled={result.isFetching}>
+        <Button type="submit" disabled={result.isFetching || exporting}>
           Apply analysis filters
         </Button>
         <Button
           kind="tertiary"
-          disabled={result.isFetching}
+          disabled={result.isFetching || exporting}
           onClick={() => void result.refetch()}
         >
           Refresh analysis
@@ -191,6 +250,7 @@ export function BankCheckpointAnalysis({
         <Button
           kind={view === 'pivot' ? 'primary' : 'tertiary'}
           aria-pressed={view === 'pivot'}
+          disabled={exporting}
           onClick={() => setView('pivot')}
         >
           Pivot
@@ -198,6 +258,7 @@ export function BankCheckpointAnalysis({
         <Button
           kind={view === 'graph' ? 'primary' : 'tertiary'}
           aria-pressed={view === 'graph'}
+          disabled={exporting}
           onClick={() => setView('graph')}
         >
           Graph
@@ -206,10 +267,23 @@ export function BankCheckpointAnalysis({
           <Button
             kind="tertiary"
             aria-pressed={transposed}
-            disabled={result.isFetching || result.isError || !rows.length}
+            disabled={
+              result.isFetching || result.isError || !rows.length || exporting
+            }
             onClick={() => setTransposed((prior) => !prior)}
           >
             Flip pivot axes
+          </Button>
+        ) : null}
+        {view === 'pivot' ? (
+          <Button
+            kind="tertiary"
+            disabled={
+              result.isFetching || result.isError || !rows.length || exporting
+            }
+            onClick={() => void download()}
+          >
+            {exporting ? 'Preparing Excel...' : 'Download pivot Excel'}
           </Button>
         ) : null}
         <label className={styles.select} htmlFor="analysis-measure">
@@ -217,6 +291,7 @@ export function BankCheckpointAnalysis({
           <select
             id="analysis-measure"
             value={measure}
+            disabled={exporting}
             onChange={(event) => setMeasure(event.target.value as Measure)}
           >
             {Object.entries(measures).map(([key, label]) => (
@@ -227,6 +302,8 @@ export function BankCheckpointAnalysis({
           </select>
         </label>
       </div>
+      {exportError ? <p role="alert">{exportError.message}</p> : null}
+      {exportNotice ? <p role="status">{exportNotice}</p> : null}
       {result.isFetching ? (
         <p role="status">Loading complete native checkpoint aggregates...</p>
       ) : null}
@@ -238,7 +315,8 @@ export function BankCheckpointAnalysis({
           Previous analysis is hidden until a successful reload.
         </p>
       ) : null}
-      {result.error instanceof BillingSessionExpired ? (
+      {result.error instanceof BillingSessionExpired ||
+      exportError instanceof BillingSessionExpired ? (
         <Button onClick={reconnect}>Reconnect Billing</Button>
       ) : null}
       {result.data && !result.isFetching && !result.isError ? (
