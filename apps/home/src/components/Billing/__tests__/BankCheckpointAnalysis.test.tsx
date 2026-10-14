@@ -11,12 +11,14 @@ import { BankCheckpointAnalysis } from '../BankCheckpointAnalysis';
 import {
   BillingSessionExpired,
   CheckpointAnalysisFilters,
+  downloadCheckpointAnalysis,
   getCheckpointAnalysis,
 } from '../billingService';
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
   getCheckpointAnalysis: jest.fn(),
+  downloadCheckpointAnalysis: jest.fn(),
 }));
 const filters: CheckpointAnalysisFilters = {
   search: 'QorliaQA',
@@ -56,6 +58,7 @@ const fixture = () => ({
   ],
 });
 const get = jest.mocked(getCheckpointAnalysis);
+const download = jest.mocked(downloadCheckpointAnalysis);
 const reconnect = jest.fn();
 const show = (uid = 3) =>
   render(
@@ -65,6 +68,7 @@ const show = (uid = 3) =>
       }
     >
       <BankCheckpointAnalysis
+        key={uid}
         uid={uid}
         search="QorliaQA"
         state="all"
@@ -75,7 +79,13 @@ const show = (uid = 3) =>
   );
 describe('Statement checkpoint pivot and graph', () => {
   beforeEach(() => {
+    jest.restoreAllMocks();
     jest.clearAllMocks();
+    URL.createObjectURL = jest.fn(() => 'blob:checkpoint-export');
+    URL.revokeObjectURL = jest.fn();
+    jest
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
     get.mockResolvedValue(
       fixture() as Awaited<ReturnType<typeof getCheckpointAnalysis>>,
     );
@@ -295,5 +305,97 @@ describe('Statement checkpoint pivot and graph', () => {
     expect(
       screen.getByRole('button', { name: 'Flip pivot axes' }),
     ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Download pivot Excel' }),
+    ).toBeDisabled();
+  });
+  it('downloads the displayed snapshot/orientation rather than unsaved filter edits and clears stale feedback', async () => {
+    download.mockResolvedValue({
+      filename: 'Qorlia_Checkpoints.xlsx',
+      blob: new Blob(['PK']),
+    });
+    show();
+    await screen.findByRole('table');
+    fireEvent.click(screen.getByRole('button', { name: 'Flip pivot axes' }));
+    fireEvent.change(screen.getByLabelText('Measure'), {
+      target: { value: 'count' },
+    });
+    fireEvent.change(
+      screen.getByLabelText('Statement, external reference or journal'),
+      { target: { value: 'Unsaved edit' } },
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Download pivot Excel' }),
+    );
+    await screen.findByText(
+      /Excel download requested for the last applied filters/,
+    );
+    expect(download).toHaveBeenCalledWith(
+      filters,
+      'a'.repeat(64),
+      'count',
+      true,
+    );
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+    fireEvent.change(screen.getByLabelText('Measure'), {
+      target: { value: 'balance_start' },
+    });
+    expect(
+      screen.queryByText(/Excel download requested/),
+    ).not.toBeInTheDocument();
+  });
+  it('shows stale-export failures without downloading and offers session reconnect', async () => {
+    download.mockRejectedValueOnce(
+      new Error(
+        'Checkpoint analysis changed. Refresh it before downloading Excel.',
+      ),
+    );
+    show();
+    await screen.findByRole('table');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Download pivot Excel' }),
+    );
+    await screen.findByText(/Checkpoint analysis changed/);
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    download.mockRejectedValueOnce(new BillingSessionExpired());
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Download pivot Excel' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Reconnect Billing' }),
+    );
+    expect(reconnect).toHaveBeenCalledTimes(1);
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+  });
+  it('blocks duplicate exports and suppresses a late download after leaving the view', async () => {
+    let resolve!: (
+      value: Awaited<ReturnType<typeof downloadCheckpointAnalysis>>,
+    ) => void;
+    download.mockReturnValue(
+      new Promise((accept) => {
+        resolve = accept;
+      }),
+    );
+    const view = show();
+    await screen.findByRole('table');
+    const button = screen.getByRole('button', { name: 'Download pivot Excel' });
+    act(() => {
+      fireEvent.click(button);
+      fireEvent.click(button);
+    });
+    expect(download).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole('button', { name: 'Preparing Excel...' }),
+    ).toBeDisabled();
+    expect(screen.getByLabelText('Measure')).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Refresh analysis' }),
+    ).toBeDisabled();
+    view.unmount();
+    await act(async () =>
+      resolve({ filename: 'Qorlia_Checkpoints.xlsx', blob: new Blob(['PK']) }),
+    );
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
   });
 });

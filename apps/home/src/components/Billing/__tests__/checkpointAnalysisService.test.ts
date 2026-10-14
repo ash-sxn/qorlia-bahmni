@@ -1,6 +1,7 @@
 import {
   BillingSessionExpired,
   CheckpointAnalysisFilters,
+  downloadCheckpointAnalysis,
   getCheckpointAnalysis,
 } from '../billingService';
 
@@ -83,6 +84,8 @@ describe('Checkpoint analysis native boundary', () => {
   it('rejects missing groups, inconsistent counts/currencies, invalid bounds and filter echoes', async () => {
     const fixture = analysisFixture();
     for (const change of [
+      { version: undefined },
+      { version: ['a'.repeat(64)] },
       { total_count: 4 },
       { rows: undefined },
       { period: 'day' },
@@ -145,5 +148,87 @@ describe('Checkpoint analysis native boundary', () => {
     await expect(getCheckpointAnalysis(filters)).rejects.toBeInstanceOf(
       BillingSessionExpired,
     );
+  });
+  it('requests native version-bound Excel without client table data and rejects malformed files', async () => {
+    const file = {
+      version: 'a'.repeat(64),
+      measure: 'balance_end',
+      transposed: true,
+      filename: 'Qorlia_Checkpoints.xlsx',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      content: btoa('PK\x03\x04native-fixture'),
+      byte_count: 18,
+    };
+    file.byte_count = atob(file.content).length;
+    reply(file);
+    const result = await downloadCheckpointAnalysis(
+      filters,
+      file.version,
+      file.measure,
+      true,
+    );
+    expect(result.filename).toBe(file.filename);
+    expect(result.blob.type).toBe(file.mimetype);
+    expect(result.blob.size).toBe(file.byte_count);
+    expect(
+      JSON.parse((fetch as jest.Mock).mock.calls[0][1].body).params,
+    ).toEqual({
+      model: 'account.bank.statement',
+      method: 'qorlia_checkpoint_analysis_export',
+      args: [],
+      kwargs: {
+        ...filters,
+        version: file.version,
+        measure: file.measure,
+        transposed: true,
+      },
+    });
+    for (const change of [
+      { version: 'b'.repeat(64) },
+      { measure: 'count' },
+      { transposed: false },
+      { mimetype: 'text/html' },
+      { filename: '../bad.xlsx' },
+      { byte_count: 10 },
+      { content: btoa('not-an-excel-file'), byte_count: 17 },
+    ]) {
+      reply({ ...file, ...change });
+      await expect(
+        downloadCheckpointAnalysis(filters, file.version, file.measure, true),
+      ).rejects.toThrow();
+    }
+  });
+  it('rejects invalid export inputs before requesting and propagates session expiry', async () => {
+    for (const [version, measure, transposed] of [
+      ['bad', 'count', false],
+      [['a'.repeat(64)], 'count', false],
+      ['a'.repeat(64), 'write_date', false],
+      ['a'.repeat(64), 'count', 'true'],
+    ])
+      await expect(
+        downloadCheckpointAnalysis(
+          filters,
+          version as string,
+          measure as string,
+          transposed as boolean,
+        ),
+      ).rejects.toThrow();
+    expect(fetch).not.toHaveBeenCalled();
+    (fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        error: {
+          code: 100,
+          data: {
+            name: 'odoo.http.SessionExpiredException',
+            message: 'Expired',
+          },
+        },
+      }),
+    });
+    await expect(
+      downloadCheckpointAnalysis(filters, 'a'.repeat(64), 'count', false),
+    ).rejects.toBeInstanceOf(BillingSessionExpired);
   });
 });

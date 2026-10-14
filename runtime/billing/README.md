@@ -3,6 +3,28 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest Excel source/private API checkpoint: 16.0.1.37.0 is installed in isolated
+staging only. Native Odoo pivot controller/exporter inspected. Named export
+reuses its writer but regenerates authorized values rather than accepting a
+client table. Analysis digest binds filters/data/author/companies; export rechecks
+access/version. Static XLSX preserves selected measure/axes, per-journal totals,
+currency labels, numeric/missing cells, literal text and frozen headers. No
+formulas/hyperlinks or mixed-currency total. Excel limits and 10 MiB synchronous
+cap apply; streaming and large-data acceptance remain open.
+React uses last applied filters and native downloads, guards duplicate clicks,
+handles errors/expiry, suppresses completion after leaving and clears old feedback
+when the analysis changes. Account changes remount it. 523 Home/60 suites,
+526 native tests, seven gateway checks, types/lint/diff and build
+20294c1408476095 pass. Runtime hashes match, mandatory analytics restored,
+service restarted and backup retained. Native values and real private TypeScript
+HTTP verify all eight exported measure/axis combinations, ZIP/XML cells, no
+formulas/links, frozen headers and stale-version denial. Read-back unchanged;
+native verification rolls back and SSH forward is stopped.
+UI/gateway not packaged/hosted/browser accepted yet. Protected artifact stays
+checkpoint-pivot-flip-20261014 with native 37 behind its existing APIs; draft
+PR #2 remains open. Complete pivot/Billing/clinical/external parity remains
+unfinished. Production/public demo and nine clinical edits are unchanged.
+
 Latest protected release: checkpoint-pivot-flip-20261014, source 8a09c282 plus
 nine unchanged clinical hashes, build 4b2e0d119c5e3073. All 83 hosted JS/CSS and
 protected source/license assets match; existing gates/expiry/backends unchanged.

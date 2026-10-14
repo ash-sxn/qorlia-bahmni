@@ -74,6 +74,10 @@ export function BankCheckpointAnalysis({
   const active = useRef(true);
   const [exportError, setExportError] = useState<Error | null>(null);
   const [exportNotice, setExportNotice] = useState('');
+  const clearExportFeedback = () => {
+    setExportError(null);
+    setExportNotice('');
+  };
   useEffect(() => {
     active.current = true;
     return () => {
@@ -120,7 +124,7 @@ export function BankCheckpointAnalysis({
         window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
       setExportNotice(
-        'Excel download requested for the displayed filters, measure and orientation.',
+        'Excel download requested for the last applied filters, selected measure and orientation.',
       );
     } catch (error) {
       if (active.current)
@@ -165,6 +169,7 @@ export function BankCheckpointAnalysis({
         className={styles.toolbar}
         onSubmit={(event) => {
           event.preventDefault();
+          clearExportFeedback();
           setFilters({ ...draft, search: draft.search.trim() });
         }}
       >
@@ -241,7 +246,10 @@ export function BankCheckpointAnalysis({
         <Button
           kind="tertiary"
           disabled={result.isFetching || exporting}
-          onClick={() => void result.refetch()}
+          onClick={() => {
+            clearExportFeedback();
+            void result.refetch();
+          }}
         >
           Refresh analysis
         </Button>
@@ -270,7 +278,10 @@ export function BankCheckpointAnalysis({
             disabled={
               result.isFetching || result.isError || !rows.length || exporting
             }
-            onClick={() => setTransposed((prior) => !prior)}
+            onClick={() => {
+              clearExportFeedback();
+              setTransposed((prior) => !prior);
+            }}
           >
             Flip pivot axes
           </Button>
@@ -292,7 +303,10 @@ export function BankCheckpointAnalysis({
             id="analysis-measure"
             value={measure}
             disabled={exporting}
-            onChange={(event) => setMeasure(event.target.value as Measure)}
+            onChange={(event) => {
+              clearExportFeedback();
+              setMeasure(event.target.value as Measure);
+            }}
           >
             {Object.entries(measures).map(([key, label]) => (
               <option value={key} key={key}>

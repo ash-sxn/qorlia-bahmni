@@ -1,5 +1,29 @@
 # Bahmni workflow parity ledger
 
+## 14 October native checkpoint Excel source and private API acceptance
+
+- Installed native pivot download contract inspected. Adapter 37 adds a named
+  XLSX export, regenerating authorized native aggregates for the exact displayed
+  snapshot. Digest binds filters/data/author/companies; stale versions and denied
+  access fail. Four measures, both axes, numeric cells, journal/currency separation,
+  missing cells, literal labels and frozen headers are preserved. Native export is
+  a static XLSX table, not an interactive Excel PivotTable.
+- UI uses last applied filters and native browser downloads. Duplicate clicks,
+  error/expiry and unmount suppression are covered; account changes remount it.
+  Changing filters/measure/axes clears old feedback. No new dependency.
+- 523 Home/60 suites, 526 native tests (21 checkpoint cases), seven guards,
+  library/source-test types, touched lint/diff and build 20294c1408476095 pass.
+  Adapter installed only in isolated staging with backup, matching hashes,
+  mandatory analytics restored and service running.
+- Independent native values and actual TypeScript/private HTTP verify eight
+  XLSX downloads, ZIP/XML content, headers and no formulas/links. Stale version
+  denied. Financial/checkpoint/bank/attachment baselines remain unchanged during
+  verification. Native verifier rolls back; SSH forward stopped.
+- Not packaged/hosted/browser accepted. Existing protected pivot-flip UI remains;
+  PR #2 is draft. Large-data/quota, browser downloads/expiry, pivot expansion,
+  graph/drilldown/imports and all remaining product parity stay open. Production,
+  public demo and nine preserved clinical edits unchanged.
+
 ## 14 October protected pivot transposition acceptance
 
 - Published checkpoint-pivot-flip-20261014: 8a09c282 plus nine unchanged clinical
