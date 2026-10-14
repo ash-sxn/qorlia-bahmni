@@ -3126,6 +3126,151 @@ export const saveBillingDraft = async (
     }),
   );
 
+export interface OrderTransfer {
+  id: number;
+  name: string;
+  state: 'draft' | 'waiting' | 'confirmed' | 'assigned' | 'done' | 'cancel';
+  operation_type: Relation;
+  company: Relation;
+  customer: Relation;
+  source: Relation;
+  destination: Relation;
+  scheduled_date: string | false;
+  date_done: string | false;
+  origin: string | false;
+  backorder: Relation;
+  moves: {
+    id: number;
+    state: string;
+    product: Relation;
+    unit: Relation;
+    demand: number;
+    reserved: number;
+    done: number;
+    order_line: Relation;
+  }[];
+  operations: {
+    id: number;
+    move_id: number | false;
+    product: Relation;
+    unit: Relation;
+    reserved: number;
+    done: number;
+    lot: Relation;
+    lot_name: string | false;
+    expiry_date: string | false;
+    source: Relation;
+    destination: Relation;
+    source_package: Relation;
+    destination_package: Relation;
+    owner: Relation;
+  }[];
+}
+export interface OrderDeliveries {
+  order_id: number;
+  order_name: string;
+  order_state: ChargeOrder['state'];
+  version: string;
+  read_only: true;
+  rows: OrderTransfer[];
+}
+
+export async function getOrderDeliveries(
+  orderId: number,
+): Promise<OrderDeliveries> {
+  const id = (value: unknown) =>
+    Number.isSafeInteger(value) && Number(value) > 0;
+  if (!id(orderId)) throw new Error('Select a saved charge order.');
+  const data = await draftCall<OrderDeliveries>('qorlia_order_deliveries', {
+    order_id: orderId,
+  });
+  const text = (value: unknown) => value === false || typeof value === 'string';
+  const date = (value: unknown) =>
+    value === false ||
+    (typeof value === 'string' &&
+      /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value));
+  const unique = (rows: { id: number }[]) =>
+    new Set(rows.map((row) => row.id)).size === rows.length;
+  if (
+    data?.order_id !== orderId ||
+    typeof data.order_name !== 'string' ||
+    !['draft', 'sent', 'sale', 'done', 'cancel'].includes(data.order_state) ||
+    typeof data.version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(data.version) ||
+    data.read_only !== true ||
+    !Array.isArray(data.rows) ||
+    data.rows.length > 100 ||
+    !data.rows.every(
+      (row) =>
+        row &&
+        id(row.id) &&
+        typeof row.name === 'string' &&
+        [
+          'draft',
+          'waiting',
+          'confirmed',
+          'assigned',
+          'done',
+          'cancel',
+        ].includes(row.state) &&
+        [
+          row.operation_type,
+          row.company,
+          row.customer,
+          row.source,
+          row.destination,
+          row.backorder,
+        ].every(validRelation) &&
+        row.company !== false &&
+        date(row.scheduled_date) &&
+        date(row.date_done) &&
+        text(row.origin) &&
+        Array.isArray(row.moves) &&
+        row.moves.length <= 500 &&
+        row.moves.every(
+          (move) =>
+            move &&
+            id(move.id) &&
+            typeof move.state === 'string' &&
+            [move.product, move.unit, move.order_line].every(validRelation) &&
+            [move.demand, move.reserved, move.done].every(Number.isFinite),
+        ) &&
+        unique(row.moves) &&
+        Array.isArray(row.operations) &&
+        row.operations.length <= 2000 &&
+        row.operations.every(
+          (line) =>
+            line &&
+            id(line.id) &&
+            (line.move_id === false ||
+              (id(line.move_id) &&
+                row.moves.some((move) => move.id === line.move_id))) &&
+            [
+              line.product,
+              line.unit,
+              line.lot,
+              line.source,
+              line.destination,
+              line.source_package,
+              line.destination_package,
+              line.owner,
+            ].every(validRelation) &&
+            [line.reserved, line.done].every(Number.isFinite) &&
+            text(line.lot_name) &&
+            date(line.expiry_date),
+        ) &&
+        unique(row.operations),
+    ) ||
+    !unique(data.rows) ||
+    data.rows.reduce((count, row) => count + row.moves.length, 0) > 500 ||
+    data.rows.reduce((count, row) => count + row.operations.length, 0) > 2000
+  )
+    throw new Error(
+      'Invalid stock transfer response. Reload the order transfers.',
+    );
+  return data;
+}
+
 export interface OrderWorkflow {
   id: number;
   name: string;

@@ -1,0 +1,55 @@
+import { OrderDeliveries } from '../billingService';
+
+export const orderDeliveryFixture = (): OrderDeliveries => ({
+  order_id: 9,
+  order_name: 'QORLIAQA-ORDER',
+  order_state: 'sale',
+  version: 'a'.repeat(64),
+  read_only: true,
+  rows: [
+    {
+      id: 11,
+      name: 'QORLIAQA/OUT/11',
+      state: 'assigned',
+      operation_type: [1, 'QA Delivery'],
+      company: [1, 'QA Company'],
+      customer: [2, 'QA Customer'],
+      source: [3, 'QA Stock'],
+      destination: [4, 'QA Customer location'],
+      scheduled_date: '2026-10-14 10:00:00',
+      date_done: false,
+      origin: 'QORLIAQA-ORDER',
+      backorder: false,
+      moves: [
+        {
+          id: 12,
+          state: 'assigned',
+          product: [5, 'QA Medicine'],
+          unit: [1, 'Units'],
+          demand: 12,
+          reserved: 6,
+          done: 6,
+          order_line: [10, 'QA Order item'],
+        },
+      ],
+      operations: [
+        {
+          id: 13,
+          move_id: 12,
+          product: [5, 'QA Medicine'],
+          unit: [2, 'Dozens'],
+          reserved: 0.5,
+          done: 0.5,
+          lot: [6, 'QA-BATCH'],
+          lot_name: false,
+          expiry_date: '2027-01-01 00:00:00',
+          source: [3, 'QA Stock'],
+          destination: [4, 'QA Customer location'],
+          source_package: false,
+          destination_package: false,
+          owner: false,
+        },
+      ],
+    },
+  ],
+});

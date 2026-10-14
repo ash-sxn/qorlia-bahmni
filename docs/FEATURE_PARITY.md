@@ -1,5 +1,23 @@
 # Bahmni workflow parity ledger
 
+## 14 October order transfer review source checkpoint
+
+- New saved-order transfer list/details use named native order-scoped reads.
+  Stock/sale-stock UI/models and Bahmni overrides inspected, including move-group
+  linkage, per-operation units and operation expiry before batch creation.
+- Preserves states, backorder links, demands/reservations/recorded done quantities,
+  units, batches/serials/expiry, locations, packages and owner. No stock write or
+  invented completion. Hidden/company-inaccessible graph records fail closed.
+- 533 Home/62 suites, four source-based types, library types, touched lint/diff,
+  seven guards and 32fc2d8bf3c29bde build pass. Prior native revision: six focused,
+  532 full tests. Final operation-expiry revision: seven focused tests pass;
+  fresh full 533 native run still active. Failure attempts rolled back module and
+  restarted Billing; mandatory analytics restored after the prior full run.
+- Private HTTP/native-fixture and browser acceptance, protected packaging,
+  reservation/edit/validation/backorders/returns/full paging remain open. This is
+  not complete fulfillment or Billing. Production/public demo and clinical edits
+  unchanged; current tester UI stays Excel r2.
+
 ## 14 October protected Excel r2 download and expiry acceptance
 
 - Published checkpoint-excel-r2-20261014 from 89f8da53 plus nine preserved

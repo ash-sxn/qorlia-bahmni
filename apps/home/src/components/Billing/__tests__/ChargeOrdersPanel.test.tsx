@@ -14,9 +14,11 @@ import {
   getChargeOrders,
   getInvoices,
   getDocumentReports,
+  getOrderDeliveries,
   OrderWorkflow,
 } from '../billingService';
 import { ChargeOrdersPanel } from '../ChargeOrdersPanel';
+import { orderDeliveryFixture } from './orderDeliveryFixture';
 import { workflowFixture as mockWorkflowFixture } from './workflowFixture';
 
 jest.mock('../billingService', () => ({
@@ -25,6 +27,7 @@ jest.mock('../billingService', () => ({
   getChargeOrderLines: jest.fn(),
   getInvoices: jest.fn(),
   getDocumentReports: jest.fn(),
+  getOrderDeliveries: jest.fn(),
 }));
 jest.mock('../DraftOrderEditor', () => ({
   DraftOrderEditor: ({ saved }: { saved: (draft: BillingDraft) => void }) => (
@@ -121,6 +124,24 @@ const show = (
   );
 
 describe('Charge orders workspace', () => {
+  it('opens stock transfers with the selected saved order and returns to its details', async () => {
+    (getOrderDeliveries as jest.Mock).mockResolvedValue(orderDeliveryFixture());
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View order QORLIAQA-ORDER' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'View stock transfers' }),
+    );
+    await screen.findByRole('table', {
+      name: 'Native transfers linked to this order',
+    });
+    expect(getOrderDeliveries).toHaveBeenCalledWith(9);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Back to order details' }),
+    );
+    await screen.findByRole('region', { name: 'Charge order details' });
+  });
   it('opens saved order reports and returns to the same selected order', async () => {
     (getDocumentReports as jest.Mock).mockResolvedValue([
       { key: 'quotation', name: 'Quotation / Order' },

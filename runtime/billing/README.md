@@ -3,6 +3,19 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Order transfer review source (14 October): adapter 38 adds a named order-scoped
+read with native ACL/field/record/company checks and complete linked-graph access.
+The React saved-order workspace shows transfer states, backorders, native demand/
+reserved/done quantities in their own units, batches/serials/operation expiry,
+locations, packages and owner. There is no stock mutation endpoint. Native stock,
+sale-stock UI/model contracts and Bahmni overrides were inspected. Fresh 533 Home/
+62-suite, four test-source/library type, lint/diff, seven-guard and build
+32fc2d8bf3c29bde results pass. Prior native revision passed 532 full tests; final
+operation-expiry correction passes seven focused tests and its 533 full run is
+still active. Independent HTTP and browser acceptance/packaging are pending.
+Native reservation, editing, validation/wizards, backorders/returns, full paging
+and complete Billing/product parity remain open. Production/public demo unchanged.
+
 Current protected review: checkpoint-excel-r2-20261014, source 89f8da53 plus nine
 preserved clinical hashes, build a0dc39142691cd6a and 83 matching assets. Source
 archive: 81588bb19ed5fa50a3ef35b537e565bb4466fde1ac61403cec2745aa3f221e1a.

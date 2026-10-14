@@ -1,5 +1,36 @@
 # Qorlia React frontend backend readiness
 
+## Order transfer read-path source checkpoint (14 October 2026)
+
+The saved charge-order screen now opens a Qorlia transfer list/detail view through
+the named qorlia_order_deliveries API. Native stock and sale-stock view/model
+contracts and the installed Bahmni stock overrides were inspected. Transfers are
+linked through stock moves' procurement groups, not a manually assigned header.
+The reader preserves native statuses, backorders, demand/reserved/done quantities,
+each move/operation's own unit, batch/serial names, operation expiry, locations,
+packages and owner. Recorded done quantities are not labelled completed transfers.
+
+Native read/field/record/company checks apply to every linked transfer, operation
+and relation. Hidden records fail closed instead of returning an incomplete graph.
+The caller's author/company-bound snapshot is returned; there is no stock mutation
+endpoint. Complete transfer paging beyond 100 transfers, 500 moves or 2,000 total
+operations remains required. React uses existing design controls and styles, hides
+stale details during failed refresh and handles expiry/reconnect and disappeared
+transfer links. No new dependency or patient/order synchronisation is introduced.
+
+533 Home tests/62 suites, four source-based test/fixture types, Home library types,
+touched lint/diff, seven gateway/config checks and build 32fc2d8bf3c29bde pass.
+The preceding native revision passed six focused and 532 full adapter tests with
+mandatory analytics restored. Operation-specific expiry correction adds a seventh
+native test, which passes; its fresh full 533-test run is still in progress.
+Earlier failed fixture setup/linkage attempts restored the previous module and
+service. Current source is not yet independently private-HTTP or browser accepted
+or packaged on the protected host, which remains Excel r2. Reservation, quantity/
+batch editing, native validation wizards, backorders/returns and read paging are
+still needed for complete fulfillment. Whole Billing/clinical/external parity and
+the broader goal remain incomplete. Production/public demo and nine clinical
+edits are unchanged.
+
 ## Protected Excel r2 acceptance (14 October 2026)
 
 checkpoint-excel-r2-20261014 is published from 89f8da53 plus the same nine
