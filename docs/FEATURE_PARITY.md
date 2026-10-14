@@ -1,6 +1,6 @@
 # Bahmni workflow parity ledger
 
-## 14 October order transfer review source checkpoint
+## 14 October protected order transfer review acceptance
 
 - New saved-order transfer list/details use named native order-scoped reads.
   Stock/sale-stock UI/models and Bahmni overrides inspected, including move-group
@@ -9,14 +9,21 @@
   units, batches/serials/expiry, locations, packages and owner. No stock write or
   invented completion. Hidden/company-inaccessible graph records fail closed.
 - 533 Home/62 suites, four source-based types, library types, touched lint/diff,
-  seven guards and 32fc2d8bf3c29bde build pass. Prior native revision: six focused,
-  532 full tests. Final operation-expiry revision: seven focused tests pass;
-  fresh full 533 native run still active. Failure attempts rolled back module and
-  restarted Billing; mandatory analytics restored after the prior full run.
-- Private HTTP/native-fixture and browser acceptance, protected packaging,
-  reservation/edit/validation/backorders/returns/full paging remain open. This is
-  not complete fulfillment or Billing. Production/public demo and clinical edits
-  unchanged; current tester UI stays Excel r2.
+  seven guards and 32fc2d8bf3c29bde build pass. Final adapter 38 passes seven
+  focused and 533 full native tests, zero failures/errors/skips, source hashes
+  matched, mandatory analytics restored and service restarted. Backups retained.
+- Private and hosted TypeScript reads match independently checked synthetic native
+  transfers, including six done units versus 0.5 dozen, without moving stock.
+  Fixture preserves financial counts/quants/protected records/bank #37.
+- Published order-transfers-20261014, 1131088a plus nine unchanged clinical hashes,
+  83 matching assets/source/licences, unchanged gates/code/expiry/destinations.
+  Hosted malformed/raw stock-write/unauthenticated denial and existing checkpoint/
+  attachment/Excel checks pass. Browser order/list/detail/refresh/back navigation,
+  units/batch/expiry/location/not-completed state pass. No financial/stock browser
+  writes. Empty/error/expiry/removed-transfer cases remain source-only acceptance.
+- Reservation/edit/validation/backorders/returns/full paging remain open. This is
+  not complete fulfillment or Billing. PR #4 draft; production/public demo and
+  clinical edits unchanged. Temporary private SSH forward stopped.
 
 ## 14 October protected Excel r2 download and expiry acceptance
 

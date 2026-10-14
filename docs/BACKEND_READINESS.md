@@ -1,6 +1,6 @@
 # Qorlia React frontend backend readiness
 
-## Order transfer read-path source checkpoint (14 October 2026)
+## Protected order transfer read-path acceptance (14 October 2026)
 
 The saved charge-order screen now opens a Qorlia transfer list/detail view through
 the named qorlia_order_deliveries API. Native stock and sale-stock view/model
@@ -20,16 +20,31 @@ transfer links. No new dependency or patient/order synchronisation is introduced
 
 533 Home tests/62 suites, four source-based test/fixture types, Home library types,
 touched lint/diff, seven gateway/config checks and build 32fc2d8bf3c29bde pass.
-The preceding native revision passed six focused and 532 full adapter tests with
-mandatory analytics restored. Operation-specific expiry correction adds a seventh
-native test, which passes; its fresh full 533-test run is still in progress.
-Earlier failed fixture setup/linkage attempts restored the previous module and
-service. Current source is not yet independently private-HTTP or browser accepted
-or packaged on the protected host, which remains Excel r2. Reservation, quantity/
-batch editing, native validation wizards, backorders/returns and read paging are
-still needed for complete fulfillment. Whole Billing/clinical/external parity and
-the broader goal remain incomplete. Production/public demo and nine clinical
-edits are unchanged.
+Final adapter 38 passes seven focused and 533 full native tests without failures,
+errors or skips. Mandatory analytics restored, service running and source/model
+hashes match. Earlier failed fixture setup/linkage attempts restored the previous
+module and service. Native backup/rollback remains available.
+
+An independently checked persisted synthetic draft transfer shows 12 demanded
+units, six recorded done units and 0.5 dozen on its detailed operation, with no
+completed transfer. Fixture creation preserves stock quants, financial counts,
+eight protected records and bank #37. Actual private and hosted TypeScript clients
+match the native graph and repeated reads. Temporary SSH forward stopped.
+Protected order-transfers-20261014 uses 1131088a plus nine unchanged clinical
+hashes, build above and 83 matching JS/CSS/source/licence assets. Source archive:
+bbfc67d1021e23e09f37e3570732b9fc8347c9cb8ffdc725289d4279f945193b.
+Shared code, expiry, destinations and gates are unchanged; prior package retained.
+Hosted checks deny raw stock validation, malformed and unauthenticated requests;
+checkpoint/attachment/ledger/protected-record reads and all eight Excel variants
+also pass. Browser signed-in module entry, order-to-transfer navigation, exact
+unit/batch/expiry/location reads, refresh and return to the selected order pass.
+No stock or financial browser writes. Empty/error/expiry/removed-transfer checks
+are source tests, not browser acceptance claims.
+
+Reservation, quantity/batch editing, native validation wizards, backorders/returns
+and read paging are still needed for complete fulfillment. Whole Billing/clinical/
+external parity and the broader goal remain incomplete. PR #4 is draft; production/
+public demo and nine clinical edits unchanged.
 
 ## Protected Excel r2 acceptance (14 October 2026)
 

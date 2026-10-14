@@ -3,16 +3,25 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Order transfer review source (14 October): adapter 38 adds a named order-scoped
+Protected order transfer review (14 October): adapter 38 adds a named order-scoped
 read with native ACL/field/record/company checks and complete linked-graph access.
 The React saved-order workspace shows transfer states, backorders, native demand/
 reserved/done quantities in their own units, batches/serials/operation expiry,
 locations, packages and owner. There is no stock mutation endpoint. Native stock,
 sale-stock UI/model contracts and Bahmni overrides were inspected. Fresh 533 Home/
 62-suite, four test-source/library type, lint/diff, seven-guard and build
-32fc2d8bf3c29bde results pass. Prior native revision passed 532 full tests; final
-operation-expiry correction passes seven focused tests and its 533 full run is
-still active. Independent HTTP and browser acceptance/packaging are pending.
+32fc2d8bf3c29bde results pass. Final native version passes seven focused and 533
+full tests, zero failures/errors/skips; mandatory analytics restored, source
+hashes match, service running and backups retained. Real private/hosted TypeScript
+reads match an independently checked synthetic transfer's units/dozens/batch data.
+No stock/financial changes during reads; fixture preserves quants, protected
+records, financial counts and bank #37. SSH forward stopped. Published artifact
+order-transfers-20261014 uses 1131088a plus nine clinical hashes and 83 matching
+assets/source/licences; code/expiry/destinations/gates unchanged. Source archive:
+bbfc67d1021e23e09f37e3570732b9fc8347c9cb8ffdc725289d4279f945193b.
+Browser order/transfer/refresh/back navigation and exact native values pass with
+no financial/stock writes. Source-only error/expiry/empty cases are not browser
+acceptance claims. PR #4 remains draft.
 Native reservation, editing, validation/wizards, backorders/returns, full paging
 and complete Billing/product parity remain open. Production/public demo unchanged.
 
