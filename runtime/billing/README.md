@@ -12,9 +12,14 @@ onchange writes/callbacks roll back. The TypeScript boundary and three named
 gateway routes are implemented in source. No generic stock writes or dependency.
 569 Home tests/66 suites, nine new boundary tests, source-based test/library types,
 implementation lint, seven gateway/configuration checks and build ef34d8037cdb141f
-pass. Final source's 16 focused native tests pass; full native and actual HTTP
-acceptance remain in progress. Earlier checkpoints passed 562 and 565 full tests,
-not a claim for the latest package-field correction. First failed runs restored
+pass. Final source passes 16 focused and 566 full native tests with zero failures,
+errors or skips; analytics restored, installed source/test hashes match and service
+running. Earlier 562/565-test passes preceded the final package-field correction.
+Actual private TypeScript HTTP defaults/onchanges/lot search/stale and access denial
+pass. Independent native read-back matches the pre-form baseline: sixteen receipts,
+no new operation, unchanged stock/reservations/delivery, eight protected records,
+financial/valuation counts, bank #37 and other stock. SSH forward stopped.
+First failed runs restored
 adapter 41; native name search and test fixture corrections are retained.
 write_ready=false: atomic create/edit/delete preview/save/recovery and the React
 editor are still pending. Tester UI remains stock-quantities-20261014; new form

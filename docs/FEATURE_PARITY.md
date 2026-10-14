@@ -1,6 +1,6 @@
 # Bahmni workflow parity ledger
 
-## 14 October manual operation form integration in progress
+## 14 October manual operation form private API acceptance
 
 - Added native operation load/onchange/paged-choice contracts for saved and new
   operation forms, with native field visibility, readonly/group rules, ordered
@@ -8,8 +8,16 @@
   onchange writes/callbacks roll back. Named routes and strict TypeScript boundary
   added in source, without a generic stock write endpoint or new dependency.
 - write_ready=false. Atomic create/edit/delete review/save/recovery and the React
-  editor are not complete or exposed in the tester UI. Final native/HTTP acceptance
-  remains in progress. Tester UI stays on stock-quantities-20261014.
+  editor are not complete or exposed in the tester UI. Tester UI stays on
+  stock-quantities-20261014.
+- Source ee1cdda0: 569 Home/66 suites, nine boundary cases, source-based test/library
+  types, lint/diff, seven guards and ef34d8037cdb141f build pass. Final adapter 42
+  passes 16 focused/566 full native tests without failures/errors/skips; analytics
+  restored, installed hashes match, service running and backups retained.
+- Actual private HTTP defaults/onchanges/lot search/stale/access denial pass.
+  Independent native read-back matches the pre-form baseline: sixteen receipts,
+  no new operation/stock/delivery/financial changes, protected records/bank/other
+  stock unchanged. SSH forward stopped; hosted/manual-save/browser gates remain.
 - Native corrections of completed operations, validation/wizards, backorders/
   returns/paging/POS/sync, full clinical and separate product parity still remain.
 

@@ -1,6 +1,6 @@
 # Qorlia React frontend backend readiness
 
-## Native stock-operation form integration in progress (14 October 2026)
+## Native stock-operation form private API acceptance (14 October 2026)
 
 Adapter 42 adds order/transfer/move-scoped form load, native onchange and paged
 choice APIs for existing operations and unsaved operation defaults. The installed
@@ -23,13 +23,26 @@ tester UI remains stock-quantities-20261014 until the integrated editor is ready
 
 569 Home/66 suites, nine new boundary cases, source-based test/library types,
 implementation lint/diff, seven gateway/configuration guards and build
-ef34d8037cdb141f pass. Final source passes 16 focused native tests; its full native
-and actual HTTP acceptance are in progress. Earlier 562/565-test native passes
-precede the final whole-package field distinction and are not final-source claims.
+ef34d8037cdb141f pass. Final adapter 42 passes 16 focused and 566 full native tests,
+zero failures/errors/skips. Mandatory analytics restored, installed source/test
+hashes match and service running. Earlier 562/565-test passes preceded the final
+whole-package field distinction; the 566-test run verifies that final source.
 First failed runs restored adapter 41. Native name search (not unsearchable
 display_name or the internal Query object) and independent fixture creation fix
-the observed search/fixture failures. Purchase-linked defaults, completed stock
-corrections and large catalog/browser acceptance remain unverified.
+the observed search/fixture failures.
+
+Actual private TypeScript HTTP defaults, quantity/balance and batch onchanges,
+native lot search, stale-version and hidden-field denial pass. The existing client
+masks AccessError details with a generic permission error; the HTTP verifier now
+checks that policy instead of expecting raw native text. Repeated load and native
+read-back match the pre-form baseline: sixteen existing stock receipts, no new
+operation, unchanged quantities/reservations/delivery, eight protected records,
+financial/valuation counts, bank #37 and other stock. A capture helper first used
+a host-only path from inside the container; the corrected stdin capture succeeds,
+without application changes or repeating any saved stock action. Temporary SSH
+forward stopped. New form routes/UI are not published to the tester host yet.
+Purchase-linked defaults, completed stock corrections and large catalog/browser
+acceptance remain unverified.
 Production/public demo and the nine preserved clinical edits are unchanged.
 
 ## Native recorded-quantity preparation protected acceptance (14 October 2026)
