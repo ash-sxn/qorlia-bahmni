@@ -2,6 +2,12 @@ const API = '/openmrs/qorlia-billing-api';
 
 export class BillingSessionExpired extends Error {
   readonly billingSessionExpired = true;
+
+  constructor(
+    message = 'Your Billing session expired. Reconnect to continue.',
+  ) {
+    super(message);
+  }
 }
 
 export class BillingActionRejected extends Error {}

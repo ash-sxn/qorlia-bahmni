@@ -3,6 +3,22 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest hosted checkpoint (14 October): checkpoint-excel-20261014, b3617225 plus
+nine preserved clinical hashes, build 35fe116aafef3ed3 and 83 matching assets.
+Source archive: 6f3ad8c80828bacc9cedcf340d4a795a73ea1c0b6eab237f6900fd214123ac22.
+Protected code/expiry/backends/gates unchanged; previous package retained.
+Eight actual hosted XLSX downloads match independent native cells and reject
+stale snapshots; protected financial/ledger/checkpoint/file reads unchanged.
+Browser balance and flipped-count exports, last-applied-filter semantics,
+no-results disabling and recovery pass. Cross-tab session disconnect revealed a
+blank export error despite a working reconnect control. Shared expiry errors
+now have a default message, preserving explicit caller messages. UI/service
+regressions, 523 Home/60 suites, library types, touched lint and fresh build
+a0dc39142691cd6a pass. Correction needs repackaging/browser acceptance; do not
+claim Excel feature finished yet. Native 37 unchanged, its prior 526-test result
+not rerun here. No production/public-demo or financial browser changes. Full
+parity/large-data/streaming/imports remain unfinished.
+
 Latest Excel source/private API checkpoint: 16.0.1.37.0 is installed in isolated
 staging only. Native Odoo pivot controller/exporter inspected. Named export
 reuses its writer but regenerates authorized values rather than accepting a

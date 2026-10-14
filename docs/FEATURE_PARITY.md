@@ -1,5 +1,25 @@
 # Bahmni workflow parity ledger
 
+## 14 October hosted Excel checks and discovered expiry feedback gap
+
+- Published checkpoint-excel-20261014 from b3617225 plus nine unchanged clinical
+  hashes; build 35fe116aafef3ed3 and all 83 hosted/source/license assets verified.
+  Existing gates, expiry and backends unchanged; prior package retained.
+- Eight actual hosted XLSX downloads match independent native cells. Stale
+  versions, raw/malformed/unauthenticated routes denied; protected documents,
+  bank #37, checkpoints/ledgers and attachment reads unchanged.
+- Actual browser computed balance and transposed-count downloads match native
+  cells. Unsaved filters do not enter export; empty applied filters disable it;
+  restoring filters and clearing feedback pass. No financial browser writes.
+- Real cross-tab Billing disconnect makes export offer reconnect but exposed a
+  blank alert. Fixed at the shared BillingSessionExpired constructor with a
+  default message, preserving explicit caller messages; regressions added.
+  523 Home/60 suites, library types, touched lint and a0dc39142691cd6a build pass.
+  Correction still needs packaging/browser acceptance. Native 37 unchanged;
+  previous 526 native tests are not a fresh rerun. PR #2 remains draft.
+- Large-data/quota/streaming, pivot expansion, graph/drilldown/imports and full
+  Billing/clinical/external parity remain open. Production/public demo unchanged.
+
 ## 14 October native checkpoint Excel source and private API acceptance
 
 - Installed native pivot download contract inspected. Adapter 37 adds a named

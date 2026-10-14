@@ -1,5 +1,32 @@
 # Qorlia React frontend backend readiness
 
+## Protected Excel download verification and expiry correction (14 October 2026)
+
+Published checkpoint-excel-20261014 from b3617225 plus the same nine preserved
+clinical hashes, build 35fe116aafef3ed3. All 83 hosted JS/CSS assets, source,
+licenses and manifest match. The shared code, expiry, backend destinations and
+session gates are unchanged; the prior package/compose is retained for rollback.
+Source archive: 6f3ad8c80828bacc9cedcf340d4a795a73ea1c0b6eab237f6900fd214123ac22.
+Actual hosted TypeScript downloads all eight XLSX variants and independently
+checks their ZIP/XML cells, literal text and frozen headers. Stale snapshots and
+raw/malformed/unauthenticated routes are denied. Native checkpoint/ledger/file,
+bank #37 and eight protected-document baselines remain unchanged.
+
+Actual browser downloads pass computed balances and transposed counts. An
+unsubmitted filter stays out of the workbook; applying no-results disables Excel,
+and restoring filters recovers. Measure/axis/filter changes clear old feedback.
+Browser disconnect in a second tab expires the first tab's export session and
+shows Reconnect Billing. That check exposed a blank alert because the shared
+BillingSessionExpired error had no message. Its default now explains expiry and
+reconnect, while preserving explicit messages. UI/service regressions check it.
+
+523 Home tests/60 suites, touched lint, library types and fresh build
+a0dc39142691cd6a pass. Native adapter 37 is unchanged; its 526-test result is the
+previous checkpoint, not a fresh rerun here. The expiry correction is not yet
+repackaged or browser accepted. Excel feature acceptance remains open until that
+check. Production/public demo are unchanged. Full pivot/Billing/clinical/external
+parity, imports, large-data/quota and streaming remain open.
+
 ## Native checkpoint Excel export source and private backend checkpoint (14 October 2026)
 
 Installed Odoo 16 pivot_controller.js and web/controllers/pivot.py were inspected.

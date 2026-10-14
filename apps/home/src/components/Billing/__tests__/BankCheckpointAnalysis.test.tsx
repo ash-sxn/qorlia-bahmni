@@ -362,6 +362,11 @@ describe('Statement checkpoint pivot and graph', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Download pivot Excel' }),
     );
+    expect(
+      await screen.findByText(
+        'Your Billing session expired. Reconnect to continue.',
+      ),
+    ).toHaveAttribute('role', 'alert');
     fireEvent.click(
       await screen.findByRole('button', { name: 'Reconnect Billing' }),
     );
