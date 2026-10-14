@@ -3,6 +3,19 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest protected release: checkpoint-pivot-flip-20261014, source 8a09c282 plus
+nine unchanged clinical hashes, build 4b2e0d119c5e3073. All 83 hosted JS/CSS and
+protected source/license assets match; existing gates/expiry/backends unchanged.
+Source archive: 6251d0fa896d6ba88a2a7048dd6a92a9ff1698ced224a606c91627046ae4b9e0.
+Browser monthly/daily flip, counts, flip-back, sparse/empty cells and no-results
+disabled control pass. Native daily INR 130/145 and per-journal INR 275 retained.
+Hosted native API/attachment/access checks and protected-record/bank read-back
+pass. No financial browser writes. Seven gateway checks pass; source 518 Home/
+60 suites/type/lint/build are recorded below. Native 36 not rerun. Negative/
+multi-currency/failed-refresh flip checks remain source-only; complete parity
+and expansion/XLSX/graph/drilldown/imports/large-data work are still open.
+Production/public demo unchanged, prior protected package retained for rollback.
+
 Latest source checkpoint (14 October): native pivot flip contract inspected;
 React flips period/journal axes, retains sparse cells and signed per-journal
 sums/currency labels, and disables flip during loading/error/empty results.

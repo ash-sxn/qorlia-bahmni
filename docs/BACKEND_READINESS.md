@@ -1,5 +1,29 @@
 # Qorlia React frontend backend readiness
 
+## Protected pivot transposition acceptance (14 October 2026)
+
+checkpoint-pivot-flip-20261014 is published from 8a09c282 plus the same nine
+preserved clinical file hashes. Build 4b2e0d119c5e3073 and all 83 hosted JS/CSS
+assets, protected source/licenses/manifest match. Source archive SHA-256:
+6251d0fa896d6ba88a2a7048dd6a92a9ff1698ced224a606c91627046ae4b9e0.
+The shared-code, expiry, backend destinations and cookie/session gates are
+unchanged. The previous analysis-r2 compose and package are retained for rollback.
+Actual hosted client checks pass native analysis/groupings/date filters, attachment
+bytes, checkpoints/ledgers, eight protected records, bank #37 and denied routes.
+
+Browser monthly/daily axis flips, counts and flipping back pass. Daily computed
+values remain INR 130 and INR 145, with INR 275 summed only within that journal.
+Empty checkpoint/no-journal cells retain their native semantics. No-results hides
+the table and disables flip; restoring the filter restores the matrix. The tab
+is left on the daily transposed pivot. No financial browser writes were made.
+Negative/multi-currency and failed-refresh flip-control cases are source tests,
+not browser acceptance claims. The seven gateway/config checks also pass.
+518 Home/60 suites and source/library type/lint/build results are from the source
+checkpoint below; native 36's prior 521-test result is not a fresh rerun.
+Production/public demo remain unchanged. Full objective is still incomplete:
+pivot expansion/XLSX, further graph modes/drilldown, imports/large-data testing,
+remaining Billing workflows, sync and clinical/external-product parity are open.
+
 ## Checkpoint pivot transposition source checkpoint (14 October 2026)
 
 The installed Odoo 16 PivotModel.flip and PivotView.Buttons contract was inspected:

@@ -1,5 +1,21 @@
 # Bahmni workflow parity ledger
 
+## 14 October protected pivot transposition acceptance
+
+- Published checkpoint-pivot-flip-20261014: 8a09c282 plus nine unchanged clinical
+  hashes, build 4b2e0d119c5e3073, all 83 JS/CSS/source/license assets verified.
+  Shared code/expiry/destinations/gates unchanged; analysis-r2 retained for rollback.
+- Hosted native analysis/attachments/checkpoints/ledgers and access checks pass.
+  Eight protected records and bank #37 remain unchanged during verification.
+  Browser monthly/daily flips, counts and flip-back pass with INR 130/145/275,
+  sparse cells and unassigned checkpoint preserved. Empty results disable flip;
+  restoring filters restores the matrix. No financial browser writes.
+- Seven gateway/config checks pass; source checkpoint's 518 Home/60 suites,
+  types/lint/build are recorded below. Native 36 not retested in full. Negative/
+  multi-currency/failed-refresh flip cases remain source-only. Expansion/XLSX,
+  graph/drilldown, imports/large-data and full parity remain open. No production
+  or public-demo changes.
+
 ## 14 October checkpoint pivot transposition source checkpoint
 
 - Installed native pivot flip/button contract inspected. Qorlia flips periods
