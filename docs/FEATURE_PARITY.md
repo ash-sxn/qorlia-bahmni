@@ -1,5 +1,18 @@
 # Bahmni workflow parity ledger
 
+## 14 October manual operation form integration in progress
+
+- Added native operation load/onchange/paged-choice contracts for saved and new
+  operation forms, with native field visibility, readonly/group rules, ordered
+  price changes and batch/expiry/quantity hooks. Hidden inventory fails closed;
+  onchange writes/callbacks roll back. Named routes and strict TypeScript boundary
+  added in source, without a generic stock write endpoint or new dependency.
+- write_ready=false. Atomic create/edit/delete review/save/recovery and the React
+  editor are not complete or exposed in the tester UI. Final native/HTTP acceptance
+  remains in progress. Tester UI stays on stock-quantities-20261014.
+- Native corrections of completed operations, validation/wizards, backorders/
+  returns/paging/POS/sync, full clinical and separate product parity still remain.
+
 ## 14 October native quantity preparation protected acceptance
 
 - Native Set quantities/Clear quantities added to the reviewed stock pipeline.

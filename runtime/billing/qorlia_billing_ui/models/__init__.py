@@ -3,6 +3,7 @@ from . import sale_order
 from . import order_workflow
 from . import order_deliveries
 from . import stock_reservation
+from . import stock_operation_form
 from . import account_move
 from . import payment_workflow
 from . import credit_workflow

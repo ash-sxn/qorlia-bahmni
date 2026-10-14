@@ -1,5 +1,37 @@
 # Qorlia React frontend backend readiness
 
+## Native stock-operation form integration in progress (14 October 2026)
+
+Adapter 42 adds order/transfer/move-scoped form load, native onchange and paged
+choice APIs for existing operations and unsaved operation defaults. The installed
+stock operation views, action context, move-line write/reservation behavior,
+product-expiry and Bahmni price/balance/batch hooks were inspected. The serial
+action's next-serial write is not invoked just to load form context. Native role,
+field, record and company checks apply; units, locations, batches, packages and
+owner choices use their operation domains. Hidden inventory fails closed instead
+of returning a partial balance. Ordered edits preserve cost markup followed by
+manual sale-price overrides. Onchange writes and transaction callbacks roll back.
+
+The TypeScript boundary validates identities, version, fields, native rules,
+relation labels and choice pages. Only three named form routes are added to the
+gateway source; no generic stock write route. No new dependency or component
+library. This form contract deliberately returns write_ready=false: atomic
+create/edit/delete previews, exact receipts/recovery, the actual React editor,
+hosted/browser acceptance and completed-operation corrections are still pending.
+It is not a released manual stock editor or complete fulfillment parity. The
+tester UI remains stock-quantities-20261014 until the integrated editor is ready.
+
+569 Home/66 suites, nine new boundary cases, source-based test/library types,
+implementation lint/diff, seven gateway/configuration guards and build
+ef34d8037cdb141f pass. Final source passes 16 focused native tests; its full native
+and actual HTTP acceptance are in progress. Earlier 562/565-test native passes
+precede the final whole-package field distinction and are not final-source claims.
+First failed runs restored adapter 41. Native name search (not unsearchable
+display_name or the internal Query object) and independent fixture creation fix
+the observed search/fixture failures. Purchase-linked defaults, completed stock
+corrections and large catalog/browser acceptance remain unverified.
+Production/public demo and the nine preserved clinical edits are unchanged.
+
 ## Native recorded-quantity preparation protected acceptance (14 October 2026)
 
 Adapter 41 extends the existing reviewed stock workflow with native Set quantities

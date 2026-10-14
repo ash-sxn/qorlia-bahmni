@@ -3,6 +3,25 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Manual stock-operation form layer in progress: adapter 42 adds scoped load,
+native onchange and paged choice APIs for saved and unsaved move operations.
+Native operation context is derived without executing the serial action's write.
+Field/group/record/company rules, relation domains, ordered price edits, quantity
+balance and batch/expiry hooks apply; hidden inventory fails closed. Native
+onchange writes/callbacks roll back. The TypeScript boundary and three named
+gateway routes are implemented in source. No generic stock writes or dependency.
+569 Home tests/66 suites, nine new boundary tests, source-based test/library types,
+implementation lint, seven gateway/configuration checks and build ef34d8037cdb141f
+pass. Final source's 16 focused native tests pass; full native and actual HTTP
+acceptance remain in progress. Earlier checkpoints passed 562 and 565 full tests,
+not a claim for the latest package-field correction. First failed runs restored
+adapter 41; native name search and test fixture corrections are retained.
+write_ready=false: atomic create/edit/delete preview/save/recovery and the React
+editor are still pending. Tester UI remains stock-quantities-20261014; new form
+endpoints are not yet hosted there. Purchase-linked receipt defaults, completed
+stock corrections, large-catalog paging and browser acceptance remain unverified.
+Production/public demo and the nine clinical edits are unchanged.
+
 Quantity preparation protected checkpoint: native adapter 41 supports
 Set quantities and Clear quantities through the existing reviewed stock pipeline.
 Native visibility/Stock User/field/write rules and selective behavior preserve

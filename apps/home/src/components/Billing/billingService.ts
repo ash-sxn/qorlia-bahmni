@@ -3536,6 +3536,242 @@ export const saveStockReservation = (request: StockReservationRequest) =>
 export const getStockReservationStatus = (request: StockReservationRequest) =>
   stockRequest('qorlia_transfer_status', request);
 
+export const stockOperationNumberFields = [
+  'qty_done',
+  'cost_price',
+  'sale_price',
+  'mrp',
+] as const;
+export const stockOperationRelationFields = [
+  'product_uom_id',
+  'lot_id',
+  'existing_lot_id',
+  'location_id',
+  'location_dest_id',
+  'package_id',
+  'result_package_id',
+  'owner_id',
+] as const;
+export const stockOperationTextFields = [
+  'lot_name',
+  'expiration_date',
+] as const;
+export const stockOperationFields = [
+  ...stockOperationNumberFields,
+  ...stockOperationRelationFields,
+  ...stockOperationTextFields,
+] as const;
+export type StockOperationField = (typeof stockOperationFields)[number];
+export type StockOperationValues = Record<
+  (typeof stockOperationNumberFields)[number],
+  number
+> &
+  Record<(typeof stockOperationRelationFields)[number], number | false> &
+  Record<(typeof stockOperationTextFields)[number], string | false>;
+export interface StockOperationSelection {
+  order_id: number;
+  transfer_id: number;
+  move_id: number;
+  operation_id: number | false;
+}
+export interface StockOperationEdit {
+  field: StockOperationField;
+  value: number | string | false;
+}
+export interface StockOperationFormRequest extends StockOperationSelection {
+  version: string;
+  edits: StockOperationEdit[];
+}
+export interface StockOperationForm extends StockOperationSelection {
+  version: string;
+  product: Relation;
+  state: string;
+  tracking: 'none' | 'lot' | 'serial';
+  values: StockOperationValues;
+  rules: Record<StockOperationField, { visible: boolean; readonly: boolean }>;
+  labels: Partial<
+    Record<(typeof stockOperationRelationFields)[number], Relation>
+  >;
+  reserved: number;
+  balance: number;
+  expiry_warning: boolean;
+  warning: string | false;
+  reason: string | false;
+  write_ready: false;
+}
+function checkedOperationSelection(value: StockOperationSelection) {
+  if (
+    !value ||
+    !stockId(value.order_id) ||
+    !stockId(value.transfer_id) ||
+    !stockId(value.move_id) ||
+    (value.operation_id !== false && !stockId(value.operation_id))
+  )
+    throw new Error('Select a saved order transfer, move and stock operation.');
+  return {
+    order_id: value.order_id,
+    transfer_id: value.transfer_id,
+    move_id: value.move_id,
+    operation_id: value.operation_id,
+  };
+}
+function validOperationValue(field: StockOperationField, value: unknown) {
+  if ((stockOperationNumberFields as readonly string[]).includes(field))
+    return typeof value === 'number' && Number.isFinite(value);
+  if ((stockOperationRelationFields as readonly string[]).includes(field))
+    return value === false || stockId(value);
+  return (
+    value === false ||
+    (typeof value === 'string' &&
+      value.length <= 10000 &&
+      (field !== 'expiration_date' ||
+        /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)))
+  );
+}
+function checkedOperationRequest(value: StockOperationFormRequest) {
+  const selection = checkedOperationSelection(value);
+  if (
+    !stockVersion(value.version) ||
+    !Array.isArray(value.edits) ||
+    value.edits.length > 100 ||
+    value.edits.some(
+      (edit) =>
+        !edit ||
+        Object.keys(edit).sort().join(',') !== 'field,value' ||
+        !stockOperationFields.includes(edit.field) ||
+        !validOperationValue(edit.field, edit.value),
+    )
+  )
+    throw new Error(
+      'Use the exact native stock form version and supported field edits.',
+    );
+  return {
+    ...selection,
+    version: value.version,
+    edits: value.edits.map((edit) => ({
+      field: edit.field,
+      value: edit.value,
+    })),
+  };
+}
+function checkedOperationForm(
+  data: StockOperationForm,
+  selection: StockOperationSelection,
+) {
+  if (
+    !data ||
+    Object.entries(selection).some(
+      ([key, value]) => data[key as keyof StockOperationSelection] !== value,
+    ) ||
+    !stockVersion(data.version) ||
+    !validRelation(data.product) ||
+    data.product === false ||
+    ![
+      'draft',
+      'waiting',
+      'confirmed',
+      'partially_available',
+      'assigned',
+      'done',
+      'cancel',
+    ].includes(data.state) ||
+    !['none', 'lot', 'serial'].includes(data.tracking) ||
+    data.write_ready !== false ||
+    !data.values ||
+    !data.rules ||
+    !data.labels ||
+    Object.keys(data.values).sort().join(',') !==
+      [...stockOperationFields].sort().join(',') ||
+    Object.keys(data.rules).sort().join(',') !==
+      [...stockOperationFields].sort().join(',') ||
+    !stockOperationFields.every(
+      (field) =>
+        validOperationValue(field, data.values[field]) &&
+        typeof data.rules[field]?.visible === 'boolean' &&
+        typeof data.rules[field]?.readonly === 'boolean' &&
+        (data.rules[field].visible || data.rules[field].readonly),
+    ) ||
+    !stockOperationRelationFields.every((field) =>
+      data.values[field] === false
+        ? data.labels[field] === undefined
+        : validRelation(data.labels[field]) &&
+          data.labels[field] !== false &&
+          data.labels[field]?.[0] === data.values[field],
+    ) ||
+    Object.keys(data.labels).some(
+      (field) =>
+        !(stockOperationRelationFields as readonly string[]).includes(field),
+    ) ||
+    ![data.reserved, data.balance].every(
+      (value) => typeof value === 'number' && Number.isFinite(value),
+    ) ||
+    typeof data.expiry_warning !== 'boolean' ||
+    !stockText(data.warning) ||
+    !stockText(data.reason)
+  )
+    throw new Error(
+      'Invalid native stock operation form. Reload the transfer.',
+    );
+  return data;
+}
+export async function getStockOperationForm(
+  selection: StockOperationSelection,
+) {
+  const exact = checkedOperationSelection(selection);
+  return checkedOperationForm(
+    await stockCall<StockOperationForm>('qorlia_operation_load', exact),
+    exact,
+  );
+}
+export async function changeStockOperationForm(
+  request: StockOperationFormRequest,
+) {
+  const exact = checkedOperationRequest(request);
+  const result = checkedOperationForm(
+    await stockCall<StockOperationForm>('qorlia_operation_onchange', exact),
+    checkedOperationSelection(exact),
+  );
+  if (result.version !== exact.version)
+    throw new Error(
+      'The native stock form version changed. Reload the transfer.',
+    );
+  return result;
+}
+export async function getStockOperationChoices(
+  request: StockOperationFormRequest,
+  field: (typeof stockOperationRelationFields)[number],
+  search = '',
+  offset = 0,
+) {
+  const exact = checkedOperationRequest(request);
+  if (
+    !stockOperationRelationFields.includes(field) ||
+    typeof search !== 'string' ||
+    search.length > 200 ||
+    !Number.isSafeInteger(offset) ||
+    offset < 0 ||
+    offset > 100000
+  )
+    throw new Error('Select a supported stock field and search page.');
+  const result = await stockCall<{
+    rows: [number, string][];
+    has_more: boolean;
+    offset: number;
+  }>('qorlia_operation_choices', { ...exact, field, search, offset });
+  if (
+    !result ||
+    !Array.isArray(result.rows) ||
+    result.rows.length > 25 ||
+    result.offset !== offset ||
+    typeof result.has_more !== 'boolean' ||
+    (result.has_more && result.rows.length !== 25) ||
+    !result.rows.every((row) => Array.isArray(row) && validRelation(row)) ||
+    new Set(result.rows.map((row) => row[0])).size !== result.rows.length
+  )
+    throw new Error('Invalid native stock field choices. Reload the search.');
+  return result;
+}
+
 export interface OrderWorkflow {
   id: number;
   name: string;
