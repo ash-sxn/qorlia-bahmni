@@ -10,16 +10,22 @@ role/company rules apply. A shared durable browser slot protects both operation
 and reservation requests. Deletion recovery uses its receipt after the row is
 gone. Preparation does not validate delivery or post accounting.
 
-594 Home tests/69 suites, 45 focused frontend tests, seven source-based test types,
-library types, touched lint/diff, seven gateway checks and development build
-744405c851222e3f pass. Installed source/test hashes match native adapter 43; 28
-focused/578 full checks pass with no failures/errors/skips and analytics restored.
-Actual private TypeScript create/edit/delete, preview rollback, accepted status
-and identical retry pass. Independent native reads verify three new operation
-receipts, sixteen unchanged reservation receipts, no remaining operation, physical
-ten/demand five, zero final reserved/done/delivered and unchanged protected finance,
-valuation, bank and other stock. Protected tester editor publication/browser
-acceptance remains pending. Full fulfillment and Billing parity remain open.
+The protected stock-operation-edit-r2-20261014 build is published from fb910d43
+plus nine preserved clinical hashes: build 01c92a12bdb90486, 83 matching assets
+and 1988 source files. Existing gates/code/expiry/destinations remain unchanged.
+595 Home tests/69 suites, seven source-based test types, library types, touched
+lint/diff and build pass. Installed source/test hashes match native adapter 43;
+its prior 28 focused/578 full checks have no failures/errors/skips and analytics
+is restored. Native tests were not rerun for the UI-only choice correction.
+Private TypeScript and published browser create/edit/delete, rollback preview,
+receipt recovery, identical retry and close/full-reload recovery pass. Browser
+house clear/reselect correctly updates native batch/expiry preview; discard makes
+no new save. Final independent reads verify six operation receipts (three API,
+three browser), sixteen unchanged preparation receipts, no remaining operation,
+physical ten/demand five, zero reserved/done/delivered and unchanged protected
+finance, valuation, bank and other stock. Hosted contracts/denial and earlier
+stock/checkpoint/attachment/ledger/eight Excel regressions pass. Package/large-
+catalog browser acceptance, full fulfillment and Billing parity remain open.
 See [current readiness](../../docs/BACKEND_READINESS.md) and
 [developer architecture](../../docs/architecture.md).
 

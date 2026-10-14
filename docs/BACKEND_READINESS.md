@@ -1,5 +1,29 @@
 # Qorlia React frontend backend readiness
 
+## Final protected operation choice acceptance (14 October 2026)
+
+The protected review now serves stock-operation-edit-r2-20261014 from fb910d43
+plus nine preserved clinical hashes. Build 01c92a12bdb90486, 83 served assets,
+1988 source files and licences match. Archive SHA-256 is
+c89577d86fd10b02fb2d4fd68d2a44a9a825778c306e401f9591d559bebae9d0.
+Existing gates/code/expiry/destinations and earlier rollback artifacts remain.
+Hosted operation contracts, rollback preview, deleted-row receipts/status/exact
+retries, named-route denial and earlier stock/checkpoint/attachment/ledger/eight
+Excel checks pass.
+
+Actual browser house clear produces an unset batch in native preview; reselect
+restores its label and expiry. Unsaved discard returns to clean parent state,
+without saving or retaining a pending request. A fresh independent native snapshot
+exactly matches the prior browser-final snapshot: six operation receipts, sixteen
+preparation receipts, no operation, physical ten/demand five, zero reserved/done/
+delivered, confirmed transfer and unchanged protected finance/valuation/bank/stock.
+
+Frontend checks: 595 Home/69 suites, seven test-source types, library types,
+touched lint/diff and build. Native adapter 43 is unchanged; its installed-hash-
+matched 28 focused/578 full pass was not rerun for a frontend-only correction.
+This supersedes pending choice acceptance below, not full Billing or fulfillment
+acceptance. Package/large-catalog cases and whole-product gates remain open.
+
 ## Protected manual operation editor acceptance (14 October 2026)
 
 stock-operation-edit-20261014 is published from 59ba37b6 plus nine preserved

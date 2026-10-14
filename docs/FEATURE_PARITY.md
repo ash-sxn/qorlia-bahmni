@@ -1,5 +1,29 @@
 # Bahmni workflow parity ledger
 
+## 14 October final protected operation choice acceptance
+
+- Published stock-operation-edit-r2-20261014 from fb910d43 plus the same nine
+  preserved clinical hashes. Build 01c92a12bdb90486, 83 served assets and 1988
+  archived source files match. Source archive SHA-256:
+  c89577d86fd10b02fb2d4fd68d2a44a9a825778c306e401f9591d559bebae9d0.
+  Gates, code, expiry and destinations are unchanged; previous packages retained.
+- Hosted form/onchange/choice/rollback preview, exact operation receipts/status/
+  retries after deletion, six named-route denials and earlier stock/checkpoint/
+  attachment/ledger/eight Excel regression checks pass.
+- Browser house clear removes the native batch in the reviewed effects. Reselecting
+  it restores its native label and expiry. Unsaved discard returns to a clean
+  parent with no operation or recovery request. No new save in this choice test.
+- Independent final native snapshot exactly matches the earlier browser-final
+  snapshot: six operation receipts, sixteen preparation receipts, no operations,
+  ten physical/five demanded units, zero reserved/done/delivered, confirmed transfer
+  and unchanged protected accounting/valuation/bank/other stock.
+- Fresh frontend checks remain 595 Home tests/69 suites, seven test-source types,
+  library types, touched lint/diff and build. Native adapter 43 is unchanged; its
+  exact-source 28 focused/578 full pass was not rerun for the UI-only correction.
+- This supersedes the pending choice publication/browser gates below. Full
+  fulfillment, package/large-catalog acceptance, Billing/clinical/separate-product
+  parity remain open. PR #4 stays draft; production/public demo unchanged.
+
 ## 14 October protected operation editor acceptance and choice correction
 
 - Published stock-operation-edit-20261014 from 59ba37b6 plus nine unchanged
