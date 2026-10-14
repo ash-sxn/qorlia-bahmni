@@ -51,6 +51,8 @@ For Appointments, start with [list](../apps/appointments/src/pages/AppointmentLi
 
 Deliverable: a small expected/actual workflow table with source links and sanitized evidence.
 
+Use the [step-by-step first contribution walkthrough](first-contribution.md) if you are unsure how to follow that call chain. It begins with a read, not a patient or accounting write.
+
 ### Then: reproduce and test
 
 Choose one real discrepancy. Reproduce it consistently. Add a test that fails for the right reason. Change the smallest relevant code. Make the test pass, run adjacent checks and replay the approved synthetic workflow through save and reload.

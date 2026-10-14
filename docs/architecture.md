@@ -92,3 +92,11 @@ OpenELIS, PACS, analytics and outreach are separate systems with their own sessi
 ## Limits
 
 This architecture does not establish production readiness, complete offline operation, automatic clinical/ERP synchronization, autonomous clinical AI or regulatory compliance. PWA-related source exists, but offline caching/synchronization and privacy require explicit acceptance. See [readiness](BACKEND_READINESS.md) and [parity](FEATURE_PARITY.md).
+
+## How to read work in progress
+
+Record four versions separately: your source commit, frontend build, backend adapter/modules and installation configuration. Also record the target environment. They do not advance together automatically.
+
+At the 15 October 2026 documentation checkpoint, the protected Billing tester remains on adapter 43. Committed adapter 44 adds native confirmation load/rollback preview, not a finished browser confirmation flow. Adapter 45 save/status work is still local verification work and is not the hosted tester version. Neither a local manifest nor this document is release evidence. See the [confirmation contract](../runtime/billing/STOCK_CONFIRMATION.md) for the committed checkpoint and its remaining gates.
+
+When learning a feature, ask: does it exist only as source, pass mocked tests, pass native model tests, pass actual HTTP checks, or pass independent browser acceptance? Report the level you observed. New team members should not deploy unaccepted source or change the running tester to make their local work match.

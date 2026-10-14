@@ -20,6 +20,10 @@ Read these in order. Each guide links back here and to the next step.
 | 8    | [Testing guide](docs/testing-guide.md)               | Runnable checks, synthetic evidence and what complete means                  |
 | 9    | [Team workflow](docs/team-workflow.md)               | Phases, ownership, task allocation, daily updates and vendor evidence        |
 
+Then follow the [first contribution walkthrough](docs/first-contribution.md) and use the [task brief template](docs/task-brief-template.md) before beginning implementation. These turn the architecture into a concrete exercise and a reviewable assignment.
+
+These updated guides are on `codex/billing-delivery-parity`. If GitHub opens the older default `main` README, select that development branch to read the current guides. A documentation branch and a task's approved code base are different: do not start from unfinished Billing code merely to obtain these guides.
+
 No production credentials, paid AI account or new server is required to start learning the source. Real workflow testing requires approved synthetic backend access. Do not disable authentication to bypass that prerequisite.
 
 ## Current development status

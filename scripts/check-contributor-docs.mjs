@@ -17,6 +17,8 @@ const files = [
   "docs/api-integration-guide.md",
   "docs/testing-guide.md",
   "docs/team-workflow.md",
+  "docs/first-contribution.md",
+  "docs/task-brief-template.md",
 ];
 let links = 0;
 for (const name of files) {

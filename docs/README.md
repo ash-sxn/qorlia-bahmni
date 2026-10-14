@@ -13,6 +13,8 @@
 - [Contribution workflow](../CONTRIBUTING.md)
 - [Testing and acceptance](testing-guide.md)
 - [Team allocation and monitoring](team-workflow.md)
+- [First contribution: trace an appointment read](first-contribution.md)
+- [Copyable task and feature brief](task-brief-template.md)
 
 ## Current evidence and runtime
 
