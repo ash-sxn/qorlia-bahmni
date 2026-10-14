@@ -3,7 +3,7 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Quantity preparation source/private API checkpoint: native adapter 41 supports
+Quantity preparation protected checkpoint: native adapter 41 supports
 Set quantities and Clear quantities through the existing reviewed stock pipeline.
 Native visibility/Stock User/field/write rules and selective behavior preserve
 partial entries, operation units and batch conditions. No physical stock,
@@ -14,8 +14,20 @@ pass. Final native 17 focused/550 full tests pass without failures/errors/skips;
 analytics restored, installed source/test hashes match and backups retained.
 Actual private HTTP reserve/set/clear/unreserve preview/save/status/retries and
 independent native reads pass: four new receipts, unchanged physical stock,
-protected finance/bank/other stock and no delivery. SSH forward stopped. Hosted
-quantity controls/browser saves pending. Manual edit/onchanges, procurement-aware
+protected finance/bank/other stock and no delivery. SSH forward stopped. Published
+stock-quantities-20261014 from f7b26e7d plus nine unchanged clinical hashes, build
+ed33b71e43152280, 83 matching assets/source/licences; source archive
+4a9672d96825d55243f54c1f577cdce72ef1bc5c52d48d7ad3202ea7c19252a2. Gates/code/
+expiry/destinations unchanged, previous artifact/compose retained. Hosted exact
+receipt/status/retry/denial and earlier transfer/checkpoint/attachment/ledger/eight
+Excel checks pass. Browser reserve/set/clear/unreserve saves and previews, Set
+close/full-reload recovery/status/finish and parent refresh pass. Independent native
+read-back proves eight new receipts (four API/four browser), sixteen total, ten
+physical/five demanded units, zero final reservation/recorded done/delivery,
+confirmed transfer, no operations and unchanged protected finance/bank/other stock.
+No financial or delivery browser action. Package cases remain native/service/UI
+tests, not packaged-fixture browser acceptance. Large inventory and injected
+browser failure/expiry remain unverified. Manual edit/onchanges, procurement-aware
 confirmation, validation/wizards/backorders/returns/paging/POS/sync and full parity
 remain. Production/public demo and clinical edits unchanged; PR #4 draft.
 

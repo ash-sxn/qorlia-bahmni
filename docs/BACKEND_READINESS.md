@@ -1,6 +1,6 @@
 # Qorlia React frontend backend readiness
 
-## Native recorded-quantity preparation source acceptance (14 October 2026)
+## Native recorded-quantity preparation protected acceptance (14 October 2026)
 
 Adapter 41 extends the existing reviewed stock workflow with native Set quantities
 and Clear quantities. Installed picking/move button visibility and implementations
@@ -31,8 +31,29 @@ Actual private TypeScript HTTP reserve/set/clear/unreserve preview/save/status a
 identical retries pass. Independent native read-back verifies four new receipts,
 ten physical/five demanded units, zero final reservation/recorded done/delivery,
 confirmed transfer, unchanged eight protected records, financial/valuation counts,
-bank #37 and other stock. Temporary SSH forward stopped. Hosted quantity controls
-and browser saves still pending at this source checkpoint.
+bank #37 and other stock. Temporary SSH forward stopped.
+
+Published protected artifact stock-quantities-20261014 from f7b26e7d plus the nine
+unchanged clinical hashes. Build ed33b71e43152280 and all 83 served assets match;
+source archive 4a9672d96825d55243f54c1f577cdce72ef1bc5c52d48d7ad3202ea7c19252a2.
+Access gates/code/expiry/destinations remain unchanged, with the previous artifact
+and compose retained for rollback. Hosted exact receipt/status/identical retry,
+denied stock routes and prior transfer/checkpoint/attachment/ledger/eight Excel
+regressions pass before browser writes.
+
+The browser completes native reserve, Set quantities, Clear quantities and
+unreserve previews/saves. Set preserves five reserved units and ten physical
+units while recording five done units. Clear removes those recorded quantities
+without releasing the reservation. Units, batch and expiry remain native.
+Closing before Finish, full page reload, exact request recovery/status/finish
+and refreshed parent quantities pass for Set. Independent native read-back
+confirms eight new receipts since the pre-increment baseline (four private API,
+four browser), sixteen total, zero final reservation/recorded done/delivery,
+confirmed transfer, no remaining operations and unchanged protected records,
+financial/valuation counts, bank #37 and other stock. No invoice/payment or
+delivery browser action. Package relations have native/service/UI tests, not
+browser acceptance on a packaged fixture. Large-inventory and injected browser
+failure/expiry cases remain unverified.
 
 Manual quantity/batch/location/package editing, pricing/expiry onchange UI,
 confirmation with procurement/replenishment effects, native validation/Bahmni

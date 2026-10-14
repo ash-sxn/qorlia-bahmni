@@ -1,6 +1,6 @@
 # Bahmni workflow parity ledger
 
-## 14 October native quantity preparation source and private HTTP acceptance
+## 14 October native quantity preparation protected acceptance
 
 - Native Set quantities/Clear quantities added to the reviewed stock pipeline.
   Native visibility, Stock User/write-field permissions, selective zero-done and
@@ -14,7 +14,18 @@
   identical retries pass. Four new receipts, no physical/delivery/financial
   effects; protected records/bank/other stock unchanged. SSH forward stopped.
 - Earlier batch-change fixture released its reservation; corrected native unbatched
-  fixture passes. Hosted quantity controls and browser save acceptance pending.
+  fixture passes.
+- Published stock-quantities-20261014 from f7b26e7d plus nine unchanged clinical
+  hashes, build ed33b71e43152280 and 83 matching assets/source/licences. Existing
+  gates/code/expiry/destinations unchanged; previous build retained for rollback.
+- Hosted receipt/status/identical retries, denied stock routes and earlier
+  transfer/checkpoint/attachment/ledger/eight Excel regressions pass. Browser
+  reserve/set/clear/unreserve previews and saves, Set close/full-reload recovery,
+  exact status/finish and refreshed parent values pass. No financial/delivery action.
+- Independent native read-back proves eight new receipts (four API/four browser),
+  sixteen total; physical ten/demand five, final reserved/recorded done/delivered
+  zero, confirmed transfer, no operations and protected finance/bank/stock unchanged.
+  Packaged-fixture browser, large inventory and injected failure/expiry remain open.
 - Manual editing/onchanges, procurement-aware confirmation, validation/wizards,
   backorders/returns/paging/POS/sync and full parity remain. No production/public
   demo or unrelated clinical change. PR #4 remains draft.
