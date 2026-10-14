@@ -1,5 +1,32 @@
 # Qorlia React frontend backend readiness
 
+## Protected Excel r2 acceptance (14 October 2026)
+
+checkpoint-excel-r2-20261014 is published from 89f8da53 plus the same nine
+clinical hashes. Build a0dc39142691cd6a and all 83 hosted JS/CSS assets,
+protected source, licences and manifest match. Source archive SHA-256:
+81588bb19ed5fa50a3ef35b537e565bb4466fde1ac61403cec2745aa3f221e1a.
+Shared access code, expiry, backend destinations and session gates are unchanged.
+Initial Excel and pivot packages/compose remain available for rollback.
+
+Final hosted TypeScript checks pass all eight workbook measure/axis variants,
+independent native ZIP/XML values, stale-version denial, native reads and access
+guards. Eight protected records, bank #37, checkpoints/ledgers and attachments
+remain unchanged. Browser replay shows the readable expiry alert, opens reconnect,
+restores the account and downloads a matching computed-balance workbook. Three
+actual browser files were independently inspected across the initial/final
+packages. Initial package's flipped count, unapplied-filter exclusion, empty
+result disabling/restoration and feedback resets passed. No financial browser
+writes, temporary tabs closed; final Billing tab stays on the working pivot.
+
+523 Home/60 suites, seven gateway/config checks, library and three source-test
+types, touched lint/diff and fresh build pass. Native 37's 526-test run is the
+prior source/private-backend checkpoint; its code is unchanged. This is scoped
+download/expiry acceptance, not full Excel, pivot, Billing or product completion.
+Large-data/quota/streaming, browser stale-response/unmount acceptance, expansion,
+graph modes/drilldown, imports, stock/POS/clinical sync and full clinical/external
+parity remain open. PR #2 stays draft; no production/public-demo change.
+
 ## Protected Excel download verification and expiry correction (14 October 2026)
 
 Published checkpoint-excel-20261014 from b3617225 plus the same nine preserved

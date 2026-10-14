@@ -1,5 +1,24 @@
 # Bahmni workflow parity ledger
 
+## 14 October protected Excel r2 download and expiry acceptance
+
+- Published checkpoint-excel-r2-20261014 from 89f8da53 plus nine preserved
+  clinical hashes, build a0dc39142691cd6a; all 83 hosted/source/licence assets
+  verified. Shared code, expiry, backends and session gates unchanged. Prior
+  Excel/pivot packages retained for rollback.
+- Final hosted TypeScript checks all eight XLSX measure/axis variants against
+  independent native cells, stale-version denial and access restrictions.
+  Checkpoints/ledgers/attachments, bank #37 and eight protected records unchanged.
+- Browser expiry replay now shows its message, reconnects and downloads a
+  matching balance workbook. Three actual browser files independently checked
+  across initial/final packages; initial flipped-count/unapplied-filter/empty
+  result/feedback checks pass. No financial browser writes; extra tabs closed.
+- 523 Home/60 suites, seven guards, library/source-test types, lint/diff/build
+  pass. Native 37 unchanged; prior 526 native tests not rerun. Scoped acceptance
+  only. Large-data/quota/streaming and browser stale-response/unmount coverage
+  remain open, as do expansion, graph/drilldown/imports and full Billing,
+  clinical/external parity. PR #2 stays draft; production/public demo unchanged.
+
 ## 14 October hosted Excel checks and discovered expiry feedback gap
 
 - Published checkpoint-excel-20261014 from b3617225 plus nine unchanged clinical

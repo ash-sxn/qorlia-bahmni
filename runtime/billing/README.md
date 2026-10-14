@@ -3,6 +3,20 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Current protected review: checkpoint-excel-r2-20261014, source 89f8da53 plus nine
+preserved clinical hashes, build a0dc39142691cd6a and 83 matching assets. Source
+archive: 81588bb19ed5fa50a3ef35b537e565bb4466fde1ac61403cec2745aa3f221e1a.
+Existing shared-code/expiry/backends/session gates unchanged; prior builds retained.
+Final hosted TypeScript acceptance checks eight native-value XLSX variants and
+stale/access denial. Browser expiry message/reconnect and a post-reconnect balance
+download pass; three browser files independently inspected across both builds.
+Initial flipped counts, unapplied filters, empty results and feedback resets pass.
+No financial browser writes or production/public-demo changes; native 37 unchanged.
+523 Home/60 suites, seven guards, types/lint/diff/build pass. Prior 526 native
+tests are not rerun here. PR #2 remains draft for remaining quota/large-data and
+browser stale-response/unmount coverage. Full pivot/Billing/clinical/external
+parity, imports and streaming still remain open.
+
 Latest hosted checkpoint (14 October): checkpoint-excel-20261014, b3617225 plus
 nine preserved clinical hashes, build 35fe116aafef3ed3 and 83 matching assets.
 Source archive: 6f3ad8c80828bacc9cedcf340d4a795a73ea1c0b6eab237f6900fd214123ac22.
