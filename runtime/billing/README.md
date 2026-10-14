@@ -3,6 +3,16 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest source checkpoint (14 October): native pivot flip contract inspected;
+React flips period/journal axes, retains sparse cells and signed per-journal
+sums/currency labels, and disables flip during loading/error/empty results.
+No additional API requests, financial writes or dependencies. 518 Home/60 suites,
+types/lint/diff and review build 4b2e0d119c5e3073 pass. Direct Jest bypasses the
+existing Nx circular dependent-build graph; build skips dependency tasks/sync.
+Yarn/Browserslist/development-size warnings remain. Native 36 unchanged and not
+rerun. Source only, not hosted/browser accepted yet. Expansion/XLSX/graph/
+drilldown and full parity remain open.
+
 Latest protected acceptance (14 October): checkpoint-analysis-r2-20261012 uses
 646a67fa plus nine preserved clinical edits, build 90825d4fd53dfa3f, verified
 83 JS/CSS/source/license assets and unchanged gates/expiry/backends. Source

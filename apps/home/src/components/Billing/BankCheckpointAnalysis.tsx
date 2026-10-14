@@ -66,6 +66,7 @@ export function BankCheckpointAnalysis({
     setDraft((prior) => ({ ...prior, [field]: next }));
   };
   const [view, setView] = useState<'pivot' | 'graph'>('pivot');
+  const [transposed, setTransposed] = useState(false);
   const [measure, setMeasure] = useState<Measure>('balance_end');
   const result = useQuery({
     queryKey: ['billing', 'checkpoint-analysis', uid, filters],
@@ -84,6 +85,15 @@ export function BankCheckpointAnalysis({
   const cells = new Map(
     rows.map((row) => [JSON.stringify([journalKey(row), periodKey(row)]), row]),
   );
+  const columns = transposed ? periods : journals;
+  const pivotRows = transposed ? journals : periods;
+  const columnKey = transposed ? periodKey : journalKey;
+  const rowKey = transposed ? journalKey : periodKey;
+  const journalTotals = new Map<string, number>();
+  for (const row of rows) {
+    const key = journalKey(row);
+    journalTotals.set(key, (journalTotals.get(key) ?? 0) + row[measure]);
+  }
   return (
     <section className={styles.card} aria-label="Statement checkpoint analysis">
       <h2>Statement checkpoint analysis</h2>
@@ -192,6 +202,16 @@ export function BankCheckpointAnalysis({
         >
           Graph
         </Button>
+        {view === 'pivot' ? (
+          <Button
+            kind="tertiary"
+            aria-pressed={transposed}
+            disabled={result.isFetching || result.isError || !rows.length}
+            onClick={() => setTransposed((prior) => !prior)}
+          >
+            Flip pivot axes
+          </Button>
+        ) : null}
         <label className={styles.select} htmlFor="analysis-measure">
           Measure
           <select
@@ -240,26 +260,48 @@ export function BankCheckpointAnalysis({
               tabIndex={0}
             >
               <table>
-                <caption>{measures[measure]} by period and journal</caption>
+                <caption>
+                  {measures[measure]} by{' '}
+                  {transposed ? 'journal and period' : 'period and journal'}
+                </caption>
                 <thead>
                   <tr>
-                    <th scope="col">Period</th>
-                    {journals.map((row) => (
-                      <th scope="col" key={journalKey(row)}>
-                        {journalName(row)}
-                        <br />
-                        {row.currency_id
-                          ? row.currency_id[1]
-                          : 'No journal currency'}
+                    <th scope="col">{transposed ? 'Journal' : 'Period'}</th>
+                    {columns.map((row) => (
+                      <th scope="col" key={columnKey(row)}>
+                        {transposed ? row.period_label : journalName(row)}
+                        {!transposed ? (
+                          <>
+                            <br />
+                            {row.currency_id
+                              ? row.currency_id[1]
+                              : 'No journal currency'}
+                          </>
+                        ) : null}
                       </th>
                     ))}
+                    {transposed ? (
+                      <th scope="col">Sum of checkpoint values</th>
+                    ) : null}
                   </tr>
                 </thead>
                 <tbody>
-                  {periods.map((period) => (
-                    <tr key={periodKey(period)}>
-                      <th scope="row">{period.period_label}</th>
-                      {journals.map((journal) => {
+                  {pivotRows.map((group) => (
+                    <tr key={rowKey(group)}>
+                      <th scope="row">
+                        {transposed ? journalName(group) : group.period_label}
+                        {transposed ? (
+                          <>
+                            <br />
+                            {group.currency_id
+                              ? group.currency_id[1]
+                              : 'No journal currency'}
+                          </>
+                        ) : null}
+                      </th>
+                      {columns.map((column) => {
+                        const journal = transposed ? group : column;
+                        const period = transposed ? column : group;
                         const row = cells.get(
                           JSON.stringify([
                             journalKey(journal),
@@ -267,34 +309,41 @@ export function BankCheckpointAnalysis({
                           ]),
                         );
                         return (
-                          <td key={journalKey(journal)}>
+                          <td key={columnKey(column)}>
                             {row
                               ? valueLabel(row[measure], row, measure)
                               : 'No checkpoints'}
                           </td>
                         );
                       })}
+                      {transposed ? (
+                        <td>
+                          {valueLabel(
+                            journalTotals.get(journalKey(group)) ?? 0,
+                            group,
+                            measure,
+                          )}
+                        </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>
-                <tfoot>
-                  <tr>
-                    <th scope="row">Sum of checkpoint values</th>
-                    {journals.map((journal) => (
-                      <td key={journalKey(journal)}>
-                        {valueLabel(
-                          rows
-                            .filter(
-                              (row) => journalKey(row) === journalKey(journal),
-                            )
-                            .reduce((sum, row) => sum + row[measure], 0),
-                          journal,
-                          measure,
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                </tfoot>
+                {!transposed ? (
+                  <tfoot>
+                    <tr>
+                      <th scope="row">Sum of checkpoint values</th>
+                      {journals.map((journal) => (
+                        <td key={journalKey(journal)}>
+                          {valueLabel(
+                            journalTotals.get(journalKey(journal)) ?? 0,
+                            journal,
+                            measure,
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  </tfoot>
+                ) : null}
               </table>
             </div>
           ) : (

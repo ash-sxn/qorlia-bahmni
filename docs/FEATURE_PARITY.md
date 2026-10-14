@@ -1,5 +1,18 @@
 # Bahmni workflow parity ledger
 
+## 14 October checkpoint pivot transposition source checkpoint
+
+- Installed native pivot flip/button contract inspected. Qorlia flips periods
+  and journals without a new API call. Sparse cells, negative values, currency
+  labels and per-journal sums are preserved. Loading/error/empty results disable
+  the flip; no mixed-currency totals are invented.
+- 518 Home/60 suites, source/test/library types, lint/diff and development build
+  4b2e0d119c5e3073 pass. Nx test's circular dependency was bypassed with direct
+  Jest; build skipped dependency tasks/sync. Yarn/Browserslist/size warnings
+  remain. Native 36 unchanged, full native suite not rerun.
+- Source only; hosted artifact remains analysis-r2. Pivot expansion/XLSX,
+  graph/drilldown, large-data and whole-product parity remain open.
+
 ## 14 October corrected analysis hosted acceptance
 
 - Protected checkpoint-analysis-r2-20261012 matches source 646a67fa plus nine

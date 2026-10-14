@@ -118,6 +118,68 @@ describe('Statement checkpoint pivot and graph', () => {
     expect(Number(bars[1].getAttribute('x'))).toBe(100);
     expect(get).toHaveBeenCalledTimes(1);
   });
+  it('flips both axes and retains sparse cells and per-journal totals without mixing currencies', async () => {
+    const data = fixture();
+    data.total_count = 4;
+    data.rows.push({
+      ...data.rows[0],
+      period_label: 'February 2026',
+      period_from: '2026-02-01',
+      period_to: '2026-03-01',
+      count: 1,
+      balance_end: 70,
+    });
+    get.mockResolvedValue(
+      data as Awaited<ReturnType<typeof getCheckpointAnalysis>>,
+    );
+    show();
+    await screen.findByRole('table');
+    const flip = screen.getByRole('button', { name: 'Flip pivot axes' });
+    fireEvent.click(flip);
+    const table = screen.getByRole('table', {
+      name: 'Computed ending balance by journal and period',
+    });
+    expect(flip).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      within(table).getByRole('columnheader', { name: 'January 2026' }),
+    ).toBeInTheDocument();
+    expect(
+      within(table).getByRole('columnheader', { name: 'February 2026' }),
+    ).toBeInTheDocument();
+    const bank = within(table)
+      .getByRole('rowheader', { name: /Synthetic INR bank INR/ })
+      .closest('tr')!;
+    const cash = within(table)
+      .getByRole('rowheader', { name: /Synthetic USD cash USD/ })
+      .closest('tr')!;
+    expect(
+      within(bank)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent),
+    ).toEqual(['-₹30.00', '₹70.00', '₹40.00']);
+    expect(
+      within(cash)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent),
+    ).toEqual(['No checkpoints', '$50.00', '$50.00']);
+    expect(table.querySelector('tfoot')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Measure'), {
+      target: { value: 'count' },
+    });
+    expect(
+      within(bank)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent),
+    ).toEqual(['2', '1', '3']);
+    fireEvent.click(flip);
+    expect(
+      screen.getByRole('table', {
+        name: 'Checkpoint count by period and journal',
+      }),
+    ).toBeInTheDocument();
+    expect(flip).toHaveAttribute('aria-pressed', 'false');
+    expect(get).toHaveBeenCalledTimes(1);
+  });
   it('applies date/status/type/grouping filters only on submission', async () => {
     show();
     await screen.findByRole('table');
@@ -212,6 +274,9 @@ describe('Statement checkpoint pivot and graph', () => {
       /Previous analysis is hidden until a successful reload/,
     );
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Flip pivot axes' }),
+    ).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Reconnect Billing' }));
     expect(reconnect).toHaveBeenCalledTimes(1);
   });
@@ -221,5 +286,8 @@ describe('Statement checkpoint pivot and graph', () => {
     await screen.findByText('No checkpoints match these analysis filters.');
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Flip pivot axes' }),
+    ).toBeDisabled();
   });
 });

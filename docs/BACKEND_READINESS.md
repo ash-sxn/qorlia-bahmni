@@ -1,5 +1,26 @@
 # Qorlia React frontend backend readiness
 
+## Checkpoint pivot transposition source checkpoint (14 October 2026)
+
+The installed Odoo 16 PivotModel.flip and PivotView.Buttons contract was inspected:
+flip swaps row/column groups after pending reloads. The Qorlia pivot now offers
+the same axis switch for its period/journal matrix using already authorized
+native aggregates. Both orientations retain missing cells, journal currency
+labels, negative values and separate per-journal sums. Transposition does not
+refetch or mutate records. The control is disabled during fetching, failure or
+empty results. No mixed-currency period/grand total is added.
+
+518 Home tests/60 suites, source-based touched-test types, Home library types,
+touched lint/diff and build 4b2e0d119c5e3073 pass. Direct Jest was used after Nx
+test hit an existing circular dependent-build graph; TypeScript config loading
+needed isolated ts-node options. Nx built the development/source review bundle
+with dependency tasks and sync skipped. Missing Yarn, dated Browserslist and
+development bundle-size warnings remain. No dependency or backend change.
+Native 36's earlier 521 tests were not rerun. This transposition change is not
+yet packaged/hosted/browser accepted. The protected host remains the accepted
+analysis-r2 artifact below. Pivot expansion/XLSX, other graph modes/drilldown,
+large-data acceptance and complete product parity remain open.
+
 ## Corrected protected analysis browser acceptance (14 October 2026)
 
 The protected host now serves checkpoint-analysis-r2-20261012 from 646a67fa
