@@ -1,8 +1,10 @@
 import { Button } from '@bahmni/design-system';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import styles from './BillingPage.module.scss';
 import { BillingSessionExpired, getOrderDeliveries } from './billingService';
+import { StockReservationModal } from './StockReservationModal';
+import { loadStockReservationRecovery } from './stockReservationRecovery';
 
 const transferStates = {
   draft: 'Draft',
@@ -26,7 +28,19 @@ export function OrderDeliveriesPanel({
   close: () => void;
   reconnect: () => void;
 }) {
+  const client = useQueryClient();
   const [transferId, setTransferId] = useState<number | null>(null);
+  const [reservation, setReservation] = useState<{
+    orderId: number;
+    transferId: number;
+  } | null>(null);
+  const recovery = useQuery({
+    queryKey: ['billing', 'reservation-recovery', uid],
+    queryFn: () => loadStockReservationRecovery(uid),
+    retry: false,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
+  });
   const result = useQuery({
     queryKey: ['billing', 'order-deliveries', uid, orderId],
     queryFn: () => getOrderDeliveries(orderId),
@@ -45,6 +59,19 @@ export function OrderDeliveriesPanel({
         an invoice or record a payment.
       </p>
       <div className={styles.toolbar}>
+        {recovery.data ? (
+          <Button
+            kind="tertiary"
+            onClick={() =>
+              setReservation({
+                orderId: recovery.data!.order_id,
+                transferId: recovery.data!.transfer_id,
+              })
+            }
+          >
+            Resume reservation request
+          </Button>
+        ) : null}
         <Button kind="tertiary" onClick={close}>
           Back to order details
         </Button>
@@ -61,6 +88,7 @@ export function OrderDeliveriesPanel({
           </Button>
         ) : null}
       </div>
+      {recovery.isError ? <p role="alert">{recovery.error.message}</p> : null}
       {result.isFetching ? (
         <p role="status">Loading native order transfers...</p>
       ) : result.isError ? (
@@ -132,6 +160,14 @@ export function OrderDeliveriesPanel({
           ) : transfer ? (
             <>
               <h3>{transfer.name}</h3>
+              <Button
+                kind="tertiary"
+                onClick={() =>
+                  setReservation({ orderId, transferId: transfer.id })
+                }
+              >
+                Review stock reservation
+              </Button>
               <p>
                 Status: {transferStates[transfer.state]} · Company:{' '}
                 {label(transfer.company)}
@@ -255,6 +291,21 @@ export function OrderDeliveriesPanel({
             </p>
           )}
         </>
+      ) : null}
+      {reservation ? (
+        <StockReservationModal
+          key={`${uid}:${reservation.orderId}:${reservation.transferId}`}
+          uid={uid}
+          orderId={reservation.orderId}
+          transferId={reservation.transferId}
+          close={() => {
+            setReservation(null);
+            void client.invalidateQueries({
+              queryKey: ['billing', 'reservation-recovery', uid],
+            });
+          }}
+          reconnect={reconnect}
+        />
       ) : null}
     </section>
   );

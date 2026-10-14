@@ -140,6 +140,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
       .matchAll(/^    def (qorlia_checkpoint_\w+)\(/gm)].map(match => match[1]));
   assert.equal(checkpointMethods.length, 12, 'All native checkpoint read, analysis/export, attachment and reviewed editor APIs must be covered.');
   for (const [model, method] of [
+    ...['load', 'preview', 'run', 'status'].map(action => ['stock.picking', `qorlia_transfer_${action}`]),
     ...bankMethods.map(method => ['account.bank.statement.line', method]),
     ...checkpointMethods.map(method => ['account.bank.statement', method]),
   ]) {

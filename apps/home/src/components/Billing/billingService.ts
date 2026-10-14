@@ -3175,22 +3175,91 @@ export interface OrderDeliveries {
   rows: OrderTransfer[];
 }
 
+type TransferReviewRow = Omit<OrderTransfer, 'operations'> & {
+  operations: (Omit<OrderTransfer['operations'][number], 'id'> & {
+    id: number | false;
+  })[];
+};
+const stockId = (value: unknown) =>
+  Number.isSafeInteger(value) && Number(value) > 0;
+const stockVersion = (value: unknown) =>
+  typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+const stockText = (value: unknown) =>
+  value === false || typeof value === 'string';
+const stockDate = (value: unknown) =>
+  value === false ||
+  (typeof value === 'string' &&
+    /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value));
+
+function validTransfer(row: TransferReviewRow, preview = false) {
+  const unique = (rows: { id: number | false }[]) => {
+    const saved = rows.filter((item) => item.id !== false);
+    return new Set(saved.map((item) => item.id)).size === saved.length;
+  };
+  return (
+    !!row &&
+    stockId(row.id) &&
+    typeof row.name === 'string' &&
+    ['draft', 'waiting', 'confirmed', 'assigned', 'done', 'cancel'].includes(
+      row.state,
+    ) &&
+    [
+      row.operation_type,
+      row.company,
+      row.customer,
+      row.source,
+      row.destination,
+      row.backorder,
+    ].every(validRelation) &&
+    row.company !== false &&
+    stockDate(row.scheduled_date) &&
+    stockDate(row.date_done) &&
+    stockText(row.origin) &&
+    Array.isArray(row.moves) &&
+    row.moves.length <= 500 &&
+    row.moves.every(
+      (move) =>
+        move &&
+        stockId(move.id) &&
+        typeof move.state === 'string' &&
+        [move.product, move.unit, move.order_line].every(validRelation) &&
+        [move.demand, move.reserved, move.done].every(Number.isFinite),
+    ) &&
+    unique(row.moves) &&
+    Array.isArray(row.operations) &&
+    row.operations.length <= 2000 &&
+    row.operations.every(
+      (line) =>
+        line &&
+        (stockId(line.id) || (preview && line.id === false)) &&
+        (line.move_id === false ||
+          (stockId(line.move_id) &&
+            row.moves.some((move) => move.id === line.move_id))) &&
+        [
+          line.product,
+          line.unit,
+          line.lot,
+          line.source,
+          line.destination,
+          line.source_package,
+          line.destination_package,
+          line.owner,
+        ].every(validRelation) &&
+        [line.reserved, line.done].every(Number.isFinite) &&
+        stockText(line.lot_name) &&
+        stockDate(line.expiry_date),
+    ) &&
+    unique(row.operations)
+  );
+}
+
 export async function getOrderDeliveries(
   orderId: number,
 ): Promise<OrderDeliveries> {
-  const id = (value: unknown) =>
-    Number.isSafeInteger(value) && Number(value) > 0;
-  if (!id(orderId)) throw new Error('Select a saved charge order.');
+  if (!stockId(orderId)) throw new Error('Select a saved charge order.');
   const data = await draftCall<OrderDeliveries>('qorlia_order_deliveries', {
     order_id: orderId,
   });
-  const text = (value: unknown) => value === false || typeof value === 'string';
-  const date = (value: unknown) =>
-    value === false ||
-    (typeof value === 'string' &&
-      /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value));
-  const unique = (rows: { id: number }[]) =>
-    new Set(rows.map((row) => row.id)).size === rows.length;
   if (
     data?.order_id !== orderId ||
     typeof data.order_name !== 'string' ||
@@ -3200,68 +3269,8 @@ export async function getOrderDeliveries(
     data.read_only !== true ||
     !Array.isArray(data.rows) ||
     data.rows.length > 100 ||
-    !data.rows.every(
-      (row) =>
-        row &&
-        id(row.id) &&
-        typeof row.name === 'string' &&
-        [
-          'draft',
-          'waiting',
-          'confirmed',
-          'assigned',
-          'done',
-          'cancel',
-        ].includes(row.state) &&
-        [
-          row.operation_type,
-          row.company,
-          row.customer,
-          row.source,
-          row.destination,
-          row.backorder,
-        ].every(validRelation) &&
-        row.company !== false &&
-        date(row.scheduled_date) &&
-        date(row.date_done) &&
-        text(row.origin) &&
-        Array.isArray(row.moves) &&
-        row.moves.length <= 500 &&
-        row.moves.every(
-          (move) =>
-            move &&
-            id(move.id) &&
-            typeof move.state === 'string' &&
-            [move.product, move.unit, move.order_line].every(validRelation) &&
-            [move.demand, move.reserved, move.done].every(Number.isFinite),
-        ) &&
-        unique(row.moves) &&
-        Array.isArray(row.operations) &&
-        row.operations.length <= 2000 &&
-        row.operations.every(
-          (line) =>
-            line &&
-            id(line.id) &&
-            (line.move_id === false ||
-              (id(line.move_id) &&
-                row.moves.some((move) => move.id === line.move_id))) &&
-            [
-              line.product,
-              line.unit,
-              line.lot,
-              line.source,
-              line.destination,
-              line.source_package,
-              line.destination_package,
-              line.owner,
-            ].every(validRelation) &&
-            [line.reserved, line.done].every(Number.isFinite) &&
-            text(line.lot_name) &&
-            date(line.expiry_date),
-        ) &&
-        unique(row.operations),
-    ) ||
-    !unique(data.rows) ||
+    !data.rows.every((row) => validTransfer(row)) ||
+    new Set(data.rows.map((row) => row.id)).size !== data.rows.length ||
     data.rows.reduce((count, row) => count + row.moves.length, 0) > 500 ||
     data.rows.reduce((count, row) => count + row.operations.length, 0) > 2000
   )
@@ -3270,6 +3279,256 @@ export async function getOrderDeliveries(
     );
   return data;
 }
+
+export type StockReservationAction = 'assign' | 'unreserve';
+export interface StockTransferGraph {
+  transfer: TransferReviewRow;
+  packages: {
+    id: number | false;
+    package_id: Relation;
+    location_id: Relation;
+    location_dest_id: Relation;
+    state: string;
+    company_id: Relation;
+  }[];
+}
+export interface StockReservationLoad {
+  order_id: number;
+  transfer_id: number;
+  graph: StockTransferGraph;
+  version: string;
+  reasons: Record<StockReservationAction, string | false>;
+}
+export interface StockReservationSelection {
+  order_id: number;
+  transfer_id: number;
+  version: string;
+  action: StockReservationAction;
+}
+export interface StockReservationRequest extends StockReservationSelection {
+  review_version: string;
+  request_key: string;
+}
+export interface StockReservationQuant {
+  id: number;
+  unit: Relation;
+  product_id: Relation;
+  location_id: Relation;
+  lot_id: Relation;
+  package_id: Relation;
+  owner_id: Relation;
+  quantity: number;
+  reserved_quantity: number;
+  in_date: string | false;
+  company_id: Relation;
+}
+export interface StockReservationReview extends StockReservationSelection {
+  review_version: string;
+  before: StockTransferGraph;
+  after: StockTransferGraph;
+  quant_before: StockReservationQuant[];
+  quant_after: StockReservationQuant[];
+}
+export interface StockReservationStatus {
+  accepted: boolean;
+  request_key: string;
+  action: StockReservationAction;
+  current: StockReservationLoad;
+}
+function checkedStockSelection(value: StockReservationSelection) {
+  if (
+    !value ||
+    !stockId(value.order_id) ||
+    !stockId(value.transfer_id) ||
+    !stockVersion(value.version) ||
+    !['assign', 'unreserve'].includes(value.action)
+  )
+    throw new Error(
+      'Select a saved transfer and review its reservation action.',
+    );
+  return {
+    order_id: value.order_id,
+    transfer_id: value.transfer_id,
+    version: value.version,
+    action: value.action,
+  };
+}
+export function checkedStockReservationRequest(
+  value: StockReservationRequest,
+): StockReservationRequest {
+  const selected = checkedStockSelection(value);
+  if (
+    !stockVersion(value.review_version) ||
+    typeof value.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      value.request_key,
+    ) ||
+    Object.keys(value).sort().join(',') !==
+      'action,order_id,request_key,review_version,transfer_id,version'
+  )
+    throw new Error('Use the exact reviewed reservation request.');
+  return {
+    ...selected,
+    review_version: value.review_version,
+    request_key: value.request_key,
+  };
+}
+function validStockGraph(
+  graph: StockTransferGraph,
+  id: number,
+  preview = false,
+) {
+  return (
+    graph?.transfer?.id === id &&
+    validTransfer(graph.transfer, preview) &&
+    Array.isArray(graph.packages) &&
+    graph.packages.length <= 2000 &&
+    graph.packages.every(
+      (row) =>
+        row &&
+        (stockId(row.id) || (preview && row.id === false)) &&
+        typeof row.state === 'string' &&
+        [
+          row.package_id,
+          row.location_id,
+          row.location_dest_id,
+          row.company_id,
+        ].every(validRelation) &&
+        row.company_id !== false &&
+        graph.transfer.company !== false &&
+        row.company_id[0] === graph.transfer.company[0],
+    ) &&
+    new Set(
+      graph.packages.filter((row) => row.id !== false).map((row) => row.id),
+    ).size === graph.packages.filter((row) => row.id !== false).length
+  );
+}
+function checkedStockLoad(
+  data: StockReservationLoad,
+  orderId: number,
+  transferId: number,
+) {
+  if (
+    data?.order_id !== orderId ||
+    data.transfer_id !== transferId ||
+    !stockVersion(data.version) ||
+    !validStockGraph(data.graph, transferId) ||
+    !data.reasons ||
+    !['assign', 'unreserve'].every((action) =>
+      stockText(data.reasons[action as StockReservationAction]),
+    )
+  )
+    throw new Error('Invalid reservation state. Reload the transfer.');
+  return data;
+}
+async function stockCall<T>(method: string, kwargs: object): Promise<T> {
+  return rpc<T>(`/web/dataset/call_kw/stock.picking/${method}`, {
+    model: 'stock.picking',
+    method,
+    args: [],
+    kwargs,
+  });
+}
+export async function getStockReservation(orderId: number, transferId: number) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  return checkedStockLoad(
+    await stockCall<StockReservationLoad>('qorlia_transfer_load', {
+      order_id: orderId,
+      transfer_id: transferId,
+    }),
+    orderId,
+    transferId,
+  );
+}
+export async function previewStockReservation(
+  selection: StockReservationSelection,
+) {
+  const exact = checkedStockSelection(selection);
+  const data = await stockCall<StockReservationReview>(
+    'qorlia_transfer_preview',
+    exact,
+  );
+  const validQuants = (rows: StockReservationQuant[]) =>
+    Array.isArray(rows) &&
+    rows.length <= 2000 &&
+    new Set(rows.map((row) => row?.id)).size === rows.length &&
+    rows.every(
+      (row) =>
+        row &&
+        stockId(row.id) &&
+        row.unit !== false &&
+        [
+          row.unit,
+          row.product_id,
+          row.location_id,
+          row.lot_id,
+          row.package_id,
+          row.owner_id,
+          row.company_id,
+        ].every(validRelation) &&
+        [row.quantity, row.reserved_quantity].every(Number.isFinite) &&
+        stockDate(row.in_date),
+    );
+  if (
+    !data ||
+    Object.entries(exact).some(
+      ([key, value]) => data[key as keyof StockReservationSelection] !== value,
+    ) ||
+    !stockVersion(data.review_version) ||
+    !validStockGraph(data.before, exact.transfer_id, true) ||
+    !validStockGraph(data.after, exact.transfer_id, true) ||
+    ['done', 'cancel'].includes(data.after.transfer.state) ||
+    !validQuants(data.quant_before) ||
+    !validQuants(data.quant_after) ||
+    data.quant_before.length !== data.quant_after.length ||
+    data.quant_before.some((row, index) => {
+      const after = data.quant_after[index];
+      return (
+        !after ||
+        row.id !== after.id ||
+        row.quantity !== after.quantity ||
+        [
+          'product_id',
+          'location_id',
+          'lot_id',
+          'package_id',
+          'owner_id',
+          'company_id',
+          'in_date',
+          'unit',
+        ].some(
+          (key) =>
+            JSON.stringify(row[key as keyof StockReservationQuant]) !==
+            JSON.stringify(after[key as keyof StockReservationQuant]),
+        )
+      );
+    })
+  )
+    throw new Error(
+      'Invalid reservation preview. Nothing can be saved until it is reviewed again.',
+    );
+  return data;
+}
+async function stockRequest(method: string, request: StockReservationRequest) {
+  const exact = checkedStockReservationRequest(request);
+  const data = await stockCall<StockReservationStatus>(method, exact);
+  if (
+    !data ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    data.action !== exact.action
+  )
+    throw new Error(
+      'Invalid reservation receipt. Check the exact request before retrying.',
+    );
+  checkedStockLoad(data.current, exact.order_id, exact.transfer_id);
+  return data;
+}
+export const saveStockReservation = (request: StockReservationRequest) =>
+  stockRequest('qorlia_transfer_run', request);
+export const getStockReservationStatus = (request: StockReservationRequest) =>
+  stockRequest('qorlia_transfer_status', request);
 
 export interface OrderWorkflow {
   id: number;

@@ -1,5 +1,45 @@
 # Qorlia React frontend backend readiness
 
+## Native reservation source and private HTTP acceptance (14 October 2026)
+
+Adapter 40 adds order-scoped transfer load, native action_assign/do_unreserve
+preview, exact-request save and receipt status. Native visibility, ACL/field/
+record/company checks apply. Preview runs in a rollback savepoint with callback
+quarantine. Product, unit, removal-policy, source inventory and linked operation
+snapshots are locked/rechecked. Hidden inventory and unsupported large inventories
+fail explicitly. Preview shows native lot/package/owner effects, operation units
+and product stock units without pretending reservation is delivery.
+
+React uses the existing modal/buttons/tables/styles. Committed IndexedDB recovery
+precedes a write, is per Billing account, cannot overwrite another pending request
+and clears only the exact accepted request. Duplicate clicks, storage failure,
+unknown outcomes, identical retry, expiry and leaving the screen are covered.
+No automatic write retry or new dependency. Backend receipt fields cannot be
+forged or copied. Receipt write stamps are flushed before the saved response;
+the first HTTP run caught a version-only response/read-back mismatch, corrected
+before hosted publication. An initial version-transform runner failed its guard
+and restored adapter 39; the corrected runner verifies actual adapter 40.
+
+553 Home tests/65 suites, five source-based test/fixture type checks, Home library
+types, touched lint/diff and seven gateway checks pass. Development build:
+f72d38d5548c8fdd (existing browser-data/bundle-size warnings). Final native adapter
+passes 11 focused and 544 full tests, zero failures/errors/skips, mandatory
+analytics restored and service restarted. Backup/rollback retained.
+
+Actual TypeScript/private HTTP checks complete two reserve/unreserve cycles with
+rolled-back previews, accepted saves, status recovery and identical retries.
+Independent native read-back finds exactly four receipts, no detailed operations
+left, ten physical units, five demanded units, zero reservation/delivery and a
+confirmed, not completed, transfer. Eight protected records, financial/valuation
+counts, bank #37 and other stock are unchanged. Only isolated synthetic inventory
+was seeded. Hosted controls/browser save acceptance are still pending at this
+source checkpoint; the current tester frontend is the earlier read-only build.
+
+Mark-as-todo, quantity/batch edits, native validation/Bahmni wizards, partial
+delivery/backorders, returns, full paging, POS and clinical-to-ERP sync remain.
+This is not complete fulfillment, Billing or product parity. Production/public
+demo and nine unrelated clinical edits remain unchanged. PR #4 stays draft.
+
 ## Protected order transfer read-path acceptance (14 October 2026)
 
 The saved charge-order screen now opens a Qorlia transfer list/detail view through

@@ -1,5 +1,25 @@
 # Bahmni workflow parity ledger
 
+## 14 October native reservation source and private save acceptance
+
+- Adapter 40 mirrors native Check availability and Unreserve visibility/actions,
+  enforces scoped graph/inventory access, previews through rollback and binds
+  exact author/company requests to protected receipts. No stock completion.
+- React review/save/status/retry controls use house design components. IndexedDB
+  commits exact per-account recovery before writing and preserves unknown results
+  across unmount. New writes cannot replace another pending request.
+- 553 Home/65 suites, five source-based types, library types, lint/diff,
+  seven guards and build f72d38d5548c8fdd pass. Native 11 focused/544 full tests
+  pass without failures/errors/skips, mandatory analytics restored and service up.
+- Actual private HTTP cycles and independent native read-back verify four exact
+  receipts, idempotent retries, no physical stock/delivery/financial effects,
+  five-unit demand and ten-unit stock. Protected records/bank/other stock unchanged.
+- First HTTP save revealed version-only response drift; adapter 40 flushes stamps
+  before returning. Failed runner version guard restored 39 before corrected run.
+- Hosted controls and browser save/recovery acceptance pending. Stock confirmation,
+  edit/validation/wizards/backorders/returns/paging/POS/sync and full product parity
+  remain open. PR #4 draft, production/public demo and clinical edits unchanged.
+
 ## 14 October protected order transfer review acceptance
 
 - New saved-order transfer list/details use named native order-scoped reads.

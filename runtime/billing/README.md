@@ -3,6 +3,23 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Reservation source/private HTTP checkpoint (14 October): adapter 40 adds scoped
+native reservation/unreserve load/preview/save/status. Rollback preview, locked
+inventory/configuration, native permissions, protected exact author/company
+receipts and stable saved stamps apply. React uses house controls and committed
+per-account IndexedDB recovery; no automatic write retry. Stock units and operation
+units are labelled separately. 553 Home/65 suites, five source-based/library types,
+seven guards, lint/diff and build f72d38d5548c8fdd pass. Native 11 focused/544 full
+tests pass without failures/errors/skips, mandatory analytics restored, service
+running and backups retained. Actual private TypeScript reserve/unreserve cycles
+and independent native reads prove exactly four receipts, idempotent retries,
+ten physical units/five-unit demand, no delivered quantity or completed transfer,
+unchanged financial/valuation/protected records, bank #37 and other stock.
+Hosted controls/browser save acceptance still pending; tester frontend remains
+the earlier order-transfers read build. Confirmation/edit/validation/wizards,
+backorders/returns/paging/POS/sync and full Billing parity remain open. PR #4 draft.
+No production/public-demo or unrelated clinical changes.
+
 Protected order transfer review (14 October): adapter 38 adds a named order-scoped
 read with native ACL/field/record/company checks and complete linked-graph access.
 The React saved-order workspace shows transfer states, backorders, native demand/

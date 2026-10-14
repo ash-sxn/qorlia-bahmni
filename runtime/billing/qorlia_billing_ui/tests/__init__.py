@@ -29,3 +29,4 @@ from . import test_bank_checkpoints
 from . import test_bank_checkpoint_editor
 from . import test_bank_checkpoint_attachments
 from . import test_order_deliveries
+from . import test_stock_reservation

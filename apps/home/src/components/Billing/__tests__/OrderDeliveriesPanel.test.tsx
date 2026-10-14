@@ -9,6 +9,11 @@ import {
 import { BillingSessionExpired, getOrderDeliveries } from '../billingService';
 import { OrderDeliveriesPanel } from '../OrderDeliveriesPanel';
 import { orderDeliveryFixture } from './orderDeliveryFixture';
+import { loadStockReservationRecovery } from '../stockReservationRecovery';
+
+jest.mock('../stockReservationRecovery', () => ({
+  loadStockReservationRecovery: jest.fn(),
+}));
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
@@ -35,6 +40,7 @@ const show = () =>
 describe('Order stock transfer review', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(loadStockReservationRecovery).mockResolvedValue(null);
     get.mockResolvedValue(orderDeliveryFixture());
   });
   it('shows native transfers then exact demand, operation units, batches and no invented completion', async () => {
