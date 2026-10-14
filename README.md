@@ -1,3 +1,11 @@
+# Qorlia contributor guide
+
+New to Qorlia? Start with the [current Qorlia README and learning path](https://github.com/ash-sxn/qorlia-bahmni/blob/codex/billing-delivery-parity/README.md). It links to beginner setup, architecture, repository/module maps, API integration, design rules, testing, contribution workflow and team task templates.
+
+The application redesign is on development branches, not this older default `main` baseline. Read the [first contribution walkthrough](https://github.com/ash-sxn/qorlia-bahmni/blob/codex/billing-delivery-parity/docs/first-contribution.md), then confirm your task's approved base and synthetic access before coding. Reading the development documentation does not authorize merging or deploying unfinished application code.
+
+The upstream README below is retained for reference. Use the linked Qorlia guide for current setup, feature status and contribution instructions. Upstream copyright and licences remain unchanged.
+
 # Bahmni Apps Frontend
 
 A React TypeScript monorepo application for Bahmni applications, built with Nx, Webpack, and Carbon Design System. This application includes PWA support for offline capabilities.
