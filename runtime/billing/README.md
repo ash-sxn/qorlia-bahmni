@@ -30,8 +30,14 @@ See [current readiness](../../docs/BACKEND_READINESS.md) and
 [developer architecture](../../docs/architecture.md).
 
 The next fulfillment contract is [native stock confirmation](STOCK_CONFIRMATION.md).
-It maps procurement, chained transfers, packages and callback rollback requirements;
-it is not an exposed confirmation API or completed fulfillment workflow.
+Source adapter 44 adds native load/rollback-preview, complete graph capture,
+procurement and dependency effects, stored free quantity, readable field/schema
+metadata and signed private audit counts. Sixteen focused native cases pass with
+mandatory analytics in the separate database copy. Pre-commit and other callback
+queues are isolated/restored. Creation metadata is explicitly assigned on save;
+scheduling dates remain native. write_ready=false: save/receipts/recovery,
+TypeScript/gateway/React/HTTP acceptance and concurrency/performance remain open.
+The running protected tester remains adapter 43 and stock-operation-edit-r2.
 
 Historical form-only checkpoint, superseded above: adapter 42 adds scoped load,
 native onchange and paged choice APIs for saved and unsaved move operations.

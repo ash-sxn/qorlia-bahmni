@@ -1,0 +1,291 @@
+# SPDX-License-Identifier: LGPL-3.0-or-later
+# Copyright 2026 Qorlia contributors.
+from contextlib import closing
+import hashlib
+import hmac
+import re
+
+from psycopg2 import sql
+from odoo import api, fields, models, tools
+from odoo.exceptions import AccessError, UserError, ValidationError
+
+from .invoice_draft import _digest
+
+
+GRAPH_MODELS = ('product.product', 'stock.picking', 'stock.move', 'stock.move.line', 'stock.package_level',
+    'stock.quant', 'stock.lot', 'stock.quant.package', 'procurement.group',
+    'purchase.order', 'purchase.order.line', 'stock.warehouse.orderpoint',
+    'mail.message', 'mail.mail', 'mail.activity', 'mail.notification',
+    'mail.tracking.value', 'ir.attachment')
+CONFIG_MODELS = ('res.company', 'res.users', 'res.groups', 'ir.model.access', 'ir.rule',
+    'ir.property', 'ir.config_parameter', 'ir.module.module', 'product.product',
+    'product.template', 'product.category', 'product.supplierinfo', 'stock.location',
+    'stock.route', 'stock.rule', 'stock.warehouse', 'stock.picking.type', 'uom.uom',
+    'res.currency', 'res.currency.rate', 'account.tax', 'account.tax.repartition.line',
+    'account.fiscal.position', 'account.fiscal.position.tax', 'account.fiscal.position.account',
+    'res.partner', 'account.payment.term', 'account.payment.term.line',
+    'ir.ui.view', 'mail.template', 'mail.message.subtype', 'res.lang')
+FINANCIAL_MODELS = ('account.move', 'account.move.line', 'account.payment',
+    'account.partial.reconcile', 'stock.valuation.layer', 'sale.order', 'sale.order.line')
+METADATA = {'id', 'create_uid', 'create_date', 'write_uid', 'write_date'}
+AUDIT_MODELS = {'mail.message', 'mail.mail', 'mail.activity', 'mail.notification', 'mail.tracking.value', 'ir.attachment'}
+ASSIGNED_ON_SAVE = {'stock.picking': {'name', 'date'}, 'purchase.order': {'name'},
+    'stock.move.line': {'date'}, 'mail.message': {'date', 'message_id'}, 'mail.mail': {'message_id'}}
+
+
+class StockConfirmation(models.Model):
+    _inherit = 'stock.picking'
+
+    def _qorlia_confirmation_tables(self):
+        tables = set()
+        for name in (*GRAPH_MODELS, *CONFIG_MODELS, *FINANCIAL_MODELS):
+            model = self.env[name]
+            tables.add(model._table)
+            tables.update(field.relation for field in model._fields.values()
+                if field.type == 'many2many' and field.store and field.relation)
+        return sorted(tables)
+
+    def _qorlia_confirmation_stamp(self, tables, semantic=False):
+        result = {}
+        self.env.flush_all()
+        for table in tables:
+            # Only server-generated digests leave this helper, never configuration or authentication rows.
+            record = sql.SQL("(row_to_json(record)::jsonb - ARRAY['create_date','create_uid','write_date','write_uid'])::text") if semantic else sql.SQL('row_to_json(record)::text')
+            self.env.cr.execute(sql.SQL("SELECT encode(sha256(convert_to(COALESCE(string_agg(value, ',' ORDER BY value), ''), 'UTF8')), 'hex') "
+                "FROM (SELECT encode(sha256(convert_to({}, 'UTF8')), 'hex') AS value "
+                "FROM {} record) fingerprint").format(record, sql.Identifier(table)))
+            result[table] = self.env.cr.fetchone()[0]
+        return result
+
+    def _qorlia_confirmation_version(self, order_id, graph, stamp):
+        return _digest({'order_id': order_id, 'transfer_id': self.id, 'graph': graph,
+            'stamp': stamp, 'author': self.env.uid, 'companies': self.env.companies.ids,
+            'today': str(fields.Date.context_today(self))})
+
+    def _qorlia_confirmation_access(self):
+        self.ensure_one()
+        if not self.env.user.has_group('base.group_user'):
+            raise AccessError('Stock confirmation requires an internal Billing account.')
+        for records in (self, self.move_ids, self.move_line_ids, self.package_level_ids):
+            records.check_access_rights('write')
+            records.check_access_rule('write')
+
+    @api.model
+    def qorlia_confirmation_load(self, order_id, transfer_id):
+        self = self.with_context({key: self.env.context[key] for key in ('allowed_company_ids', 'lang', 'tz') if key in self.env.context})
+        self.env.cr.flush()
+        picking, _order = self._qorlia_reservation_transfer(order_id, transfer_id)
+        graph = picking._qorlia_reservation_graph(order_id)
+        reason = False
+        try:
+            picking._qorlia_confirmation_access()
+        except AccessError as error:
+            reason = str(error)
+        if not reason and not picking.show_mark_as_todo:
+            reason = 'Mark as Todo is not available in the current native transfer state.'
+        self.env.cr.flush()
+        graph = picking._qorlia_reservation_graph(order_id)
+        stamp = picking._qorlia_confirmation_stamp(picking._qorlia_confirmation_tables())
+        return {'order_id': order_id, 'transfer_id': transfer_id, 'graph': graph,
+            'version': picking._qorlia_confirmation_version(order_id, graph, stamp),
+            'reason': reason, 'write_ready': False}
+
+    def _qorlia_confirmation_capture(self):
+        result, visible = {}, {}
+        self.env.flush_all()
+        for name in GRAPH_MODELS:
+            model = self.env[name]
+            self.env.cr.execute(sql.SQL('SELECT row_to_json(record) FROM {} record ORDER BY id').format(sql.Identifier(model._table)))
+            result[name] = {}
+            while True:
+                batch = self.env.cr.fetchmany(500)
+                if not batch:
+                    break
+                result[name].update({item[0]['id']: item[0] for item in batch})
+            visible[name] = set(model.with_context(active_test=False).search([('id', 'in', list(result[name]))]).ids) if model.check_access_rights('read', raise_exception=False) else set()
+        links = {}
+        for name in GRAPH_MODELS:
+            model = self.env[name]
+            for field_name, field in model._fields.items():
+                if field.type == 'many2many' and field.store and field.relation:
+                    self.env.cr.execute(sql.SQL('SELECT {}, {} FROM {} ORDER BY {}, {}').format(
+                        sql.Identifier(field.column1), sql.Identifier(field.column2), sql.Identifier(field.relation),
+                        sql.Identifier(field.column1), sql.Identifier(field.column2)))
+                    mapping = {}
+                    for source, target in self.env.cr.fetchall():
+                        mapping.setdefault(source, []).append(target)
+                    links[(name, field_name)] = mapping
+        return result, visible, links
+
+    def _qorlia_confirmation_effects(self, before, after):
+        old, old_visible, old_links = before
+        new, new_visible, new_links = after
+        generated = {name: {identifier: 'new:%s:%s' % (name, index)
+            for index, identifier in enumerate(sorted(set(new[name]) - set(old[name])))} for name in GRAPH_MODELS}
+        generated_names = {row.get('name'): generated[name][identifier]
+            for name in ('stock.picking', 'purchase.order') for identifier, row in new[name].items()
+            if identifier in generated[name] and row.get('name')}
+        result = {'created': {}, 'updated': {}, 'deleted': {}, 'labels': {}, 'schema': {}, 'private_audit_counts': {}}
+        private_audit = {}
+
+        def project(name, identifier, rows, links, allowed, private=False):
+            model = self.env[name]
+            raw = rows[name][identifier]
+            if 'company_id' in raw and raw['company_id'] and raw['company_id'] != self.company_id.id:
+                raise AccessError('Confirmation changed a document outside this transfer company.')
+            values = {}
+            for field_name in sorted(allowed):
+                field = model._fields[field_name]
+                if field_name in METADATA or field_name == 'access_token' or field_name.startswith('qorlia_') or field.type == 'binary':
+                    continue
+                if field.type == 'many2many' and (name, field_name) in links:
+                    value = links[(name, field_name)].get(identifier, [])
+                elif field_name in raw:
+                    value = raw[field_name]
+                else:
+                    continue
+                if field.type in ('many2one', 'many2many'):
+                    def reference(target):
+                        if not target:
+                            return False
+                        key = generated.get(field.comodel_name, {}).get(target)
+                        if key:
+                            return key
+                        if private:
+                            return target
+                        related = self.env[field.comodel_name].browse(target)
+                        if field.comodel_name in rows and target in rows[field.comodel_name]:
+                            visible = old_visible[field.comodel_name] if rows is old else new_visible[field.comodel_name]
+                            if target not in visible:
+                                raise AccessError('A confirmation dependency is not readable by this account.')
+                            # Deleted graph records still have their original, permission-checked name.
+                            label = rows[field.comodel_name][target].get('name')
+                            if label is not None:
+                                related.check_field_access_rights('read', ['name'])
+                        else:
+                            related.check_access_rights('read')
+                            related.check_access_rule('read')
+                            if not related.exists():
+                                raise UserError('A confirmation dependency is no longer available.')
+                            label = related.display_name
+                        if label is not None:
+                            result['labels']['%s:%s' % (field.comodel_name, target)] = label
+                        return target
+                    value = [reference(target) for target in value] if field.type == 'many2many' else reference(value)
+                # Preserve scheduling dates; native references and creation metadata are assigned at save.
+                if identifier in generated[name] and field_name in ASSIGNED_ON_SAVE.get(name, set()):
+                    value = False
+                if name in ('mail.message', 'mail.activity') and field_name == 'res_id':
+                    target_model = raw.get('model')
+                    if not target_model and raw.get('res_model_id'):
+                        target_model = self.env['ir.model'].browse(raw['res_model_id']).model
+                    value = generated.get(target_model, {}).get(value, value)
+                if isinstance(value, str) and field_name in ('origin', 'reference', 'record_name', 'body', 'note', 'subject'):
+                    for assigned_name, key in generated_names.items():
+                        value = value.replace(assigned_name, key)
+                    if name in ('mail.message', 'mail.activity') and field_name in ('body', 'note'):
+                        for target_model, ids in generated.items():
+                            for target, key in ids.items():
+                                value = re.sub(r'((?:[?&#]id=|data-oe-id=[\"\']))%s(?=[\"\'&<>\s]|$)' % target,
+                                    lambda match: match[1] + key, value)
+                values[field_name] = value
+            return values
+
+        for name in GRAPH_MODELS:
+            model = self.env[name]
+            fields_allowed = set(model.check_field_access_rights('read', None))
+            created, updated, deleted = [], [], []
+            all_ids = sorted(set(old[name]) | set(new[name]))
+            for identifier in all_ids:
+                original, current = old[name].get(identifier), new[name].get(identifier)
+                clean = lambda row: {key: value for key, value in row.items() if key not in METADATA}
+                link_change = any(old_links.get((name, field_name), {}).get(identifier, []) != new_links.get((name, field_name), {}).get(identifier, [])
+                    for field_name, field in model._fields.items() if field.type == 'many2many' and field.store)
+                if original is not None and current is not None and clean(original) == clean(current) and not link_change:
+                    continue
+                hidden = original is not None and identifier not in old_visible[name] or current is not None and identifier not in new_visible[name]
+                if hidden:
+                    if name not in AUDIT_MODELS:
+                        raise AccessError('Confirmation changed a document this account cannot review (%s).' % name)
+                    kind = 'created' if original is None else 'deleted' if current is None else 'updated'
+                    counts = result['private_audit_counts'].setdefault(name, {'created': 0, 'updated': 0, 'deleted': 0})
+                    counts[kind] += 1
+                    private_audit.setdefault(name, []).append({'kind': kind,
+                        'key': generated[name].get(identifier, identifier),
+                        'before': project(name, identifier, old, old_links, model._fields, private=True) if original else False,
+                        'after': project(name, identifier, new, new_links, model._fields, private=True) if current else False})
+                    continue
+                if original is None:
+                    values = project(name, identifier, new, new_links, fields_allowed)
+                    created.append({'key': generated[name][identifier], 'values': values,
+                        'assigned_on_save': sorted(ASSIGNED_ON_SAVE.get(name, set()) & set(values))})
+                elif current is None:
+                    deleted.append({'id': identifier, 'values': project(name, identifier, old, old_links, fields_allowed)})
+                else:
+                    updated.append({'id': identifier, 'before': project(name, identifier, old, old_links, fields_allowed),
+                        'after': project(name, identifier, new, new_links, fields_allowed)})
+            if created or updated or deleted:
+                result['created'][name], result['updated'][name], result['deleted'][name] = created, updated, deleted
+                result['schema'][name] = {field_name: {'label': model._fields[field_name].string,
+                    'type': model._fields[field_name].type,
+                    'relation': model._fields[field_name].comodel_name if model._fields[field_name].type in ('many2one', 'many2many') else False}
+                    for field_name in sorted(fields_allowed) if field_name not in METADATA and field_name != 'access_token' and not field_name.startswith('qorlia_') and model._fields[field_name].type != 'binary'}
+        return result, private_audit
+
+    @api.model
+    def qorlia_confirmation_preview(self, order_id, transfer_id, version):
+        self = self.with_context({key: self.env.context[key] for key in ('allowed_company_ids', 'lang', 'tz') if key in self.env.context})
+        if not isinstance(version, str) or len(version) != 64 or any(char not in '0123456789abcdef' for char in version):
+            raise ValidationError('Reload and review the current native transfer.')
+        picking, _order = self._qorlia_reservation_transfer(order_id, transfer_id, lock=True)
+        picking._qorlia_confirmation_access()
+        current = self.qorlia_confirmation_load(order_id, transfer_id)
+        if current['version'] != version:
+            raise UserError('The transfer, inventory or native configuration changed. Reload it.')
+        if current['reason']:
+            raise UserError(current['reason'])
+        tables = picking._qorlia_confirmation_tables()
+        stamp = picking._qorlia_confirmation_stamp(tables)
+        finance_tables = [self.env[name]._table for name in FINANCIAL_MODELS]
+        money_before = picking._qorlia_confirmation_stamp(finance_tables, semantic=True)
+        config_tables = sorted({self.env[name]._table for name in CONFIG_MODELS if name not in GRAPH_MODELS})
+        config_before = picking._qorlia_confirmation_stamp(config_tables, semantic=True)
+        before = picking._qorlia_confirmation_capture()
+        cr = self.env.cr
+        cr.flush()
+        hooks = {name: getattr(cr, name) for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
+        try:
+            for name in hooks:
+                setattr(cr, name, tools.Callbacks())
+            with closing(cr.savepoint()):
+                picking.action_confirm()
+                cr.flush()
+                after = picking._qorlia_confirmation_capture()
+                money_after = picking._qorlia_confirmation_stamp(finance_tables, semantic=True)
+                config_after = picking._qorlia_confirmation_stamp(config_tables, semantic=True)
+                if money_after != money_before or picking.state in ('done', 'cancel'):
+                    changed = ', '.join(name for name in money_before if money_before[name] != money_after[name])
+                    raise UserError('Confirmation changed financial records or completed stock (%s). Nothing was saved.' % changed)
+                if config_after != config_before:
+                    changed = ', '.join(name for name in config_before if config_before[name] != config_after[name])
+                    raise UserError('Confirmation changed unreviewed native configuration (%s). Nothing was saved.' % changed)
+                physical = lambda snapshot: {identifier: (row['product_id'], row['location_id'], row['lot_id'], row['package_id'], row['owner_id'], row['quantity'])
+                    for identifier, row in snapshot[0]['stock.quant'].items() if row['quantity']}
+                if physical(before) != physical(after):
+                    raise UserError('Confirmation changed physical stock. Nothing was saved.')
+                effects, private_audit = picking._qorlia_confirmation_effects(before, after)
+                state = picking.state
+        finally:
+            for name, callbacks in hooks.items():
+                setattr(cr, name, callbacks)
+            self.env.invalidate_all()
+        if picking._qorlia_confirmation_stamp(tables) != stamp:
+            raise UserError('Native state changed during confirmation preview. Reload and review it again.')
+        # Native signing secret prevents the public review digest becoming a dictionary oracle for hidden audit data.
+        secret = self.env['ir.config_parameter'].sudo().get_param('database.secret')
+        if not isinstance(secret, str) or len(secret) < 16:
+            raise UserError('Native signing configuration is missing. Nothing was saved.')
+        reviewed = _digest({'version': version, 'effects': effects, 'private_audit': private_audit, 'state': state, 'author': self.env.uid})
+        return {'order_id': order_id, 'transfer_id': transfer_id, 'version': version,
+            'state_after': state, 'effects': effects, 'write_ready': False,
+            'review_version': hmac.new(secret.encode(), reviewed.encode(), hashlib.sha256).hexdigest()}

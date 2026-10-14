@@ -2,7 +2,23 @@
 
 [Billing adapter](README.md) · [Architecture](../../docs/architecture.md) · [Parity ledger](../../docs/FEATURE_PARITY.md)
 
-This is the contract for the next fulfillment workflow, not a released confirmation API. The current protected React build supports preparation and operation editing. It does not yet expose native Mark as Todo, transfer validation or returns.
+Source adapter 44 adds native confirmation load and rollback-preview methods. It is not a released confirmation workflow: `write_ready=false`, with no save, receipt/status recovery or React control yet. The protected tester still uses adapter 43 and its preparation/operation editor, not this source checkpoint.
+
+## Implemented review contract
+
+[Source](qorlia_billing_ui/models/stock_confirmation.py) exposes `qorlia_confirmation_load(order_id, transfer_id)` and `qorlia_confirmation_preview(order_id, transfer_id, version)`. The existing saved-order/transfer authorization applies. Client defaults and tracking-control context are removed; only native company selection, language and timezone context are retained.
+
+The version binds the actor, companies, day, transfer graph and SHA-256 fingerprints of native graph, configuration, permission, relation and financial tables. Preview delegates to native `action_confirm()`. Complete graph reads are chunked, not truncated. Changed records retain native readable fields, labels, relation links and typed field metadata. The graph includes stock, stored product `free_qty`, supply orders, audit records and relevant many-to-many links.
+
+New records use symbolic keys so relationships survive rolled-back preview IDs. Native document names, creation/operation timestamps and message identifiers are explicitly marked as assigned on save. Scheduling/deadline dates are preserved. The review includes created, updated and deleted records, including moves merged away by the native engine.
+
+Unreadable business records fail closed. Hidden native audit details are not returned; only change counts are shown. Their canonical effects remain bound to the review through HMAC using the native server signing secret. Portal access tokens and binary content are not displayed. The native signing secret is never returned or committed to source.
+
+Database work rolls back, and pre-commit, post-commit and rollback callback queues are isolated/restored. Existing pending tracking is flushed before the baseline is taken. Native physical stock, financial records and unreviewed configuration are checked, and changed external state rejects the review after rollback.
+
+[Preview tests](qorlia_billing_ui/tests/test_stock_confirmation_preview.py) cover sixteen focused cases on the separate native database copy with mandatory analytics. This is native model-method acceptance, not HTTP/gateway/browser or save acceptance. Global fingerprint/capture cost, full concurrent save locking, complete recovery, additional failure injection and larger multi-company workloads still require work. Do not expose a save button from this contract.
+
+The combined 607-case native suite passes without failures/errors/skips on that separate copy with the legacy financial fixtures' optional analytics, restored afterward. This does not replace configuration-specific financial acceptance. The main tester database's mandatory analytics is not changed for this harness.
 
 ## Native action and source
 
@@ -28,16 +44,14 @@ Reference implementations are [Odoo 16 picking](https://github.com/odoo/odoo/blo
 
 The existing reservation scope and single-transfer graph are not enough to review all these effects. Adding `confirm` to the existing reservation action map without expanding its scope would miss native procurement and chained documents.
 
-## Required implementation work
+## Remaining integration work
 
-1. Trace installation overrides and configuration: reservation mode, units, routes/rules, warehouse, vendor choices/prices, orderpoints, packages and relevant native role/company rules.
-2. Review affected moves, operations, reservations, dependency links, new/merged transfers and any new or amended vendor RFQ. Keep the native action, including its audit behaviour.
-3. Bind the review to the actor/company, current native configuration and affected records. Lock and recheck the same dependencies before applying. A changed vendor, rule or replenishment requirement needs a new review.
-4. Normalize newly created IDs for preview versus save comparison, without discarding document identities or links. Display units, quantities and procurement effects accurately.
-5. Roll preview database changes and callback queues back. Do not use a separate committing scheduler cursor for a preview.
-6. Extend exact-request receipt/recovery and the existing durable browser slot. An uncertain confirmation must not start a second procurement request.
-7. Use house controls and native visibility, with explicit review/save, errors, reconnect, status recovery and authoritative parent reload.
-8. Verify actual API and protected browser save/reload, stale rules/vendors/inventory, denied roles/companies, concurrent confirmation and rollback. Native transfer validation, immediate/backorder/Bahmni wizards and returns are subsequent workflows, not substitutes for confirmation.
+1. Complete scoped concurrent locking and recheck the same native dependencies before applying. A changed vendor, rule or replenishment requirement needs a new review.
+2. Match saved effects against the canonical review while returning real saved identities, references and creation timestamps. Scheduling values must not be discarded.
+3. Extend exact-request receipt/recovery and the existing durable browser slot. An uncertain confirmation must not start a second procurement request.
+4. Add strict TypeScript response validation and named gateway routes. The source methods are not currently permitted by the protected gateway.
+5. Use house controls and native visibility, with explicit review/save, errors, reconnect, status recovery and authoritative parent reload. Render native text safely, not arbitrary audit HTML.
+6. Verify actual HTTP and protected browser save/reload, stale rules/vendors/inventory, denied roles/companies, concurrent confirmation and rollback. Native transfer validation, immediate/backorder/Bahmni wizards and returns are subsequent workflows, not substitutes for confirmation.
 
 ## Contract tests
 

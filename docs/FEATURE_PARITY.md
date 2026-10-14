@@ -1,5 +1,27 @@
 # Bahmni workflow parity ledger
 
+## 14 October native confirmation load and rollback-preview checkpoint
+
+- Source adapter 44 adds order/transfer-scoped load and rollback preview, delegated
+  to native Mark as Todo. Capture includes supply orders, merged/dependency moves,
+  packages, stored free quantity and native audit, with complete chunked graph reads.
+- Native record/field/company rules, client-context filtering and SHA-256 native
+  state fingerprints apply. Generated references/creation metadata are assigned on
+  save; scheduling dates and canonical relation links remain. Hidden audit content
+  is not exposed; change counts and HMAC-bound private effects preserve its scope.
+- Pre-commit, post-commit and rollback callbacks are isolated/restored. Sixteen
+  focused native cases pass with mandatory analytics on the separate database copy.
+  Combined 607 native cases pass there using legacy fixtures' optional analytics,
+  restored afterward. These are not HTTP/gateway/browser/save acceptance.
+- Tested source/mounted hashes match. Independent main-tester read-back matches
+  the preceding snapshot: six operation/sixteen preparation receipts, no operation,
+  physical ten/demand five, zero reserved/done/delivered and unchanged protected
+  accounting/valuation/bank/other stock. Its analytics remains mandatory.
+- write_ready=false. Atomic confirmation/receipts/recovery, TypeScript/gateway/
+  React controls, concurrency/performance and full fulfillment remain open.
+  Main tester stays adapter 43/stock-operation-edit-r2; production/public demo
+  and the nine unrelated clinical edits are unchanged. PR #4 stays draft.
+
 ## 14 October native confirmation contract checkpoint
 
 - Added thirteen native contract tests for Mark as Todo: manual/at-confirm

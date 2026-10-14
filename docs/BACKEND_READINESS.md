@@ -1,5 +1,32 @@
 # Qorlia React frontend backend readiness
 
+## Native confirmation load/rollback-preview source checkpoint (14 October 2026)
+
+Adapter 44 source adds scoped native load and rollback preview with complete
+stock/product/supply/audit graph capture, native company/record/field rules and
+client-context filtering. SHA-256 fingerprints bind native state/configuration;
+HMAC binds private audit effects without exposing their content or signing secret.
+Generated identities/references and creation metadata are canonicalized separately
+from native scheduling dates. Native stored free quantity is part of the review.
+Pre-commit and other callback queues are isolated/restored.
+
+Sixteen focused native cases pass with mandatory analytics on the separate copy.
+Combined 607 native cases pass with legacy financial fixtures' optional analytics
+in that copy only, restored afterward. This is native model-method acceptance,
+not HTTP/gateway/browser/save acceptance. Failed size/context/callback/timestamp
+iterations are retained as private evidence, not labelled successful releases.
+
+Exact source/mounted hashes match. Independent main-tester snapshot remains equal
+to its preceding baseline: six operation/sixteen preparation receipts, no operation,
+physical ten/demand five, zero reserved/done/delivered and unchanged protected
+accounting/valuation/bank/other stock. Main analytics remains mandatory.
+
+write_ready=false: actual save/receipts/recovery, TypeScript/gateway/React,
+concurrent locking, performance/multi-company and complete fulfillment gates
+remain. The running tester still uses adapter 43 and stock-operation-edit-r2;
+no production/public-demo deployment or unrelated clinical change is made.
+See [confirmation contract](../runtime/billing/STOCK_CONFIRMATION.md).
+
 ## Native confirmation contract checkpoint (14 October 2026)
 
 Thirteen focused native engine contracts pass on the isolated adapter 43 stack,
