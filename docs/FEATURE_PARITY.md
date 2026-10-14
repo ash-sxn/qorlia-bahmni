@@ -1,5 +1,23 @@
 # Bahmni workflow parity ledger
 
+## 14 October final protected reservation r2 acceptance
+
+- Published 3a22cb20 plus nine clinical hashes, build 97d821d9ad88cda2, 83 matching
+  assets/source/licences. Protected gates/code/expiry/backends unchanged.
+- Quiescent hosted exact receipt/status/retry and denied-route checks pass with
+  prior stock reads, checkpoint/attachment/ledger and eight Excel regressions.
+  Earlier overlapping browser writes invalidated a read-equality assertion; no
+  new write replay or source workaround was used for the successful final check.
+- Browser r2 reserve/unreserve preview/save, close-before-Finish parent refresh,
+  full-reload exact recovery, status/finish/reload pass. Native read-back confirms
+  eight exact receipts, ten physical/five demanded units, zero reservation/
+  delivery, confirmed transfer and unchanged protected finance/bank/other stock.
+- 554 Home/65 suites, five source-based types and lint/build pass. Native 40
+  unchanged, earlier 544-test result not rerun for UI-only fix; installed hashes
+  match. SSH forward stopped; no production/public-demo or clinical edit.
+- Supersedes hosted/browser pending below. Full stock/Billing/clinical/external
+  parity, large inventory and injected browser failure/expiry cases still open.
+
 ## 14 October hosted reservation and close-refresh correction
 
 - Published 849a891b stock-reservation-20261014 with 83 matching assets/legal source,

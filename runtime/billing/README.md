@@ -3,6 +3,22 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Current protected reservation build: stock-reservation-r2-20261014, 3a22cb20 plus
+nine clinical hashes, build 97d821d9ad88cda2, 83 matching assets/source/licences.
+Archive: 3e3a8e948c18bfc9ece9e2ee1237b5ab77de4564bbbd4a61ea750d54d90736d0.
+Gates/code/expiry/backends unchanged. Final hosted receipts/status/retries/access
+and earlier transfer/checkpoint/attachment/ledger/eight Excel checks pass.
+Browser reserve/unreserve save, close-before-Finish parent refresh, full-page
+reload exact recovery and finish reload pass. Independent native reads prove
+eight receipts, ten physical/five demanded units, zero reservation/delivery and
+unchanged financial/valuation/protected records, bank #37 and other stock. Native
+40 hashes match; its prior 544-test pass is unchanged, not rerun for the UI-only
+fix. 554 Home/65 suites, five source-based types, lint/build pass. SSH forward
+stopped. Supersedes pending hosted/browser gates below, not complete fulfillment.
+Confirmation/edit/validation/wizards/backorders/returns/paging/POS/sync and
+large-inventory/browser failure acceptance remain. PR #4 draft, production and
+public demo unchanged.
+
 Hosted/browser reservation checkpoint: stock-reservation-20261014 from 849a891b
 has 83 matching protected assets/source/licences. Hosted exact receipts/status/
 retries and denied stock routes pass, preserving the previous eight Excel and

@@ -1,5 +1,33 @@
 # Qorlia React frontend backend readiness
 
+## Final protected reservation r2 acceptance (14 October 2026)
+
+Published stock-reservation-r2-20261014, source 3a22cb20 plus nine unchanged
+clinical hashes, build 97d821d9ad88cda2. All 83 hosted/source/licence assets match;
+archive hash 3e3a8e948c18bfc9ece9e2ee1237b5ab77de4564bbbd4a61ea750d54d90736d0.
+Gates/code/expiry/backends unchanged, prior artifacts retained for rollback.
+Final hosted TypeScript receipts/status/idempotent retry/access checks and prior
+transfer/checkpoint/attachment/ledger/eight Excel regressions pass. An earlier
+r2 verifier overlapped the browser reservation write and failed its unchanged-read
+assertion; the quiescent final replay passes without changing source or replaying
+new writes.
+
+Browser r2 reserve preview/save, refreshed parent quantities after closing before
+Finish, exact recovery across full page reload, status/finish and unreserve
+preview/save/reload pass. No invoice/payment or delivery browser action.
+Independent native read-back verifies eight receipts for four total synthetic
+reserve/unreserve cycles, zero final reservation/delivery, ten physical units,
+five-unit demand, confirmed transfer and no remaining operations. Financial/
+valuation counts, eight protected records, bank #37 and other stock unchanged.
+Model/test hashes match installed adapter 40. 554 Home/65 suites, five source-based
+types and touched lint/build pass; native 40's earlier 544-test result is unchanged,
+not rerun for the UI-only close fix. Temporary SSH forward stopped.
+
+This supersedes the hosted/browser pending gates below, not complete fulfillment.
+Confirmation/edit/validation/Bahmni wizards/backorders/returns/paging/POS/sync,
+large-inventory and injected browser failure/expiry acceptance remain unfinished.
+PR #4 draft; production/public demo and unrelated clinical edits unchanged.
+
 ## Protected reservation browser checks and close-refresh correction (14 October 2026)
 
 Published stock-reservation-20261014 from 849a891b plus the nine preserved
