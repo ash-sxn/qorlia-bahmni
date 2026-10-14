@@ -1,107 +1,94 @@
-# Bahmni Apps Frontend Architecture
+# Qorlia architecture
 
-This document provides a comprehensive overview of the Bahmni Apps Frontend architecture, explaining the project structure, key concepts, and design patterns used throughout the application.
+[README](../README.md) · [Previous: setup](setup-guide.md) · [Next: repository map](project-structure.md)
 
-## Table of Contents
+## Central idea
 
-- [Overview](#overview)
-- [Directory Structure](#directory-structure)
-- [Core Concepts](#core-concepts)
-- [State Management](#state-management)
-- [Component Organization](#component-organization)
-- [Service Layer](#service-layer)
-- [Testing Strategy](#testing-strategy)
-- [Internationalization](#internationalization)
-- [Development Guidelines](#development-guidelines)
+We change how people interact with the hospital system while retaining native clinical and accounting behaviour. One consistent interface does not mean one database, one backend or automatic single sign-on.
 
-## Overview
+```text
+Browser: /bahmni-v2/
+  |
+  +-- distro: startup, branding, login and top-level routes
+  |     +-- apps: Home/Billing, Clinical, Registration, Appointments,
+  |     |        Patient Documents, Admin, Reports
+  |     +-- shared design-system, widgets and services
+  |
+  +-- same-origin development or protected-review gateway
+        +-- /openmrs/ws/rest/v1/... -> native OpenMRS/Bahmni REST
+        +-- /openmrs/ws/fhir2/R4/... -> FHIR resources/bundles
+        +-- /bahmni_config/... -> installation configuration
+        +-- /openmrs/qorlia-billing-api/... -> scoped Odoo JSON-RPC
+        |      +-- Qorlia addon -> native models -> ERP database
+        +-- configured Reports/documents routes -> native adapters
 
-The Bahmni Apps Frontend is a React TypeScript monorepo application built to provide a modern, responsive user interface for Bahmni's applications (Clinical, Registration, and extensible custom apps). The application follows a component-based architecture with clear separation of concerns between UI components, business logic, and data access.
+Separate OpenELIS/PACS/analytics/outreach need their own integration.
+```
 
-### Key Design Patterns
+This is a responsibility diagram, not an exact deployment topology. Clinical and ERP databases remain separate. Synchronization needs explicit implementation and acceptance; a shared navbar does not establish it.
 
-- **Component-Based Architecture**: UI is composed of reusable, composable components
-- **Context API for State Management**: Global state is managed using React Context
-- **Custom Hooks**: Business logic is encapsulated in custom hooks
-- **Service Layer**: API communication is abstracted in service modules
-- **Display Controls**: Clinical data visualization is handled by specialized components
-- **Provider Pattern**: Context providers wrap the application to provide global state
+## Application shell
 
-### Technology Stack
+[distro/src/main.tsx](../distro/src/main.tsx) loads validated branding, initializes shared assets and mounts React. [Root app](../distro/src/app/app.tsx) provides top-level routes, shared application context, lazy module loading and a loading boundary.
 
-- **React**: UI library
-- **TypeScript**: Type-safe JavaScript
-- **Carbon Design System**: UI component library
-- **Webpack**: Module bundler
-- **Jest & Testing Library**: Testing framework
-- **i18next**: Internationalization framework
+Each app owns its module routes and UI. Visible workflows do not correspond one-to-one with folders: programmes, beds, inpatient, theatre and orders live inside Clinical; Billing lives inside Home. The development-only design preview uses sample data, not native workflows.
 
-## Directory Structure
+## UI and state
 
-You can find the project structure [here](./project-structure.md)
+- [Design system](../packages/bahmni-design-system/src/): Carbon-based controls, tokens, typography and branding.
+- [Widgets](../packages/bahmni-widgets/src/): healthcare widgets, application/configuration context and hooks.
+- [Services](../packages/bahmni-services/src/): clinical APIs, types, authentication, privileges and domain helpers.
+- [Apps](../apps/): screens, module-specific services, routes, styles, state and adjacent tests.
 
-## Core Concepts
+React state handles local interaction. TanStack Query handles fetched data/cache. Some clinical drafts and encounter decisions use Zustand stores. Context shares application/configuration information. Follow the existing surrounding pattern; do not replace the entire state architecture for one feature.
 
-### Component Organization
+Cached data is not current permission or financial authority. Recheck sensitive writes on the server and reload authoritative data afterward.
 
-Components are organized into several categories:
+## Clinical flow
 
-1. **Common Components**: Reusable UI components that are not specific to any particular feature
-2. **Display Controls**: Components for displaying clinical data in a structured format
-3. **Layout Components**: Components that define the overall layout of the application
-4. **Page Components**: Top-level components that are rendered by the router
+An Appointments page calls [appointmentService](../packages/bahmni-services/src/appointmentService/appointmentService.ts). [Endpoint constants](../packages/bahmni-services/src/appointmentService/constants.ts) distinguish native REST saves/searches/status changes from FHIR reads. Those payloads are not interchangeable.
 
-### State Management
+The [HTTP client](../packages/bahmni-services/src/api/client.ts) handles response/error conventions. Native OpenMRS/Bahmni validates access and data. The page displays results and reloads saved state.
 
-The application uses React Context API for global state management. Each context is responsible for a specific domain of the application state.
+Consultation is more complex. [encounterBundleService](../apps/clinical/src/services/encounterBundleService.ts) assembles native resources. Patient, visit, encounter and practitioner are different identities. [Encounter session matching](../packages/bahmni-services/src/encounterSessionService/index.ts) must not attach a consultation to another user's encounter. Coordinate changes with its owner.
 
-Each context is implemented with a corresponding provider component that wraps the application and provides the context values to all child components.
+## Billing flow
 
-Custom hooks are used to access and update the context values, providing a clean API for components to interact with the global state.
+[Billing service](../apps/home/src/components/Billing/billingService.ts) uses Odoo JSON-RPC through a separate same-origin gateway prefix. [The Python addon](../runtime/billing/qorlia_billing_ui/models/) extends native Odoo models, not a second accounting ledger.
 
-## Service Layer
+A reviewed stock operation follows:
 
-The service layer abstracts API communication and other external services. Each service module is responsible for a specific domain of the application.
+1. Load a saved order, transfer, move and optional operation.
+2. Replay ordered field edits through native onchange logic.
+3. Preview native effects in a rolled-back savepoint.
+4. Show quantities in their own units and native batch/location/package/pricing metadata.
+5. Commit the exact reviewed request to browser recovery storage before HTTP.
+6. Recheck permissions, company, identities, version and effects while locking relevant native records.
+7. Apply once and record a protected author/company-bound receipt.
+8. Recover an uncertain response by checking status or retrying the identical request. Reload native state.
 
-The service layer follows a consistent pattern:
+Read [editor](../apps/home/src/components/Billing/StockOperationEditor.tsx), [recovery storage](../apps/home/src/components/Billing/stockReservationRecovery.ts), [native form](../runtime/billing/qorlia_billing_ui/models/stock_operation_form.py) and [native action](../runtime/billing/qorlia_billing_ui/models/stock_operation_edit.py). Recording preparation is not validating delivery. Validation/wizards/backorders/returns remain separate unfinished workflows.
 
-1. Each service exports functions that handle specific API requests
-2. Services use the base `api.ts` module for making HTTP requests
-3. Services handle error cases and data transformation
+Invoices, payments, journals and banks have different contracts and native rules. Do not generalize stock logic into financial posting.
 
-## Testing Strategy
+## Authentication and configuration
 
-The application follows a comprehensive testing strategy:
+Clinical login establishes an OpenMRS session. Billing needs a separate ERP session. The [development proxy](../distro/webpack.config.js) and [review gateway](../scripts/review-host/server.cjs) isolate cookies and verify clinical access before forwarding allowed ERP requests.
 
-1. **Unit Tests**: Test individual components and functions in isolation
-2. **Integration Tests**: Test the interaction between components
-3. **Snapshot Tests**: Ensure UI components render consistently
+Buttons are not security boundaries. Native ACLs (model permissions), record rules, company scope and field permissions still apply. Do not add arbitrary model/method forwarding, `sudo`, privilege bypasses or frontend credentials.
 
-Tests are organized alongside the code they test, with test files in `__tests__` directories.
+Installation configuration determines concepts, forms, programme attributes, locations, menus and appointment transitions. Backend modules determine endpoint availability. A mismatched frontend/config/backend can render while saving incorrectly.
 
-## Internationalization
+[Hospital branding](HOSPITAL_BRANDING.md) changes a limited validated presentation format, not clinical semantics or scripts.
 
-The application uses i18next for internationalization. Translation files are stored in the `public/locales` directory, with one file per language.
+## Reports and separate products
 
-The `i18n.ts` file configures i18next and loads the translation files. The `translationService.ts` provides utility functions for working with translations.
+[Reports](../runtime/reports/README.md) involves queues, schedules, downloads and templates. Correct MIME types, complete rows, filenames and native template semantics matter as much as styling.
 
-## Development Guidelines
+[Patient Documents](../apps/patient-documents/src/App.tsx) uses [document write services](../packages/bahmni-services/src/documentReferenceService/documentWriteService.ts). Binary uploads and clinical references are not ordinary JSON forms.
 
-### Code Organization
+OpenELIS, PACS, analytics and outreach are separate systems with their own sessions, licences and workflow acceptance. Reskinning a header does not complete them.
 
-1. **Component Structure**: Each component should be in its own directory with associated test files
-2. **Custom Hooks**: Business logic should be encapsulated in custom hooks
-3. **Service Layer**: API communication should be abstracted in service modules
-4. **Type Definitions**: All data structures should have TypeScript type definitions
+## Limits
 
-### Testing Requirements
-
-1. **Unit Tests**: All components and functions should have unit tests
-2. **Integration Tests**: Key user flows should have integration tests
-3. **Test Coverage**: Aim for high test coverage, especially for critical paths
-
-### Error Handling
-
-1. **Service Layer**: Services should handle API errors and provide meaningful error messages
-2. **UI Components**: Components should handle error states gracefully
-3. **Notifications**: Use the notification system to display errors to users
+This architecture does not establish production readiness, complete offline operation, automatic clinical/ERP synchronization, autonomous clinical AI or regulatory compliance. PWA-related source exists, but offline caching/synchronization and privacy require explicit acceptance. See [readiness](BACKEND_READINESS.md) and [parity](FEATURE_PARITY.md).

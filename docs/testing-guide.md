@@ -1,0 +1,93 @@
+# Testing and acceptance
+
+[README](../README.md) · [Previous: contributing](../CONTRIBUTING.md) · [Next: team workflow](team-workflow.md)
+
+## Checks prove different things
+
+| Check                     | What it proves                                      | What it does not prove                       |
+| ------------------------- | --------------------------------------------------- | -------------------------------------------- |
+| TypeScript                | Checked source fits declared types                  | Server payloads or workflow correctness      |
+| Lint/format               | Defined source quality rules                        | Clinical or accounting correctness           |
+| Unit/component tests      | Tested logic and simulated interactions             | Real backend behaviour                       |
+| Native adapter tests      | Covered rules against the native runtime            | Every frontend/browser flow                  |
+| Actual API save/read-back | Tested endpoint persists the intended native result | Every UI/layout case                         |
+| Browser acceptance        | Observed end-to-end user path                       | All permissions, data sizes or environments  |
+| Domain review             | Qualified review of clinical/accounting semantics   | Substitute for implementation/security tests |
+
+Do not report “all APIs connected” from a test count. Keep evidence scoped to the requirement and exact source/environment.
+
+## Focused frontend checks
+
+From repository root, using macOS/Linux or Git Bash/WSL syntax:
+
+```bash
+TS_NODE_SKIP_PROJECT=true TS_NODE_COMPILER_OPTIONS='{"module":"CommonJS","moduleResolution":"node"}' yarn jest --config apps/appointments/jest.config.ts --runInBand
+yarn tsc -p apps/appointments/tsconfig.lib.json --noEmit --emitDeclarationOnly false
+yarn eslint apps/appointments/src/pages/appointmentActions.ts
+yarn prettier --check apps/appointments/src/pages/appointmentActions.ts
+git diff --check
+```
+
+Replace Appointments and file paths with your assigned module/files. Direct Jest is a known way around the current Nx dependent-build cycle; it is not a reason to alter unrelated packages.
+
+`tsconfig.lib.json` can exclude tests. Check test-source types using the actual `tsconfig.spec.json` and real imported source too; do not invent mock/shadow declarations to make them pass. Ask the maintainer for the scoped source-based checker if the whole spec configuration has unrelated failures.
+
+For Home/Billing use `apps/home/jest.config.ts` and `apps/home/tsconfig.lib.json`. Gateway/configuration checks:
+
+```bash
+node --test scripts/review-host/server.test.cjs distro/webpack.config.test.cjs
+node scripts/check-contributor-docs.mjs
+```
+
+The [documentation check](../scripts/check-contributor-docs.mjs) validates local links, linked headings, README reachability and the no-em-dash convention for the contributor guides. It does not validate live backend setup or remote URLs. The documented Billing source checkpoint has 594 Home tests/69 suites and seven gateway/configuration tests passing. Counts are a dated observation, not a permanent threshold or whole-product completion claim. Check the current [parity ledger](FEATURE_PARITY.md).
+
+## Build check
+
+For the existing development distribution build, from repository root:
+
+```bash
+cd distro
+NX_TASK_TARGET_PROJECT=@bahmni/distro NX_TASK_TARGET_TARGET=build NX_TASK_TARGET_CONFIGURATION=development ../node_modules/.bin/webpack --mode development --config webpack.config.js
+```
+
+This supplies the Nx target context used by its Webpack plugin. The current checked build succeeded with hash `744405c851222e3f`; do not expect future builds to retain that hash. Generated output is `distro/dist`. This is not a production release command. Run the checks/build again after source changes and record the tested SHA.
+
+## Native runtime testing
+
+Python Billing tests are in [the addon tests](../runtime/billing/qorlia_billing_ui/tests/); they run inside a compatible Odoo installation with matching Bahmni modules and synthetic configuration. Running ordinary `pytest` without that runtime does not reproduce those tests.
+
+The isolated adapter 43 checkpoint passed 28 focused operation-form/action checks and 578 full addon tests with no failures/errors/skips. Native mandatory analytical configuration was restored and installed source hashes matched. This does not accept full fulfillment, production deployment or every module. Native environment/test procedures are operator-provided; never copy private database settings into a public script.
+
+## Synthetic workflow acceptance
+
+Obtain permission before creating/editing test records. Use clearly labelled records and record their identifiers privately as appropriate. Do not use real patients, financial records or an employee's private credentials.
+
+For a save, record the initial native state, intended change, endpoint/payload keys, response and saved state after reload. Independently verify relevant native records, not just the same frontend representation. Financial/stock changes need unchanged protected-record and accounting/inventory invariants where applicable.
+
+Cover:
+
+- Valid save and native rejection, including stale configuration/data.
+- Denied role, hidden record/company and expired session.
+- Double click, timeout/lost response and exact recovery where supported.
+- Closing the editor, unmount and full reload with a pending request.
+- Search/paging, empty results, loading/error states and parent refresh.
+- Keyboard navigation, focus restoration and narrow-screen readability.
+- Dates/time zones, quantities/units, batch/expiry and currencies as relevant.
+
+Never repeat a write merely because an observation timed out. Check the same process/request or authoritative saved state. A timeout is not a terminal outcome.
+
+## Report format
+
+```text
+Task / PR:
+Source SHA and backend/configuration version:
+Checks run, exact commands and results:
+Approved synthetic fixture:
+Expected and actual native outcome:
+Browser/API/native evidence:
+Denied/expiry/recovery cases:
+Untested cases and next gate:
+Reviewer/tester:
+```
+
+If a command fails, include the failure and cause. Do not claim skipped checks ran. Keep evidence free of secrets and identifiable private records.
