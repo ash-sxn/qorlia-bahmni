@@ -3,6 +3,23 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest protected acceptance (14 October): checkpoint-analysis-r2-20261012 uses
+646a67fa plus nine preserved clinical edits, build 90825d4fd53dfa3f, verified
+83 JS/CSS/source/license assets and unchanged gates/expiry/backends. Source
+archive SHA-256: 8c7f72c3bb26eeb1045e991b808baebcb142c80c44eb020d4cfc172e541b0281.
+Browser dates now submit correctly: same-day INR 130, combined/cleared filters,
+empty results, six groupings, four measures and pivot/graph INR 275 pass. Refresh
+failure hides stale figures; network block removed and refresh recovery passes.
+Independent native accounting/files/receipts/protected-document reads match.
+Bank #37 differs only in concurrency digest from the adapter-35 baseline;
+graph/values/labels/capabilities match. Original strict failure/diagnostic kept;
+second read checks the exact observed digest. Historical cause not established.
+Mandatory analytics preserved, verifiers roll back, no financial browser writes.
+517 Home/60 suites and native 36's earlier 521 tests are recorded source results,
+not fresh full reruns. Expanded pivot/export/graph/drilldown, larger-data checks,
+negative/multi-currency/expiry browser cases and full parity remain open.
+Production/public demo unchanged; earlier entries below are dated history.
+
 Latest frontend correction: the first analysis package passed hosted API/assets,
 but browser-selected dates were not submitted. The host was rolled back to the
 attachment editor. Native input/change date events and functional draft updates

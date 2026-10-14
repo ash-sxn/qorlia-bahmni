@@ -1,5 +1,42 @@
 # Qorlia React frontend backend readiness
 
+## Corrected protected analysis browser acceptance (14 October 2026)
+
+The protected host now serves checkpoint-analysis-r2-20261012 from 646a67fa
+plus the nine preserved, individually hashed clinical edits. Build
+90825d4fd53dfa3f, all 83 JS/CSS assets, source/licenses and manifest match.
+Source archive SHA-256 is
+8c7f72c3bb26eeb1045e991b808baebcb142c80c44eb020d4cfc172e541b0281.
+Existing shared-code, expiry, destinations and hospital-session gates are
+unchanged. Eleven named checkpoint routes pass; raw/private/malformed routes
+remain denied. The previous attachment-editor compose/artifact is retained.
+
+Actual browser date input now submits both bounds and returns one checkpoint
+with INR 130 for the same-day fixture. Date clearing, combined invalid/empty
+filters, zero results, all six groupings and four measures pass. Pivot and graph
+show the native computed total of INR 275 for the two dated checkpoints.
+A temporary analysis-only network block hides stale tables/graphs on refresh
+failure; removing it and refreshing restores the native figures. The block was
+removed. No financial browser writes were performed for these checks.
+
+Independent post-browser native reads preserve seven-model accounting/balances,
+checkpoint files/receipts and eight protected documents. Bank #37's complete
+response differs from the adapter-35 baseline only in its concurrency digest;
+the ledger graph, values, labels and capabilities are unchanged. The original
+strict comparison failure and diagnostic are retained, not silently declared a
+pass. The digest binds configuration write dates as well as accounting; its
+precise historical cause was not established. A second read checks the exact
+observed digest and all other fields. Mandatory analytics remain mandatory;
+read-only verification rolls back. Native 36's recorded 521-test result is not
+a fresh full-suite rerun. Frontend 517 Home/60 suites and source/type/build
+checks are the recorded corrective-source results.
+
+Negative-value/multi-currency browser cases, expiry recovery, expanded pivot/
+export, additional graph modes/drilldown and large-data performance remain open.
+Imports, remaining Billing, clinical and separate-product parity are not complete.
+Production/public demo are unchanged; PR #1 remains open, not merged. Earlier
+entries below describe dated checkpoints, not current deployment state.
+
 ## Analysis date-input corrective source checkpoint (12 October 2026)
 
 The first analysis package was published and its hosted assets/API/access checks

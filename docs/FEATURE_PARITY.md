@@ -1,5 +1,26 @@
 # Bahmni workflow parity ledger
 
+## 14 October corrected analysis hosted acceptance
+
+- Protected checkpoint-analysis-r2-20261012 matches source 646a67fa plus nine
+  preserved clinical edits, build 90825d4fd53dfa3f and all 83 JS/CSS/source assets.
+  Existing gates/expiry/backends are unchanged; eleven named checkpoint routes
+  pass while raw/private/malformed routes stay denied. Previous artifact retained.
+- Actual browser same-day date filters return one checkpoint/INR 130. Clearing
+  dates, status/type combinations, empty results, six groupings and four measures
+  pass. Pivot/graph agree on native INR 275. Refresh failure hides previous
+  figures; removing the temporary network block and refreshing restores them.
+- Native accounting, files/receipts and eight protected documents are unchanged.
+  Bank #37 differs from the older baseline only in its concurrency digest, not
+  graph/values/labels/capabilities. Strict failure and diagnostic are retained;
+  a second read checks that exact observed digest and all other fields. The
+  historical digest cause is not established. Mandatory analytics preserved.
+  Read-only verifiers roll back; no financial browser writes in this acceptance.
+- Source 517 Home/60 suites and native 36's earlier 521-test pass are recorded
+  results, not fresh reruns here. Negative/multi-currency and expiry browser
+  checks, expanded pivot/export/graph/drilldown, large-data performance and whole
+  Billing/clinical/external parity remain open. Production/public demo unchanged.
+
 ## 12 October analysis date-input correction
 
 - First analysis host/API/asset checks pass, but browser dates were not submitted.
