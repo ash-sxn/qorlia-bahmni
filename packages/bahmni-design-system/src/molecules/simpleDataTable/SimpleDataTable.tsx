@@ -8,7 +8,6 @@ import {
   TableCell,
   DataTableHeader,
 } from '@carbon/react';
-import React from 'react';
 import styles from './styles/SimpleDataTable.module.scss';
 
 export interface SimpleDataTableProps<T> {

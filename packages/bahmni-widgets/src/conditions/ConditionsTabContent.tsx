@@ -48,7 +48,9 @@ const ConditionsTabContent: React.FC<ConditionsTabContentProps> = ({
       selectedPageSize,
     ],
     enabled: enabled && !!patientUUID,
-    placeholderData: (prev) => prev,
+    // Retain pagination rows only within the same patient's chart.
+    placeholderData: (prev, previousQuery) =>
+      previousQuery?.queryKey[2] === patientUUID ? prev : undefined,
     queryFn: async () => {
       const page = await getConditionPage(
         patientUUID,
@@ -89,7 +91,13 @@ const ConditionsTabContent: React.FC<ConditionsTabContentProps> = ({
   );
 
   return (
-    <div data-testid={`condition-table-${clinicalStatus}`}>
+    <div
+      className={styles.conditionsTableViewport}
+      data-testid={`condition-table-${clinicalStatus}`}
+      role="region"
+      aria-label={t('CONDITION_LIST_DISPLAY_CONTROL_TITLE')}
+      tabIndex={0}
+    >
       <SortableDataTable
         headers={headers}
         ariaLabel={t('CONDITION_LIST_DISPLAY_CONTROL_TITLE')}

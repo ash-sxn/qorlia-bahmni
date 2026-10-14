@@ -39,6 +39,11 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
   }>({});
   const dashboardViewedAuditPatientUuidRef = useRef<string | null>(null);
 
+  sections.forEach((section) => {
+    sectionRefs.current[section.id ?? section.name] ??=
+      React.createRef<HTMLDivElement>();
+  });
+
   const { episodeOfCare, visit, encounter } = useClinicalAppData();
 
   const allEpisodeOfCareIds = Array.from(
@@ -73,24 +78,22 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
     }
   }, [patientUuid]);
 
-  // Initialize refs for each section
-  useEffect(() => {
-    sections.forEach((section) => {
-      sectionRefs.current[section.id] ??= React.createRef<HTMLDivElement>();
-    });
-  }, [sections]);
-
   // Scroll to active section when activeItemId changes
   useEffect(() => {
     if (activeItemId) {
       // Find the section that corresponds to the activeItemId
       const activeSection = sections.find(
-        (section) => section.id === activeItemId,
+        (section) => (section.id ?? section.name) === activeItemId,
       );
 
-      if (activeSection && sectionRefs.current[activeSection.id]?.current) {
+      if (
+        activeSection &&
+        sectionRefs.current[activeSection.id ?? activeSection.name]?.current
+      ) {
         // Added optional chaining and null check to prevent errors
-        sectionRefs.current[activeSection.id].current?.scrollIntoView({
+        sectionRefs.current[
+          activeSection.id ?? activeSection.name
+        ].current?.scrollIntoView({
           behavior: 'smooth',
         });
       }
@@ -109,14 +112,14 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
     >
       {sections.map((section) => (
         <article
-          key={section.id}
+          key={section.id ?? section.name}
           className={styles.displayControlSection}
-          ref={sectionRefs.current[section.id]}
+          ref={sectionRefs.current[section.id ?? section.name]}
           data-testid={`dashboard-section-article-${section.name}`}
         >
           <DashboardSection
             section={section}
-            ref={sectionRefs.current[section.id]}
+            ref={sectionRefs.current[section.id ?? section.name]}
             episodeOfCareUuids={allEpisodeOfCareIds}
             encounterUuids={allEncounterIds}
             visitUuids={allVisitIds}

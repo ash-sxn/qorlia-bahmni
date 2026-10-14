@@ -1,6 +1,7 @@
 import { ObservationForm } from '@bahmni/services';
 import { useQuery } from '@tanstack/react-query';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { useTranslation } from 'react-i18next';
 import { useClinicalAppData } from '../../../../hooks/useClinicalAppData';
 import ObservationFormsContainer from '../ObservationFormsContainer';
@@ -119,6 +120,10 @@ jest.mock('../../encounterDetails/EncounterDetails', () => ({
 
 // Mock ActionArea component
 jest.mock('@bahmni/design-system', () => ({
+  IconButton: jest.requireActual('@carbon/react').IconButton,
+  Button: ({ children, ...props }: React.ComponentProps<'button'>) => (
+    <button {...props}>{children}</button>
+  ),
   ActionArea: jest.fn(
     ({
       className,
@@ -642,6 +647,118 @@ describe('ObservationFormsContainer', () => {
       mockGetFormattedError.mockClear();
     });
 
+    it('retries failed metadata without discarding the selected form', () => {
+      const retryMetadata = jest.fn();
+      const resetForm = jest.fn();
+      const onFormObservationsChange = jest.fn();
+      mockGetFormattedError.mockReturnValue({
+        message: 'Metadata unavailable',
+      });
+      mockUseObservationFormData.mockReturnValue({
+        observations: [],
+        formMetadata: undefined,
+        isLoadingMetadata: false,
+        metadataError: new Error('offline'),
+        retryMetadata,
+        resetForm,
+      });
+      render(
+        <ObservationFormsContainer
+          {...defaultProps}
+          viewingForm={mockForm}
+          onFormObservationsChange={onFormObservationsChange}
+        />,
+      );
+      expect(screen.getByTestId('primary-button')).toBeDisabled();
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'translated_OBSERVATION_FORM_TRY_AGAIN',
+        }),
+      );
+      expect(retryMetadata).toHaveBeenCalledTimes(1);
+      expect(resetForm).not.toHaveBeenCalled();
+      expect(defaultProps.onViewingFormChange).not.toHaveBeenCalled();
+      expect(onFormObservationsChange).not.toHaveBeenCalled();
+    });
+
+    it('keeps a loaded renderer mounted through a failed background read and retry', () => {
+      const state = {
+        observations: [],
+        formMetadata: { schema: { controls: [] } },
+        isLoadingMetadata: false,
+        isFetchingMetadata: false,
+        metadataError: null as Error | null,
+        retryMetadata: jest.fn(),
+      };
+      mockUseObservationFormData.mockImplementation(() => state);
+      const { rerender } = render(
+        <ObservationFormsContainer {...defaultProps} viewingForm={mockForm} />,
+      );
+      const renderer = screen.getByTestId('form2-container');
+      state.metadataError = new Error('offline');
+      mockGetFormattedError.mockReturnValue({
+        message: 'Metadata unavailable',
+      });
+      rerender(
+        <ObservationFormsContainer {...defaultProps} viewingForm={mockForm} />,
+      );
+      expect(screen.getByTestId('form2-container')).toBe(renderer);
+      expect(screen.getByTestId('primary-button')).toBeDisabled();
+      state.isFetchingMetadata = true;
+      rerender(
+        <ObservationFormsContainer {...defaultProps} viewingForm={mockForm} />,
+      );
+      expect(screen.getByTestId('form2-container')).toBe(renderer);
+      expect(
+        screen.getByRole('button', {
+          name: 'translated_OBSERVATION_FORM_TRY_AGAIN',
+        }),
+      ).toBeDisabled();
+      expect(screen.getByTestId('primary-button')).toBeDisabled();
+    });
+
+    it('disables submission while the initial metadata is loading', () => {
+      mockUseObservationFormData.mockReturnValue({
+        observations: [],
+        formMetadata: undefined,
+        isLoadingMetadata: true,
+        metadataError: null,
+      });
+      render(
+        <ObservationFormsContainer {...defaultProps} viewingForm={mockForm} />,
+      );
+      expect(screen.getByTestId('primary-button')).toBeDisabled();
+    });
+
+    it('retries a failed patient read without retrying valid metadata', () => {
+      const refetch = jest.fn();
+      const retryMetadata = jest.fn();
+      (useQuery as jest.Mock).mockReturnValue({
+        data: undefined,
+        error: new Error('offline'),
+        refetch,
+      });
+      mockGetFormattedError.mockReturnValue({ message: 'Patient unavailable' });
+      mockUseObservationFormData.mockReturnValue({
+        observations: [],
+        formMetadata: { schema: { controls: [] } },
+        isLoadingMetadata: false,
+        metadataError: null,
+        retryMetadata,
+      });
+      render(
+        <ObservationFormsContainer {...defaultProps} viewingForm={mockForm} />,
+      );
+      expect(screen.getByTestId('primary-button')).toBeDisabled();
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'translated_OBSERVATION_FORM_TRY_AGAIN',
+        }),
+      );
+      expect(refetch).toHaveBeenCalledTimes(1);
+      expect(retryMetadata).not.toHaveBeenCalled();
+    });
+
     it('should call useObservationFormMetadata hook with viewingForm UUID', () => {
       render(
         <ObservationFormsContainer {...defaultProps} viewingForm={mockForm} />,
@@ -926,6 +1043,127 @@ describe('ObservationFormsContainer', () => {
       privileges: [],
     };
 
+    it.each([true, false])(
+      'blocks pin writes while preferences are pending or failed (loading=%s)',
+      async (isLoading) => {
+        mockUseObservationFormData.mockReturnValue({
+          observations: [],
+          formMetadata: { schema: { controls: [] } },
+          isLoadingMetadata: false,
+          resetForm: jest.fn(),
+          handleFormDataChange: jest.fn(),
+        });
+        const updatePinnedForms = jest.fn();
+        const refetch = jest.fn();
+        jest
+          .requireMock('../../../../hooks/usePinnedObservationForms')
+          .usePinnedObservationForms.mockReturnValue({
+            pinnedForms: [],
+            updatePinnedForms,
+            isLoading,
+            error: isLoading
+              ? null
+              : { title: 'Error', message: 'Unavailable' },
+            refetch,
+          });
+        const onFormObservationsChange = jest.fn();
+        render(
+          <ObservationFormsContainer
+            {...defaultProps}
+            viewingForm={nonDefaultForm}
+            onFormObservationsChange={onFormObservationsChange}
+          />,
+        );
+        const pin = screen.getByRole('button', {
+          name: 'translated_OBSERVATION_FORMS_PIN_TOOLTIP',
+        });
+        expect(pin).toBeDisabled();
+        await userEvent.click(pin);
+        expect(updatePinnedForms).not.toHaveBeenCalled();
+        if (!isLoading) {
+          expect(
+            screen.getByText('translated_OBSERVATION_FORM_PIN_UNAVAILABLE'),
+          ).toBeInTheDocument();
+          await userEvent.click(
+            screen.getByRole('button', {
+              name: 'translated_OBSERVATION_FORM_TRY_AGAIN',
+            }),
+          );
+          expect(refetch).toHaveBeenCalledTimes(1);
+        }
+        expect(onFormObservationsChange).not.toHaveBeenCalled();
+        expect(defaultProps.onViewingFormChange).not.toHaveBeenCalled();
+        expect(defaultProps.onRemoveForm).not.toHaveBeenCalled();
+      },
+    );
+
+    it('exposes a named native toggle button with its pinned state', () => {
+      const pinnedState = {
+        pinnedForms: [] as ObservationForm[],
+        updatePinnedForms: jest.fn(),
+        isLoading: false,
+      };
+      jest
+        .requireMock('../../../../hooks/usePinnedObservationForms')
+        .usePinnedObservationForms.mockImplementation(() => pinnedState);
+      const { rerender } = render(
+        <ObservationFormsContainer
+          {...defaultProps}
+          viewingForm={nonDefaultForm}
+        />,
+      );
+      const pin = screen.getByRole('button', {
+        name: 'translated_OBSERVATION_FORMS_PIN_TOOLTIP',
+      });
+      expect(pin).toHaveAttribute('type', 'button');
+      expect(pin).toHaveAttribute('aria-pressed', 'false');
+      pinnedState.pinnedForms = [nonDefaultForm];
+      rerender(
+        <ObservationFormsContainer
+          {...defaultProps}
+          viewingForm={nonDefaultForm}
+        />,
+      );
+      expect(
+        screen.getByRole('button', {
+          name: 'translated_OBSERVATION_FORMS_UNPIN_TOOLTIP',
+        }),
+      ).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('lets keyboard users pin with Enter and Space without saving or discarding', async () => {
+      const keyboard = userEvent.setup();
+      const updatePinnedForms = jest.fn();
+      jest
+        .requireMock('../../../../hooks/usePinnedObservationForms')
+        .usePinnedObservationForms.mockReturnValue({
+          pinnedForms: [],
+          updatePinnedForms,
+          isLoading: false,
+        });
+      const onFormObservationsChange = jest.fn();
+      render(
+        <ObservationFormsContainer
+          {...defaultProps}
+          viewingForm={nonDefaultForm}
+          onFormObservationsChange={onFormObservationsChange}
+        />,
+      );
+      await keyboard.tab();
+      expect(
+        screen.getByRole('button', {
+          name: 'translated_OBSERVATION_FORMS_PIN_TOOLTIP',
+        }),
+      ).toHaveFocus();
+      await keyboard.keyboard('{Enter}');
+      await keyboard.keyboard(' ');
+      expect(updatePinnedForms).toHaveBeenCalledTimes(2);
+      expect(updatePinnedForms).toHaveBeenLastCalledWith([nonDefaultForm]);
+      expect(onFormObservationsChange).not.toHaveBeenCalled();
+      expect(defaultProps.onViewingFormChange).not.toHaveBeenCalled();
+      expect(defaultProps.onRemoveForm).not.toHaveBeenCalled();
+    });
+
     it('should show pinned state when form is in pinnedForms array', () => {
       const mockUsePinnedObservationForms = jest.requireMock(
         '../../../../hooks/usePinnedObservationForms',
@@ -947,8 +1185,7 @@ describe('ObservationFormsContainer', () => {
       const pinContainer = pinIcon.parentElement;
 
       expect(pinContainer).toHaveClass('pinned');
-      expect(pinContainer).toHaveAttribute(
-        'title',
+      expect(pinContainer).toHaveAccessibleName(
         'translated_OBSERVATION_FORMS_UNPIN_TOOLTIP',
       );
     });
@@ -985,8 +1222,7 @@ describe('ObservationFormsContainer', () => {
       const pinContainer = pinIcon.parentElement;
 
       expect(pinContainer).toHaveClass('unpinned');
-      expect(pinContainer).toHaveAttribute(
-        'title',
+      expect(pinContainer).toHaveAccessibleName(
         'translated_OBSERVATION_FORMS_PIN_TOOLTIP',
       );
     });

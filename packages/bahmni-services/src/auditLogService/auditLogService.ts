@@ -23,7 +23,6 @@ export const logAuditEvent = async (
   messageParams?: Record<string, unknown>,
   module: string = MODULE_LABELS.CLINICAL,
 ): Promise<AuditLogResponse> => {
-  // try {
   // Check if audit logging is enabled - matching openmrs-bahmni-apps implementation
   const isEnabled = await isAuditLogEnabled();
 
@@ -48,23 +47,11 @@ export const logAuditEvent = async (
     patientUuid,
     eventType: eventDetail.eventType,
     message: messageParams
-      ? `${i18next.t(eventDetail.message)}~${JSON.stringify(messageParams)}`
-      : i18next.t(eventDetail.message),
+      ? `${eventDetail.message}~${JSON.stringify(messageParams)}`
+      : eventDetail.message,
     module,
   };
 
   await post(AUDIT_LOG_URL, auditEntry);
   return { logged: true };
-  // TODO: handle specific error cases when audit log fails
-  // } catch (error) {
-  //   // eslint-disable-next-line no-console
-  //   console.error(i18next.t(AUDIT_LOG_ERROR_MESSAGES.LOG_FAILED), error);
-  //   return {
-  //     logged: false,
-  //     error:
-  //       error instanceof Error
-  //         ? error.message
-  //         : i18next.t(AUDIT_LOG_ERROR_MESSAGES.UNKNOWN_ERROR),
-  //   };
-  // }
 };

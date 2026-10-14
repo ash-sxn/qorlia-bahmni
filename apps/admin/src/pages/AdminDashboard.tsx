@@ -18,6 +18,16 @@ export const AdminDashboard: React.FC = () => (
       loadingLabelKey="ADMIN_LOADING_MODULES"
       errorMessageKey="ADMIN_ERROR_FETCH_CONFIG"
       emptyMessageKey="ADMIN_NO_MODULES"
+      reviewUrls={
+        process.env.NODE_ENV !== 'production'
+          ? {
+              'bahmni.admin.csv': '/bahmni-v2/admin/csv',
+              'bahmni.admin.csvExport': '/bahmni-v2/admin/csv-export',
+              'bahmni.admin.auditLog': '/bahmni-v2/admin/audit-log',
+              'bahmni.admin.orderSet': '/bahmni-v2/admin/order-sets',
+            }
+          : undefined
+      }
       testId="admin-modules"
     />
   </AdminLayout>

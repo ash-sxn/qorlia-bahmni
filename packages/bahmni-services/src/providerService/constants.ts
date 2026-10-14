@@ -5,4 +5,4 @@ export const PROVIDER_RESOURCE_URL = (userUUID: string) =>
   `/provider?user=${userUUID}&v=custom:(uuid,display,person,attributes)`;
 
 export const ALL_PROVIDERS_URL =
-  OPENMRS_REST_V1 + '/provider?v=custom:(uuid,display,person,attributes)';
+  OPENMRS_REST_V1 + '/provider?v=custom:(id,uuid,display,person,attributes)';

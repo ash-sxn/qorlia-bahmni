@@ -21,7 +21,7 @@ env:
 jobs:
   # Detect which packages and apps are affected by the changes (dev releases only)
   detect-affected:
-    if: github.ref_type == 'branch'
+    if: github.repository == 'Bahmni/bahmni-apps-frontend' && github.ref_type == 'branch'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -151,7 +151,7 @@ jobs:
 
   # Release stable versions using nx release (triggered by tags)
   release-stable:
-    if: github.ref_type == 'tag'
+    if: github.repository == 'Bahmni/bahmni-apps-frontend' && github.ref_type == 'tag'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

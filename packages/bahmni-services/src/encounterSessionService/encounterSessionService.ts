@@ -1,6 +1,11 @@
-import { Encounter, Bundle } from 'fhir/r4';
+import { Encounter } from 'fhir/r4';
 import { get } from '../api';
-import { getActiveVisit } from '../encounterService';
+import {
+  FHIR_ENCOUNTER_TAG_SYSTEM,
+  FHIR_ENCOUNTER_TYPE_CODE_SYSTEM,
+} from '../constants/fhir';
+import { getActiveVisit, getEncounterByUuid } from '../encounterService';
+import { getAllFHIRSearchPages } from '../fhirSearchCompatibility';
 import {
   ENCOUNTER_SESSION_DURATION_GP_URL,
   ENCOUNTER_SEARCH_URL,
@@ -32,29 +37,139 @@ export async function searchEncounters(
 
   const url = `${ENCOUNTER_SEARCH_URL}?${queryParams.toString()}`;
 
-  const bundle = await get<Bundle<Encounter>>(url);
+  const bundle = await getAllFHIRSearchPages<Encounter>(url);
 
   return (
     bundle.entry
       ?.map((entry) => entry.resource)
-      .filter((resource): resource is Encounter => resource !== undefined) ?? []
+      .filter(
+        (resource): resource is Encounter =>
+          resource?.resourceType === 'Encounter',
+      ) ?? []
+  );
+}
+
+export function getTypedReferenceId(
+  reference: string | undefined,
+  resourceType: string,
+): string | undefined {
+  const match = reference?.match(
+    /(?:^|\/)([A-Za-z][A-Za-z0-9]*)\/([A-Za-z0-9.-]+)(?:\/_history\/[A-Za-z0-9.-]+)?$/,
+  );
+  return match?.[1] === resourceType ? match[2] : undefined;
+}
+
+export function sortByMostRecent(encounters: Encounter[]): Encounter[] {
+  const start = (encounter: Encounter) =>
+    Date.parse(encounter.period?.start ?? '') || 0;
+  return [...encounters].sort((a, b) => start(b) - start(a));
+}
+
+/** Re-read the saved ID; a cached MATCHED flag is not a current decision. */
+export async function readSavedEncounter(
+  uuid: string | undefined,
+  patientUUID: string,
+  practitionerUUID: string,
+  visitUUID: string,
+  encounterTypeUUID: string | undefined,
+): Promise<Encounter | null> {
+  if (!uuid || !/^[A-Za-z0-9.-]+$/.test(uuid) || !encounterTypeUUID)
+    return null;
+  let encounter: Encounter;
+  try {
+    encounter = await getEncounterByUuid(uuid);
+  } catch (error) {
+    if (error instanceof Error && 'status' in error && error.status === 404)
+      return null;
+    throw error;
+  }
+  const updated = Date.parse(encounter.meta?.lastUpdated ?? '');
+  if (
+    encounter.resourceType !== 'Encounter' ||
+    encounter.id !== uuid ||
+    getTypedReferenceId(encounter.subject?.reference, 'Patient') !==
+      patientUUID ||
+    getTypedReferenceId(encounter.partOf?.reference, 'Encounter') !==
+      visitUUID ||
+    !encounter.participant?.some(
+      (p) =>
+        getTypedReferenceId(p.individual?.reference, 'Practitioner') ===
+        practitionerUUID,
+    ) ||
+    !encounter.type?.some((type) =>
+      type.coding?.some(
+        (coding) =>
+          coding.system === FHIR_ENCOUNTER_TYPE_CODE_SYSTEM &&
+          coding.code === encounterTypeUUID,
+      ),
+    ) ||
+    !encounter.meta?.tag?.some(
+      (tag) =>
+        tag.system === FHIR_ENCOUNTER_TAG_SYSTEM && tag.code === 'encounter',
+    ) ||
+    encounter.status === 'cancelled' ||
+    encounter.status === 'entered-in-error' ||
+    !Number.isFinite(updated) ||
+    updated > Date.now()
+  )
+    return null;
+  return encounter;
+}
+
+function findEncounterInVisit(
+  encounters: Encounter[],
+  visitUUID: string,
+  currentEpisodeEncounterUuids?: string[],
+): Encounter | null {
+  return (
+    sortByMostRecent(encounters).find(
+      (encounter) =>
+        getTypedReferenceId(encounter.partOf?.reference, 'Encounter') ===
+          visitUUID &&
+        (!currentEpisodeEncounterUuids ||
+          (!!encounter.id &&
+            currentEpisodeEncounterUuids.includes(encounter.id))),
+    ) ?? null
   );
 }
 
 /**
  * Gets the encounter session duration from global properties
- * @returns Promise resolving to session duration in minutes (default: 30)
+ * @returns Minutes; 60 for unset/invalid values, 30 when the lookup fails.
  */
 export async function getEncounterSessionDuration(): Promise<number> {
+  let response: { value?: unknown } | null | undefined;
   try {
-    const response = await get<{ value: string }>(
+    response = await get<{ value?: unknown } | null | undefined>(
       ENCOUNTER_SESSION_DURATION_GP_URL,
     );
-    const duration = Number(response.value);
-    return !isNaN(duration) && duration > 0 ? duration : 60; // Default to 60 minutes if invalid
   } catch {
     return 30;
   }
+  const value = response?.value;
+  const duration =
+    typeof value === 'string' || typeof value === 'number'
+      ? Number(value)
+      : NaN;
+  try {
+    getEncounterSessionStartTime(duration);
+    return duration;
+  } catch {
+    return 60;
+  }
+}
+
+/** Shared boundary for header and editor, including explicit minute overrides. */
+export function getEncounterSessionStartTime(duration: number): Date {
+  const start = new Date(Date.now() - duration * 60 * 1000);
+  if (
+    !Number.isFinite(duration) ||
+    duration <= 0 ||
+    !Number.isFinite(start.getTime())
+  ) {
+    throw new Error('Invalid encounter session duration');
+  }
+  return start;
 }
 
 /**
@@ -71,25 +186,16 @@ export async function filterByActiveVisit(
 ): Promise<Encounter | null> {
   if (!encounters.length) return null;
 
-  try {
-    const activeVisit = await getActiveVisit(patientUUID);
-    if (!activeVisit) return null;
+  const activeVisit = await getActiveVisit(patientUUID);
+  if (!activeVisit) return null;
 
-    // Find encounter that belongs to the active visit
-    return (
-      encounters.find((encounter) => {
-        const visitUUID = encounter.partOf?.reference?.split('/')[1];
-        if (activeVisit.id !== visitUUID) return false;
-        if (!currentEpisodeEncounterUuids) return true;
-        return (
-          !!encounter.id && currentEpisodeEncounterUuids.includes(encounter.id)
-        );
-      }) ?? null
-    );
-  } catch {
-    // If we can't get visit info, default to "New Consultation"
-    return null;
-  }
+  return activeVisit.id
+    ? findEncounterInVisit(
+        encounters,
+        activeVisit.id,
+        currentEpisodeEncounterUuids,
+      )
+    : null;
 }
 
 /**
@@ -99,6 +205,7 @@ export async function filterByActiveVisit(
  * @param sessionDurationMinutes - Session duration in minutes (optional, will fetch from config if not provided)
  * @param encounterTypeUUID - Encounter type UUID (optional, filters by type)
  * @param currentEpisodeEncounterUuids - The current episode of care's own known encounter UUIDs
+ * @param savedEncounterUUID - Saved ID hint, always re-read and context-checked
  * @returns Promise resolving to active encounter or null
  */
 export async function findActiveEncounterInSession(
@@ -107,43 +214,62 @@ export async function findActiveEncounterInSession(
   sessionDurationMinutes?: number,
   encounterTypeUUID?: string,
   currentEpisodeEncounterUuids?: string[],
+  savedEncounterUUID?: string,
 ): Promise<Encounter | null> {
-  try {
-    if (!patientUUID) return null;
+  if (!patientUUID) return null;
 
-    const duration =
-      sessionDurationMinutes ?? (await getEncounterSessionDuration());
-    const sessionStartTime = new Date(Date.now() - duration * 60 * 1000);
-    const lastUpdatedParam = `ge${sessionStartTime.toISOString()}`;
+  const duration =
+    sessionDurationMinutes ?? (await getEncounterSessionDuration());
+  const sessionStartTime = getEncounterSessionStartTime(duration);
+  const lastUpdatedParam = `ge${sessionStartTime.toISOString()}`;
 
-    const searchParams: EncounterSearchParams = {
-      patient: patientUUID,
-      _tag: 'encounter',
-      _lastUpdated: lastUpdatedParam,
-      type: encounterTypeUUID,
-    };
+  const searchParams: EncounterSearchParams = {
+    patient: patientUUID,
+    _tag: 'encounter',
+    _lastUpdated: lastUpdatedParam,
+    type: encounterTypeUUID,
+  };
 
-    // Add participant filter if practitioner UUID is provided
-    if (practitionerUUID) {
-      searchParams.participant = practitionerUUID;
-    }
-
-    // Search for encounters within session duration
-    // Server-side filtering by patient, duration, and practitioner (if provided)
-    const encounters = await searchEncounters(searchParams);
-
-    if (encounters.length === 0) return null;
-
-    // Filter by active visit and return the most recent one
-    const result = await filterByActiveVisit(
-      encounters,
-      patientUUID,
-      currentEpisodeEncounterUuids,
-    );
-    return result;
-  } catch {
-    return null;
+  // Add participant filter if practitioner UUID is provided
+  if (practitionerUUID) {
+    searchParams.participant = practitionerUUID;
   }
+
+  // Search for encounters within session duration
+  // Server-side filtering by patient, duration, and practitioner (if provided)
+  const encounters = await searchEncounters(searchParams);
+
+  const hasSavedHint = !!(
+    savedEncounterUUID &&
+    practitionerUUID &&
+    encounterTypeUUID
+  );
+  if (encounters.length === 0 && !hasSavedHint) return null;
+  const activeVisit = await getActiveVisit(patientUUID);
+  if (!activeVisit?.id) return null;
+  const saved = hasSavedHint
+    ? await readSavedEncounter(
+        savedEncounterUUID,
+        patientUUID,
+        practitionerUUID!,
+        activeVisit.id,
+        encounterTypeUUID,
+      )
+    : null;
+  const candidates = [
+    ...encounters.filter(
+      (encounter) => !hasSavedHint || encounter.id !== savedEncounterUUID,
+    ),
+    ...(saved &&
+    Date.parse(saved.meta!.lastUpdated!) >= sessionStartTime.getTime()
+      ? [saved]
+      : []),
+  ];
+  return findEncounterInVisit(
+    candidates,
+    activeVisit.id,
+    currentEpisodeEncounterUuids,
+  );
 }
 
 /**

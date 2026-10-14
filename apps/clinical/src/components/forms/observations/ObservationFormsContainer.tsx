@@ -1,6 +1,8 @@
 import {
   ActionArea,
+  Button,
   Icon,
+  IconButton,
   ICON_SIZE,
   InlineNotification,
   Loading,
@@ -140,7 +142,9 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
   const {
     data: fhirPatient,
     isLoading: isPatientLoading,
+    isFetching: isPatientFetching,
     error: patientError,
+    refetch: retryPatient,
   } = useQuery({
     queryKey: ['patient', patientUUID],
     queryFn: () => getFormattedPatientById(patientUUID!),
@@ -173,10 +177,16 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
   const episodeOfCareUuids = episodeOfCare.map((eoc) => eoc.uuid);
   const { forms: allForms, isLoading: isAllFormsLoading } =
     useObservationFormsSearch('', episodeOfCareUuids);
-  const { pinnedForms, updatePinnedForms } = usePinnedObservationForms(
-    allForms,
-    { userUuid: user?.uuid, isFormsLoading: isAllFormsLoading },
-  );
+  const {
+    pinnedForms,
+    updatePinnedForms,
+    isLoading: isPinnedFormsLoading,
+    error: pinnedFormsError,
+    refetch: retryPinnedForms,
+  } = usePinnedObservationForms(allForms, {
+    userUuid: user?.uuid,
+    isFormsLoading: isAllFormsLoading,
+  });
   const [validationErrorType, setValidationErrorType] = useState<
     | null
     | typeof VALIDATION_STATE_EMPTY
@@ -213,12 +223,30 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
     formMetadata,
     isLoadingMetadata,
     metadataError,
+    isFetchingMetadata,
+    retryMetadata,
   } = useObservationFormData(
     viewingForm?.uuid ? { formUuid: viewingForm.uuid } : undefined,
   );
 
   // Non-edit forms are always saveable; edit forms gate on CarbonContainer's setIsFormUpdated.
   const hasFormChanges = !isEditMode || isFormUpdated;
+  const canSubmitForm = Boolean(
+    formMetadata &&
+      patientUUID &&
+      patientContext &&
+      !isLoadingMetadata &&
+      !isFetchingMetadata &&
+      !metadataError &&
+      !isPatientLoading &&
+      !isPatientFetching &&
+      !patientError,
+  );
+
+  const retryFormReads = () => {
+    if (metadataError || !formMetadata) void retryMetadata();
+    if (patientError || !patientContext) void retryPatient();
+  };
 
   const handleFormDataChange = React.useCallback(
     (data: unknown) => {
@@ -322,7 +350,12 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
   const handlePinToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (viewingForm) {
+    if (
+      viewingForm &&
+      user?.uuid &&
+      !isPinnedFormsLoading &&
+      !pinnedFormsError
+    ) {
       const newPinnedForms = isCurrentFormPinned
         ? pinnedForms.filter((form) => form.uuid !== viewingForm.uuid)
         : [...pinnedForms, viewingForm];
@@ -359,11 +392,7 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
   };
 
   const validateAndSave = (handleDirectModeSubmit?: () => void) => {
-    if (!patientContext) {
-      setValidationErrorType(VALIDATION_STATE_SCRIPT_ERROR);
-      setValidationErrorMessage(t('OBSERVATION_FORM_LOADING_METADATA_ERROR'));
-      return;
-    }
+    if (!canSubmitForm || !patientContext) return;
 
     if (formContainerRef.current) {
       if (validationErrorType && !handleDirectModeSubmit) {
@@ -509,6 +538,7 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
   };
 
   const continueAnyway = () => {
+    if (!canSubmitForm) return;
     setValidationErrorType(null);
     if (formContainerRef.current) {
       // Get observations once
@@ -637,6 +667,33 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
         className={styles.formContent}
         data-testid="observation-form-content"
       >
+        {pinnedFormsError && (
+          <div role="alert">
+            <p>{t('OBSERVATION_FORM_PIN_UNAVAILABLE')}</p>
+            <Button
+              kind="tertiary"
+              disabled={isPinnedFormsLoading}
+              onClick={() => void retryPinnedForms()}
+            >
+              {t('OBSERVATION_FORM_TRY_AGAIN')}
+            </Button>
+          </div>
+        )}
+        {(!!error ||
+          (!isLoadingMetadata &&
+            !isPatientLoading &&
+            (!formMetadata || !patientContext))) && (
+          <div role="alert">
+            <p>{t('OBSERVATION_FORM_READ_UNAVAILABLE')}</p>
+            {error && <p>{error.message}</p>}
+            <Button
+              onClick={retryFormReads}
+              disabled={isFetchingMetadata || isPatientFetching}
+            >
+              {t('OBSERVATION_FORM_TRY_AGAIN')}
+            </Button>
+          </div>
+        )}
         {isLoadingMetadata || isPatientLoading ? (
           <div className={styles.loadingWrapper}>
             <Loading
@@ -646,8 +703,6 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
               withOverlay={false}
             />
           </div>
-        ) : error ? (
-          <div>{error.message}</div>
         ) : formMetadata && patientUUID && patientContext ? (
           <CarbonContainer
             ref={formContainerRef}
@@ -664,7 +719,14 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
             }}
             observations={observationsWithValues}
             patient={patientContext}
-            translations={formMetadata.translations ?? {}}
+            // The installed library's handwritten type says flat strings, but its
+            // getDecodedTranslations implementation reads labels and concepts.
+            translations={
+              (formMetadata.translations ??
+                {}) as unknown as React.ComponentProps<
+                typeof CarbonContainer
+              >['translations']
+            }
             validate={validationErrorType !== null}
             validateForm
             collapse={false}
@@ -672,9 +734,7 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
             onValueUpdated={handleFormDataChange}
             setIsFormUpdated={setIsFormUpdated}
           />
-        ) : (
-          <div>{t('OBSERVATION_FORM_LOADING_METADATA_ERROR')}</div>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -691,17 +751,28 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
     !directMode && !DEFAULT_FORM_API_NAMES.includes(viewingForm?.name ?? '');
 
   const pinIcon = canPinForm && (
-    <div
+    <IconButton
+      type="button"
+      kind="ghost"
+      size="sm"
+      isSelected={isCurrentFormPinned}
+      aria-pressed={isCurrentFormPinned}
+      disabled={!user?.uuid || isPinnedFormsLoading || !!pinnedFormsError}
       onClick={handlePinToggle}
       className={`${styles.pinIconContainer} ${isCurrentFormPinned ? styles.pinned : styles.unpinned}`}
-      title={
+      label={
         isCurrentFormPinned
           ? t('OBSERVATION_FORMS_UNPIN_TOOLTIP')
           : t('OBSERVATION_FORMS_PIN_TOOLTIP')
       }
     >
-      <Icon id="pin-icon" name="fa-thumbtack" size={ICON_SIZE.SM} />
-    </div>
+      <Icon
+        id="pin-icon"
+        name="fa-thumbtack"
+        size={ICON_SIZE.SM}
+        ariaLabel=""
+      />
+    </IconButton>
   );
 
   if (viewingForm) {
@@ -735,7 +806,7 @@ const ObservationFormsContainer: React.FC<ObservationFormsContainerProps> = ({
         primaryButtonText={primaryButtonText}
         onPrimaryButtonClick={handlePrimaryClick}
         isPrimaryButtonDisabled={
-          isPatientLoading || !patientContext || (isEditMode && !hasFormChanges)
+          !canSubmitForm || (isEditMode && !hasFormChanges)
         }
         secondaryButtonText={secondaryButtonText}
         onSecondaryButtonClick={handleSecondaryClick}

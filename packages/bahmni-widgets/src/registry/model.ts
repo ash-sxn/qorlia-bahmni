@@ -26,4 +26,6 @@ export interface WidgetProps {
 export interface WidgetConfig {
   type: string;
   component: LazyExoticComponent<ComponentType<WidgetProps>>;
+  /** All native read prerequisites, independent of dashboard/action restrictions. */
+  readPrivileges?: string[];
 }

@@ -104,7 +104,7 @@ describe('setEncounterSessionDecision', () => {
 });
 
 describe('setEncounterSessionLoading', () => {
-  it('sets isLoading=true without resetting other state', () => {
+  it('clears the previous decision and action eligibility while loading', () => {
     setEncounterSessionDecision({
       reasons: ['MATCHED'],
       encounter: mockEncounter,
@@ -112,7 +112,12 @@ describe('setEncounterSessionLoading', () => {
     setEncounterSessionLoading(true);
     const state = getEncounterSessionSnapshot();
     expect(state.isLoading).toBe(true);
-    expect(state.canEditOrCreate).toBe(true); // preserved
+    expect(state.canEditOrCreate).toBe(false);
+    expect(state.activeEncounter).toBeNull();
+    expect(state.matchReasons).toEqual([]);
+    setEncounterSessionLoading(false);
+    expect(getEncounterSessionSnapshot().canEditOrCreate).toBe(false);
+    expect(getEncounterSessionSnapshot().activeEncounter).toBeNull();
   });
 
   it('sets isLoading=false', () => {

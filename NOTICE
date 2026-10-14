@@ -20,4 +20,54 @@ third-party open source projects.
                                                                     
 For a list of third-party dependencies and their licenses, refer to the                                        
 package.json files within each application module and the node_modules                                      
-directory.                                                      
+directory.
+
+## Patient Documents authentication
+
+runtime/patient-documents/njs.js is derived from Bahmni/patient-documents
+package/docker/njs.js, revision dc20e7d2c161e26e10339b7e125bf48b0f31755b.
+Upstream notice: Copyright 2026. Source generated at Thoughtworks.
+Licensed under MPL 2.0, included in LICENSE. Qorlia's modifications validate
+paths, encode internal redirects and fail closed on invalid session responses.
+
+## Reports staging adapter
+
+runtime/reports/start-staging.sh adapts startup and migration commands from
+the upstream Bahmni Reports image, pinned to digest
+sha256:3af8e248ae7603126fecb1efacb583e8b6b2bd4e9df0254fc198e8e4a2d63877.
+That directory is licensed under AGPL 3.0, included in runtime/reports/LICENSE,
+not the MPL license applying to the frontend. The adapter retains the bundled
+upstream migrations and application. Its changes remove password-bearing
+shell tracing, restrict generated configuration permissions, override the
+private configuration URL and start without a debugger. MainReportController.java
+is derived from Bahmni/bahmni-reports 1.1.0, revision
+8f9d4bbdfec3aacba680a60d7fe47584eb679559. Its changes enforce authenticated
+report ownership and per-report privileges, fail closed on verification errors,
+stop denied direct generation and prevent duplicate download extensions.
+TemplateUploadController.java is derived from the same revision. Its changes
+validate XLS content and safe filenames, preserve original workbook bytes,
+confine unique file writes to the configured directory, clean partial writes
+and return UTF-8 upload acknowledgements. The native check harnesses and
+controllers are also AGPL 3.0. No upstream notices or licenses in the original
+image are removed.
+
+JasperResponseConverter.java derives from the same Reports revision under
+AGPL 3.0. Its native generation/template code is retained; Qorlia supplies the
+correct XLS MIME type. MainReportController carries native file content types
+explicitly and preserves the JSON queue contract. ReportsExporterCheck.java,
+the dependency fetch/install scripts and compatibility manifest are AGPL 3.0.
+The manifest pins a Java 11 staging candidate using DynamicReports 6.12.1,
+JasperReports 6.21.5, Apache POI 5.4.1 and matching dependencies. Downloaded JARs
+retain their own upstream licenses/notices and are not committed here. Original
+libraries remain recoverable; this compatibility check is not a completed
+production dependency or legal audit.
+
+## Billing draft UI adapter
+
+runtime/billing/qorlia_billing_ui is an original Qorlia Odoo 16 addon under
+LGPL 3.0 or later, included in runtime/billing/LICENSE and COPYING.GPL.
+It depends on the installed LGPL-3 Bahmni Sale addon and delegates defaults,
+onchange behavior, accounting computation and persistence to native Odoo.
+It adds draft state checks, optimistic edit versions and idempotent creation.
+It does not replace or remove notices in the upstream ERP image. Deployment
+credentials and private operations notes are not part of this source tree.

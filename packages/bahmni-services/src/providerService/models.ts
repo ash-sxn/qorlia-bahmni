@@ -56,6 +56,7 @@ export interface ProviderAttribute {
  * Interface representing OpenMRS Provider resource from REST API
  */
 export interface Provider {
+  id?: number;
   uuid: string;
   display: string;
   person: Person;

@@ -294,8 +294,17 @@ describe('InvestigationsForm Integration Tests', () => {
     });
 
     test('should toggle investigation priority when urgent checkbox is clicked', async () => {
+      const realStore = jest.requireActual<
+        typeof import('../../../../stores/serviceRequestStore')
+      >('../../../../stores/serviceRequestStore').default;
+      realStore.getState().reset();
+      (useServiceRequestStore as unknown as jest.Mock).mockImplementation(
+        realStore,
+      );
       const user = userEvent.setup();
-      render(<InvestigationsForm />, { wrapper: createWrapper() });
+      const { unmount } = render(<InvestigationsForm />, {
+        wrapper: createWrapper(),
+      });
 
       const combobox = screen.getByRole('combobox');
 
@@ -316,6 +325,18 @@ describe('InvestigationsForm Integration Tests', () => {
       await user.click(urgentCheckbox);
 
       expect(urgentCheckbox).toBeChecked();
+      expect(
+        realStore.getState().selectedServiceRequests.get('Lab Order')?.[0]
+          .selectedPriority,
+      ).toBe('stat');
+      await user.click(urgentCheckbox);
+      expect(urgentCheckbox).not.toBeChecked();
+      expect(
+        realStore.getState().selectedServiceRequests.get('Lab Order')?.[0]
+          .selectedPriority,
+      ).toBe('routine');
+      unmount();
+      realStore.getState().reset();
     });
 
     test('should remove investigation when close button is clicked', async () => {

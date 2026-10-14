@@ -9,7 +9,10 @@ export const CONSULTATION_PAD_PRIVILEGES = {
   ALLERGIES: ['Add Allergies'],
   EDIT_ALLERGIES: ['Edit Allergies'],
   EDIT_OBSERVATIONS: ['Edit Observations'],
-  CONDITIONS_AND_DIAGNOSES: ['Add Diagnoses'],
+  // The pinned FHIR diagnosis DAO accepts either privilege. Conditions use a
+  // separate DAO requiring Edit Conditions; do not treat these as equivalent.
+  CONDITIONS_AND_DIAGNOSES: ['Add Diagnoses', 'Edit Diagnoses'],
+  CONDITIONS: ['Edit Conditions'],
   INVESTIGATIONS: ['Add Orders'],
   MEDICATIONS: ['Add Orders'],
   OBSERVATIONS: ['Add Observations'],

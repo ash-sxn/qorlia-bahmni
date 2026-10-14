@@ -16,22 +16,37 @@
   @include type-style("heading-compact-01");
 }
 
+.conditionsTableViewport {
+  max-width: 100%;
+  overflow-x: auto;
+
+  &:focus-visible {
+    outline: 3px solid $focus;
+    outline-offset: -3px;
+  }
+}
+
 .conditionsTableBody {
   border-collapse: collapse;
   width: 100%;
   border: none;
+
+  // The named, focusable viewport owns scrolling rather than Carbon's inner div.
+  :global(.cds--data-table-content) {
+    overflow: visible;
+  }
 
   tbody tr:last-child td {
     border-bottom: none;
   }
 
   table {
-    table-layout: fixed;
+    table-layout: auto;
+    min-width: 40rem;
   }
 
   td {
-    width: 25%;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
   }
   td:nth-child(4) {
     padding-inline: 0 !important;

@@ -5,10 +5,11 @@ import {
   MatchReasonCode,
   getUserLoginLocation,
   getEncounterSessionSnapshot,
+  type EncounterMatchDecision,
 } from '@bahmni/services';
 import { usePatientUUID } from '@bahmni/widgets';
 import { Encounter } from 'fhir/r4';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export interface UseEncounterSessionOptions {
   practitioner: Provider | null;
@@ -26,121 +27,110 @@ export interface UseEncounterSessionReturn {
   refetch: () => Promise<void>;
 }
 
+const EMPTY_MATCH_REASONS: MatchReasonCode[] = [];
+
 export function useEncounterSession(
   options: UseEncounterSessionOptions,
 ): UseEncounterSessionReturn {
   const { practitioner, encounterTypeUUID } = options;
 
-  const [hasActiveSession, setHasActiveSession] = useState<boolean>(false);
-  const [activeEncounter, setActiveEncounter] = useState<Encounter | null>(
-    null,
-  );
-  const [isPractitionerMatch, setIsPractitionerMatch] =
-    useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [matchReason, setMatchReason] = useState<MatchReasonCode[]>([]);
-
   const patientUUID = usePatientUUID();
   const practitionerUUID = practitioner?.uuid;
+  const context = useMemo(
+    () => ({ patientUUID, practitionerUUID, encounterTypeUUID }),
+    [patientUUID, practitionerUUID, encounterTypeUUID],
+  );
+  const [state, setState] = useState<{
+    context: typeof context;
+    decision: EncounterMatchDecision | null;
+    isLoading: boolean;
+    error: string | null;
+  } | null>(null);
+  const activeFetch = useRef<{
+    context: typeof context;
+    fetch: () => Promise<void>;
+  } | null>(null);
 
-  const fetchSessionState = async (signal: { ignored: boolean }) => {
-    if (!patientUUID || !practitionerUUID || !encounterTypeUUID) {
-      setHasActiveSession(false);
-      setActiveEncounter(null);
-      setIsPractitionerMatch(false);
-      setMatchReason([]);
-      setError(null);
-      return;
-    }
-
-    // Resolve login location inside the fetch so it reads a fresh value each call
-    let loginLocationUUID: string | undefined;
-    try {
-      loginLocationUUID = getUserLoginLocation().uuid;
-    } catch {
-      // location cookie unavailable — location check will be skipped in mapper
-    }
-
-    // Seed immediately from the global store when it already reflects a MATCHED
-    // session. This lets the consultation pad inherit an encounter created by a
-    // dashboard widget action (e.g. mark-condition-inactive) without waiting for
-    // the OpenMRS FHIR search index to catch up to the freshly created encounter.
-    const storeState = getEncounterSessionSnapshot();
-    if (
-      storeState.matchReasons.includes('MATCHED') &&
-      storeState.activeEncounter?.id &&
-      storeState.activeEncounter.subject?.reference?.endsWith(patientUUID) &&
-      !signal.ignored
-    ) {
-      setHasActiveSession(true);
-      setActiveEncounter(storeState.activeEncounter);
-      setIsPractitionerMatch(true);
-      setMatchReason(storeState.matchReasons);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const decision = await resolveEncounterMatchDecision(
-        patientUUID,
-        practitionerUUID,
-        loginLocationUUID,
-        encounterTypeUUID,
-      );
-
-      if (signal.ignored) return;
-
-      const isResumableSession = canResumeOwnInSessionEncounter(decision);
-
-      setHasActiveSession(isResumableSession);
-      setActiveEncounter(decision.encounter);
-      setIsPractitionerMatch(isResumableSession);
-      setMatchReason(decision.reasons);
-    } catch (err) {
-      if (signal.ignored) return;
-      setError(
-        err instanceof Error ? err.message : 'Failed to load encounter session',
-      );
-      setHasActiveSession(false);
-      setActiveEncounter(null);
-      setIsPractitionerMatch(false);
-      setMatchReason(['NO_ACTIVE_ENCOUNTER']);
-    } finally {
-      if (!signal.ignored) setIsLoading(false);
-    }
-  };
-
+  // A lifecycle owns both the initial load and retries. Its request number
+  // prevents an older completion from replacing a newer decision or error.
   useEffect(() => {
-    const signal = { ignored: false };
-
-    if (practitioner?.uuid) {
-      setHasActiveSession(false);
-      setActiveEncounter(null);
-      setIsPractitionerMatch(false);
-      setMatchReason([]);
-      setError(null);
+    let active = true;
+    let request = 0;
+    async function fetchSessionState() {
+      const { patientUUID, practitionerUUID, encounterTypeUUID } = context;
+      if (!patientUUID || !practitionerUUID || !encounterTypeUUID) return;
+      const currentRequest = ++request;
+      setState({ context, decision: null, isLoading: true, error: null });
+      try {
+        let loginLocationUUID: string | undefined;
+        try {
+          loginLocationUUID = getUserLoginLocation().uuid;
+        } catch {
+          // Preserve the resolver's existing missing-location policy.
+        }
+        // A saved ID is only a hint; the resolver re-reads and validates it.
+        const storeState = getEncounterSessionSnapshot();
+        const savedEncounterUUID =
+          !storeState.isLoading &&
+          storeState.matchReasons.length === 1 &&
+          storeState.matchReasons[0] === 'MATCHED'
+            ? storeState.activeEncounter?.id
+            : undefined;
+        const decision = await resolveEncounterMatchDecision(
+          patientUUID,
+          practitionerUUID,
+          loginLocationUUID,
+          encounterTypeUUID,
+          savedEncounterUUID,
+        );
+        if (active && currentRequest === request) {
+          setState({ context, decision, isLoading: false, error: null });
+        }
+      } catch (err) {
+        if (active && currentRequest === request) {
+          setState({
+            context,
+            decision: null,
+            isLoading: false,
+            error:
+              err instanceof Error
+                ? err.message
+                : 'Failed to load encounter session',
+          });
+        }
+      }
     }
-    fetchSessionState(signal);
-
+    const lifecycle = { context, fetch: fetchSessionState };
+    activeFetch.current = lifecycle;
+    void fetchSessionState();
     return () => {
-      signal.ignored = true;
+      active = false;
+      if (activeFetch.current === lifecycle) activeFetch.current = null;
     };
-  }, [patientUUID, practitioner?.uuid, encounterTypeUUID]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [context]);
 
-  const editActiveEncounter = hasActiveSession && isPractitionerMatch;
+  const refetch = useCallback(async () => {
+    if (activeFetch.current?.context === context) {
+      await activeFetch.current.fetch();
+    }
+  }, [context]);
+
+  // Hide old context synchronously, before effects publish to the shared store.
+  // Object identity also distinguishes an A -> B -> A patient round trip.
+  const currentState = state?.context === context ? state : null;
+  const decision = currentState?.decision;
+  const hasActiveSession = decision
+    ? canResumeOwnInSessionEncounter(decision)
+    : false;
 
   return {
     hasActiveSession,
-    activeEncounter,
-    isPractitionerMatch,
-    matchReason,
-    editActiveEncounter,
-    isLoading,
-    error,
-    refetch: () => fetchSessionState({ ignored: false }),
+    activeEncounter: decision?.encounter ?? null,
+    isPractitionerMatch: hasActiveSession,
+    matchReason: decision?.reasons ?? EMPTY_MATCH_REASONS,
+    editActiveEncounter: hasActiveSession,
+    isLoading: currentState?.isLoading ?? true,
+    error: currentState?.error ?? null,
+    refetch,
   };
 }

@@ -7,8 +7,14 @@ const HomePage = lazy(() =>
     default: module.HomePage,
   })),
 );
+const BillingPage = lazy(() =>
+  import('../components/Billing/BillingPage').then((module) => ({
+    default: module.BillingPage,
+  })),
+);
 
 export const routes: Routes = [
+  { path: '/billing', component: BillingPage, name: 'Billing' },
   {
     path: '/',
     component: HomePage,

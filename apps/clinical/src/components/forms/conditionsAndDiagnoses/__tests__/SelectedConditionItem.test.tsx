@@ -422,6 +422,23 @@ describe('SelectedConditionItem Unit Tests', () => {
 
   // 3. EDGE CASES
   describe('Edge Cases', () => {
+    it.each(['2.5', '0.5', '99.9'])(
+      'does not truncate duration %s into a valid integer',
+      (value) => {
+        render(<SelectedConditionItem {...defaultProps} />);
+        fireEvent.change(
+          screen.getByTestId('condition-duration-value-test-condition-1'),
+          {
+            target: { value },
+          },
+        );
+        expect(mockUpdateConditionDuration).not.toHaveBeenCalled();
+        expect(
+          screen.getByTestId('condition-duration-value-test-condition-1'),
+        ).toHaveValue(30);
+      },
+    );
+
     it('should handle empty condition display', () => {
       const conditionWithEmptyDisplay = {
         ...mockValidCondition,

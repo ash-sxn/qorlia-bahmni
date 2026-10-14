@@ -22,6 +22,12 @@ jest.mock('@bahmni/services', () => ({
 
 jest.mock('../../hooks/usePatientUUID');
 jest.mock('../../notification');
+jest.mock('../../userPrivileges/useHasPrivilege', () => ({
+  useHasPrivilege: () => false,
+}));
+jest.mock('../../userPrivileges/useUserPrivilege', () => ({
+  useUserPrivilege: () => ({ userPrivileges: [] }),
+}));
 
 const mockGetDiagnosesPage = getDiagnosesPage as jest.MockedFunction<
   typeof getDiagnosesPage
@@ -171,6 +177,31 @@ describe('DiagnosesTable Integration', () => {
       expect(screen.getByTestId('diagnoses-table-empty')).toBeInTheDocument();
       expect(screen.getByText('No diagnoses recorded')).toBeInTheDocument();
     });
+  });
+
+  it('does not display the previous patient diagnoses while the new patient loads', async () => {
+    mockGetDiagnosesPage.mockResolvedValueOnce(wrapPage(mockDiagnoses));
+    const queryClient = createTestQueryClient();
+    const { rerender, unmount } = render(
+      <QueryClientProvider client={queryClient}>
+        <DiagnosesTable />
+      </QueryClientProvider>,
+    );
+    await screen.findByText('Hypertension');
+    mockGetDiagnosesPage.mockImplementation(() => new Promise(() => {}));
+    mockUsePatientUUID.mockReturnValue('new-patient');
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <DiagnosesTable />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => {
+      expect(mockGetDiagnosesPage).toHaveBeenCalledWith('new-patient', 5, 1);
+    });
+    expect(screen.queryByText('Hypertension')).not.toBeInTheDocument();
+    expect(screen.getByTestId('diagnoses-table-skeleton')).toBeInTheDocument();
+    unmount();
+    queryClient.clear();
   });
 
   it('handles missing patient UUID - query is disabled', async () => {

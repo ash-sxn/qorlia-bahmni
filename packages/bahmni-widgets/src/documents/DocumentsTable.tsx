@@ -116,6 +116,10 @@ const DocumentsTable: React.FC<WidgetProps> = ({ config, encounterUuids }) => {
 
       for (let i = 0; i < attachments.length; i++) {
         const url = buildDocumentUrl(attachments[i].url);
+        if (url === '#') {
+          failed.add(i);
+          continue;
+        }
         try {
           const response = await fetch(url, {
             method: 'HEAD',

@@ -1,4 +1,39 @@
-import { processFileForUpload } from '../utils';
+import {
+  processFileForUpload,
+  getDocumentPath,
+  getAuthenticatedDocumentUrl,
+} from '../utils';
+
+it('keeps attachment paths within their directory and safely encodes the query value', () => {
+  expect(getDocumentPath('/document_images/100/report.pdf')).toBe(
+    '100/report.pdf',
+  );
+  expect(getAuthenticatedDocumentUrl('100/my%20report.pdf')).toBe(
+    '/openmrs/auth?requested_document=/document_images/100/my%20report.pdf',
+  );
+  expect(
+    getAuthenticatedDocumentUrl('results/report.pdf', 'uploaded_results'),
+  ).toBe(
+    '/openmrs/auth?requested_document=/uploaded_results/results/report.pdf',
+  );
+  expect(
+    getAuthenticatedDocumentUrl('file.pdf&requested_document=/secret'),
+  ).toBe(
+    '/openmrs/auth?requested_document=/document_images/file.pdf%26requested_document%3D/secret',
+  );
+  for (const path of [
+    'https://example.com/file.pdf',
+    '//example.com/a',
+    '../secret',
+    '100/%252e%252e/secret',
+    'a\\b',
+    'file.pdf#foo',
+    'a%00b',
+    'a%xx',
+  ]) {
+    expect(getAuthenticatedDocumentUrl(path)).toBeUndefined();
+  }
+});
 
 describe('processFileForUpload', () => {
   const mockFileReaderInstance = {
@@ -11,6 +46,16 @@ describe('processFileForUpload', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (globalThis as any).FileReader = jest.fn(() => mockFileReaderInstance);
+  });
+
+  it.each([
+    ['scan.webp', 'image/webp'],
+    ['scan.WEBP', 'image/png'],
+  ])('rejects unsupported WebP before reading %s', async (name, type) => {
+    await expect(
+      processFileForUpload(new File(['image'], name, { type })),
+    ).rejects.toThrow('WebP is not supported');
+    expect(mockFileReaderInstance.readAsDataURL).not.toHaveBeenCalled();
   });
 
   it('should process image file and return base64 content with metadata', async () => {

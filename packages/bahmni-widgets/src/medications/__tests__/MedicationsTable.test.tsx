@@ -800,6 +800,56 @@ describe('MedicationsTable', () => {
       expect(stopButton).toBeInTheDocument();
       expect(stopButton).not.toBeDisabled();
     });
+
+    it('never offers stop on a read-only legacy medication', () => {
+      mockUseUserPrivilege.mockReturnValue({
+        userPrivileges: [{ name: 'Stop Orders' }],
+      } as any);
+      mockFormatMedicationRequest.mockImplementation(
+        (med: MedicationRequest) => ({
+          id: med.id,
+          name: med.name,
+          dosage: '100 mg',
+          dosageUnit: 'mg',
+          quantity: '10 tablets',
+          instruction: '',
+          startDate: med.startDate,
+          orderDate: med.orderDate,
+          orderedBy: med.orderedBy,
+          status: med.status,
+          priority: med.priority,
+          asNeeded: med.asNeeded,
+          isImmediate: med.isImmediate,
+          fhirResource: med.fhirResource,
+          readOnly: med.readOnly,
+        }),
+      );
+      mockUseQuery.mockReturnValue({
+        data: [{ ...mockMedications[0], readOnly: true }],
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      } as any);
+
+      render(
+        <MedicationsTable
+          config={{
+            actions: [
+              {
+                label: 'STOP_ACTION_LABEL',
+                type: 'stop',
+                encounterType: 'Consultation',
+                requiredPrivilege: ['Stop Orders'],
+              },
+            ],
+          }}
+        />,
+      );
+
+      expect(screen.getByText('Paracetamol 500mg')).toBeInTheDocument();
+      expect(screen.queryByTestId('medication-action-stop-1')).toBeNull();
+    });
   });
 
   describe('status class mapping for all statuses', () => {

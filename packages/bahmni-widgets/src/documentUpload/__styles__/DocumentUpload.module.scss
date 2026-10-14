@@ -17,10 +17,10 @@
   flex-direction: column;
 }
 
-// Grid matches the saved-docs table so tile, dropdown and actions line up under the headers.
+// Leave room for the type selector and discard button on narrow screens too.
 .pendingRow {
   display: grid;
-  grid-template-columns: 175px minmax(0, 1fr) 173px;
+  grid-template-columns: minmax(80px, 0.7fr) minmax(0, 1fr) 44px;
   align-items: center;
   gap: $spacing-05;
   padding: $spacing-05;
@@ -31,6 +31,7 @@
 }
 
 .typeCell {
+  min-width: 0;
   :global(.cds--dropdown),
   :global(.cds--list-box) {
     inline-size: 100%;

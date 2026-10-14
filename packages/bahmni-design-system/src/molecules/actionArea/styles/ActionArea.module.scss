@@ -26,6 +26,7 @@
 
 .header {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   padding: $spacing-06;
@@ -48,6 +49,7 @@
 
 .content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -58,6 +60,7 @@
 
 .buttonSet {
   display: flex;
+  flex-shrink: 0;
   width: 100%;
   gap: 0;
   border-top: 1px solid $border-subtle;
@@ -82,11 +85,9 @@
   }
 
   .buttonSet {
-    position: fixed;
-    bottom: 0;
     display: grid;
     gap: 0;
-    grid-template-columns: repeat(2, calc(100vw / 2));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 
     .twoButtons {
       min-width: 100%;

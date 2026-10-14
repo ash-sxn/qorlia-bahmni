@@ -214,6 +214,26 @@ describe('ObservationForms', () => {
   };
 
   // Test helpers
+  it('keeps a pinned form openable without an unpin action when preferences are unavailable', async () => {
+    const onFormSelect = jest.fn();
+    const updatePinnedForms = jest.fn();
+    render(
+      <ObservationForms
+        {...defaultProps}
+        pinnedForms={[mockForms[0]]}
+        isPinningUnavailable
+        onFormSelect={onFormSelect}
+        updatePinnedForms={updatePinnedForms}
+      />,
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Action for Admission Letter' }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('pinned-form-Admission Letter'));
+    expect(onFormSelect).toHaveBeenCalledWith(mockForms[0]);
+    expect(updatePinnedForms).not.toHaveBeenCalled();
+  });
+
   const getSearchInput = () => screen.getByTestId('combobox-input');
 
   const simulateSearch = async (

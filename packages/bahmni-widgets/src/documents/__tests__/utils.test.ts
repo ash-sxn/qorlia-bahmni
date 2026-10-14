@@ -48,11 +48,17 @@ describe('Documents Utils', () => {
       ['http://example.com/doc.pdf', '#'],
       [['java', 'script', ':alert(1)'].join(''), '#'],
       [['data', ':', 'text/html'].join(''), '#'],
-      ['/path/doc.pdf', `${DOCUMENT_AUTH_ENDPOINT}/path/doc.pdf`],
+      ['/path/doc.pdf', '#'],
+      ['100/../doc.pdf', '#'],
+      ['100/%252e%252e/doc.pdf', '#'],
+      [
+        '100/doc.pdf&requested_document=/other',
+        `${DOCUMENT_AUTH_ENDPOINT}100/doc.pdf%26requested_document%3D/other`,
+      ],
       ['100/filename.pdf', `${DOCUMENT_AUTH_ENDPOINT}100/filename.pdf`],
       [
         '100/12-Patient Document-uuid.png',
-        `${DOCUMENT_AUTH_ENDPOINT}100/12-Patient Document-uuid.png`,
+        `${DOCUMENT_AUTH_ENDPOINT}100/12-Patient%20Document-uuid.png`,
       ],
     ])('buildDocumentUrl(%s) returns %s', (input, expected) => {
       expect(buildDocumentUrl(input)).toBe(expected);

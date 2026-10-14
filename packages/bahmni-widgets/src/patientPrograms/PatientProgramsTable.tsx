@@ -64,7 +64,9 @@ const PatientProgramsTable: React.FC<WidgetProps> = ({ config }) => {
       selectedPageSize,
     ],
     enabled: !!patientUUID,
-    placeholderData: (prev) => prev,
+    // Retain pagination rows only within the same patient's chart.
+    placeholderData: (prev, previousQuery) =>
+      previousQuery?.queryKey[1] === patientUUID ? prev : undefined,
     queryFn: async () => {
       const page = await getPatientProgramsPage(
         patientUUID!,

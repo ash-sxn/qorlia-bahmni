@@ -14,6 +14,7 @@ import { render, screen, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Encounter } from 'fhir/r4';
 import { axe, toHaveNoViolations } from 'jest-axe';
+import { usePatientUUID } from '../../hooks/usePatientUUID';
 import { useNotification } from '../../notification';
 import { useHasPrivilege } from '../../userPrivileges/useHasPrivilege';
 import ConditionsTable from '../ConditionsTable';
@@ -68,6 +69,7 @@ describe('ConditionsTable', () => {
   });
   beforeEach(() => {
     jest.clearAllMocks();
+    (usePatientUUID as jest.Mock).mockReturnValue('test-patient-uuid');
     // Reset shared encounter session store
     resetEncounterSession();
     (useNotification as jest.Mock).mockReturnValue({
@@ -534,6 +536,42 @@ describe('ConditionsTable', () => {
         refetch: jest.fn().mockResolvedValue(undefined),
       });
     };
+
+    it.each(['privilege', 'disabled', 'patient'])(
+      'blocks an open confirmation after %s changes',
+      async (change) => {
+        const user = userEvent.setup();
+        setupWithRawCondition('cond-context');
+        const { rerender } = renderTable({ config: actionsConfig });
+        await user.click(
+          screen.getByTestId(`condition-mark-inactive-${activeCondition.code}`),
+        );
+        if (change === 'privilege') {
+          (useHasPrivilege as jest.Mock).mockReturnValue(false);
+        }
+        if (change === 'patient') {
+          (usePatientUUID as jest.Mock).mockReturnValue('different-patient');
+        }
+        rerender(
+          <QueryClientProvider client={queryClient}>
+            <ConditionsTable
+              config={actionsConfig}
+              disableActions={change === 'disabled'}
+            />
+          </QueryClientProvider>,
+        );
+        const confirm = screen.getByRole('button', { name: /YES/i });
+        expect(confirm).toBeDisabled();
+        await user.click(confirm);
+        expect(markConditionAsInactive).not.toHaveBeenCalled();
+        expect(dispatchAuditEvent).not.toHaveBeenCalled();
+        expect(dispatchConsultationSaved).not.toHaveBeenCalled();
+        await user.click(screen.getByRole('button', { name: /NO/i }));
+        expect(
+          screen.getByTestId('mark-inactive-confirm-modal'),
+        ).not.toHaveClass('is-visible');
+      },
+    );
 
     describe('AC4 — error handling', () => {
       it('shows error notification when markConditionAsInactive rejects', async () => {

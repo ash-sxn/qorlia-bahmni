@@ -1080,6 +1080,44 @@ describe('Patient Service', () => {
   });
 
   describe('getFormattedPatientById', () => {
+    it('reads the saved full DOB when FHIR returns only an estimated year', async () => {
+      const uuid = '12345678-1234-1234-1234-123456789abc';
+      mockedGet
+        .mockResolvedValueOnce({
+          resourceType: 'Patient',
+          id: uuid,
+          birthDate: '1996',
+        })
+        .mockResolvedValueOnce({
+          patient: {
+            uuid,
+            person: { birthdate: '1996-10-01T00:00:00.000+0530' },
+          },
+        });
+      expect((await getFormattedPatientById(uuid)).birthDate).toBe(
+        '1996-10-01',
+      );
+    });
+
+    it('rejects a mismatched patient profile instead of borrowing its DOB', async () => {
+      const uuid = '12345678-1234-1234-1234-123456789abc';
+      mockedGet
+        .mockResolvedValueOnce({
+          resourceType: 'Patient',
+          id: uuid,
+          birthDate: '1996',
+        })
+        .mockResolvedValueOnce({
+          patient: {
+            uuid: 'another-patient',
+            person: { birthdate: '1996-10-01' },
+          },
+        });
+      await expect(getFormattedPatientById(uuid)).rejects.toThrow(
+        PATIENT_NOT_FOUND_ERROR_KEY,
+      );
+    });
+
     beforeEach(() => {
       jest.clearAllMocks();
       jest.useFakeTimers().setSystemTime(new Date('2025-03-24'));
@@ -1351,6 +1389,17 @@ describe('Patient Service', () => {
   });
 
   describe('createPatient', () => {
+    it('rejects an application error returned with HTTP 200', async () => {
+      mockedPost.mockResolvedValueOnce({ message: null, stackTrace: [] });
+      await expect(
+        createPatient({
+          patient: {
+            person: { names: [], gender: 'M', birthdate: '1990-01-01' },
+            identifiers: [],
+          },
+        }),
+      ).rejects.toThrow('server did not return a saved patient');
+    });
     it('should create a patient with valid data', async () => {
       const mockPatientData = {
         patient: {

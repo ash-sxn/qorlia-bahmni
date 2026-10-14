@@ -51,4 +51,15 @@ describe('AdminDashboard', () => {
     expect(props.errorMessageKey).toBe('ADMIN_ERROR_FETCH_CONFIG');
     expect(props.emptyMessageKey).toBe('ADMIN_NO_MODULES');
   });
+
+  it('links implemented admin workflows to React in the local review build', () => {
+    render(<AdminDashboard />);
+    expect(gridProps().reviewUrls).toEqual({
+      'bahmni.admin.csv': '/bahmni-v2/admin/csv',
+      'bahmni.admin.csvExport': '/bahmni-v2/admin/csv-export',
+      'bahmni.admin.auditLog': '/bahmni-v2/admin/audit-log',
+      'bahmni.admin.orderSet': '/bahmni-v2/admin/order-sets',
+    });
+    expect(gridProps().reviewUrls['bahmni.admin.adt']).toBeUndefined();
+  });
 });

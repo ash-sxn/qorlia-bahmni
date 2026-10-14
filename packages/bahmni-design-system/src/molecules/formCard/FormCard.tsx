@@ -22,7 +22,7 @@ export interface FormCardProps {
 
 interface ActionIconProps {
   icon: string;
-  onClick: (e: React.MouseEvent | React.KeyboardEvent) => void;
+  onClick: (e: React.MouseEvent) => void;
   disabled?: boolean;
   ariaLabel?: string;
 }
@@ -41,23 +41,15 @@ const ActionIcon: React.FC<ActionIconProps> = ({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
-      e.preventDefault();
-      onClick(e);
-    }
-  };
-
   return (
-    <div
+    <button
+      type="button"
       className={classNames(styles.actionIcon, {
         [styles.disabled]: disabled,
       })}
       onClick={handleClick}
-      onKeyDown={handleKeyDown}
       aria-label={ariaLabel}
-      role="button"
-      tabIndex={disabled ? -1 : 0}
+      disabled={disabled}
     >
       <Icon
         id={`action-icon-${icon}`}
@@ -65,7 +57,7 @@ const ActionIcon: React.FC<ActionIconProps> = ({
         size={ICON_SIZE.SM}
         padding={ICON_PADDING.NONE}
       />
-    </div>
+    </button>
   );
 };
 
@@ -122,7 +114,12 @@ const useClickHandler = (
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !disabled && primaryClickHandler) {
+    if (
+      e.target === e.currentTarget &&
+      (e.key === 'Enter' || e.key === ' ') &&
+      !disabled &&
+      primaryClickHandler
+    ) {
       e.preventDefault();
       primaryClickHandler();
     }

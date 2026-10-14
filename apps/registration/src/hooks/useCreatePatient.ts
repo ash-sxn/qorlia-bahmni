@@ -1,28 +1,24 @@
 import {
-  createFhirPatient,
-  createRelatedPerson,
+  createPatient,
   generateIdentifier,
   PatientIdentifier,
   PatientAddress,
   AUDIT_LOG_EVENT_DETAILS,
   AuditEventType,
   dispatchAuditEvent,
-  getUserLoginLocation,
   useTranslation,
 } from '@bahmni/services';
 import { useNotification } from '@bahmni/widgets';
 import { useMutation } from '@tanstack/react-query';
-import type { Patient } from 'fhir/r4';
 import { useNavigate } from 'react-router-dom';
 import type { RelationshipData } from '../components/forms/patientRelationships/PatientRelationships';
+import { getPatientUrlExternal } from '../constants/app';
 import {
   BasicInfoData,
   PersonAttributesData,
   AdditionalIdentifiersData,
 } from '../models/patient';
-import { buildFhirPatient } from '../utils/fhirPatientMapper';
-import { buildRelatedPersonPayload } from '../utils/patientDataConverter';
-import { useIdentifierTypes } from './useAdditionalIdentifiers';
+import { buildPatientProfile } from '../utils/patientProfileMapper';
 import { usePersonAttributes } from './usePersonAttributes';
 
 interface CreatePatientFormData {
@@ -38,26 +34,21 @@ interface CreatePatientFormData {
   relationships: RelationshipData[];
 }
 
-function buildIdentifierTypeNames(
-  types?: { uuid: string; name: string }[],
-): Record<string, string> {
-  const map: Record<string, string> = {};
-  types?.forEach((t) => {
-    map[t.uuid] = t.name;
-  });
-  return map;
-}
-
 export const useCreatePatient = () => {
   const { t } = useTranslation();
   const { addNotification } = useNotification();
   const navigate = useNavigate();
   const { personAttributes } = usePersonAttributes();
-  const { data: identifierTypes } = useIdentifierTypes();
 
   const mutation = useMutation({
     mutationFn: async (formData: CreatePatientFormData) => {
-      const { identifierSourceUuid } = formData.profile.patientIdentifier;
+      const { identifierSourceUuid, identifierType, identifier } =
+        formData.profile.patientIdentifier;
+      if (!identifierType || (!identifierSourceUuid && !identifier?.trim())) {
+        throw new Error(
+          'Patient ID configuration is unavailable. Select an ID format before saving.',
+        );
+      }
       let identifierValue: string | undefined;
 
       if (identifierSourceUuid) {
@@ -73,34 +64,9 @@ export const useCreatePatient = () => {
         },
       };
 
-      const payload = buildFhirPatient({
-        profile,
-        address: formData.address,
-        contact: formData.contact,
-        additional: formData.additional,
-        additionalIdentifiers: formData.additionalIdentifiers,
-        identifierTypeNames: buildIdentifierTypeNames(identifierTypes),
-        loginLocationUuid: getUserLoginLocation()?.uuid,
-        personAttributes,
-      });
-      const patient = await createFhirPatient<Patient>(payload);
-
-      const patientUuid = patient?.id;
-      if (patientUuid && formData.relationships?.length) {
-        const newRelationships = formData.relationships.filter(
-          (rel) => rel.patientUuid && rel.relationshipType,
-        );
-        const results = await Promise.allSettled(
-          newRelationships.map((rel) =>
-            createRelatedPerson(buildRelatedPersonPayload(patientUuid, rel)),
-          ),
-        );
-        if (results.some((r) => r.status === 'rejected')) {
-          throw new Error(t('ERROR_SAVING_RELATIONSHIPS'));
-        }
-      }
-
-      return patient;
+      return createPatient(
+        buildPatientProfile({ ...formData, profile }, personAttributes),
+      );
     },
     onSuccess: async (response) => {
       addNotification({
@@ -110,7 +76,7 @@ export const useCreatePatient = () => {
         timeout: 5000,
       });
 
-      const patientUuid = response?.id;
+      const patientUuid = response?.patient?.uuid;
       if (patientUuid) {
         dispatchAuditEvent({
           eventType: AUDIT_LOG_EVENT_DETAILS.REGISTER_NEW_PATIENT
@@ -120,14 +86,12 @@ export const useCreatePatient = () => {
         });
 
         const patientDisplay =
-          [response.name?.[0]?.given?.join(' '), response.name?.[0]?.family]
-            .filter(Boolean)
-            .join(' ') || patientUuid;
+          response.patient.person?.names?.[0]?.display || patientUuid;
 
         window.history.replaceState(
           { patientDisplay, patientUuid },
           '',
-          `/registration/patient/${patientUuid}`,
+          getPatientUrlExternal(patientUuid),
         );
       } else {
         navigate('/registration/search');
@@ -138,7 +102,6 @@ export const useCreatePatient = () => {
         type: 'error',
         title: t('ERROR_SAVING_PATIENT'),
         message: error instanceof Error ? error.message : String(error),
-        timeout: 5000,
       });
     },
   });

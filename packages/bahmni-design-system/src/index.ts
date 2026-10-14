@@ -5,6 +5,13 @@ export {
   BAHMNI_DEFAULT_THEME,
   type BahmniThemeConfig,
 } from './utils/applyTheme';
+export {
+  DEFAULT_BRANDING,
+  applyHospitalBranding,
+  getHospitalBranding,
+  parseHospitalBranding,
+  type HospitalBranding,
+} from './utils/branding';
 
 export { Add, Close, Edit, TrashCan, Printer } from '@carbon/icons-react';
 

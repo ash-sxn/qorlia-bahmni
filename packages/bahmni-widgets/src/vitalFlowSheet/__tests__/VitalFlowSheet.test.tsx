@@ -100,6 +100,22 @@ describe('VitalFlowSheet Empty State', () => {
     jest.clearAllMocks();
   });
 
+  it('rejects missing or invalid configuration before calling the data hook', () => {
+    const { rerender } = render(<VitalFlowSheet />);
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'configuration is invalid',
+    );
+    expect(mockUseVitalFlowSheet).not.toHaveBeenCalled();
+    rerender(
+      <VitalFlowSheet
+        config={{ latestCount: 0, obsConcepts: ['Temperature'] }}
+      />,
+    );
+    expect(mockUseVitalFlowSheet).not.toHaveBeenCalled();
+    rerender(<VitalFlowSheet config={{ latestCount: 5, obsConcepts: [42] }} />);
+    expect(mockUseVitalFlowSheet).not.toHaveBeenCalled();
+  });
+
   it('should show empty state when tabularData has empty observation data', () => {
     mockUseVitalFlowSheet.mockReturnValue({
       data: {

@@ -1,6 +1,7 @@
 import type {
   FhirRelatedPerson,
   PatientProfileResponse,
+  PersonAttributeType,
 } from '@bahmni/services';
 import { calculateAge } from '@bahmni/services';
 import { format, isValid, parseISO } from 'date-fns';
@@ -19,8 +20,9 @@ export const convertToBasicInfoData = (
   if (!patientData) return undefined;
 
   const preferredName =
-    patientData.patient.person.names.find((name) => name.preferred) ??
-    patientData.patient.person.names[0];
+    patientData.patient.person.names.find(
+      (name) => name.preferred && !name.voided,
+    ) ?? patientData.patient.person.names.find((name) => !name.voided);
 
   if (!preferredName) return undefined;
 
@@ -59,6 +61,7 @@ export const convertToBasicInfoData = (
 
 export const convertToPersonAttributesData = (
   patientData: PatientProfileResponse | undefined,
+  attributeTypes: PersonAttributeType[] = [],
 ): PersonAttributesData | undefined => {
   if (
     !patientData?.patient.person.attributes ||
@@ -70,9 +73,14 @@ export const convertToPersonAttributesData = (
   const data: PersonAttributesData = {};
 
   patientData.patient.person.attributes.forEach((attr) => {
-    const fieldName = attr.attributeType?.display;
-    if (!fieldName) return;
-    data[fieldName] = attr.value?.toString() ?? '';
+    const fieldName =
+      attributeTypes.find((type) => type.uuid === attr.attributeType.uuid)
+        ?.name ?? attr.attributeType?.display;
+    if (!fieldName || attr.voided) return;
+    data[fieldName] =
+      attr.value && typeof attr.value === 'object'
+        ? attr.value.uuid
+        : (attr.value ?? '');
   });
 
   return data;
@@ -88,11 +96,20 @@ export const convertToAddressData = (
     return undefined;
   }
 
-  const address = patientData.patient.person.addresses[0];
+  const address =
+    patientData.patient.person.addresses.find(
+      (a) => a.preferred && !a.voided,
+    ) ?? patientData.patient.person.addresses.find((a) => !a.voided);
+  if (!address) return undefined;
 
   const addressData: AddressData = {};
   Object.keys(address).forEach((key) => {
-    if (key === 'links' || key === 'resourceVersion') return;
+    if (
+      ['links', 'resourceVersion', 'preferred', 'voided', 'display'].includes(
+        key,
+      )
+    )
+      return;
 
     const value = (address as Record<string, unknown>)[key];
     addressData[key] =
@@ -112,7 +129,9 @@ export const convertToAdditionalIdentifiersData = (
     return undefined;
   }
 
-  const additionalIdentifiers = patientData.patient.identifiers.slice(1);
+  const additionalIdentifiers = patientData.patient.identifiers.filter(
+    (id) => !id.preferred,
+  );
 
   const identifiersData: Record<string, string> = {};
 

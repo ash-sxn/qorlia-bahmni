@@ -1,5 +1,11 @@
 import { getFormattedError, ObservationForm } from '@bahmni/services';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  useIsMutating,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { useCallback } from 'react';
 import {
   loadPinnedForms,
   savePinnedForms,
@@ -16,117 +22,103 @@ export function usePinnedObservationForms(
   options?: UsePinnedObservationFormsOptions,
 ) {
   const { userUuid, isFormsLoading = false } = options ?? {};
-  const [pinnedForms, setPinnedForms] = useState<ObservationForm[]>([]);
-  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
-  const [error, setError] = useState<{ title: string; message: string } | null>(
-    null,
-  );
-  const availableFormsRef = useRef<ObservationForm[]>([]);
-  const loadedForUserRef = useRef<string | null>(null);
-
-  // Keep ref updated with latest forms
-  useEffect(() => {
-    availableFormsRef.current = availableForms;
-  }, [availableForms]);
-
-  // Reset initialization when userUuid changes
-  useEffect(() => {
-    if (userUuid !== loadedForUserRef.current) {
-      setIsInitialLoadComplete(false);
-      setPinnedForms([]);
-      setError(null);
-      loadedForUserRef.current = null;
-    }
-  }, [userUuid]);
-
-  // Load pinned forms on mount - single source of truth
-  // Only runs ONCE when forms finish loading
-  useEffect(() => {
-    const loadPinnedFormsData = async () => {
-      if (!userUuid) {
-        setIsInitialLoadComplete(true);
-        loadedForUserRef.current = null;
-        return;
-      }
-
-      setError(null);
-      try {
-        const names = await loadPinnedForms(userUuid);
-        const currentForms = availableFormsRef.current;
-        if (names.length > 0 && currentForms.length > 0) {
-          const matchedForms = currentForms.filter((form) =>
-            names.includes(form.name),
-          );
-          setPinnedForms(matchedForms);
-        } else {
-          setPinnedForms([]);
-        }
-      } catch (err) {
-        const formattedError = getFormattedError(err);
-        setError(formattedError);
-        setPinnedForms([]);
-      } finally {
-        setIsInitialLoadComplete(true);
-        loadedForUserRef.current = userUuid;
-      }
-    };
-
-    // Skip if already loaded or still loading forms
-    if (isInitialLoadComplete || isFormsLoading) {
-      return;
-    }
-
-    // Handle case when forms loading is complete
-    if (!userUuid) {
-      // No user - complete initialization without loading
-      setIsInitialLoadComplete(true);
-      loadedForUserRef.current = null;
-    } else if (availableForms.length > 0) {
-      // Forms available - load pinned forms
-      loadPinnedFormsData();
-    } else {
-      // Forms loaded but empty - complete initialization
-      setIsInitialLoadComplete(true);
-      setPinnedForms([]);
-      loadedForUserRef.current = userUuid;
-    }
-  }, [availableForms.length, isInitialLoadComplete, userUuid, isFormsLoading]);
-
-  const updatePinnedForms = useCallback(
-    async (newPinnedForms: ObservationForm[]) => {
-      if (!userUuid) {
-        const error = {
-          title: 'Unable to save pinned forms',
-          message:
-            'User information is not available. Please try logging in again.',
-        };
-        setError(error);
-        return;
-      }
-
-      // Update local state immediately (optimistic UI)
-      setPinnedForms(newPinnedForms);
-      try {
-        // Save to backend asynchronously
-        await savePinnedForms(
-          userUuid,
-          newPinnedForms.map((f) => f.name),
-        );
-      } catch (err) {
-        const formattedError = getFormattedError(err);
-        setError(formattedError);
-        // Could optionally revert the optimistic update here on error
-      }
+  const queryClient = useQueryClient();
+  const queryKey = ['pinnedObservationForms', userUuid];
+  const mutationKey = ['savePinnedObservationForms', userUuid];
+  const preferences = useQuery({
+    queryKey,
+    queryFn: () => loadPinnedForms(userUuid!),
+    enabled: !!userUuid && !isFormsLoading,
+    staleTime: Infinity,
+  });
+  const isSaving = useIsMutating({ mutationKey, exact: true }) > 0;
+  const save = useMutation({
+    mutationKey,
+    retry: false,
+    mutationFn: ({ user, names }: { user: string; names: string[] }) =>
+      savePinnedForms(user, names),
+    onMutate: ({ user }) =>
+      queryClient.cancelQueries({
+        queryKey: ['pinnedObservationForms', user],
+        exact: true,
+      }),
+    onSuccess: (_result, { user, names }) => {
+      queryClient.setQueryData(['pinnedObservationForms', user], names);
     },
-    [userUuid],
-  );
+    onError: (_error, { user }) => {
+      // A lost response may follow an accepted POST. Reconcile with a GET,
+      // never replay the write or publish an unconfirmed optimistic preference.
+      void queryClient.invalidateQueries({
+        queryKey: ['pinnedObservationForms', user],
+        exact: true,
+      });
+    },
+  });
+  const readError = preferences.error;
+  const saveError = save.variables?.user === userUuid ? save.error : null;
+  const error = readError ?? saveError;
 
-  const refetch = useCallback(() => {
-    setIsInitialLoadComplete(false);
-    loadedForUserRef.current = null;
-  }, []);
+  const updatePinnedForms = async (newPinnedForms: ObservationForm[]) => {
+    const storedNames = queryClient.getQueryData<string[]>(queryKey);
+    if (
+      !userUuid ||
+      isFormsLoading ||
+      preferences.isFetching ||
+      error ||
+      !storedNames ||
+      queryClient.isMutating({ mutationKey, exact: true }) > 0
+    )
+      return;
 
-  const isLoading = !isInitialLoadComplete;
+    // Forms hidden by programme/privilege filtering are not unpinned by a
+    // change to this view. Resolve visible pins from the latest catalogue.
+    const visibleNames = new Set(availableForms.map((form) => form.name));
+    const names = [
+      ...new Set([
+        ...storedNames.filter((name) => !visibleNames.has(name)),
+        ...newPinnedForms
+          .filter((form) =>
+            availableForms.some(
+              (available) =>
+                available.uuid === form.uuid && available.name === form.name,
+            ),
+          )
+          .map((form) => form.name),
+      ]),
+    ];
+    try {
+      await save.mutateAsync({ user: userUuid, names });
+    } catch {
+      // The hook exposes the failure; event handlers must not reject unhandled.
+    }
+  };
 
-  return { pinnedForms, updatePinnedForms, isLoading, error, refetch };
+  const resetSave = save.reset;
+  const retryRead = preferences.refetch;
+  const refetch = useCallback(async () => {
+    if (
+      !userUuid ||
+      isFormsLoading ||
+      queryClient.isMutating({
+        mutationKey: ['savePinnedObservationForms', userUuid],
+        exact: true,
+      }) > 0
+    )
+      return;
+    resetSave();
+    await retryRead();
+  }, [userUuid, isFormsLoading, queryClient, resetSave, retryRead]);
+
+  return {
+    pinnedForms: userUuid
+      ? availableForms.filter((form) => preferences.data?.includes(form.name))
+      : [],
+    updatePinnedForms,
+    isLoading:
+      isFormsLoading ||
+      (!!userUuid &&
+        (preferences.isPending || preferences.isFetching || isSaving)),
+    error: error ? getFormattedError(error) : null,
+    refetch,
+  };
 }

@@ -5,6 +5,10 @@ import {
   DOCUMENT_UPLOAD_MAX_SIZE_URL,
   PATIENT_DOCUMENT_REFERENCES_URL,
 } from './constants';
+import {
+  getLegacyDocumentBundle,
+  usesLegacyDocuments,
+} from './legacyDocuments';
 import { DocumentType, DocumentViewModel } from './models';
 
 /**
@@ -90,8 +94,20 @@ export async function getDocumentReferences(
   patientUuid: string,
   encounterUuids?: string[],
 ): Promise<Bundle<DocumentReference>> {
-  const url = PATIENT_DOCUMENT_REFERENCES_URL(patientUuid, encounterUuids);
-  return get<Bundle<DocumentReference>>(url);
+  return getDocumentBundle(patientUuid, encounterUuids, 100, 0);
+}
+
+async function getDocumentBundle(
+  patientUuid: string,
+  encounterUuids: string[] | undefined,
+  count: number,
+  offset: number,
+) {
+  if (await usesLegacyDocuments())
+    return getLegacyDocumentBundle(patientUuid, encounterUuids, count, offset);
+  return get<Bundle<DocumentReference>>(
+    PATIENT_DOCUMENT_REFERENCES_URL(patientUuid, encounterUuids, count, offset),
+  );
 }
 
 /**
@@ -106,11 +122,42 @@ export async function getFormattedDocumentReferences(
   patientUuid: string,
   encounterUuids?: string[],
 ): Promise<DocumentViewModel[]> {
-  const bundle = await getDocumentReferences(patientUuid, encounterUuids);
-  const entries = (bundle.entry ?? []).filter(
-    (entry): entry is { resource: DocumentReference } => !!entry.resource,
-  );
-  return mapDocumentReferencesToViewModels(entries);
+  const documents: DocumentViewModel[] = [];
+  const seen = new Set<string>();
+  if (await usesLegacyDocuments()) {
+    // The legacy adapter already walks the complete encounter history. Read it
+    // once, rather than walking that history again for each document page.
+    const bundle = await getLegacyDocumentBundle(
+      patientUuid,
+      encounterUuids,
+      Number.MAX_SAFE_INTEGER,
+      0,
+    );
+    return mapDocumentReferencesToViewModels(
+      (bundle.entry ?? []).filter(
+        (entry): entry is { resource: DocumentReference } => !!entry.resource,
+      ),
+    );
+  }
+  for (let offset = 0; ; offset += 100) {
+    const bundle = await get<Bundle<DocumentReference>>(
+      PATIENT_DOCUMENT_REFERENCES_URL(patientUuid, encounterUuids, 100, offset),
+    );
+    const entries = (bundle.entry ?? []).filter(
+      (entry): entry is { resource: DocumentReference } => !!entry.resource,
+    );
+    const page = mapDocumentReferencesToViewModels(entries);
+    for (const document of page) {
+      if (!document.id || seen.has(document.id))
+        throw new Error(
+          'The server returned missing or repeated document IDs.',
+        );
+      seen.add(document.id);
+    }
+    documents.push(...page);
+    if (entries.length < 100) break;
+  }
+  return documents;
 }
 
 export interface DocumentReferencePage {
@@ -133,14 +180,20 @@ export async function getDocumentReferencePage(
   count: number = 10,
   page: number = 1,
 ): Promise<DocumentReferencePage> {
+  if (
+    !Number.isInteger(count) ||
+    count < 1 ||
+    !Number.isInteger(page) ||
+    page < 1
+  )
+    throw new Error('Document page and size must be positive whole numbers.');
   const offset = (page - 1) * count;
-  const url = PATIENT_DOCUMENT_REFERENCES_URL(
+  const bundle = await getDocumentBundle(
     patientUuid,
     encounterUuids,
     count,
     offset,
   );
-  const bundle = await get<Bundle<DocumentReference>>(url);
 
   const entries = (bundle.entry ?? []).filter(
     (entry): entry is { resource: DocumentReference } => !!entry.resource,

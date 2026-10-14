@@ -38,14 +38,14 @@ const Search = ({ extensions }: { extensions: SearchExtension[] }) => {
                       id={`${ext.id}-icon`}
                       testId={`${ext.id}-icon-test-id`}
                       ariaLabel={`Icon ${ext.id}`}
-                      name={ext.icon}
+                      name={ext.icon!}
                       size={ICON_SIZE.SM}
                     />
                   )
                 : undefined
             }
           >
-            {t(ext.translationKey)}
+            {t(ext.translationKey ?? ext.id)}
           </Tab>
         ))}
       </TabList>

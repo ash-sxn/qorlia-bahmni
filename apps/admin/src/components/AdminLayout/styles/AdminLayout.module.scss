@@ -7,5 +7,5 @@
   background-color: $layer;
   min-height: 100vh;
   padding-top: $spacing-07;
-  padding-inline: calc($spacing-12 + $spacing-05);
+  padding-inline: clamp(20px, 3vw, 44px);
 }

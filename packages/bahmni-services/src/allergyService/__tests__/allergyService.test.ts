@@ -145,6 +145,43 @@ describe('allergyService', () => {
   });
 
   describe('formatAllergies', () => {
+    it('uses coded displays when text is absent and deduplicates coded reactions', () => {
+      const codedAllergy: AllergyIntolerance = {
+        ...mockAllergyIntolerance,
+        code: {
+          coding: [
+            { code: 'penicillin' },
+            { code: 'penicillin', display: 'Penicillins' },
+          ],
+        },
+        reaction: [
+          {
+            manifestation: [
+              {
+                coding: [
+                  { code: 'hives' },
+                  { code: 'hives', display: 'Hives' },
+                ],
+              },
+              { text: 'Hives', coding: [{ code: 'hives', display: 'Hives' }] },
+              { coding: [{ code: 'rash', display: 'Rash' }] },
+            ],
+            severity: 'mild',
+          },
+        ],
+      };
+
+      const [result] = formatAllergies([codedAllergy]);
+
+      expect(result.display).toBe('Penicillins');
+      expect(result.reactions?.[0].manifestation).toEqual(['Hives', 'Rash']);
+      expect(result.reactions?.[0].manifestationCodings).toEqual([
+        { code: 'hives' },
+        { code: 'hives', display: 'Hives' },
+        { code: 'rash', display: 'Rash' },
+      ]);
+    });
+
     it('should format allergy data correctly', () => {
       const result = formatAllergies([mockAllergyIntolerance]);
 

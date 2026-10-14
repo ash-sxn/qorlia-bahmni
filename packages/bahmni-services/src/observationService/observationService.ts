@@ -1,5 +1,6 @@
 import { Observation, Bundle, Encounter } from 'fhir/r4';
 import { get } from '../api';
+import { getAllFHIRSearchPages } from '../fhirSearchCompatibility';
 import {
   FHIR_OBSERVATION_URL,
   FHIR_OBSERVATIONS_BY_ENCOUNTER_URL,
@@ -69,7 +70,10 @@ export async function getObservationsBundleByEncounterUuid(
   encounterUUID: string,
   basedOn?: string,
 ): Promise<Bundle<Observation>> {
-  return await get<Bundle<Observation>>(
+  if (typeof encounterUUID !== 'string' || !encounterUUID.trim()) {
+    throw new Error('An encounter identifier is required');
+  }
+  return await getAllFHIRSearchPages<Observation>(
     FHIR_OBSERVATIONS_BY_ENCOUNTER_URL(encounterUUID, basedOn),
   );
 }

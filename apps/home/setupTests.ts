@@ -9,6 +9,20 @@ globalThis.TextEncoder = TextEncoder;
 // @ts-expect-error - Ignoring type issues with Node.js util TextDecoder
 globalThis.TextDecoder = TextDecoder;
 
+Object.defineProperty(globalThis, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation((query) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
 if (!globalThis.crypto?.randomUUID) {
   let counter = 0;
   const randomUUID = () => {

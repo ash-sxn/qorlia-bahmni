@@ -15,6 +15,24 @@ const CsvUpload = lazy(() =>
   })),
 );
 
+const CsvExport = lazy(() =>
+  import('../pages/CsvExport').then((module) => ({
+    default: module.CsvExport,
+  })),
+);
+
+const AuditLog = lazy(() =>
+  import('../pages/AuditLog').then((module) => ({
+    default: module.AuditLog,
+  })),
+);
+
+const OrderSets = lazy(() =>
+  import('../pages/OrderSets').then((module) => ({
+    default: module.OrderSets,
+  })),
+);
+
 export const routes: Routes = [
   {
     path: '/',
@@ -25,6 +43,26 @@ export const routes: Routes = [
     path: '/csv',
     component: CsvUpload,
     name: 'CsvUpload',
+  },
+  {
+    path: '/csv-export',
+    component: CsvExport,
+    name: 'CsvExport',
+  },
+  {
+    path: '/audit-log',
+    component: AuditLog,
+    name: 'AuditLog',
+  },
+  {
+    path: '/order-sets',
+    component: OrderSets,
+    name: 'OrderSets',
+  },
+  {
+    path: '/order-sets/:uuid',
+    component: OrderSets,
+    name: 'OrderSetDetails',
   },
 ];
 

@@ -10,7 +10,6 @@
   gap: 16px;
 }
 
-
 .row {
   display: flex;
   flex-wrap: wrap;
@@ -18,10 +17,11 @@
 }
 
 .phoneNumberField {
-  flex: 0 0 calc(25% - $spacing-06 / 2);
+  flex: 1 1 14rem;
+  min-width: 0;
   padding-bottom: $spacing-03 + $spacing-01;
 
-  >* {
+  > * {
     flex: 1 1 0;
     min-width: 0;
   }

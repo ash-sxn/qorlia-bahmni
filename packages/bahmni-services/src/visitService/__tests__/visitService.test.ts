@@ -2,6 +2,7 @@ import type { VisitType } from '../models';
 import {
   checkIfActiveVisitExists,
   createVisitForPatient,
+  getVisitLocationUUID,
 } from '../visitService';
 
 const mockGetUserLoginLocation = jest.fn();
@@ -79,6 +80,19 @@ describe('visitService', () => {
   });
 
   describe('createVisitForPatient', () => {
+    it.each([undefined, {}, '<html>Login</html>', { uuid: '' }, { uuid: 7 }])(
+      'rejects an invalid location and does not send a visit write: %p',
+      async (response) => {
+        mockGet.mockResolvedValue(response);
+        await expect(
+          getVisitLocationUUID(mockLoginLocation.uuid),
+        ).rejects.toThrow('Invalid visit location response');
+        await expect(
+          createVisitForPatient(patientUuid, mockVisitType),
+        ).rejects.toThrow('Invalid visit location response');
+        expect(mockPost).not.toHaveBeenCalled();
+      },
+    );
     it('should create visit and dispatch audit event on success', async () => {
       // Mock for getVisitLocationUUID
       mockGet.mockResolvedValueOnce(mockVisitLocationUUID as any);

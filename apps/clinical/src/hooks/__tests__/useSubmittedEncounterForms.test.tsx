@@ -153,8 +153,12 @@ describe('useSubmittedEncounterForms', () => {
         ),
       );
 
-      await waitFor(() => expect(result.current.size).toBe(1));
-      expect(result.current.has('form-uuid-vitals')).toBe(true);
+      await waitFor(() =>
+        expect(result.current.submittedFormUuids.size).toBe(1),
+      );
+      expect(result.current.submittedFormUuids.has('form-uuid-vitals')).toBe(
+        true,
+      );
     });
 
     it('handles namespace-prefixed valueString (Bahmni^Vitals.1/10-0)', async () => {
@@ -167,8 +171,12 @@ describe('useSubmittedEncounterForms', () => {
         { wrapper: createWrapper() },
       );
 
-      await waitFor(() => expect(result.current.size).toBe(1));
-      expect(result.current.has('form-uuid-vitals')).toBe(true);
+      await waitFor(() =>
+        expect(result.current.submittedFormUuids.size).toBe(1),
+      );
+      expect(result.current.submittedFormUuids.has('form-uuid-vitals')).toBe(
+        true,
+      );
     });
 
     it('returns uuids for multiple submitted forms', async () => {
@@ -184,9 +192,15 @@ describe('useSubmittedEncounterForms', () => {
         { wrapper: createWrapper() },
       );
 
-      await waitFor(() => expect(result.current.size).toBe(2));
-      expect(result.current.has('form-uuid-vitals')).toBe(true);
-      expect(result.current.has('form-uuid-history')).toBe(true);
+      await waitFor(() =>
+        expect(result.current.submittedFormUuids.size).toBe(2),
+      );
+      expect(result.current.submittedFormUuids.has('form-uuid-vitals')).toBe(
+        true,
+      );
+      expect(result.current.submittedFormUuids.has('form-uuid-history')).toBe(
+        true,
+      );
     });
 
     it('ignores observations whose parsed form name does not match any allForms entry', async () => {
@@ -205,7 +219,7 @@ describe('useSubmittedEncounterForms', () => {
         ),
       );
 
-      expect(result.current.size).toBe(0);
+      expect(result.current.submittedFormUuids.size).toBe(0);
     });
 
     it('deduplicates: returns one uuid even when multiple obs reference the same form', async () => {
@@ -221,8 +235,12 @@ describe('useSubmittedEncounterForms', () => {
         { wrapper: createWrapper() },
       );
 
-      await waitFor(() => expect(result.current.size).toBe(1));
-      expect(result.current.has('form-uuid-vitals')).toBe(true);
+      await waitFor(() =>
+        expect(result.current.submittedFormUuids.size).toBe(1),
+      );
+      expect(result.current.submittedFormUuids.has('form-uuid-vitals')).toBe(
+        true,
+      );
     });
   });
 
@@ -240,10 +258,10 @@ describe('useSubmittedEncounterForms', () => {
 
       // Query is disabled — fetch must NOT be called
       expect(mockGetObservationsBundleByEncounterUuid).not.toHaveBeenCalled();
-      expect(result.current.size).toBe(0);
+      expect(result.current.submittedFormUuids.size).toBe(0);
     });
 
-    it('returns empty set when matchReasons is empty (new encounter)', () => {
+    it('keeps reset encounter context pending instead of treating it as new', () => {
       mockUseEncounterSessionStore.mockReturnValue({
         activeEncounter: null,
         matchReasons: [],
@@ -255,7 +273,9 @@ describe('useSubmittedEncounterForms', () => {
       );
 
       expect(mockGetObservationsBundleByEncounterUuid).not.toHaveBeenCalled();
-      expect(result.current.size).toBe(0);
+      expect(result.current.submittedFormUuids.size).toBe(0);
+      expect(result.current.isReady).toBe(false);
+      expect(result.current.isLoading).toBe(true);
     });
 
     it('returns empty set when patientUUID is null', () => {
@@ -267,7 +287,7 @@ describe('useSubmittedEncounterForms', () => {
       );
 
       expect(mockGetObservationsBundleByEncounterUuid).not.toHaveBeenCalled();
-      expect(result.current.size).toBe(0);
+      expect(result.current.submittedFormUuids.size).toBe(0);
     });
   });
 
@@ -295,7 +315,7 @@ describe('useSubmittedEncounterForms', () => {
       });
 
       expect(mockGetObservationsBundleByEncounterUuid).not.toHaveBeenCalled();
-      expect(result.current.size).toBe(0);
+      expect(result.current.submittedFormUuids.size).toBe(0);
     });
   });
 
@@ -316,7 +336,7 @@ describe('useSubmittedEncounterForms', () => {
         ),
       );
 
-      expect(result.current.size).toBe(0);
+      expect(result.current.submittedFormUuids.size).toBe(0);
     });
 
     it('returns empty set when bundle entry has no resource', async () => {
@@ -337,15 +357,12 @@ describe('useSubmittedEncounterForms', () => {
         ),
       );
 
-      expect(result.current.size).toBe(0);
+      expect(result.current.submittedFormUuids.size).toBe(0);
     });
   });
 
-  describe('fetch error → fail-open (empty set)', () => {
-    it('returns an empty set and does not throw when the fetch rejects', async () => {
-      const consoleerrorSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+  describe('history availability', () => {
+    it('does not report failed history as ready or known empty', async () => {
       mockGetObservationsBundleByEncounterUuid.mockRejectedValue(
         new Error('network error'),
       );
@@ -356,13 +373,91 @@ describe('useSubmittedEncounterForms', () => {
       );
 
       await waitFor(() =>
-        expect(mockGetObservationsBundleByEncounterUuid).toHaveBeenCalledTimes(
-          1,
-        ),
+        expect(result.current.error?.message).toBe('network error'),
       );
+      expect(result.current.isReady).toBe(false);
+    });
 
-      expect(result.current.size).toBe(0);
-      consoleerrorSpy.mockRestore();
+    it('blocks while history is pending and recovers through an explicit retry', async () => {
+      let reject!: (reason: Error) => void;
+      mockGetObservationsBundleByEncounterUuid.mockReturnValueOnce(
+        new Promise((_, fail) => {
+          reject = fail;
+        }),
+      );
+      const { result } = renderHook(
+        () => useSubmittedEncounterForms(allForms),
+        { wrapper: createWrapper() },
+      );
+      expect(result.current.isLoading).toBe(true);
+      expect(result.current.isReady).toBe(false);
+      await act(async () => reject(new Error('unavailable')));
+      await waitFor(() => expect(result.current.error).toBeTruthy());
+      mockGetObservationsBundleByEncounterUuid.mockResolvedValue(
+        makeBundle([makeObservation('Vitals.1/1-0')]),
+      );
+      await act(async () => {
+        await result.current.refetch();
+      });
+      await waitFor(() => expect(result.current.isReady).toBe(true));
+      expect(result.current.submittedFormUuids.has('form-uuid-vitals')).toBe(
+        true,
+      );
+    });
+
+    it('blocks cached history during a failed refresh instead of allowing stale selections', async () => {
+      mockGetObservationsBundleByEncounterUuid.mockResolvedValue(
+        makeBundle([makeObservation('Vitals.1/1-0')]),
+      );
+      const { result } = renderHook(
+        () => useSubmittedEncounterForms(allForms),
+        { wrapper: createWrapper() },
+      );
+      await waitFor(() => expect(result.current.isReady).toBe(true));
+      mockGetObservationsBundleByEncounterUuid.mockRejectedValue(
+        new Error('refresh denied'),
+      );
+      await act(async () => {
+        await result.current.refetch();
+      });
+      await waitFor(() => expect(result.current.isReady).toBe(false));
+      expect(result.current.error?.message).toBe('refresh denied');
+    });
+
+    it('uses the pad encounter instead of an unrelated header encounter', async () => {
+      mockGetObservationsBundleByEncounterUuid.mockResolvedValue(
+        makeBundle([]),
+      );
+      const { result } = renderHook(
+        () =>
+          useSubmittedEncounterForms(allForms, {
+            encounter: {
+              resourceType: 'Encounter',
+              status: 'in-progress',
+              id: 'pad-encounter',
+            },
+          }),
+        { wrapper: createWrapper() },
+      );
+      await waitFor(() => expect(result.current.isReady).toBe(true));
+      expect(mockGetObservationsBundleByEncounterUuid).toHaveBeenCalledWith(
+        'pad-encounter',
+      );
+    });
+
+    it('keeps pending pad context blocked and permits a resolved new encounter without a history request', () => {
+      const { result, rerender } = renderHook(
+        ({ encounter }) => useSubmittedEncounterForms(allForms, { encounter }),
+        {
+          initialProps: { encounter: undefined as null | undefined },
+          wrapper: createWrapper(),
+        },
+      );
+      expect(result.current.isReady).toBe(false);
+      expect(result.current.isLoading).toBe(true);
+      rerender({ encounter: null });
+      expect(result.current.isReady).toBe(true);
+      expect(mockGetObservationsBundleByEncounterUuid).not.toHaveBeenCalled();
     });
   });
 
@@ -384,12 +479,85 @@ describe('useSubmittedEncounterForms', () => {
         { wrapper: createWrapper() },
       );
 
-      await waitFor(() => expect(result.current.size).toBe(1));
-      expect(result.current.has(expectedUuid)).toBe(true);
+      await waitFor(() =>
+        expect(result.current.submittedFormUuids.size).toBe(1),
+      );
+      expect(result.current.submittedFormUuids.has(expectedUuid)).toBe(true);
     });
   });
 
   describe('consultationSaved refetch', () => {
+    it.each([
+      [null, [], PATIENT_UUID],
+      [{ id: ENCOUNTER_UUID }, ['SESSION_EXPIRED'], PATIENT_UUID],
+      [{}, ['MATCHED'], PATIENT_UUID],
+      [{ id: ENCOUNTER_UUID }, ['MATCHED'], null],
+    ])(
+      'does not manually fetch a disabled query after save (%p, %p, %p)',
+      async (activeEncounter, matchReasons, patientUUID) => {
+        mockUseEncounterSessionStore.mockReturnValue({
+          activeEncounter,
+          matchReasons,
+        } as unknown as ReturnType<typeof useEncounterSessionStore>);
+        mockUsePatientUUID.mockReturnValue(patientUUID);
+        mockGetObservationsBundleByEncounterUuid.mockResolvedValue(
+          makeBundle([]),
+        );
+        let callback: Parameters<typeof useSubscribeConsultationSaved>[0];
+        mockUseSubscribeConsultationSaved.mockImplementation((cb) => {
+          callback = cb;
+        });
+        renderHook(() => useSubmittedEncounterForms(allForms), {
+          wrapper: createWrapper(),
+        });
+
+        await act(async () => {
+          callback!({
+            patientUUID: patientUUID as string,
+            updatedResources: {
+              conditions: false,
+              allergies: false,
+              medications: false,
+              serviceRequests: {},
+            },
+            updatedConcepts: new Map(),
+          });
+        });
+        expect(mockGetObservationsBundleByEncounterUuid).not.toHaveBeenCalled();
+      },
+    );
+
+    it('fetches submitted forms when a new encounter becomes matched after save', async () => {
+      mockUseEncounterSessionStore.mockReturnValue({
+        activeEncounter: null,
+        matchReasons: [],
+      } as unknown as ReturnType<typeof useEncounterSessionStore>);
+      mockGetObservationsBundleByEncounterUuid.mockResolvedValue(
+        makeBundle([makeObservation('Vitals.1/1-0')]),
+      );
+      const { result, rerender } = renderHook(
+        () => useSubmittedEncounterForms(allForms),
+        { wrapper: createWrapper() },
+      );
+      expect(mockGetObservationsBundleByEncounterUuid).not.toHaveBeenCalled();
+
+      mockUseEncounterSessionStore.mockReturnValue({
+        activeEncounter: { id: ENCOUNTER_UUID },
+        matchReasons: ['MATCHED'],
+      } as unknown as ReturnType<typeof useEncounterSessionStore>);
+      rerender();
+
+      await waitFor(() =>
+        expect(result.current.submittedFormUuids.has('form-uuid-vitals')).toBe(
+          true,
+        ),
+      );
+      expect(mockGetObservationsBundleByEncounterUuid).toHaveBeenCalledTimes(1);
+      expect(mockGetObservationsBundleByEncounterUuid).toHaveBeenCalledWith(
+        ENCOUNTER_UUID,
+      );
+    });
+
     it('calls refetch when consultationSaved fires for the current patient', async () => {
       mockGetObservationsBundleByEncounterUuid.mockResolvedValue(
         makeBundle([]),
@@ -437,8 +605,12 @@ describe('useSubmittedEncounterForms', () => {
         ),
       );
 
-      await waitFor(() => expect(result.current.size).toBe(1));
-      expect(result.current.has('form-uuid-vitals')).toBe(true);
+      await waitFor(() =>
+        expect(result.current.submittedFormUuids.size).toBe(1),
+      );
+      expect(result.current.submittedFormUuids.has('form-uuid-vitals')).toBe(
+        true,
+      );
     });
 
     it('does NOT refetch when consultationSaved fires for a different patient', async () => {

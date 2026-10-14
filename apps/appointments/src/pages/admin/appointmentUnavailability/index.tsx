@@ -19,6 +19,7 @@ import {
 } from '@bahmni/widgets';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
+import workspaceStyles from '../../styles/index.module.scss';
 import UnavailabilityForm from './components/UnavailabilityForm';
 import {
   ADD_APPOINTMENT_UNAVAILABILITY_PRIVILEGE,
@@ -28,7 +29,6 @@ import {
   type UnavailabilityFormData,
   type UnavailabilityFormErrors,
 } from './models';
-import styles from './styles/index.module.scss';
 import {
   buildUnavailabilityRequests,
   createUnavailabilityViewModel,
@@ -65,7 +65,7 @@ const AppointmentUnavailabilityPage: React.FC = () => {
     {
       id: 'appointments',
       label: t('BREADCRUMB_APPOINTMENTS'),
-      href: '/appointments',
+      href: '/bahmni-v2/appointments/',
     },
     { id: 'admin', label: t('BREADCRUMB_ADMIN'), isCurrentPage: true },
   ];
@@ -160,13 +160,21 @@ const AppointmentUnavailabilityPage: React.FC = () => {
           id="appointment-unavailability-page"
           data-testid="appointment-unavailability-page-test-id"
           aria-label="appointment-unavailability-page-aria-label"
-          className={styles.page}
+          className={workspaceStyles.page}
         >
+          <div className={workspaceStyles.intro}>
+            <span className={workspaceStyles.eyebrow}>
+              {t('BREADCRUMB_APPOINTMENTS')}
+            </span>
+            <h1>{t('ADMIN_UNAVAILABILITY_PAGE_TITLE')}</h1>
+            <p>{t('ADMIN_UNAVAILABILITY_PAGE_DESCRIPTION')}</p>
+          </div>
           <ActionDataTable
             id="appointment-unavailability-actions-table"
             data-testid="appointment-unavailability-actions-table-test-id"
             aria-label="appointment-unavailability-actions-table-aria-label"
             title={t('ADMIN_UNAVAILABILITY_TITLE')}
+            className={workspaceStyles.adminTable}
             headers={headers}
             rows={rows}
             ariaLabel="unavailability-table"

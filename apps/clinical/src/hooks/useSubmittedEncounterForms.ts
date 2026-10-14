@@ -6,56 +6,64 @@ import {
 } from '@bahmni/services';
 import { usePatientUUID, extractFormName } from '@bahmni/widgets';
 import { useQuery } from '@tanstack/react-query';
-import type { Observation } from 'fhir/r4';
-import { useEffect, useMemo } from 'react';
+import type { Encounter, Observation } from 'fhir/r4';
+import { useMemo } from 'react';
 
 /**
  * Returns the set of form UUIDs that have already been submitted in the active encounter.
  *
- * - Returns an empty set when there is no MATCHED encounter session (new encounter → all forms selectable).
+ * - A resolved new encounter has no submitted forms. Pending/failed history is not known empty.
  * - Automatically refetches after any consultation save for the current patient (handles the
  *   "Continue Consultation" multi-bundle flow).
  */
 export function useSubmittedEncounterForms(
   allForms: ObservationForm[],
-): Set<string> {
+  context?: { encounter: Encounter | null | undefined; enabled?: boolean },
+) {
   const patientUUID = usePatientUUID();
-  const { activeEncounter, matchReasons } = useEncounterSessionStore();
+  const {
+    activeEncounter,
+    matchReasons,
+    isLoading: isContextLoading,
+  } = useEncounterSessionStore();
 
-  const activeEncounterUuid = matchReasons.includes('MATCHED')
-    ? activeEncounter?.id
-    : undefined;
+  const encounter = context
+    ? context.encounter
+    : isContextLoading || !matchReasons.length
+      ? undefined
+      : matchReasons.includes('MATCHED')
+        ? (activeEncounter ?? undefined)
+        : null;
+  const enabled = context?.enabled !== false;
+  const activeEncounterUuid = encounter?.id;
+  const canFetch = enabled && !!patientUUID && !!activeEncounterUuid;
 
   const {
     data: bundle,
     refetch,
     error,
+    isFetching,
+    isSuccess,
   } = useQuery({
     queryKey: ['submittedEncounterForms', patientUUID, activeEncounterUuid],
-    enabled: !!activeEncounterUuid && !!patientUUID,
+    enabled: canFetch,
     staleTime: 30_000,
+    retry: false,
     queryFn: () => getObservationsBundleByEncounterUuid(activeEncounterUuid!),
   });
 
-  useEffect(() => {
-    if (error) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to fetch submitted encounter forms', error);
-    }
-  }, [error]);
-
   useSubscribeConsultationSaved(
     (payload) => {
-      if (payload.patientUUID === patientUUID) {
+      if (canFetch && payload.patientUUID === patientUUID) {
         refetch();
       }
     },
-    [patientUUID],
+    [patientUUID, canFetch, refetch],
   );
 
-  return useMemo(() => {
+  const submittedFormUuids = useMemo(() => {
     const observations: Observation[] =
-      bundle?.entry
+      (canFetch ? bundle : undefined)?.entry
         ?.map((e) => e.resource)
         .filter((r): r is Observation => r?.resourceType === 'Observation') ??
       [];
@@ -73,5 +81,22 @@ export function useSubmittedEncounterForms(
     }
 
     return submittedUuids;
-  }, [bundle, allForms]);
+  }, [bundle, allForms, canFetch]);
+
+  const isReady =
+    !enabled ||
+    (!!patientUUID &&
+      encounter !== undefined &&
+      !error &&
+      !isFetching &&
+      (encounter === null || (!!activeEncounterUuid && isSuccess)));
+  return {
+    submittedFormUuids,
+    isReady,
+    isLoading: enabled && !isReady && !error,
+    error: enabled ? error : null,
+    refetch: async () => {
+      if (canFetch) await refetch();
+    },
+  };
 }

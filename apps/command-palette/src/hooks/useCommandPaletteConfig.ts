@@ -4,6 +4,7 @@ import {
   fetchModuleExtensions,
   hasPrivilege,
   initAppI18n,
+  type UserPrivilege,
 } from '@bahmni/services';
 import type {
   NavItem,
@@ -61,7 +62,9 @@ export function useCommandPaletteConfig(): CommandPaletteConfig {
   const [allExtensions, setAllExtensions] = useState<CommandPaletteExtension[]>(
     [],
   );
-  const [userPrivileges, setUserPrivileges] = useState<string[] | null>(null);
+  const [userPrivileges, setUserPrivileges] = useState<UserPrivilege[] | null>(
+    null,
+  );
 
   const { pathname } = useLocation();
 

@@ -109,15 +109,6 @@ export const Profile = ({
   const [patientImage, setPatientImage] = useState<string>('');
 
   useEffect(() => {
-    if (initialPhoto && !patientImage) {
-      const base64 = initialPhoto.includes(',')
-        ? initialPhoto.split(',')[1]
-        : initialPhoto;
-      setPatientImage(base64);
-    }
-  }, [initialPhoto]);
-
-  useEffect(() => {
     if (initialData) {
       setFormData({
         patientIdFormat:

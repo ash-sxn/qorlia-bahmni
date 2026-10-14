@@ -30,6 +30,15 @@ describe('AppTile', () => {
     );
   });
 
+  it('does not open a legacy screen when a review URL is unavailable', () => {
+    render(<AppTile {...defaultProps} url="" />);
+
+    expect(screen.getByTestId('app-tile-registration')).not.toHaveAttribute(
+      'href',
+    );
+    expect(screen.getByText('In progress')).toBeInTheDocument();
+  });
+
   it('renders no icon when the config supplies a non-FontAwesome icon name', () => {
     // Legacy Bahmni config used names like `icon-bahmni-inpatient`, which the
     // design-system Icon rejects. The tile must still render its label.

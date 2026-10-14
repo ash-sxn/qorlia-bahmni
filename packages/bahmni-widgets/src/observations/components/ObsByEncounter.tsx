@@ -22,7 +22,7 @@ const renderObservation = (
   index: number,
   encounterIndex: number,
   title: string,
-  t: (key: string, options?: unknown) => string,
+  t: ReturnType<typeof useTranslation>['t'],
   hideThumbnail?: boolean,
 ) => {
   const rowData = transformObservationToRowCell(observation, index, t);
@@ -102,7 +102,7 @@ const renderObservation = (
 
 const renderGroupedObservation = (
   groupedObs: ExtractedObservation,
-  t: (key: string, options?: unknown) => string,
+  t: ReturnType<typeof useTranslation>['t'],
   isLatestEncounter: boolean,
   groupIndex: number,
   encounterIndex: number,

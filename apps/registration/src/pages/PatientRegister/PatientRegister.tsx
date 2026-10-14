@@ -94,7 +94,9 @@ const PatientRegister = () => {
     initialMetadata,
   );
 
-  const photoUrl = patientDetails?.photo?.[0]?.url;
+  const photoUrl = patientDetails?.patient.uuid
+    ? `/openmrs/ws/rest/v1/patientImage?patientUuid=${encodeURIComponent(patientDetails.patient.uuid)}`
+    : undefined;
   const { patientPhoto, error: photoError } = usePatientPhoto({ photoUrl });
   useEffect(() => {
     if (photoError) {
@@ -246,23 +248,21 @@ const PatientRegister = () => {
           ...formData,
           additionalIdentifiersInitialData,
         });
-        if (response?.id) {
+        if (response?.patient?.uuid) {
           const displayName =
-            [response.name?.[0]?.given?.join(' '), response.name?.[0]?.family]
-              .filter(Boolean)
-              .join(' ') || '';
+            response.patient.person?.names?.[0]?.display ?? '';
           setMetadata(
             (previous) => previous && { ...previous, patientName: displayName },
           );
           patientRelationshipsRef.current?.removeDeletedRelationships();
-          return response.id;
+          return response.patient.uuid;
         }
       } else {
         const response = await createPatientMutation.mutateAsync(formData);
-        if (response?.id) {
-          setSavedPatientUuid(response.id);
-          navigate(getPatientUrl(response.id));
-          return response.id;
+        if (response?.patient?.uuid) {
+          setSavedPatientUuid(response.patient.uuid);
+          navigate(getPatientUrl(response.patient.uuid));
+          return response.patient.uuid;
         }
       }
       return null;

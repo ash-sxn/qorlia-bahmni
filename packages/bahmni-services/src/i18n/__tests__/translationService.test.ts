@@ -235,6 +235,63 @@ describe('Translation Service', () => {
         },
       });
     });
+
+    it('keeps bundled labels without logging an absent optional override', async () => {
+      const bundledUrl = BUNDLED_TRANSLATIONS_URL_TEMPLATE('reports', 'en');
+      mockGet.mockImplementation((url: string) =>
+        url === bundledUrl
+          ? Promise.resolve({ REPORTS_FILE: 'File' })
+          : Promise.reject(
+              Object.assign(new Error('Not found'), { status: 404 }),
+            ),
+      );
+
+      expect(await getTranslations('en', 'reports')).toEqual({
+        en: { reports: { REPORTS_FILE: 'File' } },
+      });
+      // eslint-disable-next-line no-console
+      expect(console.error).not.toHaveBeenCalled();
+    });
+
+    it('still logs a missing required bundled file', async () => {
+      const bundledUrl = BUNDLED_TRANSLATIONS_URL_TEMPLATE('reports', 'en');
+      const error = Object.assign(new Error('Not found'), { status: 404 });
+      mockGet.mockImplementation((url: string) =>
+        url === bundledUrl ? Promise.reject(error) : Promise.resolve({}),
+      );
+
+      expect(await getTranslations('en', 'reports')).toEqual({
+        en: { reports: {} },
+      });
+      // eslint-disable-next-line no-console
+      expect(console.error).toHaveBeenCalledWith(
+        `Failed to load translations from ${bundledUrl}:`,
+        error,
+      );
+    });
+
+    it.each([401, 403, 500])(
+      'still logs an optional override HTTP %s',
+      async (status) => {
+        const bundledUrl = BUNDLED_TRANSLATIONS_URL_TEMPLATE('reports', 'en');
+        const configUrl = CONFIG_TRANSLATIONS_URL_TEMPLATE('reports', 'en');
+        const error = Object.assign(new Error('Request failed'), { status });
+        mockGet.mockImplementation((url: string) =>
+          url === bundledUrl
+            ? Promise.resolve({ REPORTS_FILE: 'File' })
+            : Promise.reject(error),
+        );
+
+        expect(await getTranslations('en', 'reports')).toEqual({
+          en: { reports: { REPORTS_FILE: 'File' } },
+        });
+        // eslint-disable-next-line no-console
+        expect(console.error).toHaveBeenCalledWith(
+          `Failed to load translations from ${configUrl}:`,
+          error,
+        );
+      },
+    );
   });
 
   describe('normalizeTranslationKey', () => {

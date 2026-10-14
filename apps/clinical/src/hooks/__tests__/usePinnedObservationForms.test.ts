@@ -1,5 +1,11 @@
 import { ObservationForm } from '@bahmni/services';
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  renderHook as renderBaseHook,
+  waitFor,
+  act,
+} from '@testing-library/react';
+import React from 'react';
 import * as pinnedFormsService from '../../services/pinnedFormsService';
 import { usePinnedObservationForms } from '../usePinnedObservationForms';
 
@@ -14,6 +20,28 @@ const mockSavePinnedForms =
   pinnedFormsService.savePinnedForms as jest.MockedFunction<
     typeof pinnedFormsService.savePinnedForms
   >;
+
+let queryClient: QueryClient;
+const renderHook: typeof renderBaseHook = (callback, options) =>
+  renderBaseHook(callback, {
+    ...options,
+    wrapper: ({ children }) =>
+      React.createElement(
+        QueryClientProvider,
+        { client: queryClient },
+        children,
+      ),
+  });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<T>((yes, no) => {
+    resolve = yes;
+    reject = no;
+  });
+  return { promise, resolve, reject };
+}
 
 describe('usePinnedObservationForms', () => {
   const mockForms: ObservationForm[] = [
@@ -40,10 +68,18 @@ describe('usePinnedObservationForms', () => {
   const mockUserUuid = 'user-123';
 
   beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
     jest.clearAllMocks();
     mockLoadPinnedForms.mockResolvedValue([]);
     mockSavePinnedForms.mockResolvedValue(undefined);
   });
+
+  afterEach(() => queryClient.clear());
 
   describe('Initial Loading', () => {
     it('should load pinned forms when forms and userUuid are available', async () => {
@@ -158,15 +194,17 @@ describe('usePinnedObservationForms', () => {
       });
 
       // Try to update pinned forms
-      await result.current.updatePinnedForms([mockForms[0]]);
+      await act(async () => {
+        await result.current.updatePinnedForms([mockForms[0]]);
+      });
 
       await waitFor(() => {
         expect(result.current.error).toBeDefined();
         expect(result.current.error?.message).toBe('Save failed');
       });
 
-      // State should still be updated optimistically
-      expect(result.current.pinnedForms).toHaveLength(1);
+      // Failed persistence must not look like a saved preference.
+      expect(result.current.pinnedForms).toEqual([]);
     });
   });
 
@@ -241,8 +279,8 @@ describe('usePinnedObservationForms', () => {
       });
     });
 
-    it('should maintain optimistic UI even if save fails', async () => {
-      mockLoadPinnedForms.mockResolvedValue([]);
+    it('keeps the previously confirmed pins if save fails', async () => {
+      mockLoadPinnedForms.mockResolvedValue(['Vitals']);
       mockSavePinnedForms.mockRejectedValue(new Error('Save failed'));
 
       const { result } = renderHook(() =>
@@ -257,11 +295,10 @@ describe('usePinnedObservationForms', () => {
         await result.current.updatePinnedForms([mockForms[0]]);
       });
 
-      // Optimistic update should persist
-      await waitFor(() => {
-        expect(result.current.pinnedForms).toHaveLength(1);
-      });
-      expect(result.current.pinnedForms[0]).toEqual(mockForms[0]);
+      expect(result.current.pinnedForms).toEqual([mockForms[1]]);
+      await waitFor(() =>
+        expect(result.current.error?.message).toBe('Save failed'),
+      );
     });
   });
 
@@ -341,6 +378,207 @@ describe('usePinnedObservationForms', () => {
       rerender({ forms: newForms });
 
       // Should still only have loaded once
+      expect(mockLoadPinnedForms).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Preference lifecycle', () => {
+    it('blocks failed-read writes and recovers through a read-only retry', async () => {
+      mockLoadPinnedForms.mockRejectedValueOnce(
+        new Error('Preferences unavailable'),
+      );
+      const { result } = renderHook(() =>
+        usePinnedObservationForms(mockForms, { userUuid: mockUserUuid }),
+      );
+      await waitFor(() =>
+        expect(result.current.error?.message).toBe('Preferences unavailable'),
+      );
+      await act(async () => {
+        await result.current.updatePinnedForms([mockForms[0]]);
+      });
+      expect(mockSavePinnedForms).not.toHaveBeenCalled();
+      mockLoadPinnedForms.mockResolvedValue(['Vitals']);
+      await act(async () => {
+        await result.current.refetch();
+      });
+      await waitFor(() => expect(result.current.error).toBeNull());
+      expect(result.current.pinnedForms).toEqual([mockForms[1]]);
+      expect(mockSavePinnedForms).not.toHaveBeenCalled();
+    });
+
+    it('reconciles a lost save response without replaying the write', async () => {
+      mockLoadPinnedForms
+        .mockResolvedValueOnce([])
+        .mockResolvedValue(['Vitals']);
+      mockSavePinnedForms.mockRejectedValueOnce(new Error('Response lost'));
+      const { result } = renderHook(() =>
+        usePinnedObservationForms(mockForms, { userUuid: mockUserUuid }),
+      );
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      await act(async () => {
+        await result.current.updatePinnedForms([mockForms[1]]);
+      });
+      await waitFor(() =>
+        expect(result.current.pinnedForms).toEqual([mockForms[1]]),
+      );
+      expect(result.current.error?.message).toBe('Response lost');
+      await act(async () => {
+        await result.current.refetch();
+      });
+      await waitFor(() => expect(result.current.error).toBeNull());
+      expect(mockSavePinnedForms).toHaveBeenCalledTimes(1);
+    });
+    it('does not publish a pin before the native save succeeds', async () => {
+      const save = deferred<void>();
+      mockSavePinnedForms.mockReturnValue(save.promise);
+      const { result } = renderHook(() =>
+        usePinnedObservationForms(mockForms, { userUuid: mockUserUuid }),
+      );
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      let pending!: Promise<void>;
+      act(() => {
+        pending = result.current.updatePinnedForms([mockForms[0]]);
+      });
+      await waitFor(() => expect(mockSavePinnedForms).toHaveBeenCalledTimes(1));
+      expect(result.current.pinnedForms).toEqual([]);
+      expect(result.current.isLoading).toBe(true);
+      await act(async () => {
+        save.resolve();
+        await pending;
+      });
+      await waitFor(() =>
+        expect(result.current.pinnedForms).toEqual([mockForms[0]]),
+      );
+    });
+
+    it('cannot overwrite unknown preferences while the initial read is pending', async () => {
+      const load = deferred<string[]>();
+      mockLoadPinnedForms.mockReturnValue(load.promise);
+      const { result } = renderHook(() =>
+        usePinnedObservationForms(mockForms, { userUuid: mockUserUuid }),
+      );
+      await act(async () => {
+        await result.current.updatePinnedForms([mockForms[0]]);
+      });
+      expect(mockSavePinnedForms).not.toHaveBeenCalled();
+      await act(async () => {
+        load.resolve(['Vitals']);
+      });
+      await waitFor(() =>
+        expect(result.current.pinnedForms).toEqual([mockForms[1]]),
+      );
+    });
+
+    it('shares confirmed preferences and allows only one in-flight save per user', async () => {
+      const save = deferred<void>();
+      mockSavePinnedForms.mockReturnValue(save.promise);
+      const first = renderHook(() =>
+        usePinnedObservationForms(mockForms, { userUuid: mockUserUuid }),
+      );
+      const second = renderHook(() =>
+        usePinnedObservationForms(mockForms, { userUuid: mockUserUuid }),
+      );
+      await waitFor(() =>
+        expect(
+          first.result.current.isLoading || second.result.current.isLoading,
+        ).toBe(false),
+      );
+      expect(mockLoadPinnedForms).toHaveBeenCalledTimes(1);
+      let pending!: Promise<void>;
+      act(() => {
+        pending = first.result.current.updatePinnedForms([mockForms[0]]);
+      });
+      await act(async () => {
+        await second.result.current.updatePinnedForms([mockForms[1]]);
+      });
+      expect(mockSavePinnedForms).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        save.resolve();
+        await pending;
+      });
+      await waitFor(() =>
+        expect(second.result.current.pinnedForms).toEqual([mockForms[0]]),
+      );
+    });
+
+    it('does not publish a late preference read for a replaced user', async () => {
+      const oldLoad = deferred<string[]>();
+      mockLoadPinnedForms.mockImplementation((user) =>
+        user === mockUserUuid
+          ? oldLoad.promise
+          : Promise.resolve(['Progress Notes']),
+      );
+      const { result, rerender } = renderHook(
+        ({ user }) => usePinnedObservationForms(mockForms, { userUuid: user }),
+        { initialProps: { user: mockUserUuid } },
+      );
+      rerender({ user: 'new-user' });
+      await waitFor(() =>
+        expect(result.current.pinnedForms).toEqual([mockForms[2]]),
+      );
+      await act(async () => {
+        oldLoad.resolve(['Vitals']);
+      });
+      expect(result.current.pinnedForms).toEqual([mockForms[2]]);
+    });
+
+    it('does not publish an old save error in a new user context', async () => {
+      const save = deferred<void>();
+      mockSavePinnedForms.mockReturnValue(save.promise);
+      const { result, rerender } = renderHook(
+        ({ user }) => usePinnedObservationForms(mockForms, { userUuid: user }),
+        { initialProps: { user: mockUserUuid } },
+      );
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      let pending!: Promise<void>;
+      act(() => {
+        pending = result.current.updatePinnedForms([mockForms[0]]);
+      });
+      await waitFor(() => expect(mockSavePinnedForms).toHaveBeenCalledTimes(1));
+      rerender({ user: 'new-user' });
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      await act(async () => {
+        save.reject(new Error('Old save failed'));
+        await pending;
+      });
+      expect(result.current.error).toBeNull();
+      expect(result.current.pinnedForms).toEqual([]);
+    });
+
+    it('retains stored pins outside the currently permitted form catalogue', async () => {
+      mockLoadPinnedForms.mockResolvedValue([
+        'Hidden programme form',
+        'Vitals',
+      ]);
+      const { result } = renderHook(() =>
+        usePinnedObservationForms(mockForms, { userUuid: mockUserUuid }),
+      );
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      await act(async () => {
+        await result.current.updatePinnedForms([mockForms[0]]);
+      });
+      expect(mockSavePinnedForms).toHaveBeenCalledWith(mockUserUuid, [
+        'Hidden programme form',
+        'History and Examination',
+      ]);
+      await waitFor(() =>
+        expect(result.current.pinnedForms).toEqual([mockForms[0]]),
+      );
+    });
+
+    it('rematches confirmed names when available forms change without another user read', async () => {
+      mockLoadPinnedForms.mockResolvedValue(['Vitals']);
+      const { result, rerender } = renderHook(
+        ({ forms }) =>
+          usePinnedObservationForms(forms, { userUuid: mockUserUuid }),
+        { initialProps: { forms: mockForms } },
+      );
+      await waitFor(() =>
+        expect(result.current.pinnedForms).toEqual([mockForms[1]]),
+      );
+      const updated = { ...mockForms[1], uuid: 'new-vitals-version' };
+      rerender({ forms: [updated] });
+      expect(result.current.pinnedForms).toEqual([updated]);
       expect(mockLoadPinnedForms).toHaveBeenCalledTimes(1);
     });
   });

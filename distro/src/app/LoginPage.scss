@@ -1,0 +1,185 @@
+.qorlia-login {
+  display: grid;
+  grid-template-columns: minmax(300px, 46%) minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--qorlia-canvas, #f5f7f5);
+  color: var(--qorlia-ink, #202321);
+}
+
+.qorlia-login__intro {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(28px, 5vw, 72px);
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+}
+
+.qorlia-login__brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 27px;
+  letter-spacing: -0.04em;
+}
+
+.qorlia-login__brand img,
+.qorlia-login__brand span {
+  display: block;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.qorlia-login__brand span {
+  background: #dff5e8;
+  clip-path: polygon(50% 0, 100% 36%, 81% 100%, 19% 100%, 0 36%);
+}
+
+.qorlia-login__message {
+  max-width: 520px;
+}
+
+.qorlia-login__eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.qorlia-login__message h1 {
+  margin: 16px 0 20px;
+  font-size: clamp(36px, 4vw, 62px);
+  line-height: 1.08;
+  letter-spacing: -0.055em;
+}
+
+.qorlia-login__message > p:last-child {
+  max-width: 430px;
+  font-size: 18px;
+  line-height: 1.55;
+  color: #e4f1e9;
+}
+
+.qorlia-login__intro small {
+  color: #d0e5d8;
+}
+
+.qorlia-login__panel {
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+.qorlia-login__card {
+  width: min(100%, 440px);
+  padding: clamp(28px, 4vw, 48px);
+  border: 1px solid var(--qorlia-border, #dce3de);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgb(24 56 38 / 8%);
+}
+
+.qorlia-login__card > .qorlia-login__eyebrow {
+  color: var(--qorlia-primary, #1f5238);
+}
+
+.qorlia-login__card h2 {
+  margin: 16px 0 8px;
+  font-size: 30px;
+  letter-spacing: -0.04em;
+}
+
+.qorlia-login__hint,
+.qorlia-login__help {
+  color: var(--qorlia-muted, #58615b);
+  line-height: 1.5;
+}
+
+.qorlia-login__card form {
+  display: flex;
+  flex-direction: column;
+  margin-top: 32px;
+}
+
+.qorlia-login__card label {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.qorlia-login__card input,
+.qorlia-login__card select {
+  width: 100%;
+  min-height: 46px;
+  margin-bottom: 22px;
+  padding: 10px 12px;
+  border: 1px solid #b9cbc1;
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
+.qorlia-login__card form > button[type="submit"] {
+  min-height: 48px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.qorlia-login__card button[type="submit"]:hover {
+  background: var(--qorlia-primary-hover, #173e2b);
+}
+
+.qorlia-login__card button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.qorlia-login__text-button {
+  align-self: flex-start;
+  margin-bottom: 20px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--qorlia-primary, #1f5238);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.qorlia-login__error {
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff0ed;
+  color: #9b3024;
+}
+
+.qorlia-login__help {
+  margin: 26px 0 0;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .qorlia-login {
+    grid-template-columns: 1fr;
+  }
+
+  .qorlia-login__intro {
+    min-height: 180px;
+    padding: 26px;
+  }
+
+  .qorlia-login__message,
+  .qorlia-login__intro small {
+    display: none;
+  }
+
+  .qorlia-login__panel {
+    align-items: start;
+    padding: 24px 18px;
+  }
+}

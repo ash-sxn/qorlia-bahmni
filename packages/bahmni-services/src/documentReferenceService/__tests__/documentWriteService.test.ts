@@ -1,11 +1,16 @@
 import { DocumentReference, Encounter } from 'fhir/r4';
-import { post } from '../../api';
+import { get, post } from '../../api';
 import { ENCOUNTER_BUNDLE_URL } from '../../encounterBundle';
 import { getUserLoginLocation } from '../../userService';
 import { saveDocuments } from '../documentWriteService';
+import { usesLegacyDocuments } from '../legacyDocuments';
 import { DocumentPayload } from '../models';
 
 jest.mock('../../api');
+jest.mock('../legacyDocuments', () => ({
+  ...jest.requireActual('../legacyDocuments'),
+  usesLegacyDocuments: jest.fn().mockResolvedValue(false),
+}));
 jest.mock('../../userService');
 
 const mockedPost = post as jest.MockedFunction<typeof post>;
@@ -76,14 +81,22 @@ const docAt = (index: number) =>
 const encounterPeriodStart = () =>
   (postedBundle().entry[0].resource as unknown as Encounter).period?.start;
 
-const saveIntoVisit = (visitPeriod?: { start?: string; end?: string }) =>
-  saveDocuments({
+const saveIntoVisit = (visitPeriod?: { start?: string; end?: string }) => {
+  (get as jest.Mock).mockResolvedValueOnce({
+    resourceType: 'Encounter',
+    id: 'visit-uuid',
+    subject: { reference: `Patient/${PATIENT_UUID}` },
+    status: 'in-progress',
+    period: visitPeriod,
+  });
+  return saveDocuments({
     patientUuid: PATIENT_UUID,
     target: {
       createEncounterInVisit: { ...createEncounterInVisit, visitPeriod },
     },
     documents: [firstDocument],
   });
+};
 
 describe('documentWriteService', () => {
   beforeAll(() => {
@@ -100,6 +113,42 @@ describe('documentWriteService', () => {
     mockedGetUserLoginLocation.mockReturnValue({
       uuid: 'location-uuid',
     } as ReturnType<typeof getUserLoginLocation>);
+    (get as jest.Mock).mockImplementation((url: string) =>
+      Promise.resolve(
+        url.includes('/Encounter/enc-uuid')
+          ? EXISTING_ENCOUNTER
+          : {
+              resourceType: 'Encounter',
+              id: 'visit-uuid',
+              status: 'in-progress',
+              subject: { reference: `Patient/${PATIENT_UUID}` },
+              period: { start: VISIT_START },
+            },
+      ),
+    );
+  });
+
+  it('selects the legacy API before writing and never retries a failed save through the FHIR API', async () => {
+    (usesLegacyDocuments as jest.Mock).mockResolvedValueOnce(true);
+    (get as jest.Mock).mockResolvedValueOnce({
+      uuid: 'visit-uuid',
+      patient: { uuid: PATIENT_UUID },
+      visitType: { uuid: 'visit-type' },
+      startDatetime: VISIT_START,
+      stopDatetime: null,
+    });
+    mockedPost.mockRejectedValueOnce(new Error('Save response interrupted'));
+    await expect(
+      saveDocuments({
+        patientUuid: PATIENT_UUID,
+        target: { createEncounterInVisit },
+        documents: [{ ...firstDocument, authorPractitionerUuid: 'prac-uuid' }],
+      }),
+    ).rejects.toThrow('Save response interrupted');
+    expect(mockedPost).toHaveBeenCalledTimes(1);
+    expect(mockedPost.mock.calls[0][0]).toBe(
+      '/openmrs/ws/rest/v1/bahmnicore/visitDocument',
+    );
   });
 
   describe('attaching to an existing encounter', () => {
@@ -302,22 +351,23 @@ describe('documentWriteService', () => {
         expect(encounterPeriodStart()).toBe(NOW);
       });
 
-      it('falls back to the current time when the visit period is absent', async () => {
-        await saveIntoVisit(undefined);
-
-        expect(encounterPeriodStart()).toBe(NOW);
+      it('rejects a visit with no date instead of guessing the clinical datetime', async () => {
+        await expect(saveIntoVisit(undefined)).rejects.toThrow('invalid dates');
+        expect(mockedPost).not.toHaveBeenCalled();
       });
 
-      it('falls back to the current time when the visit start is unparseable', async () => {
-        await saveIntoVisit({ start: 'not-a-date' });
-
-        expect(encounterPeriodStart()).toBe(NOW);
+      it('rejects an unparseable visit start', async () => {
+        await expect(saveIntoVisit({ start: 'not-a-date' })).rejects.toThrow(
+          'invalid dates',
+        );
+        expect(mockedPost).not.toHaveBeenCalled();
       });
 
-      it('ignores an unparseable visit end and keeps the current time', async () => {
-        await saveIntoVisit({ start: VISIT_START, end: 'not-a-date' });
-
-        expect(encounterPeriodStart()).toBe(NOW);
+      it('rejects an unparseable visit end', async () => {
+        await expect(
+          saveIntoVisit({ start: VISIT_START, end: 'not-a-date' }),
+        ).rejects.toThrow('invalid dates');
+        expect(mockedPost).not.toHaveBeenCalled();
       });
     });
   });
@@ -330,6 +380,56 @@ describe('documentWriteService', () => {
         documents: [],
       }),
     ).resolves.toEqual([]);
+    expect(mockedPost).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { ...EXISTING_ENCOUNTER, subject: { reference: 'Patient/other' } },
+    { ...EXISTING_ENCOUNTER, status: 'entered-in-error' },
+    { ...EXISTING_ENCOUNTER, participant: [] },
+    { ...EXISTING_ENCOUNTER, period: { start: NOW } },
+  ])('does not write an unavailable or changed encounter', async (current) => {
+    (get as jest.Mock).mockResolvedValueOnce(current);
+    await expect(
+      saveDocuments({
+        patientUuid: PATIENT_UUID,
+        target: existingEncounterTarget,
+        documents: [firstDocument],
+      }),
+    ).rejects.toThrow();
+    expect(mockedPost).not.toHaveBeenCalled();
+  });
+
+  it('uses the current visit period, not stale dates passed by the UI', async () => {
+    (get as jest.Mock).mockResolvedValueOnce({
+      resourceType: 'Encounter',
+      id: 'visit-uuid',
+      status: 'finished',
+      subject: { reference: `Patient/${PATIENT_UUID}` },
+      period: { start: VISIT_START, end: '2026-06-29T17:30:00Z' },
+    });
+    await saveDocuments({
+      patientUuid: PATIENT_UUID,
+      target: {
+        createEncounterInVisit: {
+          ...createEncounterInVisit,
+          visitPeriod: { start: NOW },
+        },
+      },
+      documents: [firstDocument],
+    });
+    expect(encounterPeriodStart()).toBe(VISIT_START);
+  });
+
+  it('blocks unsafe attachment paths before reading or writing', async () => {
+    await expect(
+      saveDocuments({
+        patientUuid: PATIENT_UUID,
+        target: existingEncounterTarget,
+        documents: [{ ...firstDocument, url: '../outside.pdf' }],
+      }),
+    ).rejects.toThrow('uploaded document');
+    expect(get).not.toHaveBeenCalled();
     expect(mockedPost).not.toHaveBeenCalled();
   });
 });

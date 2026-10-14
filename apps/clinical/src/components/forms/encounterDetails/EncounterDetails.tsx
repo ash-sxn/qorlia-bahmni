@@ -288,7 +288,7 @@ const EncounterDetails: React.FC<EncounterDetailsProps> = ({
 
   return (
     <Grid condensed={false} narrow={false} data-testid="encounter-details-grid">
-      <Column sm={4} md={8} lg={5} xl={12} className={styles.column}>
+      <Column sm={4} md={8} lg={5} className={styles.column}>
         <FormField
           isLoading={!selectedLocation && !locationsError}
           placeholder={<DropdownPlaceholder />}
@@ -307,7 +307,7 @@ const EncounterDetails: React.FC<EncounterDetailsProps> = ({
         </FormField>
       </Column>
 
-      <Column sm={4} md={8} lg={5} xl={12} className={styles.column}>
+      <Column sm={4} md={8} lg={5} className={styles.column}>
         <FormField
           isLoading={!selectedEncounterType && !encounterConceptsError}
           placeholder={<DropdownPlaceholder />}
@@ -326,7 +326,7 @@ const EncounterDetails: React.FC<EncounterDetailsProps> = ({
         </FormField>
       </Column>
 
-      <Column sm={4} md={8} lg={5} xl={12} className={styles.column}>
+      <Column sm={4} md={8} lg={5} className={styles.column}>
         <FormField
           isLoading={!selectedVisitType && !encounterConceptsError}
           placeholder={<DropdownPlaceholder />}

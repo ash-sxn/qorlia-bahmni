@@ -9,8 +9,13 @@ import {
   getDocumentTypes,
   getDocumentUploadMaxSizeMb,
 } from '../documentReferenceService';
+import { usesLegacyDocuments } from '../legacyDocuments';
 
 jest.mock('../../api');
+jest.mock('../legacyDocuments', () => ({
+  ...jest.requireActual('../legacyDocuments'),
+  usesLegacyDocuments: jest.fn().mockResolvedValue(false),
+}));
 
 const mockedGet = get as jest.MockedFunction<typeof get>;
 
@@ -72,6 +77,22 @@ describe('documentReferenceService', () => {
   });
 
   describe('getDocumentReferences', () => {
+    it('selects the legacy encounter API when the server does not support DocumentReference', async () => {
+      (usesLegacyDocuments as jest.Mock).mockResolvedValueOnce(true);
+      mockedGet.mockResolvedValueOnce({ results: [] });
+      const result = await getDocumentReferences(PATIENT_UUID, ['encounter']);
+      expect(result.total).toBe(0);
+      expect(mockedGet).toHaveBeenCalledTimes(1);
+      expect(mockedGet).toHaveBeenCalledWith(
+        `${OPENMRS_REST_V1}/encounter`,
+        expect.objectContaining({
+          params: expect.objectContaining({
+            patient: PATIENT_UUID,
+            startIndex: 0,
+          }),
+        }),
+      );
+    });
     it('fetches documents with correct URL for a given patient', async () => {
       mockedGet.mockResolvedValueOnce(mockBundle);
 
@@ -149,6 +170,19 @@ describe('documentReferenceService', () => {
   });
 
   describe('getFormattedDocumentReferences', () => {
+    it('rejects repeated pages instead of looping forever when a server ignores pagination', async () => {
+      const page = {
+        ...mockBundle,
+        entry: Array.from({ length: 100 }, (_, index) => ({
+          resource: { ...mockDocumentReference, id: `document-${index}` },
+        })),
+      };
+      mockedGet.mockResolvedValue(page);
+      await expect(
+        getFormattedDocumentReferences(PATIENT_UUID),
+      ).rejects.toThrow('repeated document IDs');
+      expect(mockedGet).toHaveBeenCalledTimes(2);
+    });
     it('transforms FHIR DocumentReference bundle entries to view models', async () => {
       mockedGet.mockResolvedValueOnce(mockBundle);
 
@@ -474,7 +508,6 @@ describe('documentReferenceService', () => {
   describe('getDocumentTypes', () => {
     // Shape of the OpenMRS concept setMembers response.
     const conceptName = 'Patient Document Type';
-    const customView = 'custom:(setMembers:(uuid,display))';
     const conceptResponse = {
       results: [
         {

@@ -101,6 +101,25 @@ describe('useEncounterConcepts', () => {
 
   // Sad Path Tests
   describe('Sad Paths', () => {
+    it('clears a previous metadata failure after a successful reload', async () => {
+      const failure = new Error('Unavailable');
+      mockedGetEncounterConcepts
+        .mockRejectedValueOnce(failure)
+        .mockResolvedValueOnce(mockEncounterConcepts);
+      mockedGetFormattedError.mockReturnValue({
+        title: 'Error',
+        message: failure.message,
+      });
+      const { result } = renderHook(() => useEncounterConcepts());
+      await waitFor(() => expect(result.current.error).toBe(failure));
+      await act(async () => {
+        result.current.refetch();
+      });
+      await waitFor(() =>
+        expect(result.current.encounterConcepts).toEqual(mockEncounterConcepts),
+      );
+      expect(result.current.error).toBeNull();
+    });
     it('should handle API call failure with Error object', async () => {
       const error = new Error('Network error');
       mockedGetEncounterConcepts.mockRejectedValueOnce(error);

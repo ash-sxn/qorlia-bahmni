@@ -9,11 +9,34 @@ jest.mock('../../api', () => ({
 const PATIENT_UUID = 'patient-uuid-1';
 const LOCATION_UUID = 'location-uuid-1';
 const VISIT_TYPE_UUID = 'visit-type-uuid-1';
+const savedVisit = {
+  resourceType: 'Encounter',
+  id: 'new-enc-1',
+  status: 'unknown',
+  subject: { reference: `Patient/${PATIENT_UUID}` },
+  location: [{ location: { reference: `Location/${LOCATION_UUID}` } }],
+  meta: {
+    tag: [
+      { system: 'http://fhir.openmrs.org/ext/encounter-tag', code: 'visit' },
+    ],
+  },
+  type: [
+    {
+      coding: [
+        {
+          system: 'http://fhir.openmrs.org/code-system/visit-type',
+          code: VISIT_TYPE_UUID,
+        },
+      ],
+    },
+  ],
+  period: { start: '2026-10-07T10:00:00+05:30' },
+};
 
 describe('fhirVisitService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockPost.mockResolvedValue({});
+    mockPost.mockResolvedValue(savedVisit);
   });
 
   it('posts correct FHIR Encounter resource to create a visit', async () => {
@@ -76,7 +99,7 @@ describe('fhirVisitService', () => {
   });
 
   it('returns the resolved value from post', async () => {
-    const mockEncounter = { resourceType: 'Encounter', id: 'new-enc-1' };
+    const mockEncounter = savedVisit;
     mockPost.mockResolvedValue(mockEncounter);
 
     const result = await createVisitWithFhirR4(
@@ -95,4 +118,26 @@ describe('fhirVisitService', () => {
       createVisitWithFhirR4(PATIENT_UUID, LOCATION_UUID, VISIT_TYPE_UUID),
     ).rejects.toThrow('Network error');
   });
+
+  it.each([
+    undefined,
+    {},
+    '<html>Sign in</html>',
+    { resourceType: 'OperationOutcome' },
+    { ...savedVisit, id: '' },
+    { ...savedVisit, meta: {} },
+    { ...savedVisit, subject: { reference: 'Patient/another-patient' } },
+    { ...savedVisit, location: [] },
+    { ...savedVisit, type: [] },
+    { ...savedVisit, period: {} },
+  ])(
+    'rejects an invalid or mismatched write acknowledgement: %p',
+    async (response) => {
+      mockPost.mockResolvedValue(response);
+      await expect(
+        createVisitWithFhirR4(PATIENT_UUID, LOCATION_UUID, VISIT_TYPE_UUID),
+      ).rejects.toThrow('Invalid visit creation response');
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    },
+  );
 });

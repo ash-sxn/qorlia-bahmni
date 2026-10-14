@@ -252,7 +252,12 @@ const ImmunizationForm = ({
       basedOnMedication,
       loginLocation,
     );
-    addImmunization(vaccineCode, defaults);
+    if (vaccineCode.code && vaccineCode.display) {
+      addImmunization(
+        { code: vaccineCode.code, display: vaccineCode.display },
+        defaults,
+      );
+    }
   }, [basedOn, basedOnMedication, vaccinationDrugs, basedOnReference]);
 
   const vaccineCodeComboBoxItems = useMemo(
@@ -328,7 +333,11 @@ const ImmunizationForm = ({
       !!administeredLocationTagError ||
       !!vaccinationDrugsError ||
       !!basedOnMedicationError ||
-      !!statusReasonConceptSetError
+      !!statusReasonConceptSetError ||
+      (!!basedOn &&
+        !!basedOnMedication &&
+        (!basedOnMedication.code?.coding?.[0]?.code ||
+          !basedOn.medicationReference?.display))
     );
   }, [
     configError,
@@ -339,6 +348,8 @@ const ImmunizationForm = ({
     vaccinationDrugsError,
     basedOnMedicationError,
     statusReasonConceptSetError,
+    basedOn,
+    basedOnMedication,
   ]);
 
   const showSelectedImmunizations =

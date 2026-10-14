@@ -260,6 +260,59 @@ describe('useVisitDocuments', () => {
     expect(result.current.visitGroups[0].documentEncounter).toBeUndefined();
   });
 
+  it('reads every provider document but reuses only the current provider and location encounter for uploads', async () => {
+    const ownEncounter = {
+      ...childEncounter(
+        NEWER_DOC_ENCOUNTER_UUID,
+        NEWER_VISIT_UUID,
+        DOC_ENCOUNTER_TYPE_UUID,
+      ),
+      participant: [
+        { individual: { reference: 'Practitioner/current-provider' } },
+      ],
+      location: [{ location: { reference: 'Location/current-location' } }],
+    };
+    const otherEncounter = {
+      ...childEncounter(
+        OLDER_DOC_ENCOUNTER_UUID,
+        NEWER_VISIT_UUID,
+        DOC_ENCOUNTER_TYPE_UUID,
+      ),
+      participant: [
+        { individual: { reference: 'Practitioner/another-provider' } },
+      ],
+      location: [{ location: { reference: 'Location/current-location' } }],
+    };
+    mockedGetPatientEncounters.mockResolvedValue([
+      visit(NEWER_VISIT_UUID, '2026-06-29T09:15:00+00:00'),
+      ownEncounter,
+      otherEncounter,
+    ]);
+    mockedGetFormattedDocumentReferences.mockResolvedValue([
+      document('own-document', NEWER_DOC_ENCOUNTER_UUID),
+      document('other-document', OLDER_DOC_ENCOUNTER_UUID),
+    ]);
+    const { result } = renderHook(
+      () =>
+        useVisitDocuments(PATIENT_UUID, [DOC_ENCOUNTER_TYPE_UUID], {
+          providerUuid: 'current-provider',
+          locationUuid: 'current-location',
+        }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(mockedGetFormattedDocumentReferences).toHaveBeenCalledWith(
+      PATIENT_UUID,
+      [NEWER_DOC_ENCOUNTER_UUID, OLDER_DOC_ENCOUNTER_UUID],
+    );
+    expect(
+      result.current.visitGroups[0].documents.map((doc) => doc.id),
+    ).toEqual(['own-document', 'other-document']);
+    expect(result.current.visitGroups[0].documentEncounter).toEqual(
+      ownEncounter,
+    );
+  });
+
   it('ignores documents without an encounter and malformed child encounters, and refetches both queries', async () => {
     mockedGetPatientEncounters.mockResolvedValue([
       visit(NEWER_VISIT_UUID, '2026-06-29T09:15:00+00:00'),
@@ -327,7 +380,7 @@ describe('useVisitDocuments', () => {
 
   it('does not fetch and returns no groups when patientUuid is null', () => {
     const { result } = renderHook(
-      () => useVisitDocuments(null, DOC_ENCOUNTER_TYPE_UUID),
+      () => useVisitDocuments(null, [DOC_ENCOUNTER_TYPE_UUID]),
       { wrapper },
     );
 
