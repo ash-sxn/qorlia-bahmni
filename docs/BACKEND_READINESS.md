@@ -1,5 +1,106 @@
 # Qorlia React frontend backend readiness
 
+## Protected Excel r2 acceptance (14 October 2026)
+
+checkpoint-excel-r2-20261014 is published from 89f8da53 plus the same nine
+clinical hashes. Build a0dc39142691cd6a and all 83 hosted JS/CSS assets,
+protected source, licences and manifest match. Source archive SHA-256:
+81588bb19ed5fa50a3ef35b537e565bb4466fde1ac61403cec2745aa3f221e1a.
+Shared access code, expiry, backend destinations and session gates are unchanged.
+Initial Excel and pivot packages/compose remain available for rollback.
+
+Final hosted TypeScript checks pass all eight workbook measure/axis variants,
+independent native ZIP/XML values, stale-version denial, native reads and access
+guards. Eight protected records, bank #37, checkpoints/ledgers and attachments
+remain unchanged. Browser replay shows the readable expiry alert, opens reconnect,
+restores the account and downloads a matching computed-balance workbook. Three
+actual browser files were independently inspected across the initial/final
+packages. Initial package's flipped count, unapplied-filter exclusion, empty
+result disabling/restoration and feedback resets passed. No financial browser
+writes, temporary tabs closed; final Billing tab stays on the working pivot.
+
+523 Home/60 suites, seven gateway/config checks, library and three source-test
+types, touched lint/diff and fresh build pass. Native 37's 526-test run is the
+prior source/private-backend checkpoint; its code is unchanged. This is scoped
+download/expiry acceptance, not full Excel, pivot, Billing or product completion.
+Large-data/quota/streaming, browser stale-response/unmount acceptance, expansion,
+graph modes/drilldown, imports, stock/POS/clinical sync and full clinical/external
+parity remain open. PR #2 stays draft; no production/public-demo change.
+
+## Protected Excel download verification and expiry correction (14 October 2026)
+
+Published checkpoint-excel-20261014 from b3617225 plus the same nine preserved
+clinical hashes, build 35fe116aafef3ed3. All 83 hosted JS/CSS assets, source,
+licenses and manifest match. The shared code, expiry, backend destinations and
+session gates are unchanged; the prior package/compose is retained for rollback.
+Source archive: 6f3ad8c80828bacc9cedcf340d4a795a73ea1c0b6eab237f6900fd214123ac22.
+Actual hosted TypeScript downloads all eight XLSX variants and independently
+checks their ZIP/XML cells, literal text and frozen headers. Stale snapshots and
+raw/malformed/unauthenticated routes are denied. Native checkpoint/ledger/file,
+bank #37 and eight protected-document baselines remain unchanged.
+
+Actual browser downloads pass computed balances and transposed counts. An
+unsubmitted filter stays out of the workbook; applying no-results disables Excel,
+and restoring filters recovers. Measure/axis/filter changes clear old feedback.
+Browser disconnect in a second tab expires the first tab's export session and
+shows Reconnect Billing. That check exposed a blank alert because the shared
+BillingSessionExpired error had no message. Its default now explains expiry and
+reconnect, while preserving explicit messages. UI/service regressions check it.
+
+523 Home tests/60 suites, touched lint, library types and fresh build
+a0dc39142691cd6a pass. Native adapter 37 is unchanged; its 526-test result is the
+previous checkpoint, not a fresh rerun here. The expiry correction is not yet
+repackaged or browser accepted. Excel feature acceptance remains open until that
+check. Production/public demo are unchanged. Full pivot/Billing/clinical/external
+parity, imports, large-data/quota and streaming remain open.
+
+## Native checkpoint Excel export source and private backend checkpoint (14 October 2026)
+
+Installed Odoo 16 pivot_controller.js and web/controllers/pivot.py were inspected.
+The native download is an XLSX table of the selected pivot, not an interactive
+Excel PivotTable. Qorlia reuses the installed writer through a named read-only
+qorlia_checkpoint_analysis_export API, rather than exposing the generic route
+that accepts a browser-provided table. Adapter 16.0.1.37.0 is installed only in
+isolated staging, with a database/module backup and rollback procedure retained.
+The pinned image and production/public demo are unchanged.
+
+Analysis now returns a digest of its filters, aggregates, author and active
+companies. Export rechecks native access and that exact snapshot before generating
+the table. Four measures and both axis orientations preserve numeric values,
+sparse cells and per-journal totals; currencies are never combined. Filters,
+measure and snapshot are included in the workbook, and its headers are frozen.
+Labels are literal strings, never formulas or hyperlinks. Excel dimension limits
+and a synchronous 10 MiB output cap apply; larger streaming remains open.
+
+React downloads the last applied filters, selected measure and orientation.
+Duplicate clicks are guarded; controls that alter the applied analysis are
+disabled during export. Errors and expired Billing sessions offer recovery.
+Leaving the view suppresses a late download, and changing the Billing account
+remounts the analysis. Filter/measure/axis changes clear outdated download feedback.
+Native browser download APIs and existing house components are reused.
+
+523 Home tests/60 suites, 526 native adapter tests (21 checkpoint cases), seven
+gateway/config checks, Home library/three source-test types, touched lint/diff
+and source review build 20294c1408476095 pass. The full native run restores
+mandatory analytics and restarts staging Billing. Installed model/test hashes
+match. Existing Yarn/Browserslist/development-size and upstream native/PDF asset
+warnings remain; the reported native result has no failures/errors/skips.
+
+Independent native reads verify all eight workbooks against native checkpoint
+counts/balances/currencies. The actual TypeScript client/private HTTP downloads
+all eight, checks ZIP/XML cell contents, no formulas/links and frozen headers,
+and rejects a changed version. Checkpoints, bank #37, attachments/receipts and
+eight protected records are unchanged by the native read; client read-back also
+preserves its checkpoint/bank/attachment baselines. Read-only native verification
+rolls back, and the temporary SSH forward is stopped.
+
+The new UI/gateway is not yet packaged, hosted or browser accepted. The protected
+host still serves checkpoint-pivot-flip-20261014; its existing APIs remain
+available on staging adapter 37. PR #2 remains draft. Large-dataset/quota cases,
+protected-host download/expiry acceptance, pivot expansion, further graph modes/
+drilldown, imports, remaining Billing/stock/POS/sync and full clinical/external
+parity remain open. Nine existing clinical edits remain unchanged.
+
 ## Protected pivot transposition acceptance (14 October 2026)
 
 checkpoint-pivot-flip-20261014 is published from 8a09c282 plus the same nine

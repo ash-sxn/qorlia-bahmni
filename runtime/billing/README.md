@@ -3,6 +3,58 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Current protected review: checkpoint-excel-r2-20261014, source 89f8da53 plus nine
+preserved clinical hashes, build a0dc39142691cd6a and 83 matching assets. Source
+archive: 81588bb19ed5fa50a3ef35b537e565bb4466fde1ac61403cec2745aa3f221e1a.
+Existing shared-code/expiry/backends/session gates unchanged; prior builds retained.
+Final hosted TypeScript acceptance checks eight native-value XLSX variants and
+stale/access denial. Browser expiry message/reconnect and a post-reconnect balance
+download pass; three browser files independently inspected across both builds.
+Initial flipped counts, unapplied filters, empty results and feedback resets pass.
+No financial browser writes or production/public-demo changes; native 37 unchanged.
+523 Home/60 suites, seven guards, types/lint/diff/build pass. Prior 526 native
+tests are not rerun here. PR #2 remains draft for remaining quota/large-data and
+browser stale-response/unmount coverage. Full pivot/Billing/clinical/external
+parity, imports and streaming still remain open.
+
+Latest hosted checkpoint (14 October): checkpoint-excel-20261014, b3617225 plus
+nine preserved clinical hashes, build 35fe116aafef3ed3 and 83 matching assets.
+Source archive: 6f3ad8c80828bacc9cedcf340d4a795a73ea1c0b6eab237f6900fd214123ac22.
+Protected code/expiry/backends/gates unchanged; previous package retained.
+Eight actual hosted XLSX downloads match independent native cells and reject
+stale snapshots; protected financial/ledger/checkpoint/file reads unchanged.
+Browser balance and flipped-count exports, last-applied-filter semantics,
+no-results disabling and recovery pass. Cross-tab session disconnect revealed a
+blank export error despite a working reconnect control. Shared expiry errors
+now have a default message, preserving explicit caller messages. UI/service
+regressions, 523 Home/60 suites, library types, touched lint and fresh build
+a0dc39142691cd6a pass. Correction needs repackaging/browser acceptance; do not
+claim Excel feature finished yet. Native 37 unchanged, its prior 526-test result
+not rerun here. No production/public-demo or financial browser changes. Full
+parity/large-data/streaming/imports remain unfinished.
+
+Latest Excel source/private API checkpoint: 16.0.1.37.0 is installed in isolated
+staging only. Native Odoo pivot controller/exporter inspected. Named export
+reuses its writer but regenerates authorized values rather than accepting a
+client table. Analysis digest binds filters/data/author/companies; export rechecks
+access/version. Static XLSX preserves selected measure/axes, per-journal totals,
+currency labels, numeric/missing cells, literal text and frozen headers. No
+formulas/hyperlinks or mixed-currency total. Excel limits and 10 MiB synchronous
+cap apply; streaming and large-data acceptance remain open.
+React uses last applied filters and native downloads, guards duplicate clicks,
+handles errors/expiry, suppresses completion after leaving and clears old feedback
+when the analysis changes. Account changes remount it. 523 Home/60 suites,
+526 native tests, seven gateway checks, types/lint/diff and build
+20294c1408476095 pass. Runtime hashes match, mandatory analytics restored,
+service restarted and backup retained. Native values and real private TypeScript
+HTTP verify all eight exported measure/axis combinations, ZIP/XML cells, no
+formulas/links, frozen headers and stale-version denial. Read-back unchanged;
+native verification rolls back and SSH forward is stopped.
+UI/gateway not packaged/hosted/browser accepted yet. Protected artifact stays
+checkpoint-pivot-flip-20261014 with native 37 behind its existing APIs; draft
+PR #2 remains open. Complete pivot/Billing/clinical/external parity remains
+unfinished. Production/public demo and nine clinical edits are unchanged.
+
 Latest protected release: checkpoint-pivot-flip-20261014, source 8a09c282 plus
 nine unchanged clinical hashes, build 4b2e0d119c5e3073. All 83 hosted JS/CSS and
 protected source/license assets match; existing gates/expiry/backends unchanged.

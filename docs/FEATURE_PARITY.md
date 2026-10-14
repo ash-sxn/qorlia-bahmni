@@ -1,5 +1,68 @@
 # Bahmni workflow parity ledger
 
+## 14 October protected Excel r2 download and expiry acceptance
+
+- Published checkpoint-excel-r2-20261014 from 89f8da53 plus nine preserved
+  clinical hashes, build a0dc39142691cd6a; all 83 hosted/source/licence assets
+  verified. Shared code, expiry, backends and session gates unchanged. Prior
+  Excel/pivot packages retained for rollback.
+- Final hosted TypeScript checks all eight XLSX measure/axis variants against
+  independent native cells, stale-version denial and access restrictions.
+  Checkpoints/ledgers/attachments, bank #37 and eight protected records unchanged.
+- Browser expiry replay now shows its message, reconnects and downloads a
+  matching balance workbook. Three actual browser files independently checked
+  across initial/final packages; initial flipped-count/unapplied-filter/empty
+  result/feedback checks pass. No financial browser writes; extra tabs closed.
+- 523 Home/60 suites, seven guards, library/source-test types, lint/diff/build
+  pass. Native 37 unchanged; prior 526 native tests not rerun. Scoped acceptance
+  only. Large-data/quota/streaming and browser stale-response/unmount coverage
+  remain open, as do expansion, graph/drilldown/imports and full Billing,
+  clinical/external parity. PR #2 stays draft; production/public demo unchanged.
+
+## 14 October hosted Excel checks and discovered expiry feedback gap
+
+- Published checkpoint-excel-20261014 from b3617225 plus nine unchanged clinical
+  hashes; build 35fe116aafef3ed3 and all 83 hosted/source/license assets verified.
+  Existing gates, expiry and backends unchanged; prior package retained.
+- Eight actual hosted XLSX downloads match independent native cells. Stale
+  versions, raw/malformed/unauthenticated routes denied; protected documents,
+  bank #37, checkpoints/ledgers and attachment reads unchanged.
+- Actual browser computed balance and transposed-count downloads match native
+  cells. Unsaved filters do not enter export; empty applied filters disable it;
+  restoring filters and clearing feedback pass. No financial browser writes.
+- Real cross-tab Billing disconnect makes export offer reconnect but exposed a
+  blank alert. Fixed at the shared BillingSessionExpired constructor with a
+  default message, preserving explicit caller messages; regressions added.
+  523 Home/60 suites, library types, touched lint and a0dc39142691cd6a build pass.
+  Correction still needs packaging/browser acceptance. Native 37 unchanged;
+  previous 526 native tests are not a fresh rerun. PR #2 remains draft.
+- Large-data/quota/streaming, pivot expansion, graph/drilldown/imports and full
+  Billing/clinical/external parity remain open. Production/public demo unchanged.
+
+## 14 October native checkpoint Excel source and private API acceptance
+
+- Installed native pivot download contract inspected. Adapter 37 adds a named
+  XLSX export, regenerating authorized native aggregates for the exact displayed
+  snapshot. Digest binds filters/data/author/companies; stale versions and denied
+  access fail. Four measures, both axes, numeric cells, journal/currency separation,
+  missing cells, literal labels and frozen headers are preserved. Native export is
+  a static XLSX table, not an interactive Excel PivotTable.
+- UI uses last applied filters and native browser downloads. Duplicate clicks,
+  error/expiry and unmount suppression are covered; account changes remount it.
+  Changing filters/measure/axes clears old feedback. No new dependency.
+- 523 Home/60 suites, 526 native tests (21 checkpoint cases), seven guards,
+  library/source-test types, touched lint/diff and build 20294c1408476095 pass.
+  Adapter installed only in isolated staging with backup, matching hashes,
+  mandatory analytics restored and service running.
+- Independent native values and actual TypeScript/private HTTP verify eight
+  XLSX downloads, ZIP/XML content, headers and no formulas/links. Stale version
+  denied. Financial/checkpoint/bank/attachment baselines remain unchanged during
+  verification. Native verifier rolls back; SSH forward stopped.
+- Not packaged/hosted/browser accepted. Existing protected pivot-flip UI remains;
+  PR #2 is draft. Large-data/quota, browser downloads/expiry, pivot expansion,
+  graph/drilldown/imports and all remaining product parity stay open. Production,
+  public demo and nine preserved clinical edits unchanged.
+
 ## 14 October protected pivot transposition acceptance
 
 - Published checkpoint-pivot-flip-20261014: 8a09c282 plus nine unchanged clinical

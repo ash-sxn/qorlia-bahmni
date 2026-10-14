@@ -2,6 +2,12 @@ const API = '/openmrs/qorlia-billing-api';
 
 export class BillingSessionExpired extends Error {
   readonly billingSessionExpired = true;
+
+  constructor(
+    message = 'Your Billing session expired. Reconnect to continue.',
+  ) {
+    super(message);
+  }
 }
 
 export class BillingActionRejected extends Error {}
@@ -387,6 +393,7 @@ const checkpointCall = <T>(
     | 'history'
     | 'detail'
     | 'analysis'
+    | 'analysis_export'
     | 'editor_load'
     | 'editor_preview'
     | 'editor_save'
@@ -451,6 +458,7 @@ export interface CheckpointAnalysisRow {
   balance_end_real: number;
 }
 export interface CheckpointAnalysis extends CheckpointAnalysisFilters {
+  version: string;
   total_count: number;
   rows: CheckpointAnalysisRow[];
 }
@@ -467,9 +475,7 @@ const analysisDate = (value: unknown) =>
   (bankDate(value) &&
     Number.isFinite(Date.parse(`${value}T00:00:00Z`)) &&
     new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value);
-export async function getCheckpointAnalysis(
-  filters: CheckpointAnalysisFilters,
-): Promise<CheckpointAnalysis> {
+function checkedAnalysisFilters(filters: CheckpointAnalysisFilters) {
   checkedBankSearch(filters.search, 0);
   if (
     Object.keys(filters).sort().join(',') !==
@@ -488,9 +494,16 @@ export async function getCheckpointAnalysis(
     throw new Error(
       'Select valid checkpoint analysis filters and calendar dates.',
     );
+}
+export async function getCheckpointAnalysis(
+  filters: CheckpointAnalysisFilters,
+): Promise<CheckpointAnalysis> {
+  checkedAnalysisFilters(filters);
   const data = await checkpointCall<CheckpointAnalysis>('analysis', filters);
   if (
     !data ||
+    typeof data.version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(data.version) ||
     Object.entries(filters).some(
       ([key, value]) => data[key as keyof CheckpointAnalysisFilters] !== value,
     ) ||
@@ -537,6 +550,57 @@ export async function getCheckpointAnalysis(
     currencies.set(journal, currency);
   }
   return data;
+}
+export async function downloadCheckpointAnalysis(
+  filters: CheckpointAnalysisFilters,
+  version: string,
+  measure: string,
+  transposed: boolean,
+) {
+  checkedAnalysisFilters(filters);
+  if (
+    typeof version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(version) ||
+    !['count', 'balance_start', 'balance_end', 'balance_end_real'].includes(
+      measure,
+    ) ||
+    typeof transposed !== 'boolean'
+  )
+    throw new Error(
+      'Select an exact analysis version, measure and orientation.',
+    );
+  const file = await checkpointCall<{
+    version: string;
+    measure: string;
+    transposed: boolean;
+    filename: string;
+    mimetype: string;
+    content: string;
+    byte_count: number;
+  }>('analysis_export', { ...filters, version, measure, transposed });
+  const mimetype =
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  if (
+    file?.version !== version ||
+    file.measure !== measure ||
+    file.transposed !== transposed ||
+    file.filename !== 'Qorlia_Checkpoints.xlsx' ||
+    file.mimetype !== mimetype
+  )
+    throw new Error('Invalid checkpoint Excel export. Refresh the analysis.');
+  const bytes = attachmentBytes(file.content, file.byte_count);
+  if (
+    bytes.length < 4 ||
+    bytes[0] !== 80 ||
+    bytes[1] !== 75 ||
+    bytes[2] !== 3 ||
+    bytes[3] !== 4
+  )
+    throw new Error('Invalid checkpoint Excel file.');
+  return {
+    filename: file.filename,
+    blob: new Blob([bytes], { type: mimetype }),
+  };
 }
 export interface BankCheckpointSelection {
   checkpoint_id: number | false;

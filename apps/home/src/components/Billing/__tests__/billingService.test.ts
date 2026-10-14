@@ -70,7 +70,9 @@ describe('billing API', () => {
     await expect(getBillingSession()).rejects.toThrow(
       'Invalid billing response',
     );
-    await expect(getInvoices('', 0)).rejects.toThrow('Invalid billing response');
+    await expect(getInvoices('', 0)).rejects.toThrow(
+      'Invalid billing response',
+    );
     await expect(postInvoiceWorkflow(invoiceWorkflowFixture())).rejects.toThrow(
       'Invalid billing response',
     );
@@ -408,6 +410,12 @@ describe('billing API', () => {
     expect(options.credentials).toBe('same-origin');
   });
   it('distinguishes an expired ERP session from a service failure', async () => {
+    expect(new BillingSessionExpired().message).toBe(
+      'Your Billing session expired. Reconnect to continue.',
+    );
+    expect(new BillingSessionExpired('Session expired').message).toBe(
+      'Session expired',
+    );
     reply({ error: { code: 100 } });
     await expect(getBillingSession()).rejects.toBeInstanceOf(
       BillingSessionExpired,
