@@ -1,10 +1,15 @@
 import { StockReservationRequest } from '../billingService';
-import { stockRequest } from './stockReservationFixture';
 import {
   clearStockReservationRecovery,
   loadStockReservationRecovery,
   persistStockReservationRecovery,
+  clearStockOperationRecovery,
+  loadStockOperationRecovery,
+  loadStockWriteRecovery,
+  persistStockOperationRecovery,
 } from '../stockReservationRecovery';
+import { operationRequest } from './stockOperationFixture';
+import { stockRequest } from './stockReservationFixture';
 
 const request = (): StockReservationRequest => stockRequest();
 
@@ -126,7 +131,7 @@ describe('Stock reservation IndexedDB recovery', () => {
       request_key: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
     };
     await expect(persistStockReservationRecovery(3, other)).rejects.toThrow(
-      /Another reservation request/,
+      /Another stock request/,
     );
     expect(await clearStockReservationRecovery(3, other)).toEqual(request());
     expect(await loadStockReservationRecovery(3)).toEqual(request());
@@ -183,5 +188,84 @@ describe('Stock reservation IndexedDB recovery', () => {
       }),
     ).rejects.toThrow();
     expect(fake.factory.open).not.toHaveBeenCalled();
+  });
+  it('uses the existing per-account slot for operations, never overwriting a pending reservation', async () => {
+    database();
+    await persistStockReservationRecovery(3, request());
+    await expect(
+      persistStockOperationRecovery(3, operationRequest()),
+    ).rejects.toThrow(/Another stock request/);
+    await expect(loadStockOperationRecovery(3)).rejects.toThrow(
+      /reservation request is pending/,
+    );
+    expect(await clearStockOperationRecovery(3, operationRequest())).toEqual(
+      request(),
+    );
+    expect(await loadStockWriteRecovery(3)).toEqual(request());
+    await clearStockReservationRecovery(3, request());
+    await persistStockOperationRecovery(3, operationRequest());
+    expect(await loadStockWriteRecovery(3)).toEqual(operationRequest());
+    expect(await loadStockOperationRecovery(3)).toEqual(operationRequest());
+    await expect(loadStockReservationRecovery(3)).rejects.toThrow(
+      /operation request is pending/,
+    );
+    await expect(persistStockReservationRecovery(3, request())).rejects.toThrow(
+      /Another stock request/,
+    );
+    await clearStockReservationRecovery(3, request());
+    expect(await loadStockWriteRecovery(3)).toEqual(operationRequest());
+    await clearStockOperationRecovery(3, operationRequest());
+    expect(await loadStockWriteRecovery(3)).toBeNull();
+  });
+  it('keeps exact deletion edits and identity across reload and waits for durable commit', async () => {
+    const fake = database();
+    fake.hold();
+    const exact = {
+      ...operationRequest(),
+      action: 'delete' as const,
+      edits: [],
+    };
+    let done = false;
+    const saving = persistStockOperationRecovery(3, exact).then(() => {
+      done = true;
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(done).toBe(false);
+    fake.commit();
+    await saving;
+    fake.commit();
+    const loading = loadStockWriteRecovery(3);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    fake.commit();
+    expect(await loading).toEqual(exact);
+  });
+  it('rejects malformed stored operation requests without replacing them, and aborts failed writes', async () => {
+    const fake = database();
+    const invalid = {
+      schema: 1,
+      uid: 3,
+      request: {
+        ...operationRequest(),
+        action: 'delete',
+        edits: [],
+        operation_id: false,
+      },
+    };
+    fake.records.set(3, invalid);
+    await expect(loadStockWriteRecovery(3)).rejects.toThrow();
+    await expect(
+      persistStockOperationRecovery(3, operationRequest()),
+    ).rejects.toThrow();
+    expect(fake.records.get(3)).toEqual(invalid);
+    fake.records.clear();
+    fake.fail();
+    await expect(
+      persistStockOperationRecovery(3, operationRequest()),
+    ).rejects.toThrow(/could not be committed/);
+    expect(fake.records.size).toBe(0);
   });
 });

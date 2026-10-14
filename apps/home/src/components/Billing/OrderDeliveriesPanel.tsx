@@ -2,9 +2,17 @@ import { Button } from '@bahmni/design-system';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import styles from './BillingPage.module.scss';
-import { BillingSessionExpired, getOrderDeliveries } from './billingService';
+import {
+  BillingSessionExpired,
+  getOrderDeliveries,
+  StockOperationSelection,
+} from './billingService';
+import { StockOperationEditor } from './StockOperationEditor';
 import { StockReservationModal } from './StockReservationModal';
-import { loadStockReservationRecovery } from './stockReservationRecovery';
+import {
+  isStockOperationRequest,
+  loadStockWriteRecovery,
+} from './stockReservationRecovery';
 
 const transferStates = {
   draft: 'Draft',
@@ -34,9 +42,12 @@ export function OrderDeliveriesPanel({
     orderId: number;
     transferId: number;
   } | null>(null);
+  const [operation, setOperation] = useState<StockOperationSelection | null>(
+    null,
+  );
   const recovery = useQuery({
     queryKey: ['billing', 'reservation-recovery', uid],
-    queryFn: () => loadStockReservationRecovery(uid),
+    queryFn: () => loadStockWriteRecovery(uid),
     retry: false,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
@@ -49,6 +60,23 @@ export function OrderDeliveriesPanel({
     refetchOnWindowFocus: false,
   });
   const transfer = result.data?.rows.find((row) => row.id === transferId);
+  const stockLocked =
+    recovery.isPending ||
+    recovery.isFetching ||
+    recovery.isError ||
+    !!recovery.data ||
+    result.isFetching ||
+    result.isError;
+  const reloadTransfers = () => {
+    setReservation(null);
+    setOperation(null);
+    void client.invalidateQueries({
+      queryKey: ['billing', 'order-deliveries', uid, orderId],
+    });
+    void client.invalidateQueries({
+      queryKey: ['billing', 'reservation-recovery', uid],
+    });
+  };
   return (
     <section className={styles.card} aria-label="Order stock transfers">
       <h2>Order stock transfers</h2>
@@ -62,14 +90,26 @@ export function OrderDeliveriesPanel({
         {recovery.data ? (
           <Button
             kind="tertiary"
-            onClick={() =>
-              setReservation({
-                orderId: recovery.data!.order_id,
-                transferId: recovery.data!.transfer_id,
-              })
-            }
+            disabled={recovery.isFetching || recovery.isError}
+            onClick={() => {
+              const pending = recovery.data!;
+              if (isStockOperationRequest(pending))
+                setOperation({
+                  order_id: pending.order_id,
+                  transfer_id: pending.transfer_id,
+                  move_id: pending.move_id,
+                  operation_id: pending.operation_id,
+                });
+              else
+                setReservation({
+                  orderId: pending.order_id,
+                  transferId: pending.transfer_id,
+                });
+            }}
           >
-            Resume reservation request
+            {isStockOperationRequest(recovery.data)
+              ? 'Resume operation request'
+              : 'Resume reservation request'}
           </Button>
         ) : null}
         <Button kind="tertiary" onClick={close}>
@@ -89,6 +129,15 @@ export function OrderDeliveriesPanel({
         ) : null}
       </div>
       {recovery.isError ? <p role="alert">{recovery.error.message}</p> : null}
+      {recovery.isError ? (
+        <Button
+          kind="tertiary"
+          disabled={recovery.isFetching}
+          onClick={() => void recovery.refetch()}
+        >
+          Reload stock recovery
+        </Button>
+      ) : null}
       {result.isFetching ? (
         <p role="status">Loading native order transfers...</p>
       ) : result.isError ? (
@@ -162,6 +211,7 @@ export function OrderDeliveriesPanel({
               <h3>{transfer.name}</h3>
               <Button
                 kind="tertiary"
+                disabled={stockLocked}
                 onClick={() =>
                   setReservation({ orderId, transferId: transfer.id })
                 }
@@ -200,6 +250,7 @@ export function OrderDeliveriesPanel({
                         'Recorded done',
                         'Move status',
                         'Order item',
+                        'Operations',
                       ].map((title) => (
                         <th scope="col" key={title}>
                           {title}
@@ -217,6 +268,25 @@ export function OrderDeliveriesPanel({
                         <td>{move.done}</td>
                         <td>{move.state}</td>
                         <td>{label(move.order_line)}</td>
+                        <td>
+                          <Button
+                            kind="ghost"
+                            disabled={
+                              stockLocked ||
+                              ['done', 'cancel'].includes(move.state)
+                            }
+                            onClick={() =>
+                              setOperation({
+                                order_id: orderId,
+                                transfer_id: transfer.id,
+                                move_id: move.id,
+                                operation_id: false,
+                              })
+                            }
+                          >
+                            Add operation for {label(move.product)}
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -249,6 +319,7 @@ export function OrderDeliveriesPanel({
                         'Source package',
                         'Destination package',
                         'Owner',
+                        'Edit',
                       ].map((title) => (
                         <th scope="col" key={title}>
                           {title}
@@ -272,6 +343,29 @@ export function OrderDeliveriesPanel({
                         <td>{label(line.source_package)}</td>
                         <td>{label(line.destination_package)}</td>
                         <td>{label(line.owner)}</td>
+                        <td>
+                          {line.move_id ? (
+                            <Button
+                              kind="ghost"
+                              disabled={
+                                stockLocked ||
+                                ['done', 'cancel'].includes(transfer.state)
+                              }
+                              onClick={() =>
+                                setOperation({
+                                  order_id: orderId,
+                                  transfer_id: transfer.id,
+                                  move_id: line.move_id as number,
+                                  operation_id: line.id,
+                                })
+                              }
+                            >
+                              Edit operation #{line.id}
+                            </Button>
+                          ) : (
+                            'No linked move'
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -298,15 +392,16 @@ export function OrderDeliveriesPanel({
           uid={uid}
           orderId={reservation.orderId}
           transferId={reservation.transferId}
-          close={() => {
-            setReservation(null);
-            void client.invalidateQueries({
-              queryKey: ['billing', 'order-deliveries', uid, orderId],
-            });
-            void client.invalidateQueries({
-              queryKey: ['billing', 'reservation-recovery', uid],
-            });
-          }}
+          close={reloadTransfers}
+          reconnect={reconnect}
+        />
+      ) : null}
+      {operation ? (
+        <StockOperationEditor
+          key={`${uid}:${operation.order_id}:${operation.transfer_id}:${operation.move_id}:${operation.operation_id}`}
+          uid={uid}
+          selection={operation}
+          close={reloadTransfers}
           reconnect={reconnect}
         />
       ) : null}

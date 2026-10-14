@@ -3447,15 +3447,8 @@ export async function getStockReservation(orderId: number, transferId: number) {
     transferId,
   );
 }
-export async function previewStockReservation(
-  selection: StockReservationSelection,
-) {
-  const exact = checkedStockSelection(selection);
-  const data = await stockCall<StockReservationReview>(
-    'qorlia_transfer_preview',
-    exact,
-  );
-  const validQuants = (rows: StockReservationQuant[]) =>
+function validStockQuants(rows: StockReservationQuant[]) {
+  return (
     Array.isArray(rows) &&
     rows.length <= 2000 &&
     new Set(rows.map((row) => row?.id)).size === rows.length &&
@@ -3475,25 +3468,21 @@ export async function previewStockReservation(
         ].every(validRelation) &&
         [row.quantity, row.reserved_quantity].every(Number.isFinite) &&
         stockDate(row.in_date),
-    );
-  if (
-    !data ||
-    Object.entries(exact).some(
-      ([key, value]) => data[key as keyof StockReservationSelection] !== value,
-    ) ||
-    !stockVersion(data.review_version) ||
-    !validStockGraph(data.before, exact.transfer_id, true) ||
-    !validStockGraph(data.after, exact.transfer_id, true) ||
-    ['done', 'cancel'].includes(data.after.transfer.state) ||
-    !validQuants(data.quant_before) ||
-    !validQuants(data.quant_after) ||
-    data.quant_before.length !== data.quant_after.length ||
-    data.quant_before.some((row, index) => {
-      const after = data.quant_after[index];
-      return (
-        !after ||
-        row.id !== after.id ||
-        row.quantity !== after.quantity ||
+    )
+  );
+}
+function unchangedPhysicalStock(
+  before: StockReservationQuant[],
+  after: StockReservationQuant[],
+) {
+  return (
+    validStockQuants(before) &&
+    validStockQuants(after) &&
+    before.length === after.length &&
+    before.every(
+      (row, index) =>
+        row.id === after[index].id &&
+        row.quantity === after[index].quantity &&
         [
           'product_id',
           'location_id',
@@ -3503,13 +3492,32 @@ export async function previewStockReservation(
           'company_id',
           'in_date',
           'unit',
-        ].some(
+        ].every(
           (key) =>
-            JSON.stringify(row[key as keyof StockReservationQuant]) !==
-            JSON.stringify(after[key as keyof StockReservationQuant]),
-        )
-      );
-    })
+            JSON.stringify(row[key as keyof StockReservationQuant]) ===
+            JSON.stringify(after[index][key as keyof StockReservationQuant]),
+        ),
+    )
+  );
+}
+export async function previewStockReservation(
+  selection: StockReservationSelection,
+) {
+  const exact = checkedStockSelection(selection);
+  const data = await stockCall<StockReservationReview>(
+    'qorlia_transfer_preview',
+    exact,
+  );
+  if (
+    !data ||
+    Object.entries(exact).some(
+      ([key, value]) => data[key as keyof StockReservationSelection] !== value,
+    ) ||
+    !stockVersion(data.review_version) ||
+    !validStockGraph(data.before, exact.transfer_id, true) ||
+    !validStockGraph(data.after, exact.transfer_id, true) ||
+    ['done', 'cancel'].includes(data.after.transfer.state) ||
+    !unchangedPhysicalStock(data.quant_before, data.quant_after)
   )
     throw new Error(
       'Invalid reservation preview. Nothing can be saved until it is reviewed again.',
@@ -3597,7 +3605,8 @@ export interface StockOperationForm extends StockOperationSelection {
   expiry_warning: boolean;
   warning: string | false;
   reason: string | false;
-  write_ready: false;
+  write_ready: boolean;
+  can_delete: boolean;
 }
 function checkedOperationSelection(value: StockOperationSelection) {
   if (
@@ -3676,7 +3685,8 @@ function checkedOperationForm(
       'cancel',
     ].includes(data.state) ||
     !['none', 'lot', 'serial'].includes(data.tracking) ||
-    data.write_ready !== false ||
+    typeof data.write_ready !== 'boolean' ||
+    typeof data.can_delete !== 'boolean' ||
     !data.values ||
     !data.rules ||
     !data.labels ||
@@ -3771,6 +3781,174 @@ export async function getStockOperationChoices(
     throw new Error('Invalid native stock field choices. Reload the search.');
   return result;
 }
+
+export interface StockOperationSelectionRequest
+  extends StockOperationFormRequest {
+  action: 'save' | 'delete';
+}
+export interface StockOperationRequest extends StockOperationSelectionRequest {
+  review_version: string;
+  request_key: string;
+}
+export interface StockOperationGraph extends StockTransferGraph {
+  form_rows: {
+    id: number | false;
+    move_id: number | false;
+    values: StockOperationValues & { balance: number };
+  }[];
+}
+export interface StockOperationReview extends StockOperationSelectionRequest {
+  form: StockOperationForm;
+  before: StockOperationGraph;
+  after: StockOperationGraph;
+  quant_before: StockReservationQuant[];
+  quant_after: StockReservationQuant[];
+  review_version: string;
+}
+export interface StockOperationStatus {
+  accepted: boolean;
+  request_key: string;
+  action: 'save' | 'delete';
+  operation_id: number | false;
+  current: StockReservationLoad;
+}
+function checkedOperationAction(value: StockOperationSelectionRequest) {
+  const exact = checkedOperationRequest(value);
+  if (
+    !['save', 'delete'].includes(value.action) ||
+    (value.action === 'delete' && (!value.operation_id || value.edits.length))
+  )
+    throw new Error(
+      'Select a saved operation for deletion, or review its field changes.',
+    );
+  return { ...exact, action: value.action };
+}
+export function checkedStockOperationRequest(
+  value: StockOperationRequest,
+): StockOperationRequest {
+  const exact = checkedOperationAction(value);
+  if (
+    !stockVersion(value.review_version) ||
+    typeof value.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      value.request_key,
+    ) ||
+    Object.keys(value).sort().join(',') !==
+      'action,edits,move_id,operation_id,order_id,request_key,review_version,transfer_id,version'
+  )
+    throw new Error('Use the exact reviewed stock operation request.');
+  return {
+    ...exact,
+    review_version: value.review_version,
+    request_key: value.request_key,
+  };
+}
+function validOperationGraph(graph: StockOperationGraph, transferId: number) {
+  return (
+    validStockGraph(graph, transferId, true) &&
+    Array.isArray(graph.form_rows) &&
+    graph.form_rows.length === graph.transfer.operations.length &&
+    new Set(
+      graph.form_rows.filter((row) => row.id !== false).map((row) => row.id),
+    ).size === graph.form_rows.filter((row) => row.id !== false).length &&
+    graph.form_rows.every(
+      (row) =>
+        row &&
+        (stockId(row.id) || row.id === false) &&
+        (stockId(row.move_id) || row.move_id === false) &&
+        row.values &&
+        Object.keys(row.values).sort().join(',') ===
+          ['balance', ...stockOperationFields].sort().join(',') &&
+        Number.isFinite(row.values.balance) &&
+        stockOperationFields.every((field) =>
+          validOperationValue(field, row.values[field]),
+        ) &&
+        graph.transfer.operations.some(
+          (operation) =>
+            operation.id === row.id &&
+            operation.move_id === row.move_id &&
+            operation.done === row.values.qty_done &&
+            operation.unit !== false &&
+            operation.unit[0] === row.values.product_uom_id &&
+            (operation.lot ? operation.lot[0] : false) === row.values.lot_id &&
+            operation.lot_name === (row.values.lot_name || false) &&
+            operation.expiry_date === row.values.expiration_date &&
+            (operation.source ? operation.source[0] : false) ===
+              row.values.location_id &&
+            (operation.destination ? operation.destination[0] : false) ===
+              row.values.location_dest_id &&
+            (operation.source_package ? operation.source_package[0] : false) ===
+              row.values.package_id &&
+            (operation.destination_package
+              ? operation.destination_package[0]
+              : false) === row.values.result_package_id &&
+            (operation.owner ? operation.owner[0] : false) ===
+              row.values.owner_id,
+        ),
+    )
+  );
+}
+export async function previewStockOperation(
+  selection: StockOperationSelectionRequest,
+) {
+  const exact = checkedOperationAction(selection);
+  const data = await stockCall<StockOperationReview>(
+    'qorlia_operation_preview',
+    { payload: exact },
+  );
+  if (
+    !data ||
+    Object.entries(checkedOperationSelection(exact)).some(
+      ([key, value]) => data[key as keyof StockOperationSelection] !== value,
+    ) ||
+    data.action !== exact.action ||
+    data.version !== exact.version ||
+    JSON.stringify(data.edits) !== JSON.stringify(exact.edits) ||
+    !stockVersion(data.review_version) ||
+    !validOperationGraph(data.before, exact.transfer_id) ||
+    !validOperationGraph(data.after, exact.transfer_id) ||
+    ['done', 'cancel'].includes(data.after.transfer.state) ||
+    !unchangedPhysicalStock(data.quant_before, data.quant_after)
+  )
+    throw new Error(
+      'Invalid stock operation preview. Reload and review it again.',
+    );
+  checkedOperationForm(data.form, checkedOperationSelection(exact));
+  if (data.form.version !== exact.version)
+    throw new Error('The stock form version changed during review.');
+  return data;
+}
+async function operationRequest(
+  method: string,
+  request: StockOperationRequest,
+) {
+  const exact = checkedStockOperationRequest(request);
+  const data = await stockCall<StockOperationStatus>(method, {
+    payload: exact,
+  });
+  if (
+    !data ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    data.action !== exact.action ||
+    (data.accepted && data.action === 'save'
+      ? !stockId(data.operation_id)
+      : data.operation_id !== false) ||
+    (data.accepted &&
+      data.action === 'save' &&
+      exact.operation_id !== false &&
+      data.operation_id !== exact.operation_id)
+  )
+    throw new Error(
+      'Invalid stock operation receipt. Check the exact request before retrying.',
+    );
+  checkedStockLoad(data.current, exact.order_id, exact.transfer_id);
+  return data;
+}
+export const saveStockOperation = (request: StockOperationRequest) =>
+  operationRequest('qorlia_operation_save', request);
+export const getStockOperationStatus = (request: StockOperationRequest) =>
+  operationRequest('qorlia_operation_status', request);
 
 export interface OrderWorkflow {
   id: number;

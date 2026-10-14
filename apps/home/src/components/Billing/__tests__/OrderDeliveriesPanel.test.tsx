@@ -8,11 +8,20 @@ import {
 } from '@testing-library/react';
 import { BillingSessionExpired, getOrderDeliveries } from '../billingService';
 import { OrderDeliveriesPanel } from '../OrderDeliveriesPanel';
+import { loadStockWriteRecovery } from '../stockReservationRecovery';
 import { orderDeliveryFixture } from './orderDeliveryFixture';
-import { loadStockReservationRecovery } from '../stockReservationRecovery';
+import { operationRequest, operationSelection } from './stockOperationFixture';
 
 jest.mock('../stockReservationRecovery', () => ({
-  loadStockReservationRecovery: jest.fn(),
+  ...jest.requireActual('../stockReservationRecovery'),
+  loadStockWriteRecovery: jest.fn(),
+}));
+const mockEditor = jest.fn();
+jest.mock('../StockOperationEditor', () => ({
+  StockOperationEditor: (props: { close: () => void }) => {
+    mockEditor(props);
+    return <button onClick={props.close}>Return from operation</button>;
+  },
 }));
 jest.mock('../StockReservationModal', () => ({
   StockReservationModal: ({ close }: { close: () => void }) => (
@@ -45,7 +54,7 @@ const show = () =>
 describe('Order stock transfer review', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(loadStockReservationRecovery).mockResolvedValue(null);
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue(null);
     get.mockResolvedValue(orderDeliveryFixture());
   });
   it('shows native transfers then exact demand, operation units, batches and no invented completion', async () => {
@@ -149,6 +158,109 @@ describe('Order stock transfer review', () => {
     });
     await waitFor(() =>
       expect(within(table).getAllByText('12')).toHaveLength(2),
+    );
+  });
+  it('opens new and saved operations with their exact move identities, then reloads saved values', async () => {
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View transfer QORLIAQA/OUT/11',
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Add operation for QA Medicine' }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add operation for QA Medicine' }),
+    );
+    expect(mockEditor.mock.calls.at(-1)?.[0]).toMatchObject({
+      uid: 3,
+      selection: { ...operationSelection(), operation_id: false },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Return from operation' }),
+    );
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Edit operation #13' }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Edit operation #13' }));
+    expect(mockEditor.mock.calls.at(-1)?.[0]).toMatchObject({
+      selection: operationSelection(),
+    });
+    const next = orderDeliveryFixture();
+    next.rows[0].operations[0].done = 2;
+    get.mockResolvedValue(next);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Return from operation' }),
+    );
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(3));
+    await waitFor(() =>
+      expect(
+        within(
+          screen.getByRole('table', {
+            name: /Detailed operations, quantities/,
+          }),
+        ).getByText('2'),
+      ).toBeInTheDocument(),
+    );
+  });
+  it('routes a pending deletion to recovery even if its operation row is gone, blocking new writes', async () => {
+    const pending = {
+      ...operationRequest(),
+      action: 'delete' as const,
+      edits: [],
+    };
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue(pending);
+    const next = orderDeliveryFixture();
+    next.rows[0].operations = [];
+    get.mockResolvedValue(next);
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Resume operation request' }),
+    );
+    expect(mockEditor.mock.calls.at(-1)?.[0]).toMatchObject({
+      selection: operationSelection(),
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Return from operation' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View transfer QORLIAQA/OUT/11',
+      }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Add operation for QA Medicine' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Review stock preparation' }),
+    ).toBeDisabled();
+  });
+  it('blocks new stock actions when recovery storage fails and supports an explicit reload', async () => {
+    jest
+      .mocked(loadStockWriteRecovery)
+      .mockRejectedValueOnce(new Error('Storage failed'));
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View transfer QORLIAQA/OUT/11',
+      }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Edit operation #13' }),
+    ).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reload stock recovery' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Edit operation #13' }),
+      ).toBeEnabled(),
     );
   });
 });

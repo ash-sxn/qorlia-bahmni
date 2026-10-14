@@ -122,7 +122,8 @@ class StockOperationForm(models.Model):
             'values': self.env['sale.order']._qorlia_read_fields(form, OPERATION_FIELDS),
             'rules': rules, 'labels': labels, 'reserved': line.reserved_uom_qty if line else 0,
             'balance': form.balance, 'expiry_warning': bool(form.is_move_line_lot_expiring_soon),
-            'warning': warning, 'reason': reason, 'write_ready': False}
+            'warning': warning, 'reason': reason, 'write_ready': not bool(reason),
+            'can_delete': self._qorlia_operation_can_delete(picking, move, line)}
 
     @api.model
     def qorlia_operation_load(self, order_id, transfer_id, move_id, operation_id=False):

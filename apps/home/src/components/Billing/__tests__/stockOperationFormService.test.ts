@@ -58,6 +58,7 @@ const form = (): StockOperationForm => ({
   warning: false,
   reason: false,
   write_ready: false,
+  can_delete: true,
 });
 const reply = (result: unknown) =>
   (fetch as jest.Mock).mockResolvedValue({
@@ -156,7 +157,7 @@ describe('Native stock operation form boundary', () => {
         delete (data.rules as Partial<typeof data.rules>).mrp;
       },
       (data) => {
-        (data as unknown as { write_ready: boolean }).write_ready = true;
+        (data as unknown as { write_ready: string }).write_ready = 'yes';
       },
     ];
     for (const mutate of mutations) {

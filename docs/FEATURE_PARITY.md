@@ -1,5 +1,35 @@
 # Bahmni workflow parity ledger
 
+## 14 October native operation editor source and private API acceptance
+
+- Adapter 43 adds scoped native operation create/edit/delete preview/save/status,
+  full native form/quant effects and protected exact author/company receipts.
+  Native validations/permissions apply, with rollback previews and locked review
+  rechecks. Recovery does not require a deleted operation to still exist.
+- React stock transfers now connect Add/Edit operation controls to the house
+  editor. Native visible/readonly rules, units/batches/expiry/location/package/
+  owner/prices, ordered onchanges and paged choices are retained. Explicit clearing
+  avoids treating search typing as a field deletion. One durable per-account slot
+  prevents reservation and operation requests from overwriting each other.
+- 594 Home tests/69 suites, 45 focused editor/choice/boundary/recovery/parent tests,
+  seven source-based test/fixture type checks, library types, touched lint/diff,
+  seven gateway/configuration guards and build 744405c851222e3f pass. Native source
+  hashes match installed adapter 43: 28 focused/578 full tests, zero failures,
+  errors or skips, mandatory analytics restored and service running.
+- Actual private TypeScript create/edit/delete, rollback previews, accepted status
+  and identical retries pass, including after the operation is gone. Independent
+  native reads prove three exact operation receipts and sixteen unchanged stock
+  preparation receipts, no remaining operation, physical ten/demand five, zero
+  final reserved/recorded done/delivered, confirmed transfer, unchanged protected
+  finance, valuation counts, bank and other stock.
+- Tester UI still remains stock-quantities-20261014. Integrated editor publication,
+  hosted/browser acceptance and packaged/large-catalog browser cases are pending.
+  Native transfer validation/wizards/backorders/returns/POS/sync, complete Billing,
+  clinical and separate-product parity remain open. PR #4 stays draft.
+- README-linked beginner setup/architecture/module/API/testing/contribution/team
+  guides now describe current source and safety boundaries. Internal credentials,
+  operations packs and unrelated clinical edits are not published by that work.
+
 ## 14 October manual operation form private API acceptance
 
 - Added native operation load/onchange/paged-choice contracts for saved and new

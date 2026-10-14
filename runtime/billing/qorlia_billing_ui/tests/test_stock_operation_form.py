@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 # Copyright 2026 Qorlia contributors.
+import uuid
 from unittest.mock import patch
 
 from odoo.exceptions import AccessError, UserError, ValidationError
@@ -82,7 +83,8 @@ class StockOperationFormTest(TransactionCase):
         self.assertTrue(loaded['rules']['product_uom_id']['readonly'])
         self.assertFalse(loaded['rules']['lot_name']['visible'])
         self.assertFalse(loaded['rules']['cost_price']['visible'])
-        self.assertFalse(loaded['write_ready'])
+        self.assertTrue(loaded['write_ready'])
+        self.assertTrue(loaded['can_delete'])
 
     def test_qty_onchange_native_balance_and_no_writes(self):
         before = self.load()
@@ -248,4 +250,164 @@ class StockOperationFormTest(TransactionCase):
         self.assertFalse(loaded['rules']['cost_price']['readonly'])
         self.assertFalse(loaded['rules']['existing_lot_id']['readonly'])
         self.assertFalse(loaded['rules']['expiration_date']['readonly'])
+
+    def edit_review(self, edits, action='save', loaded=None):
+        loaded = loaded or self.load()
+        return self.api().qorlia_operation_preview({key: loaded[key] for key in
+            ('order_id', 'transfer_id', 'move_id', 'operation_id', 'version')} | {'edits': edits, 'action': action})
+
+    def edit_request(self, reviewed):
+        return {key: reviewed[key] for key in ('order_id', 'transfer_id', 'move_id', 'operation_id', 'version', 'edits', 'action', 'review_version')} | {'request_key': str(uuid.uuid4())}
+
+    def test_edit_preview_rolls_back_quantities_inventory_and_callbacks(self):
+        before = self.load()
+        counts = {name: self.env[name].search_count([]) for name in ('stock.move.line', 'account.move', 'stock.valuation.layer')}
+        callbacks = self.env.cr.postcommit
+        reviewed = self.edit_review([{'field': 'qty_done', 'value': 2}])
+        self.assertEqual(reviewed['after']['transfer']['operations'][0]['done'], 2)
+        self.assertEqual(reviewed['after']['form_rows'][0]['values']['qty_done'], 2)
+        self.assertEqual(reviewed['quant_before'], reviewed['quant_after'])
+        self.assertEqual(self.load(), before)
+        self.assertEqual(counts, {name: self.env[name].search_count([]) for name in counts})
+        self.assertIs(self.env.cr.postcommit, callbacks)
+
+    def test_edit_save_recovers_identical_request_without_delivery_or_finance(self):
+        counts = {name: self.env[name].search_count([]) for name in ('account.move', 'account.payment', 'stock.valuation.layer')}
+        exact = self.edit_request(self.edit_review([{'field': 'qty_done', 'value': 2}]))
+        self.assertFalse(self.api().qorlia_operation_status(exact)['accepted'])
+        saved = self.api().qorlia_operation_save(exact)
+        self.assertTrue(saved['accepted'])
+        self.assertEqual(saved['operation_id'], self.line.id)
+        self.env.flush_all()
+        self.env.invalidate_all()
+        self.assertEqual(self.api().qorlia_operation_status(exact), saved)
+        self.assertEqual(self.api().qorlia_operation_save(exact), saved)
+        self.assertEqual(self.line.qty_done, 2)
+        self.assertEqual(self.line.reserved_uom_qty, 5)
+        self.assertEqual(self.sale_line.qty_delivered, 0)
+        self.assertNotEqual(self.picking.state, 'done')
+        self.assertEqual(counts, {name: self.env[name].search_count([]) for name in counts})
+
+    def test_new_operation_save_has_one_identity_and_no_duplicate_after_retry(self):
+        loaded = self.load(False)
+        reviewed = self.edit_review([{'field': 'qty_done', 'value': 1}, {'field': 'lot_id', 'value': self.lot.id}], loaded=loaded)
+        self.assertEqual(len(reviewed['after']['form_rows']), 2)
+        self.assertEqual(sum(row['id'] is False for row in reviewed['after']['form_rows']), 1)
+        exact = self.edit_request(reviewed)
+        saved = self.api().qorlia_operation_save(exact)
+        self.assertTrue(saved['operation_id'])
+        self.assertNotEqual(saved['operation_id'], self.line.id)
+        self.assertEqual(self.api().qorlia_operation_save(exact), saved)
+        self.assertEqual(len(self.move.move_line_ids), 2)
+        self.assertEqual(self.env['stock.move.line'].browse(saved['operation_id']).qty_done, 1)
+
+    def test_delete_releases_reservation_and_recovers_after_operation_disappears(self):
+        reviewed = self.edit_review([], 'delete')
+        self.assertFalse(reviewed['after']['transfer']['operations'])
+        self.assertEqual(reviewed['quant_after'][0]['reserved_quantity'], 0)
+        self.assertTrue(self.line.exists())
+        exact = self.edit_request(reviewed)
+        saved = self.api().qorlia_operation_save(exact)
+        self.assertTrue(saved['accepted'])
+        self.assertFalse(saved['operation_id'])
+        self.assertFalse(self.line.exists())
+        self.assertEqual(self.api().qorlia_operation_save(exact), saved)
+        self.assertEqual(self.api().qorlia_operation_status(exact), saved)
+        self.assertEqual(len(self.picking.qorlia_operation_receipts), 1)
+        self.assertEqual(self.sale_line.qty_delivered, 0)
+
+    def test_change_batch_reviews_and_saves_native_reservation_reallocation(self):
+        other = self.env['stock.lot'].create({'name': 'QorliaQA Alternate form batch',
+            'product_id': self.product.id, 'company_id': self.env.company.id, 'expiration_date': '2027-02-01 00:00:00'})
+        self.env['stock.quant']._update_available_quantity(self.product, self.picking.location_id, 6, lot_id=other)
+        reviewed = self.edit_review([{'field': 'lot_id', 'value': other.id}])
+        expected = {row['lot_id'][0]: row['reserved_quantity'] for row in reviewed['quant_after']}
+        self.assertEqual(expected, {self.lot.id: 0, other.id: 5})
+        self.api().qorlia_operation_save(self.edit_request(reviewed))
+        self.assertEqual(self.line.lot_id, other)
+        self.assertEqual(self.line.expiration_date.strftime('%Y-%m-%d'), '2027-02-01')
+        quants = self.env['stock.quant'].search([('product_id', '=', self.product.id)])
+        self.assertEqual(sum(quants.mapped('quantity')), 16)
+        self.assertEqual(sum(quants.mapped('reserved_quantity')), 5)
+
+    def test_inventory_change_after_review_denies_save_without_receipt(self):
+        exact = self.edit_request(self.edit_review([{'field': 'qty_done', 'value': 2}]))
+        self.env['stock.quant']._update_available_quantity(self.product, self.picking.location_id, 1, lot_id=self.lot)
+        with self.assertRaises(UserError):
+            self.api().qorlia_operation_save(exact)
+        self.assertEqual(self.line.qty_done, 0)
+        self.assertFalse(self.picking.qorlia_operation_receipts)
+
+    def test_unreviewed_save_effects_and_callbacks_roll_back(self):
+        exact = self.edit_request(self.edit_review([{'field': 'qty_done', 'value': 2}]))
+        original = type(self.picking)._qorlia_operation_apply
+        calls = []
+        callbacks = self.env.cr.postcommit
+        functions = list(callbacks._funcs)
+        def altered(records, *args):
+            result = original(records, *args)
+            calls.append(True)
+            if len(calls) == 2:
+                self.line.qty_done = 3
+                self.env.cr.postcommit.add(lambda: None)
+            return result
+        with patch.object(type(self.picking), '_qorlia_operation_apply', altered):
+            with self.assertRaises(UserError):
+                self.api().qorlia_operation_save(exact)
+        self.assertEqual(self.line.qty_done, 0)
+        self.assertFalse(self.picking.qorlia_operation_receipts)
+        self.assertIs(self.env.cr.postcommit, callbacks)
+        self.assertEqual(list(callbacks._funcs), functions)
+
+    def test_negative_quantities_and_price_above_mrp_reject_preview(self):
+        with self.assertRaises(ValidationError):
+            self.edit_review([{'field': 'qty_done', 'value': -1}])
+        loaded = self.incoming()
+        with self.assertRaises(ValidationError):
+            self.edit_review([{'field': 'mrp', 'value': 100}, {'field': 'sale_price', 'value': 101}], loaded=loaded)
+
+    def test_malformed_delete_and_reused_nonce_intent_are_denied(self):
+        reviewed = self.edit_review([{'field': 'qty_done', 'value': 2}])
+        exact = self.edit_request(reviewed)
+        for patch_values in ({'action': []}, {'operation_id': True}, {'context': {}}, {'edits': [None]}, {'action': 'delete'}):
+            with self.assertRaises(ValidationError):
+                self.api().qorlia_operation_save({**exact, **patch_values})
+        self.api().qorlia_operation_save(exact)
+        with self.assertRaises(ValidationError):
+            self.api().qorlia_operation_status({**exact, 'edits': [{'field': 'qty_done', 'value': 3}]})
+
+    def test_receipts_cannot_be_forged_copied_or_read_by_another_author(self):
+        with self.assertRaises(AccessError):
+            self.picking.write({'qorlia_operation_receipts': {}})
+        with self.assertRaises(AccessError):
+            self.env['stock.picking'].with_context(default_qorlia_operation_receipts={}).create({})
+        exact = self.edit_request(self.edit_review([{'field': 'qty_done', 'value': 2}]))
+        self.api().qorlia_operation_save(exact)
+        other = self.user.copy({'login': 'qorliaqa-form-other-author'})
+        with self.assertRaises(ValidationError):
+            self.env['stock.picking'].with_user(other).qorlia_operation_status(exact)
+        self.assertFalse(self.picking.copy().qorlia_operation_receipts)
+
+    def test_unlink_record_rule_disables_delete_and_denies_preview(self):
+        self.env['ir.rule'].create({'name': 'QorliaQA Cannot remove stock operation',
+            'model_id': self.env['ir.model']._get_id('stock.move.line'),
+            'domain_force': "[('id', '!=', %d)]" % self.line.id,
+            'perm_read': False, 'perm_write': False, 'perm_create': False, 'perm_unlink': True})
+        self.assertFalse(self.load()['can_delete'])
+        with self.assertRaises(AccessError):
+            self.edit_review([], 'delete')
+
+    def test_unreserved_operation_unit_conversion_is_native_and_not_delivery(self):
+        self.picking.do_unreserve()
+        self.line = self.env['stock.move.line'].create({'picking_id': self.picking.id,
+            'move_id': self.move.id, 'product_id': self.product.id, 'product_uom_id': self.product.uom_id.id,
+            'location_id': self.move.location_id.id, 'location_dest_id': self.move.location_dest_id.id, 'lot_id': self.lot.id})
+        dozen = self.env.ref('uom.product_uom_dozen')
+        reviewed = self.edit_review([{'field': 'product_uom_id', 'value': dozen.id}, {'field': 'qty_done', 'value': 1}])
+        self.assertEqual(reviewed['after']['transfer']['operations'][0]['done'], 1)
+        self.assertEqual(reviewed['after']['transfer']['moves'][0]['done'], 12)
+        self.api().qorlia_operation_save(self.edit_request(reviewed))
+        self.assertEqual(self.line.product_uom_id, dozen)
+        self.assertEqual(self.line.qty_done, 1)
+        self.assertEqual(self.sale_line.qty_delivered, 0)
 

@@ -1,5 +1,39 @@
 # Qorlia React frontend backend readiness
 
+## Native operation editor source/private API checkpoint (14 October 2026)
+
+The integrated React editor and adapter 43 now support scoped new/saved operation
+load, ordered native onchange, paged choices, rollback effects review and atomic
+create/edit/delete. Native permissions, field visibility/readonly, quantity/price
+constraints, company identities and locked review versions apply. Receipts bind
+the exact author/company request and recover after deletion without loading the
+deleted row. Recording preparation does not validate delivery or post accounting.
+
+The browser uses one durable per-account recovery slot shared with reservations.
+Typing a relation search does not clear its native value; clearing is explicit.
+It blocks duplicate saves, persists before HTTP, preserves unknown outcomes on
+unmount/reload, and reloads parent transfers after acceptance/close. House controls,
+readonly/hidden fields, UTC seconds, units, native pricing/balance and quant effects
+are covered by source tests. Package and large-data browser acceptance are open.
+
+594 Home tests/69 suites, 45 focused tests, seven source-based test/fixture type
+checks, library types, touched lint/diff, seven gateway guards and development
+build 744405c851222e3f pass. Installed adapter source/test hashes match local files;
+28 focused/578 full native tests pass without failures/errors/skips. Mandatory
+analytics is restored and the isolated service is running.
+
+Actual private TypeScript create/edit/delete previews/saves/status/identical retry
+and deleted-row recovery pass. Independent native read-back verifies exactly three
+operation receipts, sixteen unchanged preparation receipts, no remaining operation,
+ten physical/five demanded units, zero reserved/recorded done/delivered, confirmed
+transfer and unchanged protected records/finance/valuation/bank/other stock.
+
+The protected tester frontend remains stock-quantities-20261014. Editor publication
+and real hosted/browser save/recovery are pending. Full fulfillment, Billing and
+product parity are not complete. Production/public demo and nine preserved clinical
+edits are unchanged. The linked contributor guides describe source architecture,
+not a ready production deployment or permission to operate private infrastructure.
+
 ## Native stock-operation form private API acceptance (14 October 2026)
 
 Adapter 42 adds order/transfer/move-scoped form load, native onchange and paged
