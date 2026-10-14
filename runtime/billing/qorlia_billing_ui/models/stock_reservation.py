@@ -12,6 +12,8 @@ from .order_deliveries import _label
 
 
 _RECEIPT_TOKEN = object()
+_ACTIONS = {'assign': 'action_assign', 'unreserve': 'do_unreserve',
+    'set_quantities': 'action_set_quantities_to_reservation', 'clear_quantities': 'action_clear_quantities_to_zero'}
 
 
 class StockReservation(models.Model):
@@ -49,15 +51,25 @@ class StockReservation(models.Model):
                 raise UserError('The transfer order changed while locking. Reload it.')
         return picking, order
 
-    def _qorlia_reservation_write_access(self):
+    def _qorlia_reservation_write_access(self, action='assign'):
         self.ensure_one()
-        for records in (self, self.move_ids, self.move_line_ids, self.package_level_ids):
+        for records in (self, self.move_ids, self.move_line_ids):
             records.check_access_rights('write')
             records.check_access_rule('write')
-        for records, operation in ((self.env['stock.move.line'], 'create'),
-                (self.move_line_ids, 'unlink'), (self.package_level_ids, 'unlink')):
-            records.check_access_rights(operation)
-            records.check_access_rule(operation)
+        if action in ('set_quantities', 'clear_quantities'):
+            if not self.env.user.has_group('stock.group_stock_user'):
+                raise AccessError('Recorded stock quantity actions require the native Stock User role.')
+            self.move_line_ids.check_field_access_rights('write', ['qty_done'])
+        else:
+            self.package_level_ids.check_access_rights('write')
+            self.package_level_ids.check_access_rule('write')
+            for records, operation in ((self.env['stock.move.line'], 'create'),
+                    (self.move_line_ids, 'unlink'), (self.package_level_ids, 'unlink')):
+                records.check_access_rights(operation)
+                records.check_access_rule(operation)
+
+    def _qorlia_reservation_apply(self, action):
+        getattr(self, _ACTIONS[action])()
 
     def _qorlia_reservation_scope(self, lock=False):
         self.ensure_one()
@@ -130,9 +142,8 @@ class StockReservation(models.Model):
         packages.check_field_access_rights('read', package_fields)
         if any(item.company_id != self.company_id for item in packages):
             raise AccessError('A linked package operation belongs to another company.')
-        package_rows = self.env['sale.order']._qorlia_read_fields
         packages = [{'id': item.id if original_packages is None or item.id in original_packages else False,
-            **package_rows(item, package_fields)} for item in packages]
+            'state': item.state, **{name: _label(item[name]) for name in package_fields if name != 'state'}} for item in packages]
         packages.sort(key=lambda item: _digest(item))
         return {'transfer': row, 'packages': packages}
 
@@ -142,27 +153,36 @@ class StockReservation(models.Model):
         reason = False
         configuration = {}
         try:
-            picking._qorlia_reservation_write_access()
             configuration = picking._qorlia_reservation_scope()
         except (AccessError, UserError) as error:
             reason = str(error)
         graph = picking._qorlia_reservation_graph(order_id)
+        available = {'assign': picking.show_check_availability,
+            'unreserve': not picking.immediate_transfer and picking.picking_type_id.code != 'incoming'
+                and (picking.state == 'assigned' if picking.move_type != 'one' else picking.state in ('assigned', 'confirmed')),
+            'set_quantities': picking.show_set_qty_button, 'clear_quantities': picking.show_clear_qty_button}
+        labels = {'assign': 'Check availability', 'unreserve': 'Unreserve',
+            'set_quantities': 'Set quantities', 'clear_quantities': 'Clear quantities'}
+        reasons = {}
+        for action in _ACTIONS:
+            denied = reason
+            if not denied:
+                try:
+                    picking._qorlia_reservation_write_access(action)
+                except AccessError as error:
+                    denied = str(error)
+            reasons[action] = denied or (False if available[action]
+                else '%s is not available in the current native transfer state.' % labels[action])
         return {'order_id': order_id, 'transfer_id': transfer_id, 'graph': graph,
             'version': _digest({'order_version': order['version'], 'graph': graph, 'configuration': configuration,
                 'author': self.env.uid, 'companies': self.env.companies.ids}),
-            'reasons': {
-                'assign': reason or (False if picking.show_check_availability else 'Check availability is not available in the current native transfer state.'),
-                'unreserve': reason or (False if not picking.immediate_transfer
-                    and picking.picking_type_id.code != 'incoming'
-                    and (picking.state == 'assigned' if picking.move_type != 'one' else picking.state in ('assigned', 'confirmed'))
-                    else 'Unreserve is not available in the current native transfer state.'),
-            }}
+            'reasons': reasons}
 
     def _qorlia_reservation_prepare(self, order_id, transfer_id, version, action):
-        if action not in ('assign', 'unreserve') or not isinstance(version, str) or len(version) != 64:
+        if not isinstance(action, str) or action not in _ACTIONS or not isinstance(version, str) or len(version) != 64:
             raise ValidationError('Select a supported reservation action and reload the transfer.')
         picking, _order = self._qorlia_reservation_transfer(order_id, transfer_id, lock=True)
-        picking._qorlia_reservation_write_access()
+        picking._qorlia_reservation_write_access(action)
         configuration = picking._qorlia_reservation_scope(lock=True)
         for items in (picking.move_ids, picking.move_line_ids, picking.package_level_ids):
             if items:
@@ -183,10 +203,7 @@ class StockReservation(models.Model):
             for name in hooks:
                 setattr(cr, name, tools.Callbacks())
             with closing(cr.savepoint()):
-                if action == 'assign':
-                    picking.action_assign()
-                else:
-                    picking.do_unreserve()
+                picking._qorlia_reservation_apply(action)
                 cr.flush()
                 after = picking._qorlia_reservation_graph(order_id, original_lines, original_packages)
                 stock = picking._qorlia_reservation_scope()
@@ -211,7 +228,7 @@ class StockReservation(models.Model):
 
     def _qorlia_reservation_request(self, order_id, transfer_id, version, action, review_version, request_key):
         try:
-            if (action not in ('assign', 'unreserve') or type(order_id) is not int or order_id <= 0
+            if (action not in _ACTIONS or type(order_id) is not int or order_id <= 0
                     or type(transfer_id) is not int or transfer_id <= 0
                     or any(not isinstance(value, str) or len(value) != 64 or any(char not in '0123456789abcdef' for char in value)
                         for value in (version, review_version)) or str(uuid.UUID(request_key)) != request_key):
@@ -247,10 +264,7 @@ class StockReservation(models.Model):
             for name in ('postcommit', 'prerollback', 'postrollback')}
         try:
             with self.env.cr.savepoint():
-                if action == 'assign':
-                    picking.action_assign()
-                else:
-                    picking.do_unreserve()
+                picking._qorlia_reservation_apply(action)
                 self.env.cr.flush()
                 after = picking._qorlia_reservation_graph(order_id, original_lines, original_packages)
                 stock = [{key: value for key, value in row.items() if key != 'write_date'}

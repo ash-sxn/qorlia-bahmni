@@ -135,7 +135,7 @@ describe('Order stock transfer review', () => {
       }),
     );
     fireEvent.click(
-      screen.getByRole('button', { name: 'Review stock reservation' }),
+      screen.getByRole('button', { name: 'Review stock preparation' }),
     );
     const refreshed = orderDeliveryFixture();
     refreshed.rows[0].moves[0].reserved = 12;

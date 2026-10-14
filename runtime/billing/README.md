@@ -3,6 +3,22 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Quantity preparation source/private API checkpoint: native adapter 41 supports
+Set quantities and Clear quantities through the existing reviewed stock pipeline.
+Native visibility/Stock User/field/write rules and selective behavior preserve
+partial entries, operation units and batch conditions. No physical stock,
+delivery or financial action. Package-level relations now use labels matching
+the client schema, with hidden relations denied. 560 Home/65 suites, five
+source-based/library types, lint/diff, seven guards and ed33b71e43152280 build
+pass. Final native 17 focused/550 full tests pass without failures/errors/skips;
+analytics restored, installed source/test hashes match and backups retained.
+Actual private HTTP reserve/set/clear/unreserve preview/save/status/retries and
+independent native reads pass: four new receipts, unchanged physical stock,
+protected finance/bank/other stock and no delivery. SSH forward stopped. Hosted
+quantity controls/browser saves pending. Manual edit/onchanges, procurement-aware
+confirmation, validation/wizards/backorders/returns/paging/POS/sync and full parity
+remain. Production/public demo and clinical edits unchanged; PR #4 draft.
+
 Current protected reservation build: stock-reservation-r2-20261014, 3a22cb20 plus
 nine clinical hashes, build 97d821d9ad88cda2, 83 matching assets/source/licences.
 Archive: 3e3a8e948c18bfc9ece9e2ee1237b5ab77de4564bbbd4a61ea750d54d90736d0.

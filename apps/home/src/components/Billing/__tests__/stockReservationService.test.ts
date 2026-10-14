@@ -9,6 +9,7 @@ import {
   stockLoad,
   stockReview,
   stockRequest,
+  quantityReview,
 } from './stockReservationFixture';
 
 const reply = (result: unknown) =>
@@ -133,5 +134,60 @@ describe('Native stock reservation boundary', () => {
     await expect(getStockReservationStatus(stockRequest())).rejects.toThrow(
       'Invalid reservation receipt',
     );
+  });
+  it('previews and sends exact native set/clear quantity requests without converting operation units', async () => {
+    for (const action of ['set_quantities', 'clear_quantities'] as const) {
+      const review = quantityReview(action);
+      reply(review);
+      const request = { ...stockRequest(), action };
+      expect(await previewStockReservation(request)).toEqual(review);
+      reply({
+        accepted: true,
+        request_key: request.request_key,
+        action,
+        current: stockLoad(),
+      });
+      expect((await saveStockReservation(request)).accepted).toBe(true);
+      expect(
+        JSON.parse((fetch as jest.Mock).mock.calls.at(-1)[1].body).params
+          .kwargs,
+      ).toEqual(request);
+      expect(review.quant_after).toEqual(review.quant_before);
+      expect(review.after.transfer.operations[0].done).toBe(
+        action === 'set_quantities' ? 0.5 : 0,
+      );
+    }
+  });
+  it('requires all native quantity-action reasons rather than silently enabling unknown actions', async () => {
+    const value = stockLoad();
+    delete (value.reasons as Partial<typeof value.reasons>).set_quantities;
+    reply(value);
+    await expect(getStockReservation(9, 11)).rejects.toThrow(
+      'Invalid reservation state',
+    );
+  });
+  it('preserves labelled package metadata and rejects raw IDs, foreign companies and duplicate levels', async () => {
+    const row = {
+      id: 19,
+      package_id: [20, 'QA Pack'] as [number, string],
+      location_id: [3, 'QA Stock'] as [number, string],
+      location_dest_id: [4, 'QA Customer'] as [number, string],
+      state: 'assigned',
+      company_id: [1, 'QA Company'] as [number, string],
+    };
+    reply({ ...stockLoad(), graph: { ...stockLoad().graph, packages: [row] } });
+    expect(
+      (await getStockReservation(9, 11)).graph.packages[0].package_id,
+    ).toEqual([20, 'QA Pack']);
+    for (const packages of [
+      [{ ...row, package_id: 20 }],
+      [{ ...row, company_id: [2, 'Foreign'] }],
+      [row, row],
+    ]) {
+      reply({ ...stockLoad(), graph: { ...stockLoad().graph, packages } });
+      await expect(getStockReservation(9, 11)).rejects.toThrow(
+        'Invalid reservation state',
+      );
+    }
   });
 });

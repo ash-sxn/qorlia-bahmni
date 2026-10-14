@@ -10,7 +10,12 @@ export const stockLoad = (): StockReservationLoad => ({
   transfer_id: 11,
   version: 'a'.repeat(64),
   graph: { transfer: orderDeliveryFixture().rows[0], packages: [] },
-  reasons: { assign: false, unreserve: false },
+  reasons: {
+    assign: false,
+    unreserve: false,
+    set_quantities: false,
+    clear_quantities: false,
+  },
 });
 export const stockReview = (): StockReservationReview => {
   const before = stockLoad().graph;
@@ -51,3 +56,29 @@ export const stockRequest = (): StockReservationRequest => ({
   review_version: 'b'.repeat(64),
   request_key: '11111111-2222-4333-8444-555555555555',
 });
+
+export const quantityReview = (
+  action: 'set_quantities' | 'clear_quantities',
+): StockReservationReview => {
+  const before = stockLoad().graph,
+    after = stockLoad().graph;
+  const beforeDone = action === 'set_quantities' ? 0 : 6;
+  const afterDone = action === 'set_quantities' ? 6 : 0;
+  for (const [graph, done] of [
+    [before, beforeDone],
+    [after, afterDone],
+  ] as const) {
+    graph.transfer.moves[0].demand = 6;
+    graph.transfer.moves[0].done = done;
+    graph.transfer.operations[0].done = done / 12;
+  }
+  const quant = stockReview().quant_before;
+  return {
+    ...stockReview(),
+    action,
+    before,
+    after,
+    quant_before: quant,
+    quant_after: quant,
+  };
+};

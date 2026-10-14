@@ -166,7 +166,7 @@ export function OrderDeliveriesPanel({
                   setReservation({ orderId, transferId: transfer.id })
                 }
               >
-                Review stock reservation
+                Review stock preparation
               </Button>
               <p>
                 Status: {transferStates[transfer.state]} · Company:{' '}

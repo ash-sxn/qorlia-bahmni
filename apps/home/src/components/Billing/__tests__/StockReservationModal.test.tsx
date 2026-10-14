@@ -26,6 +26,7 @@ import {
   stockLoad,
   stockRequest,
   stockReview,
+  quantityReview,
 } from './stockReservationFixture';
 
 jest.mock('../billingService', () => ({
@@ -295,7 +296,7 @@ describe('Reviewed stock reservation UI', () => {
   it('respects native disabled reasons and does not keep a failed preview', async () => {
     get.mockResolvedValue({
       ...stockLoad(),
-      reasons: { assign: 'Read-only stock role', unreserve: false },
+      reasons: { ...stockLoad().reasons, assign: 'Read-only stock role' },
     });
     preview.mockRejectedValueOnce(new Error('Inventory changed during review'));
     show();
@@ -320,5 +321,77 @@ describe('Reviewed stock reservation UI', () => {
       }),
     ).not.toBeInTheDocument();
     expect(save).not.toHaveBeenCalled();
+  });
+  it.each(['set_quantities', 'clear_quantities'] as const)(
+    'reviews and saves native %s with quantity-specific guidance and exact recovery',
+    async (action) => {
+      const reviewed = quantityReview(action);
+      get.mockResolvedValue({ ...stockLoad(), graph: reviewed.before });
+      preview.mockResolvedValue(reviewed);
+      save.mockResolvedValue({ ...receipt(), action });
+      show();
+      const title =
+        action === 'set_quantities'
+          ? 'Review: Set recorded quantities from reservations'
+          : 'Review: Clear matching recorded quantities';
+      fireEvent.click(await screen.findByRole('button', { name: title }));
+      await screen.findByRole('region', {
+        name: 'Reviewed reservation effects',
+      });
+      expect(
+        screen.getByText(
+          action === 'set_quantities'
+            ? /fills only eligible moves/
+            : /clears only eligible moves/,
+        ),
+      ).toBeInTheDocument();
+      const operations = screen.getByRole('table', {
+        name: /Resulting detailed operations/,
+      });
+      expect(within(operations).getByText('Dozens')).toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /Save reviewed reservation action/,
+        }),
+      );
+      await screen.findByRole('button', {
+        name: 'Finish and reload transfers',
+      });
+      expect(disk).toEqual({ ...stockRequest(), action });
+      expect(save).toHaveBeenCalledWith({ ...stockRequest(), action });
+    },
+  );
+  it('shows reviewed package-level labels and native disabled quantity reasons', async () => {
+    get.mockResolvedValue({
+      ...stockLoad(),
+      reasons: {
+        ...stockLoad().reasons,
+        set_quantities: 'Native quantity role required',
+      },
+    });
+    const value = stockReview();
+    value.after.packages = [
+      {
+        id: 19,
+        package_id: [20, 'QA Pack'],
+        location_id: [3, 'QA Stock'],
+        location_dest_id: [4, 'QA Customer'],
+        state: 'assigned',
+        company_id: [1, 'QA Company'],
+      },
+    ];
+    preview.mockResolvedValue(value);
+    show();
+    await review();
+    expect(
+      screen.getByRole('button', {
+        name: 'Review: Set recorded quantities from reservations',
+      }),
+    ).toBeDisabled();
+    const table = screen.getByRole('table', {
+      name: 'Package-level operations after this action',
+    });
+    expect(within(table).getByText('QA Pack')).toBeInTheDocument();
+    expect(within(table).getByText('QA Customer')).toBeInTheDocument();
   });
 });

@@ -14,6 +14,7 @@ import {
   StockReservationRequest,
   StockReservationReview,
   StockReservationStatus,
+  stockPreparationActions,
 } from './billingService';
 import {
   clearStockReservationRecovery,
@@ -24,6 +25,8 @@ import {
 const labels = {
   assign: 'Check availability and reserve',
   unreserve: 'Unreserve stock',
+  set_quantities: 'Set recorded quantities from reservations',
+  clear_quantities: 'Clear matching recorded quantities',
 };
 const label = (relation: [number, string] | false) =>
   relation ? relation[1] : 'Not set';
@@ -153,7 +156,7 @@ export function StockReservationModal({
       open
       passiveModal
       size="lg"
-      modalHeading="Stock reservation review"
+      modalHeading="Stock preparation review"
       preventCloseOnClickOutside
       onRequestClose={() => {
         if (!busyRef.current) close();
@@ -161,13 +164,14 @@ export function StockReservationModal({
     >
       <section
         className={styles.card}
-        aria-label="Stock reservation review"
+        aria-label="Stock preparation review"
         aria-busy={busy || loaded.isFetching}
       >
         <p>
-          Reserve available stock or release its reservation through the native
-          stock workflow. These actions do not dispense stock, complete a
-          transfer, post an invoice or record a payment.
+          Reserve stock, release reservations or prepare recorded quantities
+          through the native stock workflow. Recorded done quantities are not
+          delivered stock until the transfer is validated. These actions do not
+          complete a transfer, post an invoice or record a payment.
         </p>
         {loaded.isFetching ? (
           <p role="status">
@@ -229,7 +233,7 @@ export function StockReservationModal({
             </div>
             {!request ? (
               <div className={styles.toolbar}>
-                {(['assign', 'unreserve'] as const).map((action) => (
+                {stockPreparationActions.map((action) => (
                   <div key={action}>
                     <Button
                       kind="tertiary"
@@ -262,6 +266,21 @@ export function StockReservationModal({
                 aria-label="Reviewed reservation effects"
               >
                 <h3>{labels[review.action]}</h3>
+                {review.action === 'set_quantities' ? (
+                  <p>
+                    Native Set quantities fills only eligible moves with zero
+                    recorded done quantity. Tracked operations still need the
+                    required batch or serial. Partially entered moves are
+                    preserved.
+                  </p>
+                ) : review.action === 'clear_quantities' ? (
+                  <p>
+                    Native Clear quantities clears only eligible moves whose
+                    recorded quantity equals their reservation. Other partially
+                    entered moves are preserved. This is not a return or stock
+                    adjustment.
+                  </p>
+                ) : null}
                 <p>
                   Native preview only. Physical stock quantities stay unchanged.
                   Review the resulting operations and inventory reservations
@@ -325,6 +344,41 @@ export function StockReservationModal({
                 {!review.after.transfer.operations.length ? (
                   <p>No detailed operations remain after this action.</p>
                 ) : null}
+                {review.after.packages.length ? (
+                  <div
+                    className={styles.tableScroll}
+                    role="region"
+                    aria-label="Reviewed package-level operations"
+                    tabIndex={0}
+                  >
+                    <table>
+                      <caption>
+                        Package-level operations after this action
+                      </caption>
+                      <thead>
+                        <tr>
+                          {['Package', 'Status', 'Source', 'Destination'].map(
+                            (text) => (
+                              <th key={text} scope="col">
+                                {text}
+                              </th>
+                            ),
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {review.after.packages.map((row, index) => (
+                          <tr key={row.id || `package-preview-${index}`}>
+                            <td>{label(row.package_id)}</td>
+                            <td>{row.state}</td>
+                            <td>{label(row.location_id)}</td>
+                            <td>{label(row.location_dest_id)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
                 <div
                   className={styles.tableScroll}
                   role="region"
@@ -374,7 +428,11 @@ export function StockReservationModal({
                   </table>
                 </div>
                 <Button
-                  kind={review.action === 'unreserve' ? 'danger' : 'primary'}
+                  kind={
+                    ['unreserve', 'clear_quantities'].includes(review.action)
+                      ? 'danger'
+                      : 'primary'
+                  }
                   disabled={locked || !!failure}
                   onClick={() => void save()}
                 >

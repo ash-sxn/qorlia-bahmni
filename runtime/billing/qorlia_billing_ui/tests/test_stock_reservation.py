@@ -152,6 +152,9 @@ class StockReservationTest(TransactionCase):
         self.assertEqual(self.quant.reserved_quantity, 0)
 
     def test_invalid_foreign_and_public_requests_are_denied(self):
+        for action in (None, [], {}, True, 1, 'validate'):
+            with self.assertRaises(ValidationError):
+                self.api().qorlia_transfer_preview(self.order.id, self.picking.id, 'a' * 64, action)
         for identifier in (True, 0, -1, '1', 1.5):
             with self.assertRaises(ValidationError):
                 self.api().qorlia_transfer_load(self.order.id, identifier)
@@ -199,3 +202,119 @@ class StockReservationTest(TransactionCase):
         self.assertEqual(self.quant.reserved_quantity, 0)
         self.assertFalse(self.picking.qorlia_reservation_receipts)
         self.assertFalse(self.picking.move_line_ids)
+
+    def test_set_clear_quantities_preview_save_recovery_without_delivery_or_finance(self):
+        self.api().qorlia_transfer_run(**self.request(self.review()))
+        counts = {name: self.env[name].search_count([]) for name in ('account.move', 'account.payment', 'stock.valuation.layer')}
+        before = self.load()
+        self.assertFalse(before['reasons']['set_quantities'])
+        self.assertTrue(before['reasons']['clear_quantities'])
+        reviewed = self.review('set_quantities')
+        self.assertEqual(self.load(), before)
+        self.assertEqual(reviewed['after']['transfer']['moves'][0]['done'], 5)
+        self.assertEqual(reviewed['after']['transfer']['operations'][0]['done'], 5)
+        self.assertEqual(reviewed['quant_after'], reviewed['quant_before'])
+        request = self.request(reviewed)
+        saved = self.api().qorlia_transfer_run(**request)
+        self.assertTrue(saved['accepted'])
+        self.env.flush_all()
+        self.env.invalidate_all()
+        self.assertEqual(self.api().qorlia_transfer_status(**request), saved)
+        self.assertEqual(self.api().qorlia_transfer_run(**request), saved)
+        self.assertTrue(saved['current']['reasons']['set_quantities'])
+        self.assertFalse(saved['current']['reasons']['clear_quantities'])
+        clear = self.request(self.review('clear_quantities'))
+        accepted = self.api().qorlia_transfer_run(**clear)
+        self.assertEqual(self.api().qorlia_transfer_run(**clear), accepted)
+        self.assertEqual(self.picking.move_line_ids.qty_done, 0)
+        self.assertEqual(self.quant.reserved_quantity, 5)
+        self.assertEqual(self.quant.quantity, 10)
+        self.assertEqual(self.picking.state, 'assigned')
+        self.assertEqual(self.sale_line.qty_delivered, 0)
+        self.assertEqual(counts, {name: self.env[name].search_count([]) for name in counts})
+
+    def test_set_and_clear_keep_partially_entered_moves_while_changing_eligible_moves(self):
+        other = self.move.copy({'picking_id': self.picking.id, 'state': 'draft'})
+        other._action_confirm(merge=False)
+        self.api().qorlia_transfer_run(**self.request(self.review()))
+        self.move.move_line_ids.qty_done = 2
+        self.assertFalse(self.load()['reasons']['set_quantities'])
+        self.api().qorlia_transfer_run(**self.request(self.review('set_quantities')))
+        self.assertEqual(self.move.quantity_done, 2)
+        self.assertEqual(other.quantity_done, 5)
+        self.api().qorlia_transfer_run(**self.request(self.review('clear_quantities')))
+        self.assertEqual(self.move.quantity_done, 2)
+        self.assertEqual(other.quantity_done, 0)
+        self.assertEqual(self.quant.quantity, 10)
+        self.assertEqual(self.quant.reserved_quantity, 10)
+
+    def test_set_quantities_preserves_detailed_operation_dozen_unit_and_batch(self):
+        self.move.product_uom_qty = 12
+        self.env['stock.quant']._update_available_quantity(self.product, self.picking.location_id, 4, lot_id=self.lot)
+        self.api().qorlia_transfer_run(**self.request(self.review()))
+        operation = self.picking.move_line_ids
+        dozen = self.env.ref('uom.product_uom_dozen')
+        operation.write({'product_uom_id': dozen.id, 'reserved_uom_qty': 1})
+        review = self.review('set_quantities')
+        self.assertEqual(review['after']['transfer']['moves'][0]['done'], 12)
+        self.assertEqual(review['after']['transfer']['operations'][0]['done'], 1)
+        self.assertEqual(review['after']['transfer']['operations'][0]['unit'][0], dozen.id)
+        self.assertEqual(review['after']['transfer']['operations'][0]['lot'][0], self.lot.id)
+        self.api().qorlia_transfer_run(**self.request(review))
+        self.assertEqual(operation.qty_done, 1)
+        self.assertEqual(self.quant.quantity, 14)
+        self.assertEqual(self.quant.reserved_quantity, 12)
+
+    def test_tracked_operation_without_batch_does_not_invent_done_quantity(self):
+        self.env['stock.quant']._update_available_quantity(self.product, self.picking.location_id, -10, lot_id=self.lot)
+        self.env['stock.quant']._update_available_quantity(self.product, self.picking.location_id, 10)
+        self.api().qorlia_transfer_run(**self.request(self.review()))
+        self.assertFalse(self.picking.move_line_ids.lot_id)
+        review = self.review('set_quantities')
+        self.assertEqual(review['after']['transfer']['moves'][0]['done'], 0)
+        self.assertEqual(review['after']['transfer']['operations'][0]['done'], 0)
+        self.api().qorlia_transfer_run(**self.request(review))
+        self.assertEqual(self.move.quantity_done, 0)
+        self.assertEqual(sum(self.env['stock.quant'].search([('product_id', '=', self.product.id)]).mapped('quantity')), 10)
+
+    def test_quantity_actions_require_native_group_and_reject_hidden_or_finished_operations(self):
+        self.api().qorlia_transfer_run(**self.request(self.review()))
+        original = type(self.user).has_group
+        def group(user, name):
+            return False if name == 'stock.group_stock_user' else original(user, name)
+        with patch.object(type(self.user), 'has_group', group):
+            current = self.load()
+            self.assertIn('Stock User', current['reasons']['set_quantities'])
+            with self.assertRaises(AccessError):
+                self.api().qorlia_transfer_preview(self.order.id, self.picking.id, current['version'], 'set_quantities')
+        rule = self.env['ir.rule'].create({'name': 'QorliaQA Hidden detailed quantity operation',
+            'model_id': self.env['ir.model']._get_id('stock.move.line'),
+            'domain_force': "[('picking_id', '!=', %d)]" % self.picking.id})
+        with self.assertRaises(AccessError):
+            self.load()
+        rule.unlink()
+        self.move.state = 'done'
+        for action in ('set_quantities', 'clear_quantities'):
+            current = self.load()
+            self.assertTrue(current['reasons'][action])
+            with self.assertRaises(UserError):
+                self.api().qorlia_transfer_preview(self.order.id, self.picking.id, current['version'], action)
+
+    def test_package_graph_relations_are_labelled_and_hidden_packages_fail_closed(self):
+        self.api().qorlia_transfer_run(**self.request(self.review()))
+        package = self.env['stock.quant.package'].create({'name': 'QorliaQA Labelled package'})
+        self.picking.move_line_ids.result_package_id = package
+        level = self.env['stock.package_level'].create({'picking_id': self.picking.id,
+            'package_id': package.id, 'location_id': self.picking.location_id.id,
+            'location_dest_id': self.picking.location_dest_id.id,
+            'company_id': self.picking.company_id.id, 'move_line_ids': [(6, 0, self.picking.move_line_ids.ids)]})
+        row = self.load()['graph']['packages'][0]
+        self.assertEqual(row['id'], level.id)
+        self.assertEqual(row['package_id'], [package.id, package.display_name])
+        self.assertEqual(row['company_id'], [self.env.company.id, self.env.company.display_name])
+        self.assertEqual(self.review('set_quantities')['after']['packages'][0]['package_id'][0], package.id)
+        self.env['ir.rule'].create({'name': 'QorliaQA Hidden destination package',
+            'model_id': self.env['ir.model']._get_id('stock.quant.package'),
+            'domain_force': "[('id', '!=', %d)]" % package.id})
+        with self.assertRaises(AccessError):
+            self.load()

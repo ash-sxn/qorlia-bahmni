@@ -3280,7 +3280,13 @@ export async function getOrderDeliveries(
   return data;
 }
 
-export type StockReservationAction = 'assign' | 'unreserve';
+export const stockPreparationActions = [
+  'assign',
+  'unreserve',
+  'set_quantities',
+  'clear_quantities',
+] as const;
+export type StockReservationAction = (typeof stockPreparationActions)[number];
 export interface StockTransferGraph {
   transfer: TransferReviewRow;
   packages: {
@@ -3341,7 +3347,7 @@ function checkedStockSelection(value: StockReservationSelection) {
     !stockId(value.order_id) ||
     !stockId(value.transfer_id) ||
     !stockVersion(value.version) ||
-    !['assign', 'unreserve'].includes(value.action)
+    !stockPreparationActions.includes(value.action)
   )
     throw new Error(
       'Select a saved transfer and review its reservation action.',
@@ -3414,7 +3420,7 @@ function checkedStockLoad(
     !stockVersion(data.version) ||
     !validStockGraph(data.graph, transferId) ||
     !data.reasons ||
-    !['assign', 'unreserve'].every((action) =>
+    !stockPreparationActions.every((action) =>
       stockText(data.reasons[action as StockReservationAction]),
     )
   )

@@ -1,5 +1,45 @@
 # Qorlia React frontend backend readiness
 
+## Native recorded-quantity preparation source acceptance (14 October 2026)
+
+Adapter 41 extends the existing reviewed stock workflow with native Set quantities
+and Clear quantities. Installed picking/move button visibility and implementations
+were inspected, together with Bahmni operation/pricing/expiry views and onchange
+hooks. Set fills eligible zero-done moves from their reservations and requires
+the native batch/serial conditions. Clear affects eligible moves whose recorded
+quantity matches reservation; partial entries remain. Neither action delivers,
+validates, posts an invoice or changes physical inventory. Native Stock User and
+field/write permissions are enforced, without requiring unrelated create/unlink
+permissions for quantity-only actions. Draft/finished/hidden/unsupported cases
+remain denied. Preview/recovery/retry reuse the existing locked native pipeline.
+
+Package-level relations now return labels instead of raw IDs, matching the client
+schema; hidden package relations fail closed. The review shows package metadata
+when present. The modal is named Stock preparation review and the order action
+Review stock preparation. Buttons retain the Qorlia house styles and controls.
+
+560 Home tests/65 suites, five source-based test/fixture type checks, library types,
+touched lint/diff, seven gateway/configuration checks and development build
+ed33b71e43152280 pass. Final adapter 41 passes 17 focused and 550 full native tests,
+zero failures/errors/skips, mandatory analytics restored, source/test hashes match
+installed files and service running. The first added unbatched fixture incorrectly
+changed an already reserved batch, releasing its reservation; corrected fixture
+uses native unbatched inventory. Earlier failure restored adapter 40. Final fresh
+run also tests malformed action types. Backups retained.
+
+Actual private TypeScript HTTP reserve/set/clear/unreserve preview/save/status and
+identical retries pass. Independent native read-back verifies four new receipts,
+ten physical/five demanded units, zero final reservation/recorded done/delivery,
+confirmed transfer, unchanged eight protected records, financial/valuation counts,
+bank #37 and other stock. Temporary SSH forward stopped. Hosted quantity controls
+and browser saves still pending at this source checkpoint.
+
+Manual quantity/batch/location/package editing, pricing/expiry onchange UI,
+confirmation with procurement/replenishment effects, native validation/Bahmni
+wizards, backorders/returns/paging/POS/synchronization and full product parity
+remain unfinished. This is native quantity preparation, not a substitute for
+those workflows. Production/public demo and unrelated clinical edits unchanged.
+
 ## Final protected reservation r2 acceptance (14 October 2026)
 
 Published stock-reservation-r2-20261014, source 3a22cb20 plus nine unchanged

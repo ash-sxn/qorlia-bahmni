@@ -1,5 +1,24 @@
 # Bahmni workflow parity ledger
 
+## 14 October native quantity preparation source and private HTTP acceptance
+
+- Native Set quantities/Clear quantities added to the reviewed stock pipeline.
+  Native visibility, Stock User/write-field permissions, selective zero-done and
+  matching-reservation behavior apply. Partial entries/units/batches preserved.
+- Fixed raw package-level relation IDs to labelled client schema; hidden packages
+  fail closed. Qorlia Stock preparation review shows package metadata and guidance.
+- 560 Home/65 suites, five source-based/library types, lint/diff, seven guards and
+  ed33b71e43152280 build pass. Final native 41 passes 17 focused/550 full tests,
+  no failures/errors/skips, analytics restored, installed hashes match/service up.
+- Actual private HTTP reserve/set/clear/unreserve, rollback previews, status and
+  identical retries pass. Four new receipts, no physical/delivery/financial
+  effects; protected records/bank/other stock unchanged. SSH forward stopped.
+- Earlier batch-change fixture released its reservation; corrected native unbatched
+  fixture passes. Hosted quantity controls and browser save acceptance pending.
+- Manual editing/onchanges, procurement-aware confirmation, validation/wizards,
+  backorders/returns/paging/POS/sync and full parity remain. No production/public
+  demo or unrelated clinical change. PR #4 remains draft.
+
 ## 14 October final protected reservation r2 acceptance
 
 - Published 3a22cb20 plus nine clinical hashes, build 97d821d9ad88cda2, 83 matching
