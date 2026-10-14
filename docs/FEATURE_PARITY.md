@@ -1,5 +1,31 @@
 # Bahmni workflow parity ledger
 
+## 14 October native confirmation contract checkpoint
+
+- Added thirteen native contract tests for Mark as Todo: manual/at-confirm
+  reservations, compatible move merging, waiting dependencies, make-to-order
+  supply, vendor RFQs, automatic replenishment, whole packages, push chains,
+  missing rules/sender configuration and database/callback preview rollback.
+- The exact source passes thirteen focused cases on isolated adapter 43 with no
+  failures/errors/skips; mandatory analytics remains restored. These are native
+  engine contracts, not acceptance of a new confirmation API or React action.
+- Combined 591 native cases pass on a separate database/filestore copy using the
+  legacy financial fixtures' optional analytics, restored afterward. The initial
+  mandatory-analytics full run had 80 missing-allocation fixture errors; this is
+  not proof of complete mandatory-analytics financial acceptance.
+- Post-run independent tester snapshot matches the preceding accepted snapshot:
+  six operation/sixteen preparation receipts, no operation, unchanged stock,
+  demand/delivery, protected accounting, valuation, bank and other stock.
+  Running tester analytics remains mandatory. Test source SHA-256:
+  9467b941a8dc3c98a7cd5a780b6b971758ca59c5b150510a9fe55962e3aa3f6d.
+- [Confirmation integration guide](../runtime/billing/STOCK_CONFIRMATION.md)
+  records the native graph/procurement/configuration review and recovery scope.
+  A direct state write or adding confirm to the current reservation map would
+  lose native effects. Review must account for new/merged/chained documents.
+- Confirmation API/UI/recovery, validation/immediate/backorder/Bahmni wizards,
+  partial delivery/returns, paging/POS/sync and whole-product parity remain open.
+  Installed adapter and protected tester artifact are unchanged. PR #4 draft.
+
 ## 14 October final protected operation choice acceptance
 
 - Published stock-operation-edit-r2-20261014 from fb910d43 plus the same nine

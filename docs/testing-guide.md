@@ -39,7 +39,7 @@ node --test scripts/review-host/server.test.cjs distro/webpack.config.test.cjs
 node scripts/check-contributor-docs.mjs
 ```
 
-The [documentation check](../scripts/check-contributor-docs.mjs) validates local links, linked headings, README reachability and the no-em-dash convention for the contributor guides. It does not validate live backend setup or remote URLs. The documented Billing source checkpoint has 594 Home tests/69 suites and seven gateway/configuration tests passing. Counts are a dated observation, not a permanent threshold or whole-product completion claim. Check the current [parity ledger](FEATURE_PARITY.md).
+The [documentation check](../scripts/check-contributor-docs.mjs) validates local links, linked headings, README reachability and the no-em-dash convention for the contributor guides. It does not validate live backend setup or remote URLs. The protected 14 October Billing UI checkpoint has 595 Home tests/69 suites passing; its preceding seven gateway/configuration checks are unchanged. Counts are a dated observation, not a permanent threshold or whole-product completion claim. Check the current [parity ledger](FEATURE_PARITY.md).
 
 ## Build check
 
@@ -50,13 +50,15 @@ cd distro
 NX_TASK_TARGET_PROJECT=@bahmni/distro NX_TASK_TARGET_TARGET=build NX_TASK_TARGET_CONFIGURATION=development ../node_modules/.bin/webpack --mode development --config webpack.config.js
 ```
 
-This supplies the Nx target context used by its Webpack plugin. The current checked build succeeded with hash `744405c851222e3f`; do not expect future builds to retain that hash. Generated output is `distro/dist`. This is not a production release command. Run the checks/build again after source changes and record the tested SHA.
+This supplies the Nx target context used by its Webpack plugin. The protected 14 October UI build succeeded with hash `01c92a12bdb90486`; do not expect future builds to retain that hash. Generated output is `distro/dist`. This is not a production release command. Run the checks/build again after source changes and record the tested SHA.
 
 ## Native runtime testing
 
 Python Billing tests are in [the addon tests](../runtime/billing/qorlia_billing_ui/tests/); they run inside a compatible Odoo installation with matching Bahmni modules and synthetic configuration. Running ordinary `pytest` without that runtime does not reproduce those tests.
 
 The isolated adapter 43 checkpoint passed 28 focused operation-form/action checks and 578 full addon tests with no failures/errors/skips. Native mandatory analytical configuration was restored and installed source hashes matched. This does not accept full fulfillment, production deployment or every module. Native environment/test procedures are operator-provided; never copy private database settings into a public script.
+
+The later [confirmation contract](../runtime/billing/STOCK_CONFIRMATION.md) adds 13 focused native cases, passing with mandatory analytics. The combined 591-case regression harness passes on a separate database copy with legacy fixtures' optional analytics, restored afterward. An initial full run under mandatory analytics produced 80 missing-allocation fixture errors. Do not hide that configuration difference or treat the optional-fixture suite as proof of every mandatory-analytics workflow. Never relax the running tester or production database to make a regression harness pass. Configuration-specific acceptance remains separate.
 
 ## Synthetic workflow acceptance
 

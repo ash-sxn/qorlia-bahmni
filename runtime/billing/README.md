@@ -29,6 +29,10 @@ catalog browser acceptance, full fulfillment and Billing parity remain open.
 See [current readiness](../../docs/BACKEND_READINESS.md) and
 [developer architecture](../../docs/architecture.md).
 
+The next fulfillment contract is [native stock confirmation](STOCK_CONFIRMATION.md).
+It maps procurement, chained transfers, packages and callback rollback requirements;
+it is not an exposed confirmation API or completed fulfillment workflow.
+
 Historical form-only checkpoint, superseded above: adapter 42 adds scoped load,
 native onchange and paged choice APIs for saved and unsaved move operations.
 Native operation context is derived without executing the serial action's write.

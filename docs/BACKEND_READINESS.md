@@ -1,5 +1,33 @@
 # Qorlia React frontend backend readiness
 
+## Native confirmation contract checkpoint (14 October 2026)
+
+Thirteen focused native engine contracts pass on the isolated adapter 43 stack,
+without failures/errors/skips and with mandatory analytics restored. They cover
+manual/at-confirm reservation, move merging, preceding/waiting dependencies,
+make-to-order supply, vendor RFQs, automatic replenishment, whole packages, push
+chains, native failures and rolled-back preview records/callback queues.
+
+The combined 591-case suite passes without failures/errors/skips on a separate
+database/filestore copy, using legacy financial fixtures' optional analytics and
+restoring mandatory afterward. The first full run under mandatory analytics had
+80 missing-allocation fixture errors. This distinction remains documented, not
+treated as mandatory-configuration financial acceptance. No live tester rule was
+relaxed for the corrected harness. Final independent tester read-back exactly
+matches the earlier native snapshot: six operation/sixteen preparation receipts,
+no operation and unchanged stock, demand/delivery, protected finance/valuation/bank.
+
+Confirmation can create more than a single transfer's operations. It can generate
+supply documents and native audit messages, merge away IDs and trigger automatic
+replenishment even for make-to-stock. A reviewed action needs native configuration,
+linked document and procurement effects in its version/locking/recovery scope.
+See [confirmation integration](../runtime/billing/STOCK_CONFIRMATION.md).
+
+No confirmation endpoint or React button is exposed by this source checkpoint;
+installed adapter, protected tester package and production/public demo are unchanged.
+API/browser confirmation acceptance and all remaining fulfillment/product gates
+are open. Do not count native contract tests as completed fulfillment parity.
+
 ## Final protected operation choice acceptance (14 October 2026)
 
 The protected review now serves stock-operation-edit-r2-20261014 from fb910d43
