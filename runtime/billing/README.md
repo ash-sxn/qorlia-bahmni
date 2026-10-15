@@ -3,6 +3,13 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+New backend candidate: [complete native transfer detail pages](STOCK_TRANSFER_DETAILS.md).
+Source 51 reads beyond 500 moves/2,000 operations in bounded pages with the same
+order-wide snapshot and native permissions/units. Native shared-stock regression
+passes 222 cases, Home passes 726 tests and actual TypeScript/native HTTP detail
+traversal passes. This is read parity, not removal of signed-action limits or a React/UI
+migration. No published port, reopened review gate or public deployment.
+
 Current backend checkpoint: [native HTTP paging on an isolated installed-50 copy](STOCK_TRANSFER_PAGING.md#native-http-client-and-copied-upgrade-checkpoint-16-october-2026).
 The actual TypeScript client traverses 101 transfers, rejects stale/hidden pages,
 and saves an off-page confirmation/operation with exact recovery. Fifteen copied

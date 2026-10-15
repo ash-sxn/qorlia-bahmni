@@ -84,30 +84,9 @@ class OrderDeliveries(models.Model):
                 raise AccessError('A linked batch is outside this order company.')
             if any(line.move_id and line.move_id not in moves for line in lines):
                 raise AccessError('A detailed operation belongs to another transfer.')
-            rows.append({
-                'id': picking.id, 'name': picking.name, 'state': picking.state,
-                'operation_type': _label(picking.picking_type_id),
-                'company': _label(picking.company_id), 'customer': _label(picking.partner_id),
-                'source': _label(picking.location_id), 'destination': _label(picking.location_dest_id),
-                'scheduled_date': _date(picking.scheduled_date), 'date_done': _date(picking.date_done),
-                'origin': picking.origin or False, 'backorder': _label(picking.backorder_id),
-                'moves': [{
-                    'id': move.id, 'state': move.state, 'product': _label(move.product_id),
-                    'unit': _label(move.product_uom), 'demand': move.product_uom_qty,
-                    'reserved': move.reserved_availability, 'done': move.quantity_done,
-                    'order_line': _label(move.sale_line_id),
-                } for move in moves],
-                'operations': [{
-                    'id': line.id, 'move_id': line.move_id.id or False,
-                    'product': _label(line.product_id), 'unit': _label(line.product_uom_id),
-                    'reserved': line.reserved_uom_qty, 'done': line.qty_done,
-                    'lot': _label(line.lot_id), 'lot_name': line.lot_name or False,
-                    'expiry_date': _date(line.expiration_date),
-                    'source': _label(line.location_id), 'destination': _label(line.location_dest_id),
-                    'source_package': _label(line.package_id), 'destination_package': _label(line.result_package_id),
-                    'owner': _label(line.owner_id),
-                } for line in lines],
-            })
+            rows.append(dict(self._qorlia_delivery_header(picking),
+                moves=[self._qorlia_delivery_move(move) for move in moves],
+                operations=[self._qorlia_delivery_operation(line) for line in lines]))
             stamps.append({'picking': picking.read(['write_date']),
                 'moves': moves.read(['write_date']), 'lines': lines.read(['write_date']),
                 'lots': lots.read(['write_date'])})
@@ -116,6 +95,22 @@ class OrderDeliveries(models.Model):
         result['version'] = _digest({'author': self.env.uid, 'companies': self.env.companies.ids,
             'order_stamp': order.read(['write_date']), 'data': result, 'stamps': stamps})
         return result
+
+    def _qorlia_delivery_move(self, move):
+        return {'id': move.id, 'state': move.state, 'product': _label(move.product_id),
+            'unit': _label(move.product_uom), 'demand': move.product_uom_qty,
+            'reserved': move.reserved_availability, 'done': move.quantity_done,
+            'order_line': _label(move.sale_line_id)}
+
+    def _qorlia_delivery_operation(self, line):
+        return {'id': line.id, 'move_id': line.move_id.id or False,
+            'product': _label(line.product_id), 'unit': _label(line.product_uom_id),
+            'reserved': line.reserved_uom_qty, 'done': line.qty_done,
+            'lot': _label(line.lot_id), 'lot_name': line.lot_name or False,
+            'expiry_date': _date(line.expiration_date),
+            'source': _label(line.location_id), 'destination': _label(line.location_dest_id),
+            'source_package': _label(line.package_id), 'destination_package': _label(line.result_package_id),
+            'owner': _label(line.owner_id)}
 
     def _qorlia_delivery_header(self, picking):
         return {
@@ -237,3 +232,40 @@ class OrderDeliveries(models.Model):
             'next_after': page[-1].id if len(remaining) > limit else False,
             'rows': [dict(self._qorlia_delivery_header(picking), move_count=counts[picking.id][0],
                 operation_count=counts[picking.id][1]) for picking in page]}
+
+    @api.model
+    def qorlia_order_transfer_detail_page(self, order_id, transfer_id, section, after=0, version=False, limit=50):
+        if (type(transfer_id) is not int or transfer_id <= 0 or not isinstance(section, str)
+                or section not in ('moves', 'operations') or type(after) is not int or after < 0
+                or type(limit) is not int or not 1 <= limit <= 100
+                or not (version is False or isinstance(version, str) and len(version) == 64
+                    and all(char in '0123456789abcdef' for char in version)) or after and version is False):
+            raise ValidationError('Use a bounded move or operation page and its original version.')
+        self = self.with_context({key: self.env.context[key] for key in ('allowed_company_ids','lang','tz') if key in self.env.context})
+        order, pickings, current = self._qorlia_delivery_scope(order_id)
+        picking = pickings.filtered(lambda record: record.id == transfer_id)
+        if not picking:
+            raise UserError('This transfer is no longer linked to this order.')
+        if version is not False and version != current:
+            raise UserError('The order, linked stock records or access configuration changed. Reload transfer details.')
+        model = self.env['stock.move' if section == 'moves' else 'stock.move.line']
+        table = sql.Identifier(model._table)
+        self.env.cr.execute(sql.SQL('SELECT count(*), count(*) FILTER (WHERE id <= %s), '
+            'count(*) FILTER (WHERE id = %s) FROM {} WHERE picking_id = %s').format(table),
+            [after, after, picking.id])
+        total, position, cursor_exists = self.env.cr.fetchone()
+        if after and not cursor_exists:
+            raise ValidationError('The detail cursor does not belong to this transfer section.')
+        self.env.cr.execute(sql.SQL('SELECT id FROM {} WHERE picking_id = %s AND id > %s ORDER BY id LIMIT %s')
+            .format(table), [picking.id, after, limit + 1])
+        ids = [row[0] for row in self.env.cr.fetchall()]
+        records = model.browse(ids[:limit])
+        project = self._qorlia_delivery_move if section == 'moves' else self._qorlia_delivery_operation
+        self.env.cr.execute('SELECT (SELECT count(*) FROM stock_move WHERE picking_id = %s), '
+            '(SELECT count(*) FROM stock_move_line WHERE picking_id = %s)', [picking.id, picking.id])
+        move_count, operation_count = self.env.cr.fetchone()
+        return {'order_id': order.id, 'order_name': order.name, 'order_state': order.state, 'read_only': True,
+            'transfer': dict(self._qorlia_delivery_header(picking), move_count=move_count, operation_count=operation_count),
+            'section': section, 'version': current, 'after': after, 'position': position, 'total_count': total,
+            'next_after': ids[limit - 1] if len(ids) > limit else False,
+            'rows': [project(record) for record in records]}

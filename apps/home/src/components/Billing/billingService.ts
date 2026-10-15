@@ -3175,16 +3175,27 @@ export interface OrderDeliveries {
   rows: OrderTransfer[];
 }
 
+export type OrderTransferSummary = Omit<
+  OrderTransfer,
+  'moves' | 'operations'
+> & {
+  move_count: number;
+  operation_count: number;
+};
 export interface OrderDeliveryPage extends Omit<OrderDeliveries, 'rows'> {
   after: number;
   position: number;
   total_count: number;
   next_after: number | false;
-  rows: (Omit<OrderTransfer, 'moves' | 'operations'> & {
-    move_count: number;
-    operation_count: number;
-  })[];
+  rows: OrderTransferSummary[];
 }
+export type OrderTransferDetailSection = 'moves' | 'operations';
+export type OrderTransferDetailPage = Omit<OrderDeliveryPage, 'rows'> & {
+  transfer: OrderTransferSummary;
+} & (
+    | { section: 'moves'; rows: OrderTransfer['moves'] }
+    | { section: 'operations'; rows: OrderTransfer['operations'] }
+  );
 
 type TransferReviewRow = Omit<OrderTransfer, 'operations'> & {
   operations: (Omit<OrderTransfer['operations'][number], 'id'> & {
@@ -3193,6 +3204,8 @@ type TransferReviewRow = Omit<OrderTransfer, 'operations'> & {
 };
 const stockId = (value: unknown) =>
   Number.isSafeInteger(value) && Number(value) > 0;
+const stockCount = (value: unknown) =>
+  Number.isSafeInteger(value) && Number(value) >= 0;
 const stockVersion = (value: unknown) =>
   typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const stockText = (value: unknown) =>
@@ -3224,6 +3237,48 @@ function validTransferHeader(row: Omit<OrderTransfer, 'moves' | 'operations'>) {
     stockText(row.origin)
   );
 }
+function validTransferSummary(row: OrderTransferSummary) {
+  return (
+    row &&
+    Object.keys(row).sort().join(',') ===
+      'backorder,company,customer,date_done,destination,id,move_count,name,operation_count,operation_type,origin,scheduled_date,source,state' &&
+    validTransferHeader(row) &&
+    stockCount(row.move_count) &&
+    stockCount(row.operation_count)
+  );
+}
+function validTransferMove(move: OrderTransfer['moves'][number]) {
+  return (
+    move &&
+    stockId(move.id) &&
+    typeof move.state === 'string' &&
+    [move.product, move.unit, move.order_line].every(validRelation) &&
+    [move.demand, move.reserved, move.done].every(Number.isFinite)
+  );
+}
+function validTransferOperation(
+  line: TransferReviewRow['operations'][number],
+  preview = false,
+) {
+  return (
+    line &&
+    (stockId(line.id) || (preview && line.id === false)) &&
+    (line.move_id === false || stockId(line.move_id)) &&
+    [
+      line.product,
+      line.unit,
+      line.lot,
+      line.source,
+      line.destination,
+      line.source_package,
+      line.destination_package,
+      line.owner,
+    ].every(validRelation) &&
+    [line.reserved, line.done].every(Number.isFinite) &&
+    stockText(line.lot_name) &&
+    stockDate(line.expiry_date)
+  );
+}
 function validTransfer(row: TransferReviewRow, preview = false) {
   const unique = (rows: { id: number | false }[]) => {
     const saved = rows.filter((item) => item.id !== false);
@@ -3233,37 +3288,15 @@ function validTransfer(row: TransferReviewRow, preview = false) {
     validTransferHeader(row) &&
     Array.isArray(row.moves) &&
     row.moves.length <= 500 &&
-    row.moves.every(
-      (move) =>
-        move &&
-        stockId(move.id) &&
-        typeof move.state === 'string' &&
-        [move.product, move.unit, move.order_line].every(validRelation) &&
-        [move.demand, move.reserved, move.done].every(Number.isFinite),
-    ) &&
+    row.moves.every(validTransferMove) &&
     unique(row.moves) &&
     Array.isArray(row.operations) &&
     row.operations.length <= 2000 &&
     row.operations.every(
       (line) =>
-        line &&
-        (stockId(line.id) || (preview && line.id === false)) &&
+        validTransferOperation(line, preview) &&
         (line.move_id === false ||
-          (stockId(line.move_id) &&
-            row.moves.some((move) => move.id === line.move_id))) &&
-        [
-          line.product,
-          line.unit,
-          line.lot,
-          line.source,
-          line.destination,
-          line.source_package,
-          line.destination_package,
-          line.owner,
-        ].every(validRelation) &&
-        [line.reserved, line.done].every(Number.isFinite) &&
-        stockText(line.lot_name) &&
-        stockDate(line.expiry_date),
+          row.moves.some((move) => move.id === line.move_id)),
     ) &&
     unique(row.operations)
   );
@@ -3302,11 +3335,9 @@ export async function getOrderDeliveryPage(
   version: string | false = false,
   limit = 25,
 ): Promise<OrderDeliveryPage> {
-  const count = (value: unknown) =>
-    Number.isSafeInteger(value) && Number(value) >= 0;
   if (
     !stockId(orderId) ||
-    !count(after) ||
+    !stockCount(after) ||
     !Number.isSafeInteger(limit) ||
     limit < 1 ||
     limit > 100 ||
@@ -3329,20 +3360,16 @@ export async function getOrderDeliveryPage(
     !stockVersion(data.version) ||
     (version !== false && data.version !== version) ||
     data.after !== after ||
-    !count(data.position) ||
-    !count(data.total_count) ||
+    !stockCount(data.position) ||
+    !stockCount(data.total_count) ||
     data.position > data.total_count ||
+    data.position > after ||
     (after === 0 ? data.position !== 0 : data.position === 0) ||
     !Array.isArray(data.rows) ||
     data.rows.length !== Math.min(limit, data.total_count - data.position) ||
     !data.rows.every(
       (row, index) =>
-        row &&
-        Object.keys(row).sort().join(',') ===
-          'backorder,company,customer,date_done,destination,id,move_count,name,operation_count,operation_type,origin,scheduled_date,source,state' &&
-        validTransferHeader(row) &&
-        count(row.move_count) &&
-        count(row.operation_count) &&
+        validTransferSummary(row) &&
         row.id > (index ? data.rows[index - 1].id : after),
     ) ||
     (data.position + data.rows.length < data.total_count
@@ -3351,6 +3378,93 @@ export async function getOrderDeliveryPage(
   )
     throw new Error(
       'Invalid native transfer page. Reload the order transfers.',
+    );
+  return data;
+}
+
+export async function getOrderTransferDetailPage(
+  orderId: number,
+  transferId: number,
+  section: OrderTransferDetailSection,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+): Promise<OrderTransferDetailPage> {
+  if (
+    !stockId(orderId) ||
+    !stockId(transferId) ||
+    !['moves', 'operations'].includes(section) ||
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !(version === false || stockVersion(version)) ||
+    (after > 0 && version === false)
+  )
+    throw new Error(
+      'Use a bounded move or operation page and its original version.',
+    );
+  const data = await draftCall<OrderTransferDetailPage>(
+    'qorlia_order_transfer_detail_page',
+    {
+      order_id: orderId,
+      transfer_id: transferId,
+      section,
+      after,
+      version,
+      limit,
+    },
+  );
+  if (
+    !data ||
+    Object.keys(data).sort().join(',') !==
+      'after,next_after,order_id,order_name,order_state,position,read_only,rows,section,total_count,transfer,version' ||
+    data.order_id !== orderId ||
+    typeof data.order_name !== 'string' ||
+    !['draft', 'sent', 'sale', 'done', 'cancel'].includes(data.order_state) ||
+    data.read_only !== true ||
+    !stockVersion(data.version) ||
+    (version !== false && data.version !== version) ||
+    !validTransferSummary(data.transfer) ||
+    data.transfer.id !== transferId ||
+    data.section !== section ||
+    data.after !== after ||
+    !stockCount(data.position) ||
+    !stockCount(data.total_count) ||
+    data.total_count !==
+      (section === 'moves'
+        ? data.transfer.move_count
+        : data.transfer.operation_count) ||
+    data.position > data.total_count ||
+    data.position > after ||
+    (after === 0 ? data.position !== 0 : data.position === 0) ||
+    !Array.isArray(data.rows) ||
+    data.rows.length !== Math.min(limit, data.total_count - data.position) ||
+    !data.rows.every(
+      (row, index) =>
+        row &&
+        stockId(row.id) &&
+        row.id > (index ? data.rows[index - 1].id : after),
+    ) ||
+    !(data.section === 'moves'
+      ? data.rows.every(
+          (row) =>
+            validTransferMove(row) &&
+            Object.keys(row).sort().join(',') ===
+              'demand,done,id,order_line,product,reserved,state,unit',
+        )
+      : data.rows.every(
+          (row) =>
+            validTransferOperation(row) &&
+            Object.keys(row).sort().join(',') ===
+              'destination,destination_package,done,expiry_date,id,lot,lot_name,move_id,owner,product,reserved,source,source_package,unit',
+        )) ||
+    (data.position + data.rows.length < data.total_count
+      ? data.next_after !== data.rows.at(-1)?.id
+      : data.next_after !== false)
+  )
+    throw new Error(
+      'Invalid native transfer detail page. Reload the transfer details.',
     );
   return data;
 }

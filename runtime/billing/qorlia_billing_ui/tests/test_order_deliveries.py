@@ -59,6 +59,142 @@ class OrderDeliveryReadTest(TransactionCase):
         self.assertEqual(pickings.sale_id, self.order)
         return pickings
 
+    def detail(self, section='moves', after=0, version=False, limit=50):
+        return self.env['sale.order'].with_user(self.user).qorlia_order_transfer_detail_page(
+            self.order.id, self.picking.id, section, after, version, limit)
+
+    def test_detail_pages_match_native_legacy_rows_and_share_the_summary_snapshot(self):
+        legacy = self.load()['rows'][0]
+        before = self.picking.read(['state', 'write_date', 'date_done'])
+        counts = {name: self.env[name].search_count([]) for name in
+            ('stock.move', 'stock.move.line', 'stock.quant', 'account.move', 'account.payment')}
+        summary = self.page()
+        for section in ('moves', 'operations'):
+            result = self.detail(section, version=summary['version'])
+            self.assertEqual(result['rows'], legacy[section])
+            self.assertEqual(result['transfer'], summary['rows'][0])
+            self.assertEqual((result['section'], result['order_id'], result['read_only']), (section, self.order.id, True))
+            self.assertEqual((result['after'], result['position'], result['total_count'], result['next_after']), (0, 0, 1, False))
+            end = self.detail(section, result['rows'][-1]['id'], result['version'])
+            self.assertEqual((end['rows'], end['position'], end['next_after']), ([], 1, False))
+        self.assertEqual(self.picking.read(['state', 'write_date', 'date_done']), before)
+        self.assertEqual(counts, {name: self.env[name].search_count([]) for name in counts})
+
+    def test_complete_move_and_operation_pages_cross_both_legacy_detail_caps(self):
+        moves = self.move | self.env['stock.move'].create([
+            dict(self.move.copy_data()[0], picking_id=self.picking.id) for _index in range(500)])
+        lines = self.operation | self.env['stock.move.line'].create([
+            dict(self.operation.copy_data()[0], picking_id=self.picking.id, move_id=self.move.id, qty_done=0)
+            for _index in range(2000)])
+        summary = self.page()
+        for section, expected in (('moves', moves), ('operations', lines)):
+            ids, after = [], 0
+            while True:
+                page = self.detail(section, after, summary['version'], 100)
+                self.assertEqual(page['position'], len(ids))
+                self.assertEqual(page['total_count'], len(expected))
+                self.assertLessEqual(len(page['rows']), 100)
+                self.assertEqual(page['transfer']['move_count'], 501)
+                self.assertEqual(page['transfer']['operation_count'], 2001)
+                ids.extend(row['id'] for row in page['rows'])
+                if page['next_after'] is False:
+                    break
+                after = page['next_after']
+            self.assertEqual(ids, sorted(expected.ids))
+            self.assertEqual(len(set(ids)), len(expected))
+        with self.assertRaises(UserError):
+            self.load()
+        with self.assertRaises(UserError):
+            self.env['stock.picking'].with_user(self.user).qorlia_transfer_load(self.order.id, self.picking.id)
+
+    def test_detail_bounds_and_foreign_section_cursors_reject(self):
+        model = self.env['sale.order'].with_user(self.user)
+        for transfer, section, after, version, limit in (
+                (True, 'moves', 0, False, 50), (0, 'moves', 0, False, 50),
+                (self.picking.id, [], 0, False, 50), (self.picking.id, 'products', 0, False, 50),
+                (self.picking.id, 'moves', True, False, 50), (self.picking.id, 'moves', -1, False, 50),
+                (self.picking.id, 'moves', self.move.id, False, 50), (self.picking.id, 'moves', 0, True, 50),
+                (self.picking.id, 'moves', 0, 'x'*64, 50), (self.picking.id, 'moves', 0, False, True),
+                (self.picking.id, 'moves', 0, False, 0), (self.picking.id, 'moves', 0, False, 101)):
+            with self.assertRaises(ValidationError):
+                model.qorlia_order_transfer_detail_page(self.order.id, transfer, section, after, version, limit)
+        other = self.many(1)
+        for section, cursor in (('moves', other.move_ids.id), ('operations', 2147483647)):
+            with self.assertRaises(ValidationError):
+                self.detail(section, cursor, self.page()['version'])
+        with self.assertRaises(UserError):
+            model.qorlia_order_transfer_detail_page(self.order.id, 2147483647, 'moves')
+        foreign = self.env['sale.order'].create({'partner_id': self.customer.id, 'shop_id': self.shop.id})
+        with self.assertRaises(UserError):
+            model.qorlia_order_transfer_detail_page(foreign.id, self.picking.id, 'moves')
+
+    def test_detail_snapshots_reject_off_page_cross_stream_and_related_changes(self):
+        move = self.move.copy({'picking_id': self.picking.id})
+        line = self.operation.copy({'picking_id': self.picking.id, 'move_id': move.id, 'qty_done': 0})
+        other = self.many(1)
+        for record, values in ((line, {'qty_done': 0.5}), (self.lot, {'expiration_date': '2029-01-01 00:00:00'}),
+                (self.product, {'name': 'QorliaQA Detail renamed medicine'}),
+                (self.customer, {'name': 'QorliaQA Detail renamed customer'}),
+                (other, {'origin': 'QorliaQA Changed other transfer'}),
+                (self.warehouse, {'name': 'QorliaQA Detail renamed warehouse'})):
+            before = self.detail(limit=1)
+            record.write(values)
+            self.env.flush_all()
+            self.env.invalidate_all()
+            with self.assertRaises(UserError):
+                self.detail('moves', before['next_after'], before['version'], 1)
+            with self.assertRaises(UserError):
+                self.detail('operations', version=before['version'])
+
+    def test_detail_hidden_off_page_records_deny_both_sections_before_partial_counts(self):
+        other = self.picking.copy()
+        line = self.operation.copy({'picking_id': other.id, 'move_id': other.move_ids.id})
+        for name, record in (('stock.picking', other), ('stock.move', other.move_ids),
+                ('stock.move.line', line), ('stock.lot', self.lot), ('product.product', self.product)):
+            rule = self.env['ir.rule'].create({'name': 'QorliaQA Hidden detail '+name,
+                'model_id': self.env['ir.model']._get_id(name), 'domain_force': "[('id', '!=', %d)]" % record.id})
+            for section in ('moves', 'operations'):
+                with self.assertRaises(AccessError):
+                    self.detail(section, limit=1)
+            rule.unlink()
+
+    def test_detail_operations_preserve_native_units_and_pending_batch_expiration(self):
+        dozen = self.env.ref('uom.product_uom_dozen')
+        self.operation.write({'product_uom_id': dozen.id, 'qty_done': 0.5, 'lot_id': False,
+            'lot_name': 'QorliaQA Detail pending batch', 'expiration_date': '2028-02-01 00:00:00'})
+        row = self.detail('operations')['rows'][0]
+        self.assertEqual((row['unit'], row['done']), ([dozen.id, dozen.display_name], 0.5))
+        self.assertEqual((row['lot'], row['lot_name'], row['expiry_date']),
+            (False, self.operation.lot_name, '2028-02-01 00:00:00'))
+
+    def test_empty_operation_page_does_not_invent_missing_operations_or_moves(self):
+        self.operation.unlink()
+        moves = self.detail()
+        operations = self.detail('operations', version=moves['version'])
+        self.assertEqual((operations['total_count'], operations['position'], operations['rows'], operations['next_after']), (0, 0, [], False))
+        self.assertEqual((operations['transfer']['move_count'], operations['transfer']['operation_count']), (1, 0))
+        self.assertEqual(len(moves['rows']), 1)
+
+    def test_detail_actor_public_and_inactive_company_contexts_are_bound(self):
+        version = self.detail()['version']
+        with self.assertRaises(UserError):
+            self.env['sale.order'].qorlia_order_transfer_detail_page(self.order.id, self.picking.id, 'moves', version=version)
+        with self.assertRaises(AccessError):
+            self.env['sale.order'].with_user(self.env.ref('base.public_user')).qorlia_order_transfer_detail_page(self.order.id, self.picking.id, 'moves')
+        other = self.env['res.company'].create({'name': 'QorliaQA Other detail company'})
+        with self.assertRaises(AccessError):
+            self.env['sale.order'].with_user(self.user).with_context(allowed_company_ids=[other.id]).qorlia_order_transfer_detail_page(self.order.id, self.picking.id, 'moves')
+
+    def test_detail_rejects_operation_whose_move_belongs_to_another_transfer(self):
+        other = self.many(1)
+        # Simulate corrupt migrated data without letting native inverse logic repair the fixture.
+        self.env.flush_all()
+        self.env.cr.execute('UPDATE stock_move_line SET move_id = %s WHERE id = %s', [other.move_ids.id, self.operation.id])
+        self.env.invalidate_all()
+        for section in ('moves', 'operations'):
+            with self.assertRaises(AccessError):
+                self.detail(section)
+
     def test_paged_headers_match_legacy_values_without_inventing_empty_detail_rows(self):
         legacy = self.load()['rows'][0]
         page = self.page()

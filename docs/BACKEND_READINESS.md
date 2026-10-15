@@ -1,5 +1,28 @@
 # Qorlia React frontend backend readiness
 
+## Complete transfer detail read candidate (16 October 2026)
+
+Source 51 adds bounded move/operation pages linked to the summary's order-wide
+snapshot. Native permissions are checked across the complete linked graph before
+counts; operation units/batches/references are preserved. The actual TypeScript
+client/native HTTP reads every one of 501 moves and 2,001 operations, with exact
+native value comparison, empty/end/foreign cursors, stale/cross-section snapshots,
+session handling, retained signed-action caps and old saved-status compatibility.
+Independent SQL verifies 20 stock/finance/bank tables are unchanged. This is a
+source candidate on installed-50 private data, not an installed-51 upgrade.
+
+Current-source native shared-stock regression passes 222 cases (25 read/detail
+plus 197 action cases), with zero failures/errors/skips, mandatory analytics and
+18-table preservation on installed-49 data. The focused 25 cases overlap this
+run; neither is an installed-51/full-addon run. Home-726/76 suites pass, with
+type/lint/format and three gateway unit tests.
+The corrected HTTP run exits 0; the first run's duplicate-logout cleanup failure
+is retained rather than ignored. React migration, complete larger signed writes,
+actual gateway/browser checks, wider configurations and realistic scale remain.
+Review stays closed (410), no frontend build/public deployment, and original
+tester/validation/return data are not upgraded. See [the contract and exact
+acceptance boundary](../runtime/billing/STOCK_TRANSFER_DETAILS.md).
+
 ## Paging TypeScript/native HTTP and copied upgrade (16 October 2026)
 
 A separate synthetic copy is installed at source 50, with rotated signing identity

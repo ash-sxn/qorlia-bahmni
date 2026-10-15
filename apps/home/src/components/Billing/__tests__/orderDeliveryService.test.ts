@@ -234,6 +234,16 @@ describe('Native order transfer pages', () => {
     await expect(getOrderDeliveryPage(9, 11, good.version, 1)).rejects.toThrow(
       'Invalid native transfer page',
     );
+    reply({
+      ...good,
+      after: 11,
+      position: 12,
+      total_count: 13,
+      rows: [{ ...good.rows[0], id: 12 }],
+    });
+    await expect(getOrderDeliveryPage(9, 11, good.version, 1)).rejects.toThrow(
+      'Invalid native transfer page',
+    );
     reply({ ...good, rows: [], total_count: 0 });
     expect((await getOrderDeliveryPage(9)).rows).toEqual([]);
   });

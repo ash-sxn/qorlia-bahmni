@@ -1,5 +1,11 @@
 # Bahmni workflow parity ledger
 
+## 16 October complete transfer detail read candidate
+
+- Candidate 51 adds bounded move/operation pages sharing the order summary's snapshot, with complete linked access/company checks and unchanged native units, batches, references and full-graph projections. Actual TypeScript/native HTTP traverses 501 moves and 2,001 operations with exact native value comparison and 20-table preservation. It uses installed-50 synthetic data, not an installed-51 upgrade. See [the contract](../runtime/billing/STOCK_TRANSFER_DETAILS.md).
+- Current-source native shared-stock regression passes 222 cases (25 read/detail plus 197 actions), with zero failures/errors/skips, mandatory analytics and 18-table preservation on installed-49 data. Focused native-25 overlaps that run, not another 25 independent cases. Home-726/76 suites, source/test and library types, scoped lint/format and three gateway unit tests pass. Neither native run is installed-51/full-addon acceptance. The HTTP harness's first duplicate-logout cleanup failure is documented; corrected run exits 0.
+- Large signed-action graphs remain capped until complete review/write support is implemented; paged rows are not a substitute for full review. No React migration, new UI, actual gateway/browser acceptance, representative scale acceptance, public deployment or frontend build. Review gate remains 410.
+
 ## 16 October paging native HTTP/client and copied upgrade
 
 - A separate non-public copy is installed at 50 with rotated signing identity. Actual TypeScript/native HTTP traverses all 101 transfers, matches native headers, handles empty/end/foreign cursors, rejects stale snapshots after off-page signed confirmation/operation saves, and preserves 501/2,001 detail caps. Parent-label changes and hidden off-page record rules are exercised; the generic access-error redaction remains unchanged. See [the precise checkpoint](../runtime/billing/STOCK_TRANSFER_PAGING.md#native-http-client-and-copied-upgrade-checkpoint-16-october-2026).
