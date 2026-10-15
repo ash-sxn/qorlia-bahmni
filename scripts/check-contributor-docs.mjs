@@ -9,6 +9,7 @@ const files = [
   "README.md",
   "CONTRIBUTING.md",
   "docs/README.md",
+  "docs/team-handover.md",
   "docs/developer-start-here.md",
   "docs/reading-and-changing-code.md",
   "docs/setup-guide.md",

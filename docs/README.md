@@ -4,6 +4,7 @@
 
 ## Learn and contribute
 
+- [New-team handover and proposed first checkpoints](team-handover.md)
 - [Beginner orientation](developer-start-here.md)
 - [Reading and changing code, with beginner explanations](reading-and-changing-code.md)
 - [Local setup and troubleshooting](setup-guide.md)

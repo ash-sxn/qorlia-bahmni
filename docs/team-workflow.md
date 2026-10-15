@@ -4,6 +4,8 @@
 
 This is the working contribution process, not approval for new spending, infrastructure access or a production launch. Product scope, priorities, access and release decisions remain with the project owner.
 
+For a shareable introduction, resources checklist and first checkpoints for Aniket, Gautam and future contributors, start with the [new-team handover](team-handover.md).
+
 ## Phases and boundaries
 
 | Phase                    | Deliverable                                                       | Exit evidence                                                      |

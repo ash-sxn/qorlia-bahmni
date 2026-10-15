@@ -27,6 +27,24 @@ Separate OpenELIS/PACS/analytics/outreach need their own integration.
 
 This is a responsibility diagram, not an exact deployment topology. Clinical and ERP databases remain separate. Synchronization needs explicit implementation and acceptance; a shared navbar does not establish it.
 
+## Choose the correct change boundary
+
+Before implementation, identify the layer responsible for the behaviour. A browser is a client of the native system, not an alternative authority for hospital records.
+
+| Concern                                                       | Responsible layer                                        | Example and change rule                                                                                  |
+| ------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Screen layout, focus, loading/error state                     | App component plus shared design controls                | Change the page and adjacent tests; use existing tokens, not a second UI kit                             |
+| Label, concept, programme field, location or available action | Translation/installation configuration and its consumers | Check the installed rule before loosening a generic input for every programme                            |
+| Request/response mapping                                      | Existing app or shared service                           | Preserve native identifiers, units, dates and error semantics; inspect all callers                       |
+| Clinical record and privileges                                | Native OpenMRS/Bahmni service                            | This repo does not contain its complete backend; a required server change is a separate coordinated task |
+| Inventory/accounting action                                   | Native Odoo models and the scoped Qorlia addon           | Use native methods, ACLs, company rules and transactions; do not simulate posting in React               |
+| Gateway access and session isolation                          | Development proxy or protected review gateway            | Named endpoints and separate sessions, never a generic arbitrary-model proxy                             |
+| Cross-system synchronization                                  | Explicit integration with both native systems            | Define mapping, retries, duplicate prevention and failure reconciliation before enabling it              |
+
+A displayed patient identifier, an OpenMRS UUID and a numeric ERP customer ID are not interchangeable. A test order in one service does not prove that the other service received it. Document the integration's actual source of truth and matching rules.
+
+For a change, write one short sequence: user action, page handler, service function, gateway/native endpoint, authorized native method, saved records, response and reload. For a write also describe rejection, unknown outcome and recovery. Use the [task brief](task-brief-template.md) to keep that sequence reviewable before coding. The [first contribution exercise](first-contribution.md) demonstrates a real read; the Billing example below demonstrates a more demanding write contract.
+
 ## Application shell
 
 [distro/src/main.tsx](../distro/src/main.tsx) loads validated branding, initializes shared assets and mounts React. [Root app](../distro/src/app/app.tsx) provides top-level routes, shared application context, lazy module loading and a loading boundary.

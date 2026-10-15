@@ -6,6 +6,8 @@ This public repository contains the React hospital application, shared UI/servic
 
 ## New to the project? Start here
 
+Joining with Aniket, Gautam or another team? Begin with the [new-team handover](docs/team-handover.md): current versions, resources, first checkpoints, proposed work split and the path from a requirement to a reviewed feature. It includes a short message Ashutosh can share with the team.
+
 Read these in order. Each guide links back here and to the next step.
 
 | Step | Guide                                                | What you will learn                                                          |
