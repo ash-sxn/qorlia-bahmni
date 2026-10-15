@@ -4,6 +4,7 @@ import {
   StockValidationRequest,
   StockValidationStep,
   StockValidationStatus,
+  StockValidationDecision,
 } from '../billingService';
 import { stockLoad } from './stockReservationFixture';
 
@@ -66,6 +67,26 @@ export const terminalValidationReview = (): StockValidationReview => ({
     private_effect_counts: {
       'stock.valuation.layer': { created: 1, updated: 0, deleted: 0 },
     },
+  },
+});
+export const validationWizardReview = (
+  next_step: StockValidationStep,
+  decisions: StockValidationDecision[] = [],
+): StockValidationReview => ({
+  ...terminalValidationReview(),
+  next_step,
+  decisions,
+  terminal: false,
+  state_after: 'assigned',
+  write_ready: false,
+  review_version: false,
+  effects: {
+    created: {},
+    updated: {},
+    deleted: {},
+    labels: {},
+    schema: {},
+    private_effect_counts: {},
   },
 });
 export const validationStatus = (): StockValidationStatus => ({

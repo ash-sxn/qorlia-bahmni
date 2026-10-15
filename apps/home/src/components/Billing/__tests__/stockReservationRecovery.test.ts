@@ -10,12 +10,17 @@ import {
   clearStockConfirmationRecovery,
   loadStockConfirmationRecovery,
   persistStockConfirmationRecovery,
+  loadStockValidationRecovery,
+  persistStockValidationRecovery,
+  clearStockValidationRecovery,
 } from '../stockReservationRecovery';
 import { confirmationRequest } from './stockConfirmationFixture';
 import { operationRequest } from './stockOperationFixture';
 import { stockRequest } from './stockReservationFixture';
+import { validationRequest } from './stockValidationFixture';
 
 const request = (): StockReservationRequest => stockRequest();
+const billingDatabase = process.env.BAHMNI_BILLING_DATABASE ?? 'odoo';
 
 function database() {
   const records = new Map<number, unknown>();
@@ -103,6 +108,126 @@ function database() {
 }
 
 describe('Stock reservation IndexedDB recovery', () => {
+  it('keeps validation choices durable in schema 3 and excludes every other stock writer', async () => {
+    const fake = database();
+    const exact = {
+      ...validationRequest(),
+      decisions: [
+        { kind: 'immediate' as const, selected: true },
+        { kind: 'expiry' as const, proceed: false },
+      ],
+    };
+    await persistStockValidationRecovery(3, exact);
+    expect(fake.records.get(3)).toEqual({
+      schema: 3,
+      kind: 'validation',
+      database: billingDatabase,
+      uid: 3,
+      request: exact,
+    });
+    expect(await loadStockValidationRecovery(3)).toEqual(exact);
+    for (const load of [
+      loadStockReservationRecovery,
+      loadStockOperationRecovery,
+      loadStockConfirmationRecovery,
+    ])
+      await expect(load(3)).rejects.toThrow(/request is pending/);
+    await expect(
+      persistStockConfirmationRecovery(3, confirmationRequest()),
+    ).rejects.toThrow(/Another stock request/);
+    await expect(
+      persistStockOperationRecovery(3, operationRequest()),
+    ).rejects.toThrow(/Another stock request/);
+    await expect(persistStockReservationRecovery(3, request())).rejects.toThrow(
+      /Another stock request/,
+    );
+    expect(
+      await clearStockConfirmationRecovery(3, confirmationRequest()),
+    ).toEqual(exact);
+    expect(
+      await clearStockValidationRecovery(3, { ...exact, decisions: [] }),
+    ).toEqual(exact);
+    await persistStockValidationRecovery(4, exact);
+    await clearStockValidationRecovery(3, exact);
+    expect(await loadStockWriteRecovery(3)).toBeNull();
+    expect(await loadStockValidationRecovery(4)).toEqual(exact);
+  });
+  it('does not reinterpret validation as an old request or overwrite malformed/foreign recovery', async () => {
+    const fake = database();
+    for (const value of [
+      {
+        schema: 3,
+        uid: 3,
+        kind: 'validation',
+        database: `${billingDatabase}_other`,
+        request: validationRequest(),
+      },
+      { schema: 1, uid: 3, request: validationRequest() },
+      { schema: 2, uid: 3, kind: 'confirmation', request: validationRequest() },
+      {
+        schema: 3,
+        database: billingDatabase,
+        uid: 3,
+        kind: 'confirmation',
+        request: validationRequest(),
+      },
+      {
+        schema: 3,
+        database: billingDatabase,
+        uid: 4,
+        kind: 'validation',
+        request: validationRequest(),
+      },
+      {
+        schema: 3,
+        database: billingDatabase,
+        uid: 3,
+        kind: 'validation',
+        request: confirmationRequest(),
+      },
+      {
+        schema: 3,
+        uid: 3,
+        kind: 'validation',
+        database: billingDatabase,
+        request: {
+          ...validationRequest(),
+          decisions: [{ kind: 'sms', selected: true }],
+        },
+      },
+    ]) {
+      fake.records.set(3, value);
+      await expect(loadStockWriteRecovery(3)).rejects.toThrow();
+      await expect(
+        persistStockValidationRecovery(3, validationRequest()),
+      ).rejects.toThrow();
+      expect(fake.records.get(3)).toEqual(value);
+    }
+  });
+  it('preserves all legacy kinds when validation attempts to load, save or clear', async () => {
+    const fake = database();
+    for (const [kind, exact] of [
+      ['reservation', request()],
+      ['operation', operationRequest()],
+      ['confirmation', confirmationRequest()],
+    ] as const) {
+      fake.records.set(
+        3,
+        kind === 'confirmation'
+          ? { schema: 2, kind, uid: 3, request: exact }
+          : { schema: 1, uid: 3, request: exact },
+      );
+      await expect(loadStockValidationRecovery(3)).rejects.toThrow(
+        /Another stock request/,
+      );
+      await expect(
+        persistStockValidationRecovery(3, validationRequest()),
+      ).rejects.toThrow(/Another stock request/);
+      expect(
+        await clearStockValidationRecovery(3, validationRequest()),
+      ).toEqual(exact);
+    }
+  });
   it('stores explicitly typed confirmations in the existing durable per-account slot', async () => {
     const fake = database();
     await persistStockConfirmationRecovery(3, confirmationRequest());

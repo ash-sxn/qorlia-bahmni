@@ -5,29 +5,39 @@ import {
   StockOperationRequest,
   checkedStockConfirmationRequest,
   StockConfirmationRequest,
+  checkedStockValidationRequest,
+  StockValidationRequest,
 } from './billingService';
 
 export type StockWriteRequest =
   | StockReservationRequest
   | StockOperationRequest
-  | StockConfirmationRequest;
+  | StockConfirmationRequest
+  | StockValidationRequest;
+export const isStockValidationRequest = (
+  request: StockWriteRequest,
+): request is StockValidationRequest => Object.hasOwn(request, 'decisions');
 export const isStockConfirmationRequest = (
   request: StockWriteRequest,
-): request is StockConfirmationRequest => !Object.hasOwn(request, 'action');
+): request is StockConfirmationRequest =>
+  !Object.hasOwn(request, 'action') && !isStockValidationRequest(request);
 export const isStockOperationRequest = (
   request: StockWriteRequest,
 ): request is StockOperationRequest =>
   'action' in request &&
   (request.action === 'save' || request.action === 'delete');
 const checkedWriteRequest = (value: StockWriteRequest) =>
-  value && isStockConfirmationRequest(value)
-    ? checkedStockConfirmationRequest(value)
-    : value && isStockOperationRequest(value)
-      ? checkedStockOperationRequest(value)
-      : checkedStockReservationRequest(value as StockReservationRequest);
+  value && isStockValidationRequest(value)
+    ? checkedStockValidationRequest(value)
+    : value && isStockConfirmationRequest(value)
+      ? checkedStockConfirmationRequest(value)
+      : value && isStockOperationRequest(value)
+        ? checkedStockOperationRequest(value)
+        : checkedStockReservationRequest(value as StockReservationRequest);
 
 const DATABASE = 'qorlia.billing.stock-reservation-recovery';
 const STORE = 'pending';
+const BILLING_DATABASE = process.env.BAHMNI_BILLING_DATABASE ?? 'odoo';
 async function recovery(
   uid: number,
   operation: 'read' | 'save' | 'clear',
@@ -88,20 +98,37 @@ async function recovery(
           const value = get.result;
           if (value !== undefined) {
             if (
+              value?.schema === 3 &&
+              value.kind === 'validation' &&
+              value.database !== BILLING_DATABASE
+            )
+              throw new Error(
+                'This validation request belongs to another Billing database. Return to its original environment before starting another stock action.',
+              );
+            if (
+              !value ||
               typeof value !== 'object' ||
               Array.isArray(value) ||
               value.uid !== uid ||
-              (value.schema === 2
-                ? value.kind !== 'confirmation' ||
+              (value.schema === 3
+                ? value.kind !== 'validation' ||
+                  value.database !== BILLING_DATABASE ||
                   Object.keys(value).sort().join(',') !==
-                    'kind,request,schema,uid' ||
+                    'database,kind,request,schema,uid' ||
                   !value.request ||
-                  !isStockConfirmationRequest(value.request)
-                : value.schema !== 1 ||
-                  Object.keys(value).sort().join(',') !==
-                    'request,schema,uid' ||
-                  !value.request ||
-                  isStockConfirmationRequest(value.request))
+                  !isStockValidationRequest(value.request)
+                : value.schema === 2
+                  ? value.kind !== 'confirmation' ||
+                    Object.keys(value).sort().join(',') !==
+                      'kind,request,schema,uid' ||
+                    !value.request ||
+                    !isStockConfirmationRequest(value.request)
+                  : value.schema !== 1 ||
+                    Object.keys(value).sort().join(',') !==
+                      'request,schema,uid' ||
+                    !value.request ||
+                    isStockConfirmationRequest(value.request) ||
+                    isStockValidationRequest(value.request))
             )
               throw new Error(
                 'Stored reservation recovery is invalid. Ask your Billing administrator to check the previous request.',
@@ -118,9 +145,17 @@ async function recovery(
             }
             if (operation === 'save') {
               store.put(
-                exact && isStockConfirmationRequest(exact)
-                  ? { schema: 2, kind: 'confirmation', uid, request: exact }
-                  : { schema: 1, uid, request: exact },
+                exact && isStockValidationRequest(exact)
+                  ? {
+                      schema: 3,
+                      kind: 'validation',
+                      database: BILLING_DATABASE,
+                      uid,
+                      request: exact,
+                    }
+                  : exact && isStockConfirmationRequest(exact)
+                    ? { schema: 2, kind: 'confirmation', uid, request: exact }
+                    : { schema: 1, uid, request: exact },
                 uid,
               );
               result = exact;
@@ -145,6 +180,10 @@ async function recovery(
 export const loadStockWriteRecovery = (uid: number) => recovery(uid, 'read');
 export async function loadStockReservationRecovery(uid: number) {
   const pending = await loadStockWriteRecovery(uid);
+  if (pending && isStockValidationRequest(pending))
+    throw new Error(
+      'A validation request is pending. Resume it from stock transfers before another reservation.',
+    );
   if (pending && isStockConfirmationRequest(pending))
     throw new Error(
       'A confirmation request is pending. Resume it from stock transfers before another reservation.',
@@ -157,6 +196,10 @@ export async function loadStockReservationRecovery(uid: number) {
 }
 export async function loadStockOperationRecovery(uid: number) {
   const pending = await loadStockWriteRecovery(uid);
+  if (pending && isStockValidationRequest(pending))
+    throw new Error(
+      'A validation request is pending. Resume it from stock transfers before editing operations.',
+    );
   if (pending && isStockConfirmationRequest(pending))
     throw new Error(
       'A confirmation request is pending. Resume it from stock transfers before editing operations.',
@@ -198,4 +241,20 @@ export const persistStockConfirmationRecovery = (
 export const clearStockConfirmationRecovery = (
   uid: number,
   request: StockConfirmationRequest,
+) => recovery(uid, 'clear', request);
+export async function loadStockValidationRecovery(uid: number) {
+  const pending = await loadStockWriteRecovery(uid);
+  if (pending && !isStockValidationRequest(pending))
+    throw new Error(
+      'Another stock request is pending. Resume it from stock transfers before validating a transfer.',
+    );
+  return pending;
+}
+export const persistStockValidationRecovery = (
+  uid: number,
+  request: StockValidationRequest,
+) => recovery(uid, 'save', request);
+export const clearStockValidationRecovery = (
+  uid: number,
+  request: StockValidationRequest,
 ) => recovery(uid, 'clear', request);

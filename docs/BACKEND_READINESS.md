@@ -1,5 +1,27 @@
 # Qorlia React frontend backend readiness
 
+## React validation controls source checkpoint (15 October 2026)
+
+The redesigned transfer screen now opens native validation choices and signed
+effect review, with exact save/status controls and durable schema 3 recovery.
+Receipt rows/locations retain native read-only behavior. Immediate/backorder
+defaults come from the native descriptor; expiry decline can accept preparation
+without completing delivery. Notification setup remains explicitly blocked.
+
+The existing per-account stock slot preserves legacy request kinds and blocks
+overwrites. New validation envelopes also bind the configured Billing database;
+legacy records are not silently assigned new provenance. Mocked component/storage
+checks cover unknown results, exact retry/status, expiry, definitive rejection,
+identity changes, durable storage timing, unmount and focus return. Automated
+accessibility also exposed and corrected the shared Modal wrapper semantics.
+
+Home passes 663 tests/73 suites; the design system passes 445 tests/40 suites and
+14 snapshots. Library/touched-test types, lint/format, nine gateway/configuration
+checks and build `909dd84767977248` pass. Actual browser saves/reload/IndexedDB,
+visual/narrow-layout acceptance and protected publication remain pending. Native
+adapter 47 is unchanged and was not retested as though this were a backend change.
+Its prior HTTP evidence remains scoped below. Hosted tester stays adapter 43.
+
 ## Adapter 47 service and real isolated gateway HTTP (15 October 2026)
 
 The actual TypeScript validation boundary and four named gateway APIs now have

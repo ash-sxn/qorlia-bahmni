@@ -12,6 +12,7 @@ import { loadStockWriteRecovery } from '../stockReservationRecovery';
 import { orderDeliveryFixture } from './orderDeliveryFixture';
 import { confirmationRequest } from './stockConfirmationFixture';
 import { operationRequest, operationSelection } from './stockOperationFixture';
+import { validationRequest } from './stockValidationFixture';
 
 jest.mock('../stockReservationRecovery', () => ({
   ...jest.requireActual('../stockReservationRecovery'),
@@ -19,6 +20,13 @@ jest.mock('../stockReservationRecovery', () => ({
 }));
 const mockEditor = jest.fn();
 const mockConfirmation = jest.fn();
+const mockValidation = jest.fn();
+jest.mock('../StockValidationModal', () => ({
+  StockValidationModal: (props: { close: () => void }) => {
+    mockValidation(props);
+    return <button onClick={props.close}>Return from validation</button>;
+  },
+}));
 jest.mock('../StockConfirmationModal', () => ({
   StockConfirmationModal: (props: { close: () => void }) => {
     mockConfirmation(props);
@@ -60,6 +68,58 @@ const show = () =>
     </QueryClientProvider>,
   );
 describe('Order stock transfer review', () => {
+  it('opens native validation from details with focus return and refresh, not a raw Validate action', async () => {
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View transfer QORLIAQA/OUT/11',
+      }),
+    );
+    const opener = screen.getByRole('button', {
+      name: 'Review transfer validation',
+    });
+    await waitFor(() => expect(opener).toBeEnabled());
+    fireEvent.click(opener);
+    const props = mockValidation.mock.calls.at(-1)?.[0];
+    expect(props).toMatchObject({ uid: 3, orderId: 9, transferId: 11 });
+    props.returnFocus();
+    expect(opener).toHaveFocus();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Return from validation' }),
+    );
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+  });
+  it('resumes validation for its original order and completed/disappeared transfer, blocking other writes', async () => {
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue({
+      ...validationRequest(),
+      order_id: 10,
+      transfer_id: 12,
+    });
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Resume validation request' }),
+    );
+    expect(mockValidation.mock.calls.at(-1)?.[0]).toMatchObject({
+      uid: 3,
+      orderId: 10,
+      transferId: 12,
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Return from validation' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View transfer QORLIAQA/OUT/11',
+      }),
+    );
+    for (const name of [
+      'Review transfer validation',
+      'Review transfer confirmation',
+      'Review stock preparation',
+      'Add operation for QA Medicine',
+    ])
+      expect(screen.getByRole('button', { name })).toBeDisabled();
+  });
   it('opens the native confirmation review from transfer details and reloads on close', async () => {
     show();
     fireEvent.click(

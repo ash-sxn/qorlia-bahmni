@@ -69,8 +69,11 @@ response are recovered through their exact receipts under the final source. Nati
 96-case mandatory-analytics and 674-case legacy-copy suites pass, as do 643 Home
 tests and nine gateway/configuration checks. A translated snapshot relation-name
 wire defect was corrected at its native projector, not hidden by the parser.
-React validation wizard controls, shared browser recovery and browser acceptance
-are still unfinished. This is not a public release or complete stock fulfillment.
+React validation wizard/recovery controls now have component-tested source:
+663 Home tests and 445 design-system tests pass, including keyboard decisions,
+durable request timing, cross-kind/database protection and shared modal accessibility.
+Actual browser save/reload, visual review and publication remain unfinished.
+This is not a public release or complete stock fulfillment.
 Read [the dated validation contract](STOCK_VALIDATION.md) for precise versions and gates.
 
 Earlier preview-only checkpoint, superseded above: [native delivery validation and its wizard sequence](STOCK_VALIDATION.md).

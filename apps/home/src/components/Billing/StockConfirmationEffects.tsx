@@ -2,6 +2,7 @@ import styles from './BillingPage.module.scss';
 import type {
   ConfirmationValue,
   StockConfirmationEffects as Effects,
+  StockValidationEffects,
 } from './billingService';
 
 const models: Record<string, string> = {
@@ -23,6 +24,17 @@ const models: Record<string, string> = {
   'mail.notification': 'Notification',
   'mail.tracking.value': 'Tracked audit change',
   'ir.attachment': 'Attachment',
+  'product.template': 'Product template',
+  'ir.property': 'Company property',
+  'account.move': 'Journal entry',
+  'account.move.line': 'Journal item',
+  'account.payment': 'Payment',
+  'account.partial.reconcile': 'Partial allocation',
+  'stock.valuation.layer': 'Stock valuation',
+  'sale.order': 'Sales order',
+  'sale.order.line': 'Order item',
+  'account.full.reconcile': 'Full reconciliation',
+  'account.analytic.line': 'Analytic item',
 };
 export const confirmationModelLabel = (model: string) => models[model] ?? model;
 function generatedLabel(key: string) {
@@ -31,7 +43,7 @@ function generatedLabel(key: string) {
 }
 function display(
   value: ConfirmationValue | undefined,
-  effects: Effects,
+  effects: Pick<Effects, 'labels'>,
   relation?: string | false,
   type?: string,
 ): string {
@@ -57,13 +69,22 @@ function display(
   return value === '' ? 'Empty text' : String(value);
 }
 
-export function StockConfirmationEffects({ effects }: { effects: Effects }) {
+export function StockConfirmationEffects({
+  effects,
+}: {
+  effects: Effects | StockValidationEffects;
+}) {
+  const validation = 'private_effect_counts' in effects;
+  const privateCounts = validation
+    ? effects.private_effect_counts
+    : effects.private_audit_counts;
+  const action = validation ? 'validation' : 'confirmation';
   return (
     <section
       className={styles.review}
-      aria-label="Reviewed confirmation effects"
+      aria-label={`Reviewed ${action} effects`}
     >
-      <h3>Native confirmation effects</h3>
+      <h3>Native {action} effects</h3>
       <p>
         Review created, changed and removed records. Quantities and prices
         retain their native units and currency fields. Audit markup is shown as
@@ -86,7 +107,7 @@ export function StockConfirmationEffects({ effects }: { effects: Effects }) {
             title: `Change: ${confirmationModelLabel(model)} #${row.id}`,
             before: row.before,
             after: row.after,
-            assigned: [] as string[],
+            assigned: row.assigned_on_save ?? [],
           })),
           ...deleted.map((row) => ({
             key: `deleted-${row.id}`,
@@ -115,6 +136,15 @@ export function StockConfirmationEffects({ effects }: { effects: Effects }) {
                 (field) =>
                   !row.before ||
                   !row.after ||
+                  [
+                    'product_id',
+                    'product_uom',
+                    'product_uom_id',
+                    'uom_id',
+                    'currency_id',
+                    'company_currency_id',
+                    'company_id',
+                  ].includes(field) ||
                   JSON.stringify(row.before[field]) !==
                     JSON.stringify(row.after[field]),
               );
@@ -181,27 +211,31 @@ export function StockConfirmationEffects({ effects }: { effects: Effects }) {
           </section>
         );
       })}
-      {Object.keys(effects.private_audit_counts).length ? (
-        <section aria-label="Private native audit changes">
-          <h4>Additional native audit changes</h4>
+      {Object.keys(privateCounts).length ? (
+        <section
+          aria-label={
+            validation
+              ? 'Private native record changes'
+              : 'Private native audit changes'
+          }
+        >
+          <h4>Additional native {validation ? 'record' : 'audit'} changes</h4>
           <p>
             Only counts are available under this account. Private content
             remains protected and is bound to this review.
           </p>
           <ul>
-            {Object.entries(effects.private_audit_counts).map(
-              ([model, counts]) => (
-                <li key={model}>
-                  {confirmationModelLabel(model)}: {counts.created} created,{' '}
-                  {counts.updated} changed, {counts.deleted} removed
-                </li>
-              ),
-            )}
+            {Object.entries(privateCounts).map(([model, counts]) => (
+              <li key={model}>
+                {confirmationModelLabel(model)}: {counts.created} created,{' '}
+                {counts.updated} changed, {counts.deleted} removed
+              </li>
+            ))}
           </ul>
         </section>
       ) : null}
       {!Object.keys(effects.schema).length &&
-      !Object.keys(effects.private_audit_counts).length ? (
+      !Object.keys(privateCounts).length ? (
         <p>No native record effects were returned.</p>
       ) : null}
     </section>
