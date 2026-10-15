@@ -4187,6 +4187,7 @@ function checkedConfirmationLoad(
 function validConfirmationEffects(
   data: StockConfirmationEffects,
   validation = false,
+  returnCreation = false,
 ): boolean {
   const allowedModels = validation ? validationModels : confirmationModels;
   if (
@@ -4263,7 +4264,10 @@ function validConfirmationEffects(
             Object.hasOwn(row.values, field) &&
             row.values[field] === false &&
             (!validation ||
-              (validationCreatedAssignments[model] || []).includes(field)),
+              (validationCreatedAssignments[model] || []).includes(field) ||
+              (returnCreation &&
+                model === 'stock.picking' &&
+                field === 'scheduled_date')),
         )
       )
         return false;
@@ -4594,7 +4598,10 @@ export function checkedStockValidationRequest(
     request_key: value.request_key,
   };
 }
-function validValidationEffects(data: StockValidationEffects): boolean {
+function validValidationEffects(
+  data: StockValidationEffects,
+  returnCreation = false,
+): boolean {
   return (
     confirmationKeys(data, [
       'created',
@@ -4614,6 +4621,7 @@ function validValidationEffects(data: StockValidationEffects): boolean {
         private_audit_counts: data.private_effect_counts,
       },
       true,
+      returnCreation,
     )
   );
 }
@@ -4633,7 +4641,6 @@ export interface StockReturnForm {
 }
 export interface StockReturnLoad extends StockConfirmationLoad {
   form: StockReturnForm | false;
-  write_ready: false;
 }
 export interface StockReturnSelection extends StockConfirmationSelection {
   location_id: number;
@@ -4643,7 +4650,18 @@ export interface StockReturnReview extends StockReturnSelection {
   form: StockReturnForm;
   return_state: Exclude<OrderTransfer['state'], 'done' | 'cancel'>;
   effects: StockValidationEffects;
-  write_ready: false;
+  write_ready: true;
+  review_version: string;
+}
+export interface StockReturnRequest extends StockReturnSelection {
+  review_version: string;
+  request_key: string;
+}
+export interface StockReturnStatus
+  extends Omit<StockConfirmationStatus, 'current' | 'state_after'> {
+  current: StockReturnLoad;
+  state_after: StockReturnReview['return_state'] | false;
+  return_transfer: StockConfirmationStatus['references'][string] | false;
 }
 function validReturnForm(data: StockReturnForm): boolean {
   return (
@@ -4714,13 +4732,11 @@ function checkedReturnSelection(
     lines: value.lines.map((row) => ({ ...row })),
   };
 }
-export async function getStockReturn(orderId: number, transferId: number) {
-  if (!stockId(orderId) || !stockId(transferId))
-    throw new Error('Select a saved stock transfer.');
-  const data = await stockCall<StockReturnLoad>('qorlia_return_load', {
-    order_id: orderId,
-    transfer_id: transferId,
-  });
+function checkedReturnLoad(
+  data: StockReturnLoad,
+  orderId: number,
+  transferId: number,
+) {
   if (
     !confirmationKeys(data, [
       'order_id',
@@ -4735,7 +4751,7 @@ export async function getStockReturn(orderId: number, transferId: number) {
     data.transfer_id !== transferId ||
     !stockVersion(data.version) ||
     !validStockGraph(data.graph, transferId) ||
-    data.write_ready !== false ||
+    data.write_ready !== (data.form !== false) ||
     !(data.form === false
       ? typeof data.reason === 'string' && data.reason.length > 0
       : data.reason === false &&
@@ -4752,6 +4768,18 @@ export async function getStockReturn(orderId: number, transferId: number) {
   )
     throw new Error('Invalid native return form. Reload the transfer.');
   return data;
+}
+export async function getStockReturn(orderId: number, transferId: number) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  return checkedReturnLoad(
+    await stockCall<StockReturnLoad>('qorlia_return_load', {
+      order_id: orderId,
+      transfer_id: transferId,
+    }),
+    orderId,
+    transferId,
+  );
 }
 export async function getStockReturnLocations(
   selection: StockConfirmationSelection,
@@ -4813,6 +4841,7 @@ export async function previewStockReturn(selection: StockReturnSelection) {
       'return_state',
       'effects',
       'write_ready',
+      'review_version',
     ]) ||
     data.order_id !== exact.order_id ||
     data.transfer_id !== exact.transfer_id ||
@@ -4831,14 +4860,105 @@ export async function previewStockReturn(selection: StockReturnSelection) {
     !['draft', 'waiting', 'confirmed', 'assigned'].includes(
       data.return_state,
     ) ||
-    !validValidationEffects(data.effects) ||
-    data.write_ready !== false
+    !validValidationEffects(data.effects, true) ||
+    data.write_ready !== true ||
+    !stockVersion(data.review_version)
   )
     throw new Error(
       'Invalid native return review. Reload and review it again.',
     );
   return data;
 }
+export function checkedStockReturnRequest(
+  value: StockReturnRequest,
+): StockReturnRequest {
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'location_id',
+      'lines',
+      'review_version',
+      'request_key',
+    ])
+  )
+    throw new Error('Use the exact reviewed return creation request.');
+  const common = checkedStockConfirmationRequest({
+    order_id: value.order_id,
+    transfer_id: value.transfer_id,
+    version: value.version,
+    review_version: value.review_version,
+    request_key: value.request_key,
+  });
+  return {
+    ...checkedReturnSelection({
+      order_id: common.order_id,
+      transfer_id: common.transfer_id,
+      version: common.version,
+      location_id: value.location_id,
+      lines: value.lines,
+    }),
+    review_version: common.review_version,
+    request_key: common.request_key,
+  };
+}
+async function returnRequest(method: string, value: StockReturnRequest) {
+  const exact = checkedStockReturnRequest(value);
+  const data = await stockCall<StockReturnStatus>(method, { payload: exact });
+  const reference = (row: StockConfirmationStatus['references'][string]) =>
+    confirmationKeys(row, ['model', 'id', 'name', 'available']) &&
+    typeof row.model === 'string' &&
+    validationModels.includes(row.model) &&
+    !validationPrivateModels.includes(row.model) &&
+    typeof row.available === 'boolean' &&
+    (row.available
+      ? stockId(row.id) && typeof row.name === 'string'
+      : row.id === false && row.name === false);
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'request_key',
+      'state_after',
+      'return_transfer',
+      'references',
+      'current',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    !confirmationObject(data.references) ||
+    !Object.entries(data.references).every(
+      ([key, row]) => reference(row) && confirmationKey(key, row.model),
+    ) ||
+    !(data.accepted
+      ? ['draft', 'waiting', 'confirmed', 'assigned'].includes(
+          String(data.state_after),
+        ) &&
+        data.return_transfer !== false &&
+        reference(data.return_transfer) &&
+        data.return_transfer.model === 'stock.picking' &&
+        Object.values(data.references).some(
+          (row) =>
+            row.model === 'stock.picking' &&
+            row.id === (data.return_transfer && data.return_transfer.id) &&
+            row.name === (data.return_transfer && data.return_transfer.name) &&
+            row.available ===
+              (data.return_transfer && data.return_transfer.available),
+        )
+      : data.state_after === false &&
+        data.return_transfer === false &&
+        Object.keys(data.references).length === 0)
+  )
+    throw new Error(
+      'Invalid return creation receipt. Check the exact request before retrying.',
+    );
+  checkedReturnLoad(data.current, exact.order_id, exact.transfer_id);
+  return data;
+}
+export const saveStockReturn = (request: StockReturnRequest) =>
+  returnRequest('qorlia_return_save', request);
+export const getStockReturnStatus = (request: StockReturnRequest) =>
+  returnRequest('qorlia_return_status', request);
 function validValidationStep(
   data: StockValidationStep,
   transferId: number,

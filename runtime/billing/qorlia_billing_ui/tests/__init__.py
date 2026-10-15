@@ -39,3 +39,4 @@ from . import test_stock_validation_save
 from . import test_stock_validation_step
 from . import test_stock_return_contract
 from . import test_stock_return_preview
+from . import test_stock_return_save

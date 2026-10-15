@@ -1,5 +1,38 @@
 # Qorlia React frontend backend readiness
 
+## Signed return create/status candidate (15 October 2026)
+
+Source 49 adds native signed return creation and exact status/retry, using a
+distinct return receipt kind in the existing private stock metadata store.
+Selection, current scope and reviewed public/private effects are rechecked under
+locks and after the native action. The result identifies the actual native
+return; it does not claim physical completion or a financial refund. New native
+execution dates are distinguished from preserved or unexpected scheduling.
+
+The focused 36 and combined 144 mandatory-analytics native cases pass with no
+failures/errors/skips and prior browser receipts preserved. Home passes 715
+tests/75 suites, with nineteen return service cases. Nine gateway/configuration
+checks, library and actual-source test types and scoped lint/format pass. Five
+named source routes preserve review/clinical gates and ERP-session isolation;
+raw transient-wizard creation and caller contexts remain unavailable.
+
+Three additional native save scenarios capture thirteen real load/review/create/
+status responses accepted by the actual TypeScript service, including unknown
+and accepted states in outgoing, incoming and chained flows. This is native
+payload compatibility, not live HTTP/browser acceptance. Independent read-only
+checks preserve earlier stock, valuation, receipts and protected stored
+accounting, with the hosted adapter-43 baseline unchanged. Computed invoice totals
+are not independently recalculated. Documentation checks pass for 28 guides and
+504 local links. No new build or full legacy addon run is claimed.
+
+Native test/source hashes match the candidate. This is disposable non-HTTP
+execution of new source, not a persistent installation: isolated database
+metadata/validation HTTP remains 48 and the protected tester remains 43. No new
+schema, release, public deployment or review-gate renewal is claimed. Durable
+browser return recovery/editor, actual HTTP/browser acceptance, separate-cursor
+concurrency, wider configurations, notifications and scale remain open. See the
+[return contract](../runtime/billing/STOCK_RETURNS.md).
+
 ## Stock returns: native review and typed source contracts (15 October 2026)
 
 The next Billing increment reconstructs the installed native reverse-transfer

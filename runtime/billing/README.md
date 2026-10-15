@@ -5,9 +5,12 @@ This is not an Indian chart of accounts or healthcare tax configuration.
 
 Next integration: [native stock returns](STOCK_RETURNS.md). The installed native
 form and override audit distinguishes return creation from physical validation and
-financial refunds. Development source adds native form reconstruction, bounded
-location search and rollback preview, not a released save/recovery/UI path. Do not
-enable the control or claim return completion until its remaining gates pass.
+financial refunds. Candidate source 49 adds native form reconstruction, bounded
+location search, signed rollback review and duplicate-safe create/status. It uses
+existing private receipt schema; disposable native tests are not a running HTTP
+upgrade. Browser recovery, the return editor, real HTTP/browser acceptance and
+protected publication remain gates. Do not claim completed receipt or a released
+return control from this source checkpoint.
 
 Latest receipt-completion checkpoint, adapter 48 (15 October): actual isolated
 React/gateway saves complete a five-unit incoming receipt, create one reviewed

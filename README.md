@@ -54,7 +54,7 @@ The goal is full native workflow/API parity in a consistent Qorlia interface. Bi
 - [Feature parity ledger](docs/FEATURE_PARITY.md): dated evidence, accepted increments and remaining work.
 - [Backend readiness](docs/BACKEND_READINESS.md): backend compatibility, tested environments and integration gaps.
 - [Billing adapter](runtime/billing/README.md): native Odoo integration and limits.
-- [Stock returns in development](runtime/billing/STOCK_RETURNS.md): native return form, typed review contracts and remaining create/recovery/UI gates.
+- [Stock returns in development](runtime/billing/STOCK_RETURNS.md): native return form, signed creation/status contracts and remaining browser recovery/UI/release gates.
 - [Reports adapter](runtime/reports/README.md): native report generation, export and branding limits.
 
 Clinical-to-ERP synchronization is not enabled in the current isolated tester setup. Do not assume a clinical order produces an invoice there. Full stock fulfillment, remaining clinical parity and separate laboratory/radiology/analytics/outreach interfaces still need work. Clinical AI and national digital-health integrations must not be described as released simply because they are on a roadmap.

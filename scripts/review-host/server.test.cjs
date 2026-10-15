@@ -155,12 +155,12 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     'Only three named native step APIs are covered, without raw wizard methods.');
   const returnMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_return.py'), 'utf8')
     .matchAll(/^    def (qorlia_return_\w+)\(/gm)].map(match => match[1]);
-  assert.deepEqual([...returnMethods].sort(), ['load', 'locations', 'preview'].map(action => `qorlia_return_${action}`).sort(),
-    'Return development APIs are load, locations and rollback preview, not raw creation or a save contract.');
+  assert.deepEqual([...returnMethods].sort(), ['load', 'locations', 'preview', 'save', 'status'].map(action => `qorlia_return_${action}`).sort(),
+    'Only five named return APIs are covered, without raw wizard creation or client contexts.');
   for (const [model, method] of [['stock.picking', 'button_validate'], ['stock.immediate.transfer', 'process'],
     ['stock.picking.validate.wizard', 'btn_confirm'], ['stock.backorder.confirmation', 'process'], ['expiry.picking.confirmation', 'process'],
     ['stock.return.picking', 'create_returns'], ['stock.return.picking', 'create'], ['stock.return.picking.line', 'write'],
-    ['stock.picking', 'qorlia_return_save'], ['stock.picking', 'qorlia_return_status']])
+    ['stock.picking', 'qorlia_return_unknown'], ['stock.return.picking', '_create_returns']])
     assert.equal((await rpc(`/web/dataset/call_kw/${model}/${method}`, allCookies, {model, method, args: [], kwargs: {}})).status, 404);
   for (const [model, method] of [
     ...['load', 'preview', 'run', 'status'].map(action => ['stock.picking', `qorlia_transfer_${action}`]),
