@@ -1,5 +1,88 @@
 # Native order transfer paging
 
+## Native HTTP client and copied-upgrade checkpoint (16 October 2026)
+
+A separate non-public synthetic database is cloned from the stopped return-49
+copy and installed at adapter **50**, using the pinned image and source from
+`64088314`. The copied signing secret/identity is rotated before HTTP starts.
+It has a separate data directory, no published ports, unprivileged/read-only
+container execution and resource limits. Diagnostic transport uses a private
+SSH Unix socket, not a replacement UI review gate.
+
+The actual TypeScript service is loaded from the repository (SHA-256
+`f0609c2b0a4cb290d619cc8695413d62463cf0d8f671915eaf2e495a6774b463`).
+Its requests go to real native HTTP, with only the existing URL-prefix/cookie
+transport adaptation; business responses are not mocked. Direct native reads and
+independent SQL provide the comparison data. This does not test browser rendering
+or the actual protected gateway.
+
+Verified boundaries:
+
+- All **101** genuinely linked transfers traverse six 17-row pages with exact
+  native headers, counts, identity order, cursor positions and a final empty page.
+  Unknown cursors reject. The legacy full list still rejects above 100.
+- Empty orders return no invented transfer. Summaries accurately report 501 moves
+  and 2,001 operations, while selected oversized details still reject. Selected
+  small-transfer loading works on the 101-transfer order.
+- Anonymous and logged-out requests reject. A second authenticated session and
+  re-authentication continue the same unchanged snapshot.
+- The off-page final transfer confirms through signed load/preview/save/status.
+  Two overlapping identical saves resolve once through native serialization
+  handling. Its detailed operation is then prepared through the native edit API.
+  Each change rejects an old page version; fresh pages show the actual new state.
+- A synthetic parent-location rename rejects the prior version and updates its
+  rendered label. A temporary native read rule hiding an off-page operation
+  rejects even the first page before returning a partial count. The rule is
+  removed and normal reads recover. These private operator fixture controls do
+  not add raw write/create/unlink capabilities to the product gateway.
+- Native `AccessError` remains a generic redacted permission error. The first
+  diagnostic incorrectly expected a business-error class; the corrected second
+  run and a new unit regression verify the existing secure behavior. No product
+  permission/error policy was relaxed. This describes the client-facing error,
+  not scrubbing of native JSON-RPC debug fields on the wire; actual protected
+  gateway hardening/acceptance remains a separate boundary.
+- **15 copied source-49 request histories** recover through real TypeScript/native
+  HTTP at installed 50, and all 15 exact saves replay successfully, including four
+  operation saves omitted from the earlier read-only check. Four completed forms
+  remain read-only. This is a copied synthetic upgrade case, not acceptance of
+  every live migration/configuration or a browser recovery mechanism.
+
+Independent SQL checks the exact author/company/request-bound confirmation and
+operation hashes, one receipt of each kind, 100 draft transfers plus one confirmed
+transfer, one recorded done unit, zero reserved/delivered units and no new
+valuation. Physical stock stays ten units in each stock fixture. All original
+rows across 18 monitored tables retain their fingerprints, no financial/valuation
+rows are added, and complete bank statements/lines match the original copy.
+Mandatory analytics/SMS remain enabled and the temporary access rule is absent.
+Computed invoice totals are not independently recalculated.
+
+The setup's first seed launcher failed before database initialization because its
+source split marker matched an inner string. It was corrected using an explicit
+startup marker and a new log; no uncertain mutation was repeated. Native expected
+rejections and the handled concurrent serialization retry remain in server logs.
+The optional pandas bootstrap lookup/native metadata warnings remain; no new
+dependency was installed. Unix-forward TCP_NODELAY warnings are non-fatal; its
+255 exit is the deliberately closed SSH process, not an ignored test failure.
+
+Fresh Home verification passes **720 tests in 75 suites**, including nine
+transfer-service tests, focused source/test type checking, scoped ESLint and
+format/diff checks. The earlier 213 native and three gateway test results remain
+unchanged-source evidence, not freshly rerun installed-50/full-addon results.
+No new frontend build, browser or actual protected-gateway acceptance is claimed.
+
+Diagnostic sessions/socket are closed, the temporary directory removed and the
+private HTTP-50 container stopped. Synthetic data/evidence remain for later work.
+The original tester-43, validation-48 and return-49 data are preserved. Review
+access stays **410**. No public/tester deployment or React migration occurred;
+the React panel still uses the capped legacy list.
+
+Private evidence directories: `paging-read-http50-20261016`,
+`paging-actions-http50-20261016`, `paging-access-http50-r2-20261016`, and
+`old-receipts-http50-20261016`. `readback-paging-http50-20261016.cjs` and
+`paging-http50-baseline-20261016.cjs` perform the independent SQL checks.
+Credentials, exact private requests, copied records and signing identity stay
+outside the public repository.
+
 ## Backend candidate, 16 October 2026
 
 Source candidate `16.0.1.50.0` adds a bounded transfer-summary API and changes
@@ -119,9 +202,9 @@ not an installed-50 upgrade, new HTTP session, browser or gateway test.
 
 ## Remaining work
 
-1. Complete actual TypeScript/native HTTP paging acceptance in an isolated
-   non-public runtime, including old accepted request recovery and operation-save
-   replay. Do not infer transport or installed-upgrade acceptance from shell tests.
+1. Extend native HTTP acceptance to broader roles/companies/configurations and
+   verify the actual protected gateway in a later appropriate access window.
+   The checkpoint above covers one explicitly scoped synthetic copied upgrade.
 2. Migrate React summary/detail navigation and stale-page recovery, when UI work
    is in scope. Do not represent old full-list reads as paged reads.
 3. Add nested move/operation paging without weakening signed action completeness.

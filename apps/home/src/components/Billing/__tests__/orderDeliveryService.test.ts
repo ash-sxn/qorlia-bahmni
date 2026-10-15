@@ -267,4 +267,28 @@ describe('Native order transfer pages', () => {
       BillingSessionExpired,
     );
   });
+  it('redacts native record-rule access errors instead of exposing hidden records as business errors', async () => {
+    (fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        error: {
+          code: 200,
+          data: {
+            name: 'odoo.exceptions.AccessError',
+            arguments: ['Private hidden operation 123 and access rule details'],
+            debug: 'private traceback',
+          },
+        },
+      }),
+    });
+    const error = await getOrderDeliveryPage(9).catch(
+      (caught: unknown) => caught,
+    );
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(BillingActionRejected);
+    expect((error as Error).message).toBe(
+      'Billing access failed. Check your billing account permissions.',
+    );
+  });
 });

@@ -1,5 +1,11 @@
 # Bahmni workflow parity ledger
 
+## 16 October paging native HTTP/client and copied upgrade
+
+- A separate non-public copy is installed at 50 with rotated signing identity. Actual TypeScript/native HTTP traverses all 101 transfers, matches native headers, handles empty/end/foreign cursors, rejects stale snapshots after off-page signed confirmation/operation saves, and preserves 501/2,001 detail caps. Parent-label changes and hidden off-page record rules are exercised; the generic access-error redaction remains unchanged. See [the precise checkpoint](../runtime/billing/STOCK_TRANSFER_PAGING.md#native-http-client-and-copied-upgrade-checkpoint-16-october-2026).
+- Two overlapping identical confirmation saves resolve once. Fifteen copied source-49 request histories pass status and exact replay through installed-50 HTTP, including four operation saves; completed forms stay read-only. Independent SQL verifies exact receipts, 100 draft plus one confirmed transfer, one recorded done unit but no completed stock, unchanged physical/financial/bank state and retained original rows across 18 tables. Mandatory analytics/SMS and temporary-rule cleanup are verified.
+- Fresh Home verification passes 720 tests/75 suites, focused source/test types and scoped lint. The earlier 213 native/three gateway cases are not counted as fresh installed-50/full-addon acceptance. The diagnostic server and socket are closed; synthetic data/evidence remain, review stays 410 and existing tester/validation/return data are preserved. The React list still uses the old endpoint. Nested detail paging, wider roles/companies/configurations, actual protected-gateway/browser acceptance, scale and full Billing remain open. No public deployment or frontend build.
+
 ## 16 October transfer paging backend candidate
 
 - Candidate source 50 adds bounded summary pages, exact cursor/version continuity and fail-closed checks of the complete linked graph, including off-page records. Shared stock actions now select one linked transfer after the same check, removing their old order-wide 100-transfer dependency. See [the contract](../runtime/billing/STOCK_TRANSFER_PAGING.md).

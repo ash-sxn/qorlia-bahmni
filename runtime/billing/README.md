@@ -3,13 +3,17 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Backend candidate 50: [bounded order-transfer summaries](STOCK_TRANSFER_PAGING.md)
-and selected-transfer loading beyond the old 100-transfer order cap. The final
-213-case native shared-stock regression and 719 Home tests pass. Fifteen old
-source-49 request statuses and eleven exact read-only replays also pass under the
-candidate source. The React panel still uses the legacy list.
-No runtime upgrade, reopened review access or paging HTTP/browser acceptance is
-claimed. The dated return checkpoints below remain separate evidence.
+Current backend checkpoint: [native HTTP paging on an isolated installed-50 copy](STOCK_TRANSFER_PAGING.md#native-http-client-and-copied-upgrade-checkpoint-16-october-2026).
+The actual TypeScript client traverses 101 transfers, rejects stale/hidden pages,
+and saves an off-page confirmation/operation with exact recovery. Fifteen copied
+source-49 requests also replay through real HTTP after the private upgrade.
+Independent SQL verifies receipts, unchanged physical/financial state and retained
+original data. Fresh Home verification passes 720 tests. The earlier 213 native
+cases are separate unchanged-source evidence. The React panel still uses the
+legacy list; nested detail paging, broader configurations, actual gateway/browser
+acceptance and scale remain. The diagnostic server/socket are closed, review gate
+stays 410, and no public/tester deployment occurred. Dated checkpoints below remain
+separate historical evidence.
 
 Current integration: [native stock returns](STOCK_RETURNS.md). The installed native
 form and override audit distinguishes return creation from physical validation and

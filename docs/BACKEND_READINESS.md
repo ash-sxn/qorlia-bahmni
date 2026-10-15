@@ -1,5 +1,34 @@
 # Qorlia React frontend backend readiness
 
+## Paging TypeScript/native HTTP and copied upgrade (16 October 2026)
+
+A separate synthetic copy is installed at source 50, with rotated signing identity
+and no published ports. The actual TypeScript client/native HTTP passes 101-transfer
+paging with native header equality, end/foreign cursors, empty orders, accurate
+501-move/2,001-operation counts and retained detail rejection. Signed confirmation
+and operation saves on an off-page transfer invalidate old pages; overlapping
+identical confirmations resolve once. Parent-label changes invalidate pages and
+hidden off-page records reject the first page without leaking partial counts.
+Access errors retain the generic redacted permission message. Anonymous/logout,
+second-session continuation and re-authentication checks pass.
+
+Fifteen copied source-49 requests pass status and exact replay through installed-50
+HTTP, including operation save; four completed forms remain read-only. Independent
+SQL verifies author/company/request-bound hashes and one receipt per new action,
+preserved original rows in 18 tables, unchanged finance/bank rows and physical
+stock, zero reservation/delivery/valuation, mandatory analytics/SMS and access-rule
+cleanup. One recorded done unit is still preparation, not completed stock.
+
+Fresh Home verification passes 720 tests/75 suites, nine transfer-service tests,
+focused source/test types and scoped ESLint. Earlier native-213/gateway-three
+results are unchanged-source evidence, not fresh full-addon installed-50 tests.
+The initial access verifier's error-class assumption was corrected without
+loosening product policy. The private server/socket are closed, copied fixtures
+retained and original tester-43/validation-48/return-49 preserved. Review stays 410;
+no frontend build, React migration, public deployment or actual gateway/browser
+acceptance. Nested details, broader configurations, scale and full Billing remain.
+Read [the complete boundary and evidence](../runtime/billing/STOCK_TRANSFER_PAGING.md#native-http-client-and-copied-upgrade-checkpoint-16-october-2026).
+
 ## Transfer paging backend candidate (16 October 2026)
 
 Source 50 adds bounded native order-transfer summaries with order-wide permission
