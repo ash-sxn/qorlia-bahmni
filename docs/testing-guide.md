@@ -92,6 +92,8 @@ Never repeat a write merely because an observation timed out. Check the same pro
 
 ## Report format
 
+The [expiry/response-loss browser checkpoint](../runtime/billing/STOCK_VALIDATION.md#browser-expiry-decline-and-lost-response-checkpoint-15-october-2026) distinguishes an accepted response aborted before UI delivery from merely ignoring a returned API value. It verifies full-reload/exact-status recovery without another save, plus scoped narrow/keyboard prompt behavior. Keep the original request and independently read the native outcome; do not invent another nonce to make recovery appear successful.
+
 ```text
 Task / PR:
 Source SHA and backend/configuration version:

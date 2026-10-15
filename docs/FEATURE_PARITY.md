@@ -1,5 +1,13 @@
 # Bahmni workflow parity ledger
 
+## 15 October browser expiry decline, response-loss recovery and narrow prompt acceptance
+
+- Actual isolated browser saves verify native Validate, immediate preparation and expiry decline as three separate accepted actions. Five prepared units remain assigned and zero delivered. Finish refreshes the displayed quantities without claiming completed delivery.
+- A later intentional Validate tests response loss on that prepared fixture. The real accepted HTTP response is captured and aborted before UI delivery, then interception is removed. The UI retains its exact durable request without automatic retry. Full reload and Resume validation followed by explicit status restore the original receipt and actual expiry prompt without another save.
+- Independent read-only assertions verify the original request digest, author/company/order binding, exactly four expiry receipts after this additional opening, both one-time continuation links, unchanged preparation/physical stock/protected accounting and no delivery or valuation. The receipt-preparation fixture retains exactly two receipts and saved batch prices.
+- Scoped 390 by 844 checks verify page/dialog width, quantity-table scrolling, keyboard-reachable decision/recovery controls, the native focus-sentinel cycle and keyboard close/fallback focus. Browser overrides are removed. This does not accept all modals/devices or screen readers.
+- No application code or native adapter changes in this increment. Prior source checks/build are not relabelled as new runs. Terminal delivery/backorder/receipt completion, valuation and session-expiry browser paths, wider configurations, scale and matching protected release remain open. Tester stays adapter 43; public demo/production unchanged. See the [precise browser evidence](../runtime/billing/STOCK_VALIDATION.md#browser-expiry-decline-and-lost-response-checkpoint-15-october-2026). Full Billing and whole-product parity remain open.
+
 ## 15 October React per-RPC validation migration and receipt recovery
 
 - Migrated fresh validations to individually reviewed adapter-48 steps. Accepted native receipts determine the next prompt; committed choices are not replayed. Existing atomic pending requests retain their original API and schema.

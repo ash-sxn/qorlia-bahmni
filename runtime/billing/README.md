@@ -3,6 +3,17 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest isolated browser checkpoint, adapter 48 (15 October): immediate preparation
+followed by expiry decline preserves five prepared units, assigned state and zero
+delivery through three separate native actions. A later opening's accepted HTTP
+response is deliberately lost; full reload and exact status recover the same native
+prompt without another save. Independent read-back verifies its original request
+digest, receipts and unchanged stock/protected accounting. A scoped narrow/keyboard
+prompt check also passes. No application source changes or protected publication
+occur in this increment. See [the precise browser checkpoint](STOCK_VALIDATION.md#browser-expiry-decline-and-lost-response-checkpoint-15-october-2026)
+for remaining delivery/backorder/valuation, session-expiry, wider configuration and
+release gates. Older checkpoints below retain their historical scope.
+
 Latest manual-operation checkpoint, adapter 43 (14 October): the React transfer
 view connects native Add/Edit operation forms, ordered onchanges, paged choices,
 rollback review, create/edit/delete and exact-request recovery. Native field and

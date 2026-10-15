@@ -32,6 +32,8 @@ At this checkpoint, protected Billing review remains on adapter 43. Later adapte
 
 The subsequent adapter 48 [step contract](../runtime/billing/STOCK_VALIDATION.md#native-intermediate-persistence-audit-and-adapter-48-step-contract) corrects native intermediate-commit semantics. Its native/service/gateway checks and isolated HTTP/read-back pass. React/storage now uses individually reviewed steps and preserves old atomic pending requests. The [latest browser checkpoint](../runtime/billing/STOCK_VALIDATION.md#react-per-step-migration-and-receipt-browser-checkpoint-15-october-2026) verifies receipt preparation, full reload/tab reopen and exact prompt recovery on the isolated copy. Other browser wizard/failure/configuration and publication gates remain. Do not treat a terminal-only wizard as complete native close/cancel parity or replay a decision after it has committed.
 
+The [subsequent browser acceptance](../runtime/billing/STOCK_VALIDATION.md#browser-expiry-decline-and-lost-response-checkpoint-15-october-2026) adds immediate preparation, declined expiry and full-reload recovery after a genuinely lost accepted response, with independent read-back and a scoped narrow/keyboard prompt check. Full delivery/backorder/valuation, session-expiry and matching protected release remain separate gates. Do not repeat a save just because its response was lost.
+
 ## 3. Resources needed to begin
 
 - Your own GitHub account, Git, Node.js 22, Yarn Classic 1.22, an editor and a browser. Follow [setup](setup-guide.md), including its Windows instructions.

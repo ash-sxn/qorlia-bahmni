@@ -1,5 +1,26 @@
 # Qorlia React frontend backend readiness
 
+## Browser expiry decline and lost-response recovery (15 October 2026)
+
+The isolated adapter-48 React build now verifies three separate native actions:
+Validate, immediate preparation and expiry decline. Five prepared units remain
+assigned with zero delivered; Finish reloads the actual quantities. A later
+intentional Validate on that prepared fixture has its real accepted HTTP response
+aborted before the UI receives it. The exact durable request survives full reload;
+explicit status restores its receipt and native expiry prompt without another save.
+
+Independent reads verify the captured request digest, author/company/order scope,
+one new receipt rather than duplicated effects, unchanged preparation/physical
+stock/protected stored accounting and no delivery/valuation. A scoped 390 by 844
+prompt check covers width, table scrolling, keyboard controls, native focus cycling
+and keyboard close/fallback focus. Interception and viewport overrides are removed.
+See [the exact evidence and limits](../runtime/billing/STOCK_VALIDATION.md#browser-expiry-decline-and-lost-response-checkpoint-15-october-2026).
+
+No source/runtime upgrade or public release occurs here. Prior 695 Home checks and
+build remain prior evidence. Delivery/backorder/receipt completion, valuation and
+session-expiry browser paths, broader roles/configuration, scale and matching-source
+protected publication remain. Tester stays adapter 43; production/public demo unchanged.
+
 ## React validation steps and isolated receipt browser acceptance (15 October 2026)
 
 Fresh React validations now use adapter 48's per-RPC preview/save/status contract.
