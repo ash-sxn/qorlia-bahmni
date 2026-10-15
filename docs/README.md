@@ -5,6 +5,7 @@
 ## Learn and contribute
 
 - [Beginner orientation](developer-start-here.md)
+- [Reading and changing code, with beginner explanations](reading-and-changing-code.md)
 - [Local setup and troubleshooting](setup-guide.md)
 - [Architecture and data/session boundaries](architecture.md)
 - [Repository map](project-structure.md)

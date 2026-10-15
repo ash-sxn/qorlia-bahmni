@@ -35,6 +35,8 @@ Your first task is to extend existing code, not create a second patient database
 
 React builds screens from components. TypeScript checks assumptions about values before running. SCSS styles those components. Python implements the Odoo addon. Configuration also changes behaviour, so a screen is not defined by code alone.
 
+If those terms are new, read [Reading and changing code](reading-and-changing-code.md) with your editor open. It explains the appointment screen line of responsibility by line of responsibility, the difference between patient/visit/encounter identities, and what mocked tests can and cannot prove.
+
 ## A learning path, not a deadline
 
 ### First session: understand and run

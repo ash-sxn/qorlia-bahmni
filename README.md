@@ -22,6 +22,8 @@ Read these in order. Each guide links back here and to the next step.
 
 Then follow the [first contribution walkthrough](docs/first-contribution.md) and use the [task brief template](docs/task-brief-template.md) before beginning implementation. These turn the architecture into a concrete exercise and a reviewable assignment.
 
+New to React or TypeScript? Keep the [beginner code-reading guide](docs/reading-and-changing-code.md) open beside your editor. It explains components, state, queries, mutations, tests and hospital data identities using this repository's actual appointment screen.
+
 These updated guides are on `codex/billing-delivery-parity`. If GitHub opens the older default `main` README, select that development branch to read the current guides. A documentation branch and a task's approved code base are different: do not start from unfinished Billing code merely to obtain these guides.
 
 No production credentials, paid AI account or new server is required to start learning the source. Real workflow testing requires approved synthetic backend access. Do not disable authentication to bypass that prerequisite.

@@ -10,6 +10,7 @@ const files = [
   "CONTRIBUTING.md",
   "docs/README.md",
   "docs/developer-start-here.md",
+  "docs/reading-and-changing-code.md",
   "docs/setup-guide.md",
   "docs/architecture.md",
   "docs/project-structure.md",

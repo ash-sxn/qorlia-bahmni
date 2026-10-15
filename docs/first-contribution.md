@@ -4,6 +4,8 @@
 
 This exercise teaches how to navigate the actual project before changing it. It is a read-only audit, not permission to book, cancel or alter appointments. Use the approved synthetic backend and your own account. Source examples describe `codex/billing-delivery-parity`; compare them with your task's approved base rather than copying the whole integration branch.
 
+For explanations of React components, hooks, asynchronous requests and test mocks, use the [beginner code-reading guide](reading-and-changing-code.md) alongside this exercise.
+
 ## 1. Write down the user's goal
 
 For example: “Reception needs to see appointments for a selected day and find a patient.” Write down the route, role and expected result. Record the source SHA with `git rev-parse HEAD`.
