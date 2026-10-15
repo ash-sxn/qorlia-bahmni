@@ -35,3 +35,4 @@ from . import test_stock_confirmation_contract
 from . import test_stock_confirmation_preview
 from . import test_stock_validation_contract
 from . import test_stock_validation_preview
+from . import test_stock_validation_save

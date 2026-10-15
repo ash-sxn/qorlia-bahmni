@@ -73,11 +73,11 @@ The installed SMS hook can return a setup wizard and can send outside the databa
 
 Do not silently turn notifications off, simulate a successful send, bypass the native prompt or incur charges. Notification intent, company-level scope, permissions, transactional handoff and recovery need implementation and explicit operational acceptance. Actual sending and notification-related spending are not approved by these tests.
 
-Other remaining gates include multi-company/limited-role access, native post-validation reports, multiple products/units/packages, serials, expiry configurations, chained/purchase flows, concurrency, complete signed effect capture, receipt/status APIs, React wizard controls and actual gateway/browser saves. Returns and POS are separate workflows. The existing protected tester remains on adapter 43; these tests change neither that environment nor production/public-demo behaviour.
+Other remaining gates include broader multi-company/limited-role access, native post-validation reports, multiple products/units/packages, serials, expiry configurations, chained/purchase flows, concurrency, broader signed effect coverage, real RPC/HTTP receipt recovery, React wizard controls and actual gateway/browser saves. Returns and POS are separate workflows. The existing protected tester remains on adapter 43; these tests change neither that environment nor production/public-demo behaviour.
 
 ## Development load and ordered wizard review
 
-`stock.picking.qorlia_validation_load(order_id, transfer_id)` checks the saved order/transfer link and native read scope. It returns the graph, opaque current-state version, native eligibility reason and `write_ready=false`. Native Stock User and record write access are checked before preview; `show_validate` determines availability. Existing pending native audit work is flushed before the version baseline, not confused with preview mutations.
+`stock.picking.qorlia_validation_load(order_id, transfer_id)` checks the saved order/transfer link and native read scope. It returns the graph, opaque current-state version, native eligibility reason and adapter save capability. The preview-only source reported `write_ready=false`; adapter 46 reports its implemented save capability separately from eligibility. Native Stock User and record write access are checked before preview; `show_validate` determines availability. Existing pending native audit work is flushed before the version baseline, not confused with preview mutations.
 
 `qorlia_validation_preview(order_id, transfer_id, version, decisions)` replays `button_validate` and the ordered decisions inside a rollback scope. No wizard ID, arbitrary model/method or client bypass context is accepted. The request starts with an empty decision list. The native action determines the next step. Submit the complete prior decision sequence plus the new choice on the next preview:
 
@@ -96,7 +96,38 @@ Preview captures physical/preparation/supply effects and financial records inclu
 
 The complete replay restores the database and all four native callback queues. Unexpected post-preview table differences fail the rollback check and log table names, not row values, for operator diagnosis. The SMS setup prompt is represented as a blocked next step. The preview-only notification guard rejects force-send email and immediate SMS before native dispatch. It does not change notification settings or claim that sending succeeded. New notification integration still requires explicit operational acceptance.
 
-This source is not yet wired to the gateway allowlist or React. It deliberately supplies no validation save/status method and no writable receipt field. The next stages are stable signed terminal reviews, atomic exact saves/receipt recovery, service/gateway contracts, house-style wizard controls and synthetic HTTP/browser acceptance. Do not use this partial source as a delivery release.
+The earlier preview-only checkpoint was not wired to the gateway allowlist or React and supplied no save/status contract. The adapter 46 development source below adds native save/status, but gateway/service contracts, house-style wizard controls and synthetic HTTP/browser acceptance still remain. Do not use a source method alone as evidence of a delivery release.
+
+## Adapter 46 terminal review and exact save source
+
+Only a terminal review returns a signed `review_version` and `write_ready=true`. A next wizard has no terminal signature and remains unwritable. `qorlia_validation_load` reports the adapter's save capability independently of its native eligibility `reason`.
+
+`qorlia_validation_save(payload)` and `qorlia_validation_status(payload)` require exactly six keys:
+
+```text
+order_id: positive native integer
+transfer_id: positive native integer
+version: current load's 64-character digest
+decisions: the complete ordered native decision list
+review_version: terminal review's 64-character server signature
+request_key: canonical UUID, retained for this exact request
+```
+
+The signature binds action kind, ordered choices, visible effects, private effects, native outcome and author. Save repeats rollback review under deterministic native locks, checks that signature, then compares the actual native replay again inside its own savepoint. A changed private valuation, unexpected configuration effect or extra wizard rejects and rolls back. The exact successful request records one protected receipt in that same transaction. An identical retry uses the receipt instead of validating stock again. A changed request or author cannot reuse its key. `accepted=true` means the reviewed action was accepted, not necessarily that stock moved; a declined expiry step can retain preparation with the transfer still assigned.
+
+The new receipt field is restricted to the native system group, omitted from copies, and rejected by generic create/write calls even for an administrator. Its private helper reads the fixed column only after native order/transfer access. A private in-process capability permits the fixed receipt-only SQL update after actual effects match. This does not elevate native stock/accounting writes or expose arbitrary SQL/model access. Status returns real generated references only when the current account can read them. Hidden accounting records retain no public IDs or names. Private accounting amounts/content are not stored in the receipt.
+
+Native completion times and generated journal references differ between preview and save. The projector marks only known execution-assigned fields, including native completed movement dates and linked sale effective dates. Timestamp values must lie within that native execution window; derived quant dates must not be existing FIFO timestamps. Scheduling dates, batch expiry, quantities, prices, values and journal balances are not broadly discarded. Updated and created effect rows explicitly list `assigned_on_save`; business identifiers generated by the native engine use canonical review references, then status supplies permitted real references. An unexpected timestamp outside that window remains a signed effect, not an ignored difference.
+
+This source still blocks external notifications rather than pretending to send or silently changing company settings. Concurrency through real RPC, gateway/TypeScript/browser recovery, broader role/company/configuration cases and scalable locking/capture require separate acceptance. The running protected tester remains adapter 43.
+
+### Native save checkpoint, 15 October 2026
+
+The seventeen focused [save/status cases](qorlia_billing_ui/tests/test_stock_validation_save.py) and the combined 96-case native fulfillment suite pass with mandatory analytics unchanged, with zero failures/errors/skips. This includes the preceding native/preview contracts and the new actual model save, status, identical retry, private valuation rollback, author/request mismatch, receipt-field protection, native batch data and automatic valuation under Stock User without financial read access. Delayed saves, generated journal references, preserved backorder scheduling and rejection of an unexpected completion timestamp are covered.
+
+The complete 674-case addon regression separately passes on the copy using legacy optional-analytics fixtures, restored to mandatory afterward. Source/mounted hashes match. Nine unchanged gateway/configuration regressions pass without adding validation routes. Independent main-tester read-back exactly matches the prior protected accounting/bank/stock/delivery/receipt snapshot. The copy was backed up before its adapter 46 upgrade; the hosted adapter/build/gates and production/public demo are unchanged.
+
+Earlier save runs rejected varying native completion dates and journal references. They also exposed the synthetic fixture setting a transfer's related procurement group without setting its moves' group. Native ownership derives from those moves. The fixture was corrected rather than loosening order matching, and execution-assigned values were explicitly labelled rather than removing date/money comparisons. Failed runs remain diagnostic evidence. These are native model checks, not real RPC concurrency, HTTP/gateway/browser or whole-product acceptance. Older receipt fields' generic read/export policy is not covered by the new field's privacy acceptance.
 
 ## 15 October 2026 native checkpoint
 

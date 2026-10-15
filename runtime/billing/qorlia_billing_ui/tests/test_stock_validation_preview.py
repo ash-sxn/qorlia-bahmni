@@ -19,6 +19,7 @@ class StockValidationPreviewTest(native_contract.StockValidationFixture, Transac
         picking = self.picking()
         picking.group_id = self.env['procurement.group'].create({'name': 'QorliaQA Validation preview group',
             'sale_id': self.order.id, 'partner_id': self.customer.id})
+        picking.move_ids.group_id = picking.group_id
         self.reserve(picking, done)
         return picking
 
@@ -34,7 +35,7 @@ class StockValidationPreviewTest(native_contract.StockValidationFixture, Transac
         before = self.load(picking)
         result = self.preview(picking)
         self.assertTrue(result['terminal'])
-        self.assertFalse(result['write_ready'])
+        self.assertTrue(result['write_ready'])
         self.assertEqual(result['state_after'], 'done')
         valuation = result['effects']['created']['stock.valuation.layer'][0]['values']
         self.assertEqual(valuation['quantity'], -5)

@@ -50,6 +50,18 @@ publication. Coarse locks, global capture and per-transfer JSON receipts still
 need production scaling work. The running protected tester remains adapter 43
 and stock-operation-edit-r2; full fulfillment and whole-product parity remain open.
 
+Unreleased adapter 46 adds signed terminal native validation review, exact save/status
+and protected author/company-bound receipts. Seventeen focused save cases and 96
+combined fulfillment cases pass with mandatory analytics on the separate copy.
+The full 674-case legacy optional-analytics harness passes there with mandatory
+analytics restored. The copy was backed up/upgraded; the hosted tester is unchanged.
+Native inventory,
+valuation/posted accounting and receipt/backorder semantics are preserved. Known
+execution-assigned timestamps/references are labelled without discarding schedules,
+batch prices/expiry or monetary values. This is not gateway/React/HTTP acceptance,
+external notification permission, a hosted release or complete fulfillment. See the
+dated [validation contract](STOCK_VALIDATION.md) and readiness notes for current gates.
+
 The next action is [native delivery validation and its wizard sequence](STOCK_VALIDATION.md).
 The installed Bahmni receipt/internal, Odoo immediate/backorder and expired-batch
 paths now have 22 direct native contract cases, including manual/automatic valuation

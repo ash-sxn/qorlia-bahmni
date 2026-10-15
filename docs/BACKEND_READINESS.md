@@ -1,5 +1,33 @@
 # Qorlia React frontend backend readiness
 
+## Adapter 46 native validation save/status source (15 October 2026)
+
+Terminal validation review now signs its ordered decisions, visible/private native
+effects and outcome. Exact save repeats that review under locks, compares actual
+native replay effects, and records one author/company-bound receipt in the same
+transaction. Status and identical retry preserve the actual completed or merely
+prepared outcome. System-group receipt metadata cannot be forged through generic
+ORM create/write and does not widen stock/accounting privileges.
+
+Seventeen save cases and 96 combined native fulfillment cases pass with mandatory
+analytics unchanged on the separate
+copy, including posted automatic valuation/analytics, private financial visibility,
+receipt prices/expiry/quantity, one backorder, replay protection and changed-effect
+rollback. Known completion times/references are assigned at execution without
+discarding scheduling dates or monetary values. Delayed-save and out-of-window
+timestamp checks pass. The copy alone was backed up and upgraded to adapter 46.
+
+The full 674-case addon regression separately passes with legacy optional-analytics
+fixtures in the copy only, restored to mandatory afterward. Tested/mounted hashes
+match. Nine existing gateway/configuration regressions pass, and the independent
+main-tester snapshot exactly matches its preceding protected state. Read/export
+policies of older receipt fields are outside this increment's privacy acceptance.
+
+This is not real RPC concurrency, HTTP/browser recovery, gateway/service or React
+validation acceptance. Those integrations and notification/report/multi-transfer,
+broader permission/configuration and scaling gates remain. The protected tester
+stays adapter 43; production/public demo are unchanged. See [the contract](../runtime/billing/STOCK_VALIDATION.md).
+
 ## Native validation review source checkpoint (15 October 2026)
 
 The next fulfillment source adds saved-order-scoped validation load and ordered

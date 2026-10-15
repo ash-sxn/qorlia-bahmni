@@ -135,14 +135,19 @@ class StockConfirmation(models.Model):
         return result, visible, links
 
     def _qorlia_confirmation_effects(self, before, after, model_names=GRAPH_MODELS,
-            private_models=AUDIT_MODELS, private_counts_key='private_audit_counts'):
+            private_models=AUDIT_MODELS, private_counts_key='private_audit_counts', assigned_fields=None):
         old, old_visible, old_links = before
         new, new_visible, new_links = after
+        assigned_fields = assigned_fields or {}
+        text_fields = ('origin', 'reference', 'record_name', 'body', 'note', 'subject')
+        if assigned_fields:
+            text_fields += ('ref', 'move_name', 'name', 'description')
         generated = {name: {identifier: 'new:%s:%s' % (name, index)
             for index, identifier in enumerate(sorted(set(new[name]) - set(old[name])))} for name in model_names}
         generated_names = {row.get('name'): generated[name][identifier]
-            for name in ('stock.picking', 'purchase.order') for identifier, row in new[name].items()
-            if identifier in generated[name] and row.get('name')}
+            for name in model_names for identifier, row in new[name].items()
+            if identifier in generated[name] and row.get('name') and (name in ('stock.picking', 'purchase.order')
+                or 'name' in assigned_fields.get((name, identifier), set()))}
         result = {'created': {}, 'updated': {}, 'deleted': {}, 'labels': {}, 'schema': {}, private_counts_key: {}}
         private_audit = {}
 
@@ -191,7 +196,8 @@ class StockConfirmation(models.Model):
                         return target
                     value = [reference(target) for target in value] if field.type == 'many2many' else reference(value)
                 # Preserve scheduling dates; native references and creation metadata are assigned at save.
-                if identifier in generated[name] and field_name in ASSIGNED_ON_SAVE.get(name, set()):
+                if (identifier in generated[name] and field_name in ASSIGNED_ON_SAVE.get(name, set())
+                        or rows is new and field_name in assigned_fields.get((name, identifier), set())):
                     value = False
                 if name in ('mail.message', 'mail.activity') and field_name == 'res_id':
                     target_model = raw.get('model')
@@ -204,7 +210,7 @@ class StockConfirmation(models.Model):
                         else:
                             target_model = self.env['ir.model'].browse(raw['res_model_id']).model
                     value = generated.get(target_model, {}).get(value, value)
-                if isinstance(value, str) and field_name in ('origin', 'reference', 'record_name', 'body', 'note', 'subject'):
+                if isinstance(value, str) and field_name in text_fields:
                     for assigned_name, key in generated_names.items():
                         value = value.replace(assigned_name, key)
                     if name in ('mail.message', 'mail.activity') and field_name in ('body', 'note'):
@@ -250,12 +256,16 @@ class StockConfirmation(models.Model):
                 if original is None:
                     values = project(name, identifier, new, new_links, fields_allowed)
                     created.append({'key': generated[name][identifier], 'values': values,
-                        'assigned_on_save': sorted(ASSIGNED_ON_SAVE.get(name, set()) & set(values))})
+                        'assigned_on_save': sorted((ASSIGNED_ON_SAVE.get(name, set()) | assigned_fields.get((name, identifier), set())) & set(values))})
                 elif current is None:
                     deleted.append({'id': identifier, 'values': project(name, identifier, old, old_links, fields_allowed)})
                 else:
-                    updated.append({'id': identifier, 'before': project(name, identifier, old, old_links, fields_allowed),
-                        'after': project(name, identifier, new, new_links, fields_allowed)})
+                    row = {'id': identifier, 'before': project(name, identifier, old, old_links, fields_allowed),
+                        'after': project(name, identifier, new, new_links, fields_allowed)}
+                    assigned = assigned_fields.get((name, identifier), set()) & set(row['after'])
+                    if assigned:
+                        row['assigned_on_save'] = sorted(assigned)
+                    updated.append(row)
             if created or updated or deleted:
                 result['created'][name], result['updated'][name], result['deleted'][name] = created, updated, deleted
                 result['schema'][name] = {field_name: {'label': model._fields[field_name].string,

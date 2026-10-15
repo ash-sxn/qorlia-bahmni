@@ -1,5 +1,14 @@
 # Bahmni workflow parity ledger
 
+## 15 October adapter 46 native validation save and recovery source
+
+- Added terminal signed review, exact six-key validation requests, atomic native replay/effect comparison and author/company-bound receipt status. Identical retries reuse the receipt; changed payloads/authors cannot reuse its key. A declined expiry result remains preparation, not falsely completed delivery.
+- Receipt metadata is restricted to the native system group and rejected by generic create/write. A private capability permits only the fixed receipt metadata update after native permissions and actual effects match. No elevated inventory/accounting writes or financial details in recovery responses are introduced.
+- Known native completion timestamps and generated journal references are explicitly assigned at save. Scheduling dates, receipt batch/expiry/prices, quantities, valuation and posted journal balances remain exact. Unexpected timestamps outside the native execution window and changed private valuation effects reject and roll back.
+- Seventeen focused save/status cases and the combined 96-case native fulfillment suite pass on the separate copy with mandatory analytics unchanged and zero failures/errors/skips. They include automatic valuation under Stock User without exposing accounting records, real saved batch data, one backorder, identical retries, delayed saves and rollback. The complete addon regression is checked separately, not inferred from these focused counts. Tested/mounted source hashes match; nine existing gateway/configuration regressions pass without exposing validation routes.
+- The complete 674-case addon regression passes with legacy optional-analytics fixtures in the copy only, restored to mandatory afterward. Independent main-tester read-back exactly matches the prior protected snapshot, including accounting records/counts, bank state, stock, delivery and preparation receipts. This does not accept all mandatory-analytics configurations or a hosted release.
+- Only the separate copy was upgraded to adapter 46 after a backup. Protected tester stays adapter 43; no gateway/TypeScript/React validation action or real RPC/HTTP/browser recovery is accepted yet. Notification setup/sending, native reports/multi-transfer flows, wider configurations and scale remain. Full Billing and whole-product parity are still open. See [the native validation contract](../runtime/billing/STOCK_VALIDATION.md).
+
 ## 15 October native delivery-validation load and rollback wizard review
 
 - Added an unreleased order/transfer-scoped validation load and ordered native wizard preview. Native `show_validate`, Stock User, record/field/company checks and canonical server-owned context apply. No client wizard IDs, arbitrary model/method/context or skip flags are accepted.
