@@ -8,6 +8,8 @@ Use your own GitHub account. Confirm the issue, owner, approved base branch, sco
 
 Read [beginner orientation](docs/developer-start-here.md), [architecture](docs/architecture.md), [repository map](docs/project-structure.md) and the relevant [module guide](docs/module-guide.md). For a new feature, first write the user problem and compare native behaviour.
 
+If Git, debugging or a feature review is new to you, follow [the development playbook](docs/development-playbook.md). Module/package READMEs link back to the same setup and testing instructions, so do not follow an older tutorial's commands over this handbook.
+
 ## Branch and commit workflow
 
 From a fresh clone, replace the task name and use the issue's approved base:

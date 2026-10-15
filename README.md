@@ -28,6 +28,8 @@ Then follow the [first contribution walkthrough](docs/first-contribution.md) and
 
 New to React or TypeScript? Keep the [beginner code-reading guide](docs/reading-and-changing-code.md) open beside your editor. It explains components, state, queries, mutations, tests and hospital data identities using this repository's actual appointment screen.
 
+For a team architecture briefing, practical debugging steps, Git basics and a feature review walkthrough, use the [development playbook](docs/development-playbook.md). Start with its short architecture explanation, then complete the appointment exercise before taking a write workflow.
+
 These updated guides are on `codex/billing-delivery-parity`. If GitHub opens the older default `main` README, select that development branch to read the current guides. A documentation branch and a task's approved code base are different: do not start from unfinished Billing code merely to obtain these guides.
 
 No production credentials, paid AI account or new server is required to start learning the source. Real workflow testing requires approved synthetic backend access. Do not disable authentication to bypass that prerequisite.
@@ -73,6 +75,24 @@ Use the existing tokens, Carbon-based controls and accessible layouts. Do not in
 - [Hospital branding format and restrictions](docs/HOSPITAL_BRANDING.md)
 - [Design QA](docs/design-qa.md)
 - [All documentation and component guides](docs/README.md)
+
+## Module and package guides
+
+These local READMEs explain each area's responsibility and link to routes, services and tests. Read the shared setup first; do not install or launch each module as a separate product.
+
+| Area                                                          | Guide                                                            |
+| ------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Home and signed-in Billing                                    | [Home](apps/home/README.md)                                      |
+| Consultation, programmes, orders, beds, inpatient and theatre | [Clinical](apps/clinical/README.md)                              |
+| Patient search and registration                               | [Registration](apps/registration/README.md)                      |
+| Appointment list, calendar and service settings               | [Appointments](apps/appointments/README.md)                      |
+| Patient files and references                                  | [Patient Documents](apps/patient-documents/README.md)            |
+| CSV, audit and order sets                                     | [Administration](apps/admin/README.md)                           |
+| Report jobs and downloads                                     | [Reports](apps/reports/README.md)                                |
+| Shared command interface                                      | [Command palette](apps/command-palette/README.md)                |
+| Controls, tokens and branding                                 | [Design-system package](packages/bahmni-design-system/README.md) |
+| Clinical API contracts and helpers                            | [Services package](packages/bahmni-services/README.md)           |
+| Shared hospital UI and contexts                               | [Widgets package](packages/bahmni-widgets/README.md)             |
 
 ## Licensing and source credit
 

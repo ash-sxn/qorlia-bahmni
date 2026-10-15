@@ -7,6 +7,7 @@
 - [New-team handover and proposed first checkpoints](team-handover.md)
 - [Beginner orientation](developer-start-here.md)
 - [Reading and changing code, with beginner explanations](reading-and-changing-code.md)
+- [Development playbook: architecture briefing, debugging, Git and review](development-playbook.md)
 - [Local setup and troubleshooting](setup-guide.md)
 - [Architecture and data/session boundaries](architecture.md)
 - [Repository map](project-structure.md)
@@ -29,6 +30,8 @@
 These ledgers contain historical checkpoints. Read the newest relevant entry and distinguish source, private API, protected tester and production acceptance. A past successful test is not current whole-product proof.
 
 ## Shared design and component guides
+
+For module responsibilities, routes, services and tests, use the [module and package READMEs](../README.md#module-and-package-guides).
 
 - [Qorlia design system](QORLIA_DESIGN_SYSTEM.md)
 - [Hospital branding](HOSPITAL_BRANDING.md)

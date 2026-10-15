@@ -4,6 +4,8 @@
 
 This is the entry brief for Aniket, Gautam and future contributors. It assumes no prior hospital-software or professional development experience. Read the linked guides progressively, not all source files at once. Updated 15 October 2026. Task owners must confirm current versions and access before implementation.
 
+For the team's architecture discussion, use [the development playbook](development-playbook.md#1-explain-the-architecture-back-to-the-team). Have each contributor explain one request chain back to the reviewer. Its debugging and Git sections support the next step from reading the code to contributing a tested change.
+
 ## 1. The project in plain language
 
 Qorlia is building one consistent hospital workspace using Bahmni and its native services. A patient can be registered, treated, booked for appointments and associated with orders and documents. Billing and inventory are handled by a separate native ERP service. We change and connect the interface without inventing a second clinical record or accounting ledger.

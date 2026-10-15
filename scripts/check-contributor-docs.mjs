@@ -12,6 +12,7 @@ const files = [
   "docs/team-handover.md",
   "docs/developer-start-here.md",
   "docs/reading-and-changing-code.md",
+  "docs/development-playbook.md",
   "docs/setup-guide.md",
   "docs/architecture.md",
   "docs/project-structure.md",
@@ -21,6 +22,17 @@ const files = [
   "docs/team-workflow.md",
   "docs/first-contribution.md",
   "docs/task-brief-template.md",
+  "apps/home/README.md",
+  "apps/clinical/README.md",
+  "apps/registration/README.md",
+  "apps/appointments/README.md",
+  "apps/patient-documents/README.md",
+  "apps/admin/README.md",
+  "apps/reports/README.md",
+  "apps/command-palette/README.md",
+  "packages/bahmni-design-system/README.md",
+  "packages/bahmni-services/README.md",
+  "packages/bahmni-widgets/README.md",
 ];
 let links = 0;
 for (const name of files) {
