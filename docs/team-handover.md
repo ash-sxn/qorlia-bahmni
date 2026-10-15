@@ -48,6 +48,27 @@ For implementation details and dated evidence, read the [confirmation contract](
 
 Python/Odoo runtime access is needed only for assigned Billing backend work. Docker/Java or specialist tools are task-specific, not compulsory requests for every newcomer. Test libraries are already project dependencies. Do not install a second framework or replace the lockfile to get started.
 
+### Request only the resources your task needs
+
+Send this privately to the task owner when something is missing. Do not include passwords, cookies or tokens. The owner/operator supplies approved access; colleagues do not pass around another person's credentials.
+
+```text
+Name / own GitHub username:
+Project / task link / proposed workflow:
+Approved base branch and starting SHA, if known:
+Available working hours and operating system:
+Installed Git / Node / Yarn versions:
+Last command or screen successfully checked:
+Exact sanitized error or missing prerequisite:
+Specific resource needed and why this task needs it:
+Access owner / reviewer to confirm:
+Can continue with source reading or tests meanwhile:
+```
+
+For frontend learning, request source access and the documented toolchain first. For actual API acceptance, request an approved synthetic environment and scoped account. For a native backend assignment, request the matching runtime and module/configuration versions from the operator. A paid coding assistant, production database, owner's GitHub login or unrestricted server account is not a default prerequisite.
+
+If you have never used Git, JavaScript or a terminal, say so at the first checkpoint. Read [the beginner guide](reading-and-changing-code.md) with a reviewer, then explain one small read before modifying a clinical or financial write. These guides are an onboarding path, not a claim that a first-time developer can safely own the whole stack immediately.
+
 ### First-session checklist
 
 Do this in order. If a prerequisite is missing, report it rather than spending the session guessing configuration.

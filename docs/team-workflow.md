@@ -74,6 +74,18 @@ GitHub issues/PRs hold code tasks and evidence. An internal project board can mi
 
 Agree the board tool, task owners, review cadence and release gates with the project owner. Avoid two conflicting “sources of truth”: a status change should link its evidence and be reflected on the agreed tracker. Employee requests are project input; priority changes need the owner's decision.
 
+### A lightweight review routine
+
+This is a proposed routine for the owner/coordinator to adopt, not a scheduled meeting, employee assignment or new reporting tool.
+
+1. **Before a task starts:** the owner agrees one workflow, base branch, developer, reviewer, tester, prerequisites and next checkpoint. Copy the [task brief](task-brief-template.md). Keep broad feature requests in Backlog until their dependencies are understood.
+2. **During the day:** contributors keep their own task updated with concrete evidence and questions. One short end-of-day update links that task rather than repeating its entire history in multiple chats. The coordinator flags overlapping shared files and missing decisions.
+3. **At the agreed checkpoint:** the developer demonstrates the scoped result and explains its request chain. The reviewer checks source and tests; an independent tester replays the written steps. A setup or read-audit checkpoint is valid progress but not feature acceptance.
+4. **When scope changes:** the owner decides whether to defer, split or re-estimate. Record the changed assumption and checkpoint instead of silently adding it to an existing deadline. Waiting on an account or a domain answer needs a named resolver.
+5. **Before release:** link the accepted PR, exact build/backend/configuration, remaining limits and operator approval. Accepted source and running software are different states. Close the release task only after its target environment is verified.
+
+For a weekly management summary, list accepted deliverables, work awaiting review/testing, concrete blockers with owners, and the next agreed checkpoints by project and phase. Do not turn setup hours, lines of code or activity screenshots into a completion score. Vendors use the same evidence rules, with their contractual acceptance and payment gates handled privately.
+
 ## Keep documentation current with the code
 
 Every PR that changes a route, API, configuration prerequisite, permission, shared design rule or contributor command should update the relevant guide in the same PR. Preserve dated acceptance evidence instead of replacing it with a generic “done”. Record new source/runtime versions and remaining gates. Add a README/index link for a new contributor guide, then run `node scripts/check-contributor-docs.mjs`.

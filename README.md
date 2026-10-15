@@ -21,6 +21,8 @@ For a practical starting checklist, use [your first session](docs/team-handover.
 
 The handbook is a map, not a requirement to read every page before asking a question. Follow one workflow end to end, then expand into adjacent features.
 
+**For the first team discussion:** open the [architecture briefing](docs/development-playbook.md#9-run-the-first-team-architecture-briefing), use the [technology and responsibility map](docs/development-playbook.md#the-tools-and-what-each-one-is-responsible-for), then complete one appointment read together. Contributors can use the [resource request](docs/team-handover.md#request-only-the-resources-your-task-needs) instead of asking for unspecified software access. The coordinator can use the [review routine](docs/team-workflow.md#a-lightweight-review-routine) to track deliverables without duplicating reports.
+
 Read these in order. Each guide links back here and to the next step.
 
 | Step | Guide                                                | What you will learn                                                          |

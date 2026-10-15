@@ -18,6 +18,36 @@ Use this short briefing with your editor open:
 
 End the briefing by tracing one actual permitted read and explaining what remains unverified. The [appointment exercise](first-contribution.md) provides a complete starting route. Do not give the team a guessed whole-product completion percentage.
 
+### The tools and what each one is responsible for
+
+These are existing technologies in the repository, not a shopping list. Start with the [root package manifest](../package.json), [shell entry](../distro/src/main.tsx) and [repository map](project-structure.md). A version written in a dependency range is not always the installed version; the committed lockfile controls resolved dependencies.
+
+| Technology or service                     | Plain-language job                                                                         | What a newcomer should not assume                                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| TypeScript and React                      | Describe typed data and the screen the user interacts with                                 | A TypeScript type does not validate an untrusted server response at runtime                           |
+| React Router                              | Choose a screen from the URL                                                               | A route or visible menu does not authorize access to a record                                         |
+| Carbon and Qorlia's design-system package | Supply consistent controls, tokens, typography and branding                                | A new module should not introduce its own colours or second UI framework                              |
+| TanStack Query                            | Load server data, cache it and request a fresh read after a change                         | Cached data is not the database and can become stale                                                  |
+| Zustand, React state and context          | Hold the existing module's draft and interaction state                                     | A draft in memory or browser storage is not an accepted hospital record                               |
+| Nx, Yarn and Webpack                      | Coordinate workspace tasks, install locked dependencies and bundle the browser application | App folders are not separate servers to install individually                                          |
+| Jest and Testing Library                  | Run repeatable logic and simulated interaction checks                                      | A mocked response does not prove the native server saved anything                                     |
+| OpenMRS and Bahmni modules                | Authorize and store clinical workflows through native APIs                                 | The full clinical server source and database are not included in this frontend repo                   |
+| Odoo and the Qorlia Billing addon         | Authorize ERP, stock and accounting operations through native models                       | Clinical sign-in does not create an ERP session, and confirming an order is not a payment or delivery |
+
+REST and FHIR are API contracts used by the clinical services, not separate copies of the patient database. JSON-RPC is the request format used for the ERP integration. Use the existing [clinical service](../packages/bahmni-services/src/appointmentService/appointmentService.ts) or [Billing service](../apps/home/src/components/Billing/billingService.ts) instead of inventing a new generic client. A cookie is a browser-managed session credential, not something to paste into an issue or share with a colleague.
+
+### Know where a requirement can be implemented
+
+The browser, proxy, native module and installation configuration can all affect one workflow. Owning this repository does not mean every backend capability can be implemented by editing a React file.
+
+- **Presentation change:** use the relevant page and shared controls, then check accessibility and adjacent screens.
+- **Installed form or workflow rule:** inspect the actual configuration and server behaviour. Record its version and owner; do not hardcode one hospital's rule into a generic component.
+- **Clinical API change:** first establish whether an installed Bahmni/OpenMRS module already provides it. If a server change is needed outside this repository, identify that separate source/release dependency before estimating the UI work.
+- **ERP change:** compare native Odoo behaviour and the existing addon contract. Browser code must not become an alternative stock or accounting ledger.
+- **A new separate product or national-health integration:** agree its API, permissions, sessions, data handling, dependencies and acceptance before assigning implementation. A navigation tile is not an integration.
+
+For example, booking an appointment must not be described as creating a visit, issuing an invoice or reserving medicines unless those separate effects are actually implemented and verified. A developer records this boundary in the task; a domain reviewer decides the intended hospital behaviour.
+
 ## 2. Know which direction a dependency runs
 
 ```text
