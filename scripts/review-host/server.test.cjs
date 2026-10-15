@@ -153,8 +153,14 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     .matchAll(/^    def (qorlia_validation_step_\w+)\(/gm)].map(match => match[1]);
   assert.deepEqual([...validationStepMethods].sort(), ['preview', 'save', 'status'].map(action => `qorlia_validation_step_${action}`).sort(),
     'Only three named native step APIs are covered, without raw wizard methods.');
+  const returnMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_return.py'), 'utf8')
+    .matchAll(/^    def (qorlia_return_\w+)\(/gm)].map(match => match[1]);
+  assert.deepEqual([...returnMethods].sort(), ['load', 'locations', 'preview'].map(action => `qorlia_return_${action}`).sort(),
+    'Return development APIs are load, locations and rollback preview, not raw creation or a save contract.');
   for (const [model, method] of [['stock.picking', 'button_validate'], ['stock.immediate.transfer', 'process'],
-    ['stock.picking.validate.wizard', 'btn_confirm'], ['stock.backorder.confirmation', 'process'], ['expiry.picking.confirmation', 'process']])
+    ['stock.picking.validate.wizard', 'btn_confirm'], ['stock.backorder.confirmation', 'process'], ['expiry.picking.confirmation', 'process'],
+    ['stock.return.picking', 'create_returns'], ['stock.return.picking', 'create'], ['stock.return.picking.line', 'write'],
+    ['stock.picking', 'qorlia_return_save'], ['stock.picking', 'qorlia_return_status']])
     assert.equal((await rpc(`/web/dataset/call_kw/${model}/${method}`, allCookies, {model, method, args: [], kwargs: {}})).status, 404);
   for (const [model, method] of [
     ...['load', 'preview', 'run', 'status'].map(action => ['stock.picking', `qorlia_transfer_${action}`]),
@@ -162,6 +168,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     ...confirmationMethods.map(method => ['stock.picking', method]),
     ...validationMethods.map(method => ['stock.picking', method]),
     ...validationStepMethods.map(method => ['stock.picking', method]),
+    ...returnMethods.map(method => ['stock.picking', method]),
     ...bankMethods.map(method => ['account.bank.statement.line', method]),
     ...checkpointMethods.map(method => ['account.bank.statement', method]),
   ]) {

@@ -1,5 +1,35 @@
 # Qorlia React frontend backend readiness
 
+## Stock returns: native review and typed source contracts (15 October 2026)
+
+The next Billing increment reconstructs the installed native reverse-transfer
+form, pages permitted locations and projects native return creation inside a
+rolled-back transaction. The TypeScript client validates original move/product
+association, exact quantities/location and permission-filtered effects. Three
+named gateway routes preserve existing review/clinical gates and ERP-cookie
+isolation; raw wizard calls and unimplemented return save/status are blocked.
+
+Final isolated native regression passes 133 fulfillment/return cases with
+mandatory analytics, no failures/errors/skips and earlier browser receipts
+preserved. Home passes 710 tests/75 suites, including fourteen return contract
+cases; nine gateway/configuration checks and scoped source types/lint pass.
+Nine actual native load/location/review payloads across outgoing, partial and
+incoming scenarios pass the actual TypeScript service. Preview preserves its
+transactional-row fingerprint. Independent reads preserve earlier stock,
+valuation, receipts and protected stored accounting, with a separate unchanged
+hosted-tester baseline. This is payload compatibility, not live HTTP acceptance
+or independent recalculation of computed invoice totals.
+Tests also distinguish creation from completion, automatic valuation only on
+completion, native quantity-update versus financial refund, and genuine native
+single-location roles. See [the detailed contract](../runtime/billing/STOCK_RETURNS.md).
+
+This is not a return save/status or interactive frontend integration. Signed
+creation, duplicate-safe recovery, React controls and real HTTP/browser
+acceptance remain gates. Native tests are not a new tester release. No schema,
+runtime or frontend-build upgrade is claimed; the isolated database stays 48
+and the protected tester stays 43. The local review gate remains expired,
+returning 410. No production/public-demo deployment or gate renewal occurs.
+
 ## Completed receipt browser checkpoint and native valuation regression (15 October 2026)
 
 The isolated adapter-48 React/gateway path now completes a five-unit incoming

@@ -8,6 +8,7 @@ from . import stock_operation_edit
 from . import stock_confirmation
 from . import stock_validation
 from . import stock_validation_step
+from . import stock_return
 from . import account_move
 from . import payment_workflow
 from . import credit_workflow

@@ -3,6 +3,12 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Next integration: [native stock returns](STOCK_RETURNS.md). The installed native
+form and override audit distinguishes return creation from physical validation and
+financial refunds. Development source adds native form reconstruction, bounded
+location search and rollback preview, not a released save/recovery/UI path. Do not
+enable the control or claim return completion until its remaining gates pass.
+
 Latest receipt-completion checkpoint, adapter 48 (15 October): actual isolated
 React/gateway saves complete a five-unit incoming receipt, create one reviewed
 priced batch and reload Done stock with exact recovery cleared. Independent

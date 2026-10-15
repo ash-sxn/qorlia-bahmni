@@ -4617,6 +4617,228 @@ function validValidationEffects(data: StockValidationEffects): boolean {
     )
   );
 }
+
+export interface StockReturnForm {
+  location: Exclude<Relation, false>;
+  location_editable: boolean;
+  show_units: boolean;
+  chained_move_warning: boolean;
+  lines: {
+    move_id: number;
+    product: Exclude<Relation, false>;
+    quantity: number;
+    unit: Exclude<Relation, false>;
+    updates_order_quantities: boolean;
+  }[];
+}
+export interface StockReturnLoad extends StockConfirmationLoad {
+  form: StockReturnForm | false;
+  write_ready: false;
+}
+export interface StockReturnSelection extends StockConfirmationSelection {
+  location_id: number;
+  lines: { move_id: number; quantity: number }[];
+}
+export interface StockReturnReview extends StockReturnSelection {
+  form: StockReturnForm;
+  return_state: Exclude<OrderTransfer['state'], 'done' | 'cancel'>;
+  effects: StockValidationEffects;
+  write_ready: false;
+}
+function validReturnForm(data: StockReturnForm): boolean {
+  return (
+    confirmationKeys(data, [
+      'location',
+      'location_editable',
+      'show_units',
+      'chained_move_warning',
+      'lines',
+    ]) &&
+    Array.isArray(data.location) &&
+    validRelation(data.location) &&
+    stockId(data.location[0]) &&
+    [data.location_editable, data.show_units, data.chained_move_warning].every(
+      (flag) => typeof flag === 'boolean',
+    ) &&
+    Array.isArray(data.lines) &&
+    data.lines.length <= 500 &&
+    data.lines.every(
+      (row) =>
+        confirmationKeys(row, [
+          'move_id',
+          'product',
+          'quantity',
+          'unit',
+          'updates_order_quantities',
+        ]) &&
+        stockId(row.move_id) &&
+        Number.isFinite(row.quantity) &&
+        [row.product, row.unit].every(
+          (value) =>
+            Array.isArray(value) && validRelation(value) && stockId(value[0]),
+        ) &&
+        typeof row.updates_order_quantities === 'boolean',
+    ) &&
+    new Set(data.lines.map((row) => row.move_id)).size === data.lines.length
+  );
+}
+function checkedReturnSelection(
+  value: StockReturnSelection,
+): StockReturnSelection {
+  const base = checkedConfirmationSelection(value);
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'location_id',
+      'lines',
+    ]) ||
+    !stockId(value.location_id) ||
+    !Array.isArray(value.lines) ||
+    value.lines.length > 500 ||
+    !value.lines.every(
+      (row) =>
+        confirmationKeys(row, ['move_id', 'quantity']) &&
+        stockId(row.move_id) &&
+        Number.isFinite(row.quantity),
+    ) ||
+    new Set(value.lines.map((row) => row.move_id)).size !== value.lines.length
+  )
+    throw new Error(
+      'Review original native return moves, location and finite quantities.',
+    );
+  return {
+    ...base,
+    location_id: value.location_id,
+    lines: value.lines.map((row) => ({ ...row })),
+  };
+}
+export async function getStockReturn(orderId: number, transferId: number) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  const data = await stockCall<StockReturnLoad>('qorlia_return_load', {
+    order_id: orderId,
+    transfer_id: transferId,
+  });
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'graph',
+      'reason',
+      'write_ready',
+      'form',
+    ]) ||
+    data.order_id !== orderId ||
+    data.transfer_id !== transferId ||
+    !stockVersion(data.version) ||
+    !validStockGraph(data.graph, transferId) ||
+    data.write_ready !== false ||
+    !(data.form === false
+      ? typeof data.reason === 'string' && data.reason.length > 0
+      : data.reason === false &&
+        data.graph.transfer.state === 'done' &&
+        validReturnForm(data.form) &&
+        data.form.lines.every((row) =>
+          data.graph.transfer.moves.some(
+            (move) =>
+              move.id === row.move_id &&
+              move.product !== false &&
+              move.product[0] === row.product[0],
+          ),
+        ))
+  )
+    throw new Error('Invalid native return form. Reload the transfer.');
+  return data;
+}
+export async function getStockReturnLocations(
+  selection: StockConfirmationSelection,
+  query = '',
+  after = 0,
+  limit = 25,
+) {
+  const exact = checkedConfirmationSelection(selection);
+  if (
+    !confirmationKeys(selection, ['order_id', 'transfer_id', 'version']) ||
+    typeof query !== 'string' ||
+    query.length > 200 ||
+    !Number.isSafeInteger(after) ||
+    after < 0 ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100
+  )
+    throw new Error('Use a bounded native return-location search.');
+  const data = await stockCall<{
+    rows: Exclude<Relation, false>[];
+    next_after: number | false;
+  }>('qorlia_return_locations', { ...exact, query, after, limit });
+  if (
+    !confirmationKeys(data, ['rows', 'next_after']) ||
+    !Array.isArray(data.rows) ||
+    data.rows.length > limit ||
+    !data.rows.every(
+      (row, index) =>
+        Array.isArray(row) &&
+        validRelation(row) &&
+        stockId(row[0]) &&
+        row[0] > (index ? data.rows[index - 1][0] : after),
+    ) ||
+    !(
+      data.next_after === false ||
+      (data.rows.length === limit &&
+        stockId(data.next_after) &&
+        data.next_after === data.rows[data.rows.length - 1][0])
+    )
+  )
+    throw new Error('Invalid native return locations. Reload the form.');
+  return data;
+}
+export async function previewStockReturn(selection: StockReturnSelection) {
+  const exact = checkedReturnSelection(selection);
+  const data = await stockCall<StockReturnReview>(
+    'qorlia_return_preview',
+    exact,
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'location_id',
+      'lines',
+      'form',
+      'return_state',
+      'effects',
+      'write_ready',
+    ]) ||
+    data.order_id !== exact.order_id ||
+    data.transfer_id !== exact.transfer_id ||
+    data.version !== exact.version ||
+    data.location_id !== exact.location_id ||
+    JSON.stringify(data.lines) !== JSON.stringify(exact.lines) ||
+    !validReturnForm(data.form) ||
+    data.form.location[0] !== exact.location_id ||
+    data.form.lines.length !== exact.lines.length ||
+    !data.form.lines.every((row) =>
+      exact.lines.some(
+        (line) =>
+          line.move_id === row.move_id && line.quantity === row.quantity,
+      ),
+    ) ||
+    !['draft', 'waiting', 'confirmed', 'assigned'].includes(
+      data.return_state,
+    ) ||
+    !validValidationEffects(data.effects) ||
+    data.write_ready !== false
+  )
+    throw new Error(
+      'Invalid native return review. Reload and review it again.',
+    );
+  return data;
+}
 function validValidationStep(
   data: StockValidationStep,
   transferId: number,

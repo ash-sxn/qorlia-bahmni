@@ -26,6 +26,7 @@
 - [Backend readiness](BACKEND_READINESS.md)
 - [Billing adapter](../runtime/billing/README.md)
 - [Native delivery validation and wizard contract](../runtime/billing/STOCK_VALIDATION.md)
+- [Native stock return workflow and development contract](../runtime/billing/STOCK_RETURNS.md)
 - [Reports adapter](../runtime/reports/README.md)
 
 These ledgers contain historical checkpoints. Read the newest relevant entry and distinguish source, private API, protected tester and production acceptance. A past successful test is not current whole-product proof.

@@ -22,6 +22,7 @@ const files = [
   "docs/team-workflow.md",
   "docs/first-contribution.md",
   "docs/task-brief-template.md",
+  "runtime/billing/STOCK_RETURNS.md",
   "apps/home/README.md",
   "apps/clinical/README.md",
   "apps/registration/README.md",
