@@ -1,5 +1,32 @@
 # Qorlia React frontend backend readiness
 
+## Confirmation save/status source checkpoint (15 October 2026)
+
+Adapter 45 implements exact author/company-bound receipts, recovery/status,
+deterministic native locks, repeated signed preview and actual-effect comparison,
+created native document references and record/callback rollback. Native caller-owned
+compute flush fixes a reproduced second-message administrator attribution mismatch.
+A two-batch regression forces the problematic administrator flush environment.
+
+Twenty-nine focused native cases pass on the separate copy with mandatory analytics.
+Combined 620 native cases pass with legacy fixtures' optional analytics there only,
+restored afterward. Earlier failed fixture/attribution iterations are not accepted
+releases. Source TypeScript contracts and named gateway methods have fourteen focused
+service tests, 609 Home tests/70 suites, types, lint, gateway checks and build passing.
+This is not actual HTTP, browser or hospital-scale concurrency acceptance.
+
+Final-source simultaneous identical requests yield two accepted responses and one
+receipt/upstream move through native RPC retry. Sixteen captured native contracts
+from four additional synthetic cases pass the actual service validator, including
+native audit pseudo-relations. Source/mounted hashes match and the independent main
+tester snapshot is unchanged. This still does not establish real HTTP acceptance.
+
+The tester still uses adapter 43 and stock-operation-edit-r2. Confirmation controls,
+the shared durable recovery slot and protected HTTP/browser publication remain open.
+Global capture/fingerprints, coarse locks and per-transfer JSON receipts need scaling
+work before production. Native validation/wizards/returns and whole-product parity
+remain separate unfinished requirements. See [confirmation integration](../runtime/billing/STOCK_CONFIRMATION.md).
+
 ## Native confirmation load/rollback-preview source checkpoint (14 October 2026)
 
 Adapter 44 source adds scoped native load and rollback preview with complete

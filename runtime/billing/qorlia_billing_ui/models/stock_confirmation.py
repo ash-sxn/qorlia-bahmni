@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 # Copyright 2026 Qorlia contributors.
 from contextlib import closing
+import copy
 import hashlib
 import hmac
 import re
+import uuid
 
 from psycopg2 import sql
 from odoo import api, fields, models, tools
@@ -31,10 +33,25 @@ METADATA = {'id', 'create_uid', 'create_date', 'write_uid', 'write_date'}
 AUDIT_MODELS = {'mail.message', 'mail.mail', 'mail.activity', 'mail.notification', 'mail.tracking.value', 'ir.attachment'}
 ASSIGNED_ON_SAVE = {'stock.picking': {'name', 'date'}, 'purchase.order': {'name'},
     'stock.move.line': {'date'}, 'mail.message': {'date', 'message_id'}, 'mail.mail': {'message_id'}}
+_RECEIPT_TOKEN = object()
 
 
 class StockConfirmation(models.Model):
     _inherit = 'stock.picking'
+
+    # shortcut: per-transfer JSON receipts; migrate before high-volume fulfillment.
+    qorlia_confirmation_receipts = fields.Json(copy=False, readonly=True)
+
+    @api.model_create_multi
+    def create(self, values_list):
+        if any('qorlia_confirmation_receipts' in values for values in values_list) or 'default_qorlia_confirmation_receipts' in self.env.context:
+            raise AccessError('Confirmation receipts can only be recorded by a reviewed action.')
+        return super().create(values_list)
+
+    def write(self, values):
+        if 'qorlia_confirmation_receipts' in values and self.env.context.get('qorlia_confirmation_receipt_token') is not _RECEIPT_TOKEN:
+            raise AccessError('Confirmation receipts can only be recorded by a reviewed action.')
+        return super().write(values)
 
     def _qorlia_confirmation_tables(self):
         tables = set()
@@ -88,7 +105,7 @@ class StockConfirmation(models.Model):
         stamp = picking._qorlia_confirmation_stamp(picking._qorlia_confirmation_tables())
         return {'order_id': order_id, 'transfer_id': transfer_id, 'graph': graph,
             'version': picking._qorlia_confirmation_version(order_id, graph, stamp),
-            'reason': reason, 'write_ready': False}
+            'reason': reason, 'write_ready': True}
 
     def _qorlia_confirmation_capture(self):
         result, visible = {}, {}
@@ -232,6 +249,42 @@ class StockConfirmation(models.Model):
                     for field_name in sorted(fields_allowed) if field_name not in METADATA and field_name != 'access_token' and not field_name.startswith('qorlia_') and model._fields[field_name].type != 'binary'}
         return result, private_audit
 
+    def _qorlia_confirmation_signature(self, version, effects, private_audit, state):
+        secret = self.env['ir.config_parameter'].sudo().get_param('database.secret')
+        if not isinstance(secret, str) or len(secret) < 16:
+            raise UserError('Native signing configuration is missing. Nothing was saved.')
+        reviewed = _digest({'version': version, 'effects': effects, 'private_audit': private_audit, 'state': state, 'author': self.env.uid})
+        return hmac.new(secret.encode(), reviewed.encode(), hashlib.sha256).hexdigest()
+
+    def _qorlia_confirmation_native(self):
+        # Register the caller's tracking before sudo-computed state can choose a different audit author.
+        self._track_prepare(self._fields)
+        finance_tables = [self.env[name]._table for name in FINANCIAL_MODELS]
+        config_tables = sorted({self.env[name]._table for name in CONFIG_MODELS if name not in GRAPH_MODELS})
+        money_before = self._qorlia_confirmation_stamp(finance_tables, semantic=True)
+        config_before = self._qorlia_confirmation_stamp(config_tables, semantic=True)
+        before = self._qorlia_confirmation_capture()
+        self.action_confirm()
+        # Cursor flush chooses an arbitrary live environment; drain computed tracking under the caller first.
+        self.env.flush_all()
+        self.env.cr.flush()
+        after = self._qorlia_confirmation_capture()
+        money_after = self._qorlia_confirmation_stamp(finance_tables, semantic=True)
+        config_after = self._qorlia_confirmation_stamp(config_tables, semantic=True)
+        if money_after != money_before or self.state in ('done', 'cancel'):
+            raise UserError('Confirmation changed financial records or completed stock. Nothing was saved.')
+        if config_after != config_before:
+            raise UserError('Confirmation changed unreviewed native configuration. Nothing was saved.')
+        physical = lambda snapshot: {identifier: (row['product_id'], row['location_id'], row['lot_id'], row['package_id'], row['owner_id'], row['quantity'])
+            for identifier, row in snapshot[0]['stock.quant'].items() if row['quantity']}
+        if physical(before) != physical(after):
+            raise UserError('Confirmation changed physical stock. Nothing was saved.')
+        effects, private_audit = self._qorlia_confirmation_effects(before, after)
+        references = {('new:%s:%s' % (name, index)): {'model': name, 'id': identifier}
+            for name in GRAPH_MODELS if name not in AUDIT_MODELS
+            for index, identifier in enumerate(sorted(set(after[0][name]) - set(before[0][name])))}
+        return effects, private_audit, self.state, references
+
     @api.model
     def qorlia_confirmation_preview(self, order_id, transfer_id, version):
         self = self.with_context({key: self.env.context[key] for key in ('allowed_company_ids', 'lang', 'tz') if key in self.env.context})
@@ -246,11 +299,6 @@ class StockConfirmation(models.Model):
             raise UserError(current['reason'])
         tables = picking._qorlia_confirmation_tables()
         stamp = picking._qorlia_confirmation_stamp(tables)
-        finance_tables = [self.env[name]._table for name in FINANCIAL_MODELS]
-        money_before = picking._qorlia_confirmation_stamp(finance_tables, semantic=True)
-        config_tables = sorted({self.env[name]._table for name in CONFIG_MODELS if name not in GRAPH_MODELS})
-        config_before = picking._qorlia_confirmation_stamp(config_tables, semantic=True)
-        before = picking._qorlia_confirmation_capture()
         cr = self.env.cr
         cr.flush()
         hooks = {name: getattr(cr, name) for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
@@ -258,23 +306,7 @@ class StockConfirmation(models.Model):
             for name in hooks:
                 setattr(cr, name, tools.Callbacks())
             with closing(cr.savepoint()):
-                picking.action_confirm()
-                cr.flush()
-                after = picking._qorlia_confirmation_capture()
-                money_after = picking._qorlia_confirmation_stamp(finance_tables, semantic=True)
-                config_after = picking._qorlia_confirmation_stamp(config_tables, semantic=True)
-                if money_after != money_before or picking.state in ('done', 'cancel'):
-                    changed = ', '.join(name for name in money_before if money_before[name] != money_after[name])
-                    raise UserError('Confirmation changed financial records or completed stock (%s). Nothing was saved.' % changed)
-                if config_after != config_before:
-                    changed = ', '.join(name for name in config_before if config_before[name] != config_after[name])
-                    raise UserError('Confirmation changed unreviewed native configuration (%s). Nothing was saved.' % changed)
-                physical = lambda snapshot: {identifier: (row['product_id'], row['location_id'], row['lot_id'], row['package_id'], row['owner_id'], row['quantity'])
-                    for identifier, row in snapshot[0]['stock.quant'].items() if row['quantity']}
-                if physical(before) != physical(after):
-                    raise UserError('Confirmation changed physical stock. Nothing was saved.')
-                effects, private_audit = picking._qorlia_confirmation_effects(before, after)
-                state = picking.state
+                effects, private_audit, state, _references = picking._qorlia_confirmation_native()
         finally:
             for name, callbacks in hooks.items():
                 setattr(cr, name, callbacks)
@@ -282,10 +314,90 @@ class StockConfirmation(models.Model):
         if picking._qorlia_confirmation_stamp(tables) != stamp:
             raise UserError('Native state changed during confirmation preview. Reload and review it again.')
         # Native signing secret prevents the public review digest becoming a dictionary oracle for hidden audit data.
-        secret = self.env['ir.config_parameter'].sudo().get_param('database.secret')
-        if not isinstance(secret, str) or len(secret) < 16:
-            raise UserError('Native signing configuration is missing. Nothing was saved.')
-        reviewed = _digest({'version': version, 'effects': effects, 'private_audit': private_audit, 'state': state, 'author': self.env.uid})
         return {'order_id': order_id, 'transfer_id': transfer_id, 'version': version,
-            'state_after': state, 'effects': effects, 'write_ready': False,
-            'review_version': hmac.new(secret.encode(), reviewed.encode(), hashlib.sha256).hexdigest()}
+            'state_after': state, 'effects': effects, 'write_ready': True,
+            'review_version': picking._qorlia_confirmation_signature(version, effects, private_audit, state)}
+
+    def _qorlia_confirmation_request(self, payload):
+        if not isinstance(payload, dict) or set(payload) != {'order_id', 'transfer_id', 'version', 'review_version', 'request_key'}:
+            raise ValidationError('Use the exact reviewed confirmation request.')
+        try:
+            if (any(type(payload[name]) is not int or payload[name] <= 0 for name in ('order_id', 'transfer_id'))
+                    or any(not isinstance(payload[name], str) or len(payload[name]) != 64
+                        or any(char not in '0123456789abcdef' for char in payload[name]) for name in ('version', 'review_version'))
+                    or str(uuid.UUID(payload['request_key'])) != payload['request_key']):
+                raise ValueError()
+        except (ValueError, TypeError, AttributeError):
+            raise ValidationError('Use valid identifiers and the exact confirmation request key.')
+        return dict(payload), _digest({'request': payload, 'author': self.env.uid, 'companies': self.env.companies.ids})
+
+    def _qorlia_confirmation_receipt(self, request, digest):
+        receipt = (self.qorlia_confirmation_receipts or {}).get(request['request_key'])
+        if receipt and (receipt['hash'] != digest or receipt['author'] != self.env.uid):
+            raise ValidationError('This identifier belongs to another confirmation request.')
+        return receipt
+
+    @api.model
+    def qorlia_confirmation_status(self, payload):
+        self = self.with_context({key: self.env.context[key] for key in ('allowed_company_ids', 'lang', 'tz') if key in self.env.context})
+        request, digest = self._qorlia_confirmation_request(payload)
+        picking, _order = self._qorlia_reservation_transfer(request['order_id'], request['transfer_id'])
+        receipt = picking._qorlia_confirmation_receipt(request, digest)
+        references = {}
+        for key, item in (receipt['references'].items() if receipt else []):
+            record = self.env[item['model']].browse(item['id']).exists()
+            available = False
+            if record and record.check_access_rights('read', raise_exception=False):
+                try:
+                    record.check_access_rule('read')
+                    available = True
+                except AccessError:
+                    pass
+            references[key] = {'model': item['model'], 'id': item['id'] if available else False,
+                'name': record.display_name if available else False, 'available': available}
+        return {'accepted': bool(receipt), 'request_key': request['request_key'],
+            'state_after': receipt['state'] if receipt else False, 'references': references,
+            'current': self.qorlia_confirmation_load(request['order_id'], request['transfer_id'])}
+
+    @api.model
+    def qorlia_confirmation_save(self, payload):
+        self = self.with_context({key: self.env.context[key] for key in ('allowed_company_ids', 'lang', 'tz') if key in self.env.context})
+        request, digest = self._qorlia_confirmation_request(payload)
+        picking, _order = self._qorlia_reservation_transfer(request['order_id'], request['transfer_id'])
+        if picking._qorlia_confirmation_receipt(request, digest):
+            return self.qorlia_confirmation_status(request)
+        self.env.cr.flush()
+        # shortcut: coarse deterministic locks cover native procurement phantoms; refine before concurrent hospital-scale fulfillment.
+        for table in picking._qorlia_confirmation_tables():
+            self.env.cr.execute(sql.SQL('LOCK TABLE {} IN SHARE ROW EXCLUSIVE MODE').format(sql.Identifier(table)))
+        self.env.invalidate_all()
+        picking, _order = self._qorlia_reservation_transfer(request['order_id'], request['transfer_id'])
+        if picking._qorlia_confirmation_receipt(request, digest):
+            return self.qorlia_confirmation_status(request)
+        review = self.qorlia_confirmation_preview(request['order_id'], request['transfer_id'], request['version'])
+        if not hmac.compare_digest(review['review_version'], request['review_version']):
+            raise UserError('Native confirmation effects changed. Review them again before saving.')
+        cr = self.env.cr
+        hooks = {name: (getattr(cr, name), list(getattr(cr, name)._funcs), copy.deepcopy(getattr(cr, name).data))
+            for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
+        try:
+            with cr.savepoint():
+                effects, private_audit, state, references = picking._qorlia_confirmation_native()
+                actual = picking._qorlia_confirmation_signature(request['version'], effects, private_audit, state)
+                if not hmac.compare_digest(actual, request['review_version']):
+                    raise UserError('Native confirmation changed unreviewed effects. Nothing was saved.')
+                receipts = dict(picking.qorlia_confirmation_receipts or {})
+                receipts[request['request_key']] = {'hash': digest, 'author': self.env.uid, 'state': state, 'references': references}
+                picking.with_context(qorlia_confirmation_receipt_token=_RECEIPT_TOKEN).write({'qorlia_confirmation_receipts': receipts})
+                cr.flush()
+                self.env.invalidate_all()
+                response = self.qorlia_confirmation_status(request)
+            return response
+        except Exception:
+            for name, (callbacks, functions, data) in hooks.items():
+                setattr(cr, name, callbacks)
+                callbacks.clear()
+                for function in functions:
+                    callbacks.add(function)
+                callbacks.data.update(data)
+            raise

@@ -139,9 +139,14 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models', name), 'utf8')
       .matchAll(/^    def (qorlia_checkpoint_\w+)\(/gm)].map(match => match[1]));
   assert.equal(checkpointMethods.length, 12, 'All native checkpoint read, analysis/export, attachment and reviewed editor APIs must be covered.');
+  const confirmationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_confirmation.py'), 'utf8')
+    .matchAll(/^    def (qorlia_confirmation_\w+)\(/gm)].map(match => match[1]);
+  assert.deepEqual([...confirmationMethods].sort(), ['load', 'preview', 'save', 'status'].map(action => `qorlia_confirmation_${action}`).sort(),
+    'Only the four named native confirmation APIs are covered.');
   for (const [model, method] of [
     ...['load', 'preview', 'run', 'status'].map(action => ['stock.picking', `qorlia_transfer_${action}`]),
     ...['load', 'onchange', 'choices', 'preview', 'save', 'status'].map(action => ['stock.picking', `qorlia_operation_${action}`]),
+    ...confirmationMethods.map(method => ['stock.picking', method]),
     ...bankMethods.map(method => ['account.bank.statement.line', method]),
     ...checkpointMethods.map(method => ['account.bank.statement', method]),
   ]) {

@@ -30,13 +30,17 @@ See [current readiness](../../docs/BACKEND_READINESS.md) and
 [developer architecture](../../docs/architecture.md).
 
 The next fulfillment contract is [native stock confirmation](STOCK_CONFIRMATION.md).
-Source adapter 44 adds native load/rollback-preview, complete graph capture,
-procurement and dependency effects, stored free quantity, readable field/schema
-metadata and signed private audit counts. Sixteen focused native cases pass with
-mandatory analytics in the separate database copy. Pre-commit and other callback
-queues are isolated/restored. Creation metadata is explicitly assigned on save;
-scheduling dates remain native. write_ready=false: save/receipts/recovery,
-TypeScript/gateway/React/HTTP acceptance and concurrency/performance remain open.
+Source adapter 45 adds save/status and exact author/company-bound receipts to the
+native load/rollback-preview foundation. Repeated signed effects, native locks,
+actual-effect comparison and record/callback rollback preserve procurement and
+audit semantics. Twenty-nine focused mandatory-analytics cases and the 620-case
+legacy optional-fixture suite pass on the separate copy; analytics is restored.
+The final source also accepts two simultaneous identical requests with one receipt
+and one supply move using native RPC retries. Sixteen captured native response
+contracts pass the actual TypeScript service across four synthetic scenarios.
+Frontend/gateway source checks pass, but React controls, the shared browser recovery
+slot and actual HTTP/browser confirmation acceptance remain open. Coarse locks,
+global capture and per-transfer JSON receipts still need production scaling work.
 The running protected tester remains adapter 43 and stock-operation-edit-r2.
 
 Historical form-only checkpoint, superseded above: adapter 42 adds scoped load,

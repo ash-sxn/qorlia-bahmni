@@ -60,6 +60,8 @@ The isolated adapter 43 checkpoint passed 28 focused operation-form/action check
 
 The later [confirmation contract](../runtime/billing/STOCK_CONFIRMATION.md) adds 13 focused native cases, passing with mandatory analytics. The combined 591-case regression harness passes on a separate database copy with legacy fixtures' optional analytics, restored afterward. An initial full run under mandatory analytics produced 80 missing-allocation fixture errors. Do not hide that configuration difference or treat the optional-fixture suite as proof of every mandatory-analytics workflow. Never relax the running tester or production database to make a regression harness pass. Configuration-specific acceptance remains separate.
 
+The 15 October adapter 45 source checkpoint supersedes that earlier case count: 29 focused confirmation cases pass with mandatory analytics, and the combined 620-case legacy harness passes on the copy with optional analytics restored afterward. Native caller-attribution, actual-effect rollback and cancelled/deleted-RFQ recovery are covered. TypeScript/gateway source checks are separate from native acceptance; browser controls and actual HTTP/browser confirmation still require integration. Record the tested version rather than treating these historical counts as a permanent threshold.
+
 ## Synthetic workflow acceptance
 
 Obtain permission before creating/editing test records. Use clearly labelled records and record their identifiers privately as appropriate. Do not use real patients, financial records or an employee's private credentials.

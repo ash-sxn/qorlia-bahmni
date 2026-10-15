@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 # Copyright 2026 Qorlia contributors.
 import json
+import time
+import uuid
 from unittest.mock import patch
 
 from odoo import fields
@@ -59,11 +61,12 @@ class StockConfirmationPreviewTest(TransactionCase):
     def test_manual_preview_is_serializable_complete_and_rolled_back(self):
         before = self.load()
         self.assertFalse(before['reason'])
-        self.assertFalse(before['write_ready'])
+        self.assertTrue(before['write_ready'])
         reviewed = self.preview(before['version'])
         self.assertEqual(reviewed['state_after'], 'confirmed')
-        self.assertFalse(reviewed['write_ready'])
+        self.assertTrue(reviewed['write_ready'])
         self.assertEqual(reviewed['effects']['updated']['stock.move'][0]['after']['state'], 'confirmed')
+        self.assertEqual(reviewed['effects']['created']['mail.message'][0]['values']['author_id'], self.user.partner_id.id)
         json.dumps(reviewed, allow_nan=False)
         self.assertEqual(before, self.load())
         self.assertEqual(self.picking.state, 'draft')
@@ -290,3 +293,233 @@ class StockConfirmationPreviewTest(TransactionCase):
         self.assertEqual(downstream['values']['location_id'], dispatch.id)
         self.assertEqual(reviewed, self.preview(before['version']))
         self.assertEqual(before, self.load())
+
+    def request(self):
+        reviewed = self.preview()
+        return {key: reviewed[key] for key in ('order_id', 'transfer_id', 'version', 'review_version')} | {'request_key': str(uuid.uuid4())}
+
+    def test_save_manual_confirmation_and_exact_receipt_recovery(self):
+        request = self.request()
+        self.assertFalse(self.api().qorlia_confirmation_status(request)['accepted'])
+        accepted = self.api().qorlia_confirmation_save(request)
+        self.assertTrue(accepted['accepted'])
+        self.assertEqual(accepted['state_after'], 'confirmed')
+        self.assertEqual(self.picking.state, 'confirmed')
+        self.assertEqual(len(self.picking.qorlia_confirmation_receipts), 1)
+        self.env.cr.flush()
+        self.env.invalidate_all()
+        self.assertEqual(self.api().qorlia_confirmation_save(request), accepted)
+        self.assertEqual(self.api().qorlia_confirmation_status(request), accepted)
+
+    def test_save_at_confirm_reservation_without_delivery_or_accounting(self):
+        self.warehouse.out_type_id.reservation_method = 'at_confirm'
+        counts = {name: self.env[name].search_count([]) for name in ('account.move', 'account.payment', 'stock.valuation.layer')}
+        accepted = self.api().qorlia_confirmation_save(self.request())
+        self.assertTrue(accepted['accepted'])
+        self.assertEqual(self.picking.state, 'assigned')
+        self.assertEqual(self.quant.quantity, 10)
+        self.assertEqual(self.quant.reserved_quantity, 5)
+        self.assertEqual(self.move.quantity_done, 0)
+        self.assertEqual(self.sale_line.qty_delivered, 0)
+        self.assertEqual(counts, {name: self.env[name].search_count([]) for name in counts})
+
+    def test_save_make_to_order_creates_one_upstream_and_returns_real_references(self):
+        route = self.pull_route()
+        self.move.write({'procure_method': 'make_to_order', 'route_ids': [(6, 0, route.ids)]})
+        request = self.request()
+        accepted = self.api().qorlia_confirmation_save(request)
+        self.assertEqual(len(self.move.move_orig_ids), 1)
+        upstream = self.move.move_orig_ids
+        self.assertEqual(upstream.product_uom_qty, 5)
+        refs = [row for row in accepted['references'].values() if row['model'] == 'stock.picking']
+        self.assertEqual(len(refs), 1)
+        self.assertEqual(refs[0]['id'], upstream.picking_id.id)
+        self.assertEqual(refs[0]['name'], upstream.picking_id.display_name)
+        self.assertTrue(refs[0]['available'])
+        self.assertEqual(self.api().qorlia_confirmation_save(request), accepted)
+        self.assertEqual(len(self.move.move_orig_ids), 1)
+
+    def test_save_buy_creates_one_rfq_and_retry_does_not_add_quantity(self):
+        vendor = self.env['res.partner'].create({'name': 'QorliaQA Confirmation saved vendor'})
+        self.env['product.supplierinfo'].create({'partner_id': vendor.id,
+            'product_tmpl_id': self.product.product_tmpl_id.id, 'product_id': self.product.id,
+            'min_qty': 0, 'price': 1, 'company_id': self.env.company.id})
+        route = self.pull_route()
+        route.rule_ids.action = 'buy'
+        self.move.write({'procure_method': 'make_to_order', 'route_ids': [(6, 0, route.ids)]})
+        request = self.request()
+        accepted = self.api().qorlia_confirmation_save(request)
+        purchase = self.env['purchase.order'].search([('partner_id', '=', vendor.id)])
+        self.assertEqual(len(purchase), 1)
+        self.assertEqual(purchase.state, 'draft')
+        self.assertEqual(purchase.order_line.product_qty, 5)
+        self.assertEqual(self.api().qorlia_confirmation_save(request), accepted)
+        self.assertEqual(purchase.order_line.product_qty, 5)
+
+    def test_stale_confirmation_or_review_cannot_save_or_create_receipt(self):
+        request = self.request()
+        with self.assertRaises(UserError):
+            self.api().qorlia_confirmation_save({**request, 'review_version': 'f' * 64})
+        self.quant.quantity = 11
+        with self.assertRaises(UserError):
+            self.api().qorlia_confirmation_save(request)
+        self.assertEqual(self.picking.state, 'draft')
+        self.assertFalse(self.picking.qorlia_confirmation_receipts)
+
+    def test_unreviewed_actual_effects_roll_back_native_state_and_receipt(self):
+        request = self.request()
+        original = type(self.picking).action_confirm
+        calls = []
+        def changed(picking):
+            result = original(picking)
+            calls.append(True)
+            if len(calls) == 2:
+                picking.move_ids.product_uom_qty = 7
+            return result
+        with patch.object(type(self.picking), 'action_confirm', changed), self.assertRaises(UserError):
+            self.api().qorlia_confirmation_save(request)
+        self.assertEqual(self.picking.state, 'draft')
+        self.assertEqual(self.move.product_uom_qty, 5)
+        self.assertFalse(self.picking.qorlia_confirmation_receipts)
+
+    def test_failed_actual_confirmation_restores_all_callback_queues(self):
+        request = self.request()
+        hooks = {name: getattr(self.env.cr, name) for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
+        sizes = {name: len(callbacks._funcs) for name, callbacks in hooks.items()}
+        original = type(self.picking).action_confirm
+        calls = []
+        def failed(picking):
+            result = original(picking)
+            calls.append(True)
+            if len(calls) == 2:
+                picking.env.cr.postcommit.add(lambda: self.fail('Failed save callback escaped.'))
+                raise UserError('QorliaQA actual confirmation failure')
+            return result
+        with patch.object(type(self.picking), 'action_confirm', failed), self.assertRaises(UserError):
+            self.api().qorlia_confirmation_save(request)
+        for name, callbacks in hooks.items():
+            self.assertIs(getattr(self.env.cr, name), callbacks)
+            self.assertEqual(len(callbacks._funcs), sizes[name])
+        self.assertEqual(self.picking.state, 'draft')
+        self.assertFalse(self.picking.qorlia_confirmation_receipts)
+
+    def test_confirmation_receipts_cannot_be_forged_or_copied(self):
+        with self.assertRaises(AccessError):
+            self.picking.write({'qorlia_confirmation_receipts': {'forged': {}}})
+        with self.assertRaises(AccessError):
+            self.env['stock.picking'].create({'qorlia_confirmation_receipts': {}})
+        with self.assertRaises(AccessError):
+            self.env['stock.picking'].with_context(default_qorlia_confirmation_receipts={}).create({})
+        self.api().qorlia_confirmation_save(self.request())
+        self.assertFalse(self.picking.copy().qorlia_confirmation_receipts)
+
+    def test_request_key_is_bound_to_exact_author_company_and_payload(self):
+        request = self.request()
+        self.api().qorlia_confirmation_save(request)
+        with self.assertRaises(ValidationError):
+            self.api().qorlia_confirmation_save({**request, 'version': 'e' * 64})
+        other = self.user.copy({'name': 'QorliaQA Other confirmation author', 'login': 'qorliaqa-other-confirmation-author'})
+        with self.assertRaises(ValidationError):
+            self.env['stock.picking'].with_user(other).qorlia_confirmation_status(request)
+        for change in ({'request_key': 'invalid'}, {'order_id': True}, {'version': []}, {'extra': True}):
+            with self.assertRaises(ValidationError):
+                self.api().qorlia_confirmation_save({**request, **change})
+
+    def test_status_after_created_supply_hidden_fails_closed_without_resave(self):
+        route = self.pull_route()
+        self.move.write({'procure_method': 'make_to_order', 'route_ids': [(6, 0, route.ids)]})
+        request = self.request()
+        accepted = self.api().qorlia_confirmation_save(request)
+        created = self.move.move_orig_ids.picking_id
+        self.env['ir.rule'].create({'name': 'QorliaQA Hidden recovered supply transfer',
+            'model_id': self.env['ir.model']._get_id('stock.picking'),
+            'domain_force': "[('id', '!=', %d)]" % created.id})
+        # Native order graph read fails closed while a linked supply record is hidden.
+        with self.assertRaises(AccessError):
+            self.api().qorlia_confirmation_status(request)
+        self.assertTrue(accepted['accepted'])
+        self.assertEqual(len(self.picking.qorlia_confirmation_receipts), 1)
+
+    def test_status_after_created_draft_rfq_removed_does_not_recreate_it(self):
+        vendor = self.env['res.partner'].create({'name': 'QorliaQA Removed confirmation RFQ vendor'})
+        self.env['product.supplierinfo'].create({'partner_id': vendor.id,
+            'product_tmpl_id': self.product.product_tmpl_id.id, 'product_id': self.product.id,
+            'min_qty': 0, 'price': 1, 'company_id': self.env.company.id})
+        route = self.pull_route()
+        route.rule_ids.action = 'buy'
+        self.move.write({'procure_method': 'make_to_order', 'route_ids': [(6, 0, route.ids)]})
+        request = self.request()
+        accepted = self.api().qorlia_confirmation_save(request)
+        purchase = self.env['purchase.order'].search([('partner_id', '=', vendor.id)])
+        self.assertEqual(len(purchase), 1)
+        self.assertEqual(purchase.state, 'draft')
+        keys = [key for key, row in accepted['references'].items() if row['model'] in ('purchase.order', 'purchase.order.line')]
+        self.assertEqual(len(keys), 2)
+        purchase.button_cancel()
+        self.assertEqual(purchase.state, 'cancel')
+        purchase.unlink()
+        self.env.cr.flush()
+        self.env.invalidate_all()
+        recovered = self.api().qorlia_confirmation_status(request)
+        self.assertTrue(recovered['accepted'])
+        for key in keys:
+            self.assertEqual(recovered['references'][key], {
+                'model': accepted['references'][key]['model'], 'id': False, 'name': False, 'available': False})
+        self.assertEqual(self.api().qorlia_confirmation_save(request), recovered)
+        self.assertFalse(self.env['purchase.order'].search([('partner_id', '=', vendor.id)]))
+        self.assertEqual(len(self.picking.qorlia_confirmation_receipts), 1)
+
+    def test_delayed_review_and_save_preserve_exact_signed_effects(self):
+        self.warehouse.out_type_id.reservation_method = 'at_confirm'
+        native = type(self.picking)._qorlia_confirmation_native
+        signer = type(self.picking)._qorlia_confirmation_signature
+        signed = []
+        def delayed(picking):
+            time.sleep(1.1)
+            return native(picking)
+        def observe(picking, version, effects, private, state):
+            signed.append({'effects': effects, 'private': private, 'state': state})
+            return signer(picking, version, effects, private, state)
+        with patch.object(type(self.picking), '_qorlia_confirmation_native', delayed), patch.object(type(self.picking), '_qorlia_confirmation_signature', observe):
+            request = self.request()
+            try:
+                accepted = self.api().qorlia_confirmation_save(request)
+            except UserError:
+                paths = []
+                def walk(a, b, path):
+                    if isinstance(a, dict) and isinstance(b, dict):
+                        for key in sorted(set(a) | set(b)):
+                            walk(a.get(key), b.get(key), path + '.' + str(key))
+                    elif isinstance(a, list) and isinstance(b, list) and len(a) == len(b):
+                        for index, (left, right) in enumerate(zip(a, b)):
+                            walk(left, right, path + '.' + str(index))
+                    elif a != b:
+                        paths.append(path)
+                walk(signed[0], signed[-1], '')
+                print(json.dumps({'qorliaqa_changed_signature_paths_only': paths}))
+                raise
+        self.assertTrue(accepted['accepted'])
+
+    def test_administrator_cursor_flush_cannot_change_multi_batch_audit_author(self):
+        self.warehouse.out_type_id.reservation_method = 'at_confirm'
+        lot = self.env['stock.lot'].create({'name': 'QorliaQA Second confirmation audit batch',
+            'product_id': self.product.id, 'company_id': self.env.company.id})
+        self.env['stock.quant']._update_available_quantity(self.product, self.picking.location_id, 10, lot_id=lot)
+        self.move.product_uom_qty = 15
+        self.sale_line.product_uom_qty = 15
+        self.env.cr.flush()
+        # Reproduce Odoo Transaction.flush selecting the administrator's live environment.
+        with patch.object(self.env.transaction, 'flush', self.env.flush_all):
+            reviewed = self.preview()
+            messages = reviewed['effects']['created']['mail.message']
+            self.assertGreaterEqual(len(messages), 2)
+            self.assertTrue(all(row['values']['author_id'] == self.user.partner_id.id for row in messages))
+            accepted = self.api().qorlia_confirmation_save({
+                **{key: reviewed[key] for key in ('order_id', 'transfer_id', 'version', 'review_version')},
+                'request_key': str(uuid.uuid4())})
+        self.assertTrue(accepted['accepted'])
+        self.assertEqual(len(self.picking.move_line_ids), 2)
+        self.assertEqual(sum(self.picking.move_line_ids.mapped('reserved_uom_qty')), 15)
+        messages = self.env['mail.message'].search([('model', '=', 'stock.picking'), ('res_id', '=', self.picking.id), ('tracking_value_ids', '!=', False)])
+        self.assertGreaterEqual(len(messages), 2)
+        self.assertEqual(messages.author_id, self.user.partner_id)

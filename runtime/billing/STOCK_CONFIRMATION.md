@@ -2,7 +2,29 @@
 
 [Billing adapter](README.md) · [Architecture](../../docs/architecture.md) · [Parity ledger](../../docs/FEATURE_PARITY.md)
 
-Source adapter 44 adds native confirmation load and rollback-preview methods. It is not a released confirmation workflow: `write_ready=false`, with no save, receipt/status recovery or React control yet. The protected tester still uses adapter 43 and its preparation/operation editor, not this source checkpoint.
+Source adapter 45 adds native confirmation save/status to the adapter 44 load/rollback-preview foundation. It is not a released browser confirmation workflow. The protected tester still uses adapter 43 and its preparation/operation editor, not this source checkpoint.
+
+## 15 October save/status source checkpoint
+
+`qorlia_confirmation_save(payload)` and `qorlia_confirmation_status(payload)` accept exactly `order_id`, `transfer_id`, `version`, `review_version` and a canonical UUID `request_key`. The receipt binds the exact payload, caller and company selection. A confirmed retry returns its receipt and current readable native state without re-running procurement. Receipt fields cannot be forged through create, write, defaults or copy.
+
+Save acquires deterministic native-table locks, repeats the reviewed native preview and compares its HMAC before applying. The actual native effects must also match the signed review inside a savepoint. Failures roll back records/receipts and restore all four callback queues. Created business documents return real permission-checked identities/names; deleted RFQs return unavailable references rather than being recreated. A hidden linked supply document still fails closed under the native order-graph rules.
+
+Native tracking is registered under the caller before sudo-computed state changes. After the action, caller-owned `env.flush_all()` drains pending computations before cursor precommit processing. Odoo's transaction flush otherwise chooses an arbitrary live environment, which caused intermittent administrator attribution in a second audit message. The regression deliberately forces administrator flush while reserving two batches. The fix preserves audit attribution and the signed-effect check; it does not discard author fields from the review.
+
+Twenty-nine focused native cases pass on the separate synthetic copy with mandatory analytics. The combined 620-case suite passes there using the legacy financial fixtures' optional analytics, restored afterward. Earlier failed cancellation-fixture and audit-attribution runs remain in private evidence. These results are native model-method acceptance, not HTTP or browser acceptance.
+
+The [TypeScript service](../../apps/home/src/components/Billing/billingService.ts) validates the four named contracts, identities, native field metadata/values, generated links, private-audit counts and exact receipts. The [service tests](../../apps/home/src/components/Billing/__tests__/stockConfirmationService.test.ts) include native audit pseudo-relations and reject foreign/malformed effects. The [review gateway](../../scripts/review-host/server.cjs) permits only named confirmation methods with its existing gate/session/context restrictions. These are source changes, not a deployment of that gateway or adapter to the tester.
+
+The final mounted/source hashes match. Two simultaneous identical requests on that source return two accepted responses with one receipt and one upstream supply move, using three native RPC attempts after a serialization retry. Four additional synthetic native cases capture sixteen load/preview/save/status responses for manual confirmation, reservation-at-confirmation, make-to-order supply and vendor RFQs. All sixteen pass the actual TypeScript service validator, including native `many2one_reference` audit links. Captured-response checks are not real HTTP or browser acceptance. The independent main-tester snapshot remains unchanged.
+
+`write_ready=true` means the adapter implements the save contract, not that a frontend may skip review or browser recovery. The remaining UI must persist the exact request before HTTP, use the existing per-account stock recovery slot, recover unknown outcomes, safely render native effect text, and reload authoritative state. No confirmation button is released yet.
+
+Known limits: fingerprints/capture scan global native state; save locks are coarse and receipts use per-transfer JSON. The isolated identical-request race exercises Odoo's native RPC retry semantics, not hospital-scale concurrent writers, multi-company throughput or actual HTTP. Refine and measure those limits before a production fulfillment release. Full validation, immediate/backorder/Bahmni wizards, returns, POS and synchronization remain separate work.
+
+## Historical adapter 44 preview checkpoint
+
+The following preview evidence describes the previous read-only source checkpoint. Adapter 45 supersedes its lack of native save/status, not the remaining UI/HTTP/performance gates.
 
 ## Implemented review contract
 
@@ -46,10 +68,10 @@ The existing reservation scope and single-transfer graph are not enough to revie
 
 ## Remaining integration work
 
-1. Complete scoped concurrent locking and recheck the same native dependencies before applying. A changed vendor, rule or replenishment requirement needs a new review.
-2. Match saved effects against the canonical review while returning real saved identities, references and creation timestamps. Scheduling values must not be discarded.
-3. Extend exact-request receipt/recovery and the existing durable browser slot. An uncertain confirmation must not start a second procurement request.
-4. Add strict TypeScript response validation and named gateway routes. The source methods are not currently permitted by the protected gateway.
+1. Refine/measure coarse locking and full-state capture for concurrent hospital-scale and multi-company workloads. A changed vendor, rule or replenishment requirement still needs a new review.
+2. Verify the implemented signed effects, native receipts and real saved references through actual HTTP, including creation metadata and scheduling values.
+3. Extend the existing durable browser slot for exact confirmation recovery. An uncertain confirmation must not start a second procurement request.
+4. Accept the TypeScript/gateway source against actual native HTTP responses and the approved protected runtime. The running tester gateway does not yet permit these new source routes.
 5. Use house controls and native visibility, with explicit review/save, errors, reconnect, status recovery and authoritative parent reload. Render native text safely, not arbitrary audit HTML.
 6. Verify actual HTTP and protected browser save/reload, stale rules/vendors/inventory, denied roles/companies, concurrent confirmation and rollback. Native transfer validation, immediate/backorder/Bahmni wizards and returns are subsequent workflows, not substitutes for confirmation.
 

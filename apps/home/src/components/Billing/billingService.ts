@@ -3950,6 +3950,447 @@ export const saveStockOperation = (request: StockOperationRequest) =>
 export const getStockOperationStatus = (request: StockOperationRequest) =>
   operationRequest('qorlia_operation_status', request);
 
+export interface StockConfirmationSelection {
+  order_id: number;
+  transfer_id: number;
+  version: string;
+}
+export interface StockConfirmationRequest extends StockConfirmationSelection {
+  review_version: string;
+  request_key: string;
+}
+export interface StockConfirmationLoad extends StockConfirmationSelection {
+  graph: StockTransferGraph;
+  reason: string | false;
+  write_ready: boolean;
+}
+export type ConfirmationValue =
+  | null
+  | string
+  | boolean
+  | number
+  | ConfirmationValue[]
+  | { [field: string]: ConfirmationValue };
+export interface StockConfirmationEffects {
+  created: Record<
+    string,
+    {
+      key: string;
+      values: Record<string, ConfirmationValue>;
+      assigned_on_save: string[];
+    }[]
+  >;
+  updated: Record<
+    string,
+    {
+      id: number;
+      before: Record<string, ConfirmationValue>;
+      after: Record<string, ConfirmationValue>;
+    }[]
+  >;
+  deleted: Record<
+    string,
+    { id: number; values: Record<string, ConfirmationValue> }[]
+  >;
+  labels: Record<string, string>;
+  schema: Record<
+    string,
+    Record<string, { label: string; type: string; relation: string | false }>
+  >;
+  private_audit_counts: Record<
+    string,
+    { created: number; updated: number; deleted: number }
+  >;
+}
+export interface StockConfirmationReview extends StockConfirmationSelection {
+  review_version: string;
+  state_after: 'waiting' | 'confirmed' | 'assigned';
+  effects: StockConfirmationEffects;
+  write_ready: boolean;
+}
+export interface StockConfirmationStatus {
+  accepted: boolean;
+  request_key: string;
+  state_after: StockConfirmationReview['state_after'] | false;
+  references: Record<
+    string,
+    {
+      model: string;
+      id: number | false;
+      name: string | false;
+      available: boolean;
+    }
+  >;
+  current: StockConfirmationLoad;
+}
+const confirmationModels = [
+  'product.product',
+  'stock.picking',
+  'stock.move',
+  'stock.move.line',
+  'stock.package_level',
+  'stock.quant',
+  'stock.lot',
+  'stock.quant.package',
+  'procurement.group',
+  'purchase.order',
+  'purchase.order.line',
+  'stock.warehouse.orderpoint',
+  'mail.message',
+  'mail.mail',
+  'mail.activity',
+  'mail.notification',
+  'mail.tracking.value',
+  'ir.attachment',
+];
+const confirmationStates = ['waiting', 'confirmed', 'assigned'];
+const confirmationObject = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+const confirmationKeys = (value: unknown, keys: string[]) =>
+  confirmationObject(value) &&
+  Object.keys(value).sort().join(',') === [...keys].sort().join(',');
+const confirmationKey = (key: string, model: string) =>
+  key.startsWith(`new:${model}:`) &&
+  /^(0|[1-9][0-9]*)$/.test(key.slice(`new:${model}:`.length));
+function validConfirmationValue(value: unknown, depth = 0): boolean {
+  if (depth > 50) return false;
+  if (value === null || typeof value === 'string' || typeof value === 'boolean')
+    return true;
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (Array.isArray(value))
+    return value.every((item) => validConfirmationValue(item, depth + 1));
+  return (
+    confirmationObject(value) &&
+    Object.values(value).every((item) =>
+      validConfirmationValue(item, depth + 1),
+    )
+  );
+}
+function validConfirmationField(
+  value: ConfirmationValue,
+  field: { type: string; relation: string | false },
+) {
+  if (!validConfirmationValue(value)) return false;
+  if (['integer', 'float', 'monetary'].includes(field.type))
+    return value === null || typeof value === 'number';
+  if (field.type === 'boolean')
+    return value === null || typeof value === 'boolean';
+  if (field.type === 'many2one_reference')
+    return (
+      value === false ||
+      (typeof value === 'number' &&
+        Number.isSafeInteger(value) &&
+        value >= 0) ||
+      (typeof value === 'string' &&
+        confirmationModels.some((model) => confirmationKey(value, model)))
+    );
+  const reference = (item: ConfirmationValue) =>
+    item === false ||
+    stockId(item) ||
+    (typeof item === 'string' &&
+      typeof field.relation === 'string' &&
+      confirmationKey(item, field.relation));
+  if (field.type === 'many2one') return reference(value);
+  if (field.type === 'many2many')
+    return (
+      Array.isArray(value) &&
+      value.every(reference) &&
+      new Set(value).size === value.length
+    );
+  if (
+    [
+      'char',
+      'text',
+      'html',
+      'selection',
+      'reference',
+      'date',
+      'datetime',
+    ].includes(field.type)
+  )
+    return (
+      stockText(value) ||
+      value === null ||
+      (confirmationObject(value) &&
+        Object.values(value).every((item) => typeof item === 'string'))
+    );
+  return ['json', 'properties', 'properties_definition'].includes(field.type);
+}
+function checkedConfirmationSelection(value: StockConfirmationSelection) {
+  if (
+    !value ||
+    !stockId(value.order_id) ||
+    !stockId(value.transfer_id) ||
+    !stockVersion(value.version)
+  )
+    throw new Error(
+      'Select a saved transfer and review its native confirmation.',
+    );
+  return {
+    order_id: value.order_id,
+    transfer_id: value.transfer_id,
+    version: value.version,
+  };
+}
+export function checkedStockConfirmationRequest(
+  value: StockConfirmationRequest,
+): StockConfirmationRequest {
+  const selection = checkedConfirmationSelection(value);
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'review_version',
+      'request_key',
+    ]) ||
+    !stockVersion(value.review_version) ||
+    typeof value.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      value.request_key,
+    )
+  )
+    throw new Error('Use the exact reviewed confirmation request.');
+  return {
+    ...selection,
+    review_version: value.review_version,
+    request_key: value.request_key,
+  };
+}
+function checkedConfirmationLoad(
+  data: StockConfirmationLoad,
+  orderId: number,
+  transferId: number,
+) {
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'graph',
+      'reason',
+      'write_ready',
+    ]) ||
+    data.order_id !== orderId ||
+    data.transfer_id !== transferId ||
+    !stockVersion(data.version) ||
+    !validStockGraph(data.graph, transferId) ||
+    !stockText(data.reason) ||
+    typeof data.write_ready !== 'boolean'
+  )
+    throw new Error('Invalid confirmation state. Reload the transfer.');
+  return data;
+}
+function validConfirmationEffects(data: StockConfirmationEffects): boolean {
+  if (
+    !confirmationKeys(data, [
+      'created',
+      'updated',
+      'deleted',
+      'labels',
+      'schema',
+      'private_audit_counts',
+    ]) ||
+    ![
+      data.created,
+      data.updated,
+      data.deleted,
+      data.labels,
+      data.schema,
+      data.private_audit_counts,
+    ].every(confirmationObject) ||
+    !Object.values(data.labels).every((label) => typeof label === 'string')
+  )
+    return false;
+  const models = Object.keys(data.schema);
+  if (
+    !models.every((model) => confirmationModels.includes(model)) ||
+    ![data.created, data.updated, data.deleted].every(
+      (rows) =>
+        Object.keys(rows).sort().join(',') === [...models].sort().join(','),
+    )
+  )
+    return false;
+  const newKeys = new Set<string>();
+  for (const model of models) {
+    const schema = data.schema[model];
+    if (
+      !confirmationObject(schema) ||
+      !Object.values(schema).every(
+        (field) =>
+          confirmationKeys(field, ['label', 'type', 'relation']) &&
+          typeof field.label === 'string' &&
+          typeof field.type === 'string' &&
+          field.type.length > 0 &&
+          stockText(field.relation),
+      )
+    )
+      return false;
+    const values = (row: unknown) =>
+      confirmationObject(row) &&
+      Object.entries(row).every(
+        ([key, value]) =>
+          Object.hasOwn(schema, key) &&
+          validConfirmationField(value as ConfirmationValue, schema[key]),
+      );
+    const created = data.created[model],
+      updated = data.updated[model],
+      deleted = data.deleted[model];
+    if (![created, updated, deleted].every(Array.isArray)) return false;
+    for (const row of created) {
+      if (
+        !confirmationKeys(row, ['key', 'values', 'assigned_on_save']) ||
+        typeof row.key !== 'string' ||
+        !confirmationKey(row.key, model) ||
+        newKeys.has(row.key) ||
+        !values(row.values) ||
+        !Array.isArray(row.assigned_on_save) ||
+        new Set(row.assigned_on_save).size !== row.assigned_on_save.length ||
+        !row.assigned_on_save.every(
+          (field) =>
+            typeof field === 'string' &&
+            Object.hasOwn(row.values, field) &&
+            row.values[field] === false,
+        )
+      )
+        return false;
+      newKeys.add(row.key);
+    }
+    if (
+      !updated.every(
+        (row) =>
+          confirmationKeys(row, ['id', 'before', 'after']) &&
+          stockId(row.id) &&
+          values(row.before) &&
+          values(row.after),
+      ) ||
+      !deleted.every(
+        (row) =>
+          confirmationKeys(row, ['id', 'values']) &&
+          stockId(row.id) &&
+          values(row.values),
+      ) ||
+      new Set([...updated, ...deleted].map((row) => row.id)).size !==
+        updated.length + deleted.length
+    )
+      return false;
+  }
+  return Object.entries(data.private_audit_counts).every(
+    ([model, counts]) =>
+      [
+        'mail.message',
+        'mail.mail',
+        'mail.activity',
+        'mail.notification',
+        'mail.tracking.value',
+        'ir.attachment',
+      ].includes(model) &&
+      confirmationKeys(counts, ['created', 'updated', 'deleted']) &&
+      Object.values(counts).every(
+        (count) => Number.isSafeInteger(count) && count >= 0,
+      ),
+  );
+}
+export async function getStockConfirmation(
+  orderId: number,
+  transferId: number,
+) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  return checkedConfirmationLoad(
+    await stockCall<StockConfirmationLoad>('qorlia_confirmation_load', {
+      order_id: orderId,
+      transfer_id: transferId,
+    }),
+    orderId,
+    transferId,
+  );
+}
+export async function previewStockConfirmation(
+  selection: StockConfirmationSelection,
+) {
+  const exact = checkedConfirmationSelection(selection);
+  const data = await stockCall<StockConfirmationReview>(
+    'qorlia_confirmation_preview',
+    exact,
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'review_version',
+      'state_after',
+      'effects',
+      'write_ready',
+    ]) ||
+    Object.entries(exact).some(
+      ([key, value]) => data[key as keyof StockConfirmationSelection] !== value,
+    ) ||
+    !stockVersion(data.review_version) ||
+    !confirmationStates.includes(data.state_after) ||
+    typeof data.write_ready !== 'boolean' ||
+    !validConfirmationEffects(data.effects)
+  )
+    throw new Error(
+      'Invalid confirmation review. Nothing can be saved until it is reviewed again.',
+    );
+  return data;
+}
+async function confirmationRequest(
+  method: string,
+  request: StockConfirmationRequest,
+) {
+  const exact = checkedStockConfirmationRequest(request);
+  const data = await stockCall<StockConfirmationStatus>(method, {
+    payload: exact,
+  });
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'request_key',
+      'state_after',
+      'references',
+      'current',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    (data.accepted
+      ? !confirmationStates.includes(String(data.state_after))
+      : data.state_after !== false) ||
+    !confirmationObject(data.references) ||
+    (!data.accepted && Object.keys(data.references).length > 0) ||
+    !Object.entries(data.references).every(
+      ([key, row]) =>
+        confirmationKeys(row, ['model', 'id', 'name', 'available']) &&
+        typeof row.model === 'string' &&
+        confirmationModels.includes(row.model) &&
+        ![
+          'mail.message',
+          'mail.mail',
+          'mail.activity',
+          'mail.notification',
+          'mail.tracking.value',
+          'ir.attachment',
+        ].includes(row.model) &&
+        confirmationKey(key, row.model) &&
+        typeof row.available === 'boolean' &&
+        (row.available
+          ? stockId(row.id) && typeof row.name === 'string'
+          : row.id === false && row.name === false),
+    )
+  )
+    throw new Error(
+      'Invalid confirmation receipt. Check the exact request before retrying.',
+    );
+  checkedConfirmationLoad(data.current, exact.order_id, exact.transfer_id);
+  return data;
+}
+export const saveStockConfirmation = (request: StockConfirmationRequest) =>
+  confirmationRequest('qorlia_confirmation_save', request);
+export const getStockConfirmationStatus = (request: StockConfirmationRequest) =>
+  confirmationRequest('qorlia_confirmation_status', request);
+
 export interface OrderWorkflow {
   id: number;
   name: string;

@@ -1,5 +1,31 @@
 # Bahmni workflow parity ledger
 
+## 15 October confirmation save/status and frontend-contract source checkpoint
+
+- Adapter 45 adds exact-payload author/company-bound confirmation receipts/status,
+  repeat preview/HMAC checks under deterministic native locks, actual-effect matching,
+  real created business references and failure/callback rollback. Deleted/cancelled
+  RFQ recovery does not recreate procurement; hidden supply graphs fail closed.
+- Fixed intermittent second-message administrator attribution by draining native
+  computations under the caller before cursor precommit flush. A two-batch regression
+  forces administrator transaction flush. Author fields remain signed and reviewed.
+- Twenty-nine focused native cases pass with mandatory analytics on the separate
+  copy. Combined 620 cases pass with legacy optional analytics in that copy only,
+  restored afterward. Failed earlier fixture/attribution runs are retained.
+- Source TypeScript contracts and four named gateway routes are added, not deployed.
+  Fourteen focused service cases and 609 Home tests/70 suites pass, with library/
+  test-source types, touched lint, gateway/configuration tests and build acceptance.
+- Final-source simultaneous identical requests return two accepted responses with
+  one receipt/one upstream move through native RPC retry. Sixteen native response
+  contracts across four synthetic cases pass the actual service validator. These
+  are model/captured-response checks, not real HTTP/browser acceptance. Matched
+  source/mounted hashes and unchanged independent main-tester snapshot are recorded.
+- Browser confirmation controls and shared durable recovery-slot integration,
+  actual HTTP/browser acceptance and scalable concurrency/performance are pending.
+  Coarse global locks/capture and JSON receipts are not production-scale acceptance.
+  Tester remains adapter 43/stock-operation-edit-r2; production/public demo unchanged.
+  Full Billing, clinical and separate-product parity remain open. PR #4 stays draft.
+
 ## 14 October native confirmation load and rollback-preview checkpoint
 
 - Source adapter 44 adds order/transfer-scoped load and rollback preview, delegated
