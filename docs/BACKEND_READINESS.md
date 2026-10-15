@@ -1,5 +1,37 @@
 # Qorlia React frontend backend readiness
 
+## Return native HTTP completion and valuation (15 October 2026)
+
+Four API-created returns now complete through actual TypeScript/native HTTP:
+manual customer, manual supplier, same-company internal chained and automatic
+standard-cost customer. Original batches are prepared through native operation
+APIs, then individually reviewed native validation commits preserve the actual
+receipt/terminal boundaries. Final two-unit quantities, zero reservation,
+delivered progress and case-specific valuations are independently checked.
+
+The automatic fixture starts with a valued native inventory adjustment, then its
+original delivery and return. Posted values +40, -20 and +8 leave native stock
+valuation and its ledger at 28, with mandatory analytic allocations. Overlapping
+identical terminal requests create one return journal/valuation, not duplicates.
+Manual return valuation creates no journal; the internal fixture creates neither.
+There is no automatic customer financial refund, payment or reconciliation.
+
+Independent SQL verifies request/author/company/order hashes, one-time prompts,
+one linked return, batches and quantity/valuation/journal relations. All earlier
+stored financial/quant rows and unrelated original-copy records are preserved.
+Done operation forms are read-only, new-nonce completion rejects and exact accepted
+operation/step/create recovery still works. Computed invoice totals are not
+independently recalculated; wider configurations remain unverified.
+
+Diagnostic sessions/socket are closed and the temporary HTTP container stopped.
+Mandatory analytics/SMS settings, validation-48 and hosted-tester-43 baselines
+remain unchanged; the actual UI gate stays 410. No product code/runtime version,
+frontend build or new Home/full-addon run is claimed. Actual protected-gateway
+return acceptance, React editor/durable recovery, browser checks, notifications
+and scale remain open. Order-transfer paging is another concrete backend gap:
+the current endpoint rejects orders with more than 100 transfers. See [the case
+matrix and exact limits](../runtime/billing/STOCK_RETURNS.md#native-http-return-completion-and-valuation-checkpoint-15-october-2026).
+
 ## Return native HTTP/client checkpoint, review gate closed (15 October 2026)
 
 A separate installed-49 private database/runtime passes the actual TypeScript

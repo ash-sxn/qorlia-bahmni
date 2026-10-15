@@ -130,6 +130,31 @@ Nine source gateway/configuration cases and the 28-guide/505-local-link document
 
 This is actual service-to-native HTTP acceptance through an operator transport, not the protected gateway, React return editor, browser storage/keyboard/layout or a published tester. These remaining boundaries must be verified separately.
 
+## Native HTTP return completion and valuation checkpoint, 15 October 2026
+
+The same private installed-49 copy now verifies the next boundary: API-created returns are prepared through the existing native operation load/onchange/review/save/status methods, then completed through individually reviewed native validation steps. The actual TypeScript service consumes real HTTP responses over the operator-only SSH socket. This is not a React return editor or protected-gateway test.
+
+All four clearly labelled two-unit cases complete with their original batch, zero remaining reservation and one linked return per original:
+
+| Fixture | Warehouse stock | Customer delivered quantity | Return valuation | New return journal | Accepted validation steps |
+| --- | --- | --- | --- | --- | --- |
+| Customer return, manual valuation | 5 to 7 | 5 to 3 | quantity +2, value +8 | None | 2 |
+| Supplier return, manual valuation | 15 to 13 | Remains 0 | quantity -2, value -8 | None | 1 |
+| Same-company internal chained return | 5 to 7; output location 5 to 3 | Remains 0 | None in this fixture | None | 2 |
+| Customer return, automatic standard-cost valuation | 5 to 7 | 5 to 3 | quantity +2, value +8 | One posted balanced entry with analytics | 2 |
+
+Values are synthetic native company-currency amounts, not prices or an Indian accounting configuration. Native receipt prompts are separate accepted actions; the supplier-return fixture completes in its opening action without inventing a receipt prompt. Operation/onchange and validation previews leave their current physical/financial baselines unchanged. Recorded done quantities are preparation until the final native validation commits.
+
+The automatic fixture uses native inventory adjustment for its ten-unit opening quantity, with a posted opening value of 40 and analytic allocations. Native original delivery then posts -20, and the completed return posts +8. Independent SQL verifies three distinct balanced posted journals, full native analytic distributions under mandatory plan configuration, stock valuation quantity seven/value 28 and a valuation-ledger balance of 28. This checks opening stock as well as the return, rather than beginning with an unvalued direct quantity write. It is a synthetic standard-cost chart, not a production chart/tax migration.
+
+Two authenticated sessions issue overlapping identical terminal saves for the manual customer return and automatic case. They recover the same receipt/references; no duplicate valuation, journal or analytic entries are created. Exact operation/step/create retries remain recoverable after completion. Native creation's `state_after` remains its historical uncompleted state; the actual returned transfer now reads Done through the transfer API. Completed operation forms return read-only rules, fresh-nonce completion attempts reject and the original terminal request remains recoverable for all four cases.
+
+Independent read-only SQL verifies exact operation, creation and per-step hashes, author/company/order binding, one-time continuation consumption and one terminal receipt per return. It verifies quantity, batch, reservation, delivered progress and valuation/journal links rather than trusting the client result. Manual cases leave all six stored financial-table baselines unchanged. The automatic fixture adds only its opening/delivery/return entries and their lines/analytics; every earlier stored financial/quant row is preserved. No payment, reconciliation or bank line is created. Unrelated original-copy valuation/quant rows also match. Computed invoice totals are not independently recalculated by these SQL checks.
+
+Mandatory analytics and the enabled native SMS setting remain unchanged. Synthetic contacts still have no external delivery destination, and no skip-SMS/native validation bypass is used. Sessions and the diagnostic socket are closed and the temporary HTTP container stopped afterward. Original validation-48 and hosted-tester-43 baselines remain unchanged, and the UI gate stays 410. Known native/SSH warnings remain distinct from the passing assertions. No product code, runtime version, frontend build, Home suite or full-addon regression change/run is claimed; the earlier source-49 unit results retain their dated scope.
+
+Nine source gateway/configuration cases and the 28-guide/505-local-link documentation check pass. They are not actual protected-gateway return writes. These core HTTP cases do not establish broader valuation/currency/package/role/expiry/notification configurations, browser storage/focus/layout, actual protected-gateway return acceptance or publication. Order-transfer paging also remains unfinished: the current order-deliveries endpoint rejects more than 100 transfers. Full Billing and whole-product parity remain open.
+
 ## Acceptance requirements still to finish
 
 - Complete the independently tested native form/preview contract, including company/role, units, partial/over-return and chained-operation behaviour.

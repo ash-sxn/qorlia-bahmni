@@ -18,6 +18,18 @@ See [the precise HTTP boundary](STOCK_RETURNS.md#native-http-client-and-concurre
 Protected-gateway/browser acceptance, browser recovery, the return editor and
 publication remain gates. Creation is not completed receipt or a financial refund.
 
+The next native HTTP checkpoint completes four API-created two-unit returns using
+the existing operation and per-step validation APIs: manual customer, manual
+supplier, same-company internal chained and automatic standard-cost customer
+returns. Native prompts/stock/delivered quantities and case-specific valuation are
+preserved. The automatic fixture uses a valued native opening adjustment and
+delivery, then one balanced posted return journal with mandatory analytics; stock
+value and its valuation ledger finish at 28. Concurrent terminal saves and exact
+recovery remain duplicate-safe, and Done forms/new-nonce guards are verified.
+Independent SQL preserves all earlier stock/financial rows and finds no new
+payments/reconciliations/bank lines. No return UI, gate reopening or release occurs.
+Read [the precise completion scope](STOCK_RETURNS.md#native-http-return-completion-and-valuation-checkpoint-15-october-2026).
+
 Latest receipt-completion checkpoint, adapter 48 (15 October): actual isolated
 React/gateway saves complete a five-unit incoming receipt, create one reviewed
 priced batch and reload Done stock with exact recovery cleared. Independent
