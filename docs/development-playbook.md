@@ -131,3 +131,62 @@ git diff --check
 ```
 
 The checker verifies the selected handbook/module links, headings and copy convention. It does not log in, check remote URLs, validate a hospital deployment or prove every historical upstream document is current. Report those checks separately. Credentials, customer data and private deployment/runbooks stay outside the public repository.
+
+## 9. Run the first team architecture briefing
+
+This is a suggested 45-minute learning session, not a feature-delivery estimate. Ashutosh or the designated maintainer leads it. Aniket, Gautam and other new contributors should each leave with their own next checkpoint. Screen sharing is useful; sharing an account or a private environment pack in a public recording is not.
+
+### Before the session
+
+Open the [current README](../README.md), [architecture](architecture.md), [module map](module-guide.md) and the assigned issue. Each contributor records their own GitHub account, approved base branch, starting SHA, tool versions and setup result. A missing backend account is a prerequisite to resolve, not a reason to disable authentication.
+
+Keep two things distinct:
+
+- **Reading the handbook:** GitHub's default README links to the development handbook. Keep that browser tab open when reading newer guides.
+- **Changing the code:** clone and branch from the base named in the task. That older base may not contain these newer guides. Do not merge the Billing branch, copy its whole folder or replace your code base just to obtain documentation. If the exercise references a file absent from the assigned base, ask the reviewer to select an equivalent trace or approve a new base.
+
+### Walk through the system together
+
+| Time             | Open or demonstrate                                                                                                                                                                                                                                                                                         | Ask the contributor to explain                                                                             |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 0 to 10 minutes  | [Root routes](../distro/src/app/app.tsx), [module map](module-guide.md)                                                                                                                                                                                                                                     | Which app owns this URL? Why are Billing and programmes not separate top-level app folders?                |
+| 10 to 20 minutes | [Appointment list](../apps/appointments/src/pages/AppointmentListPage.tsx), [service](../packages/bahmni-services/src/appointmentService/appointmentService.ts), [constants](../packages/bahmni-services/src/appointmentService/constants.ts), [HTTP client](../packages/bahmni-services/src/api/client.ts) | Which code renders the screen, which sends the request, and which server owns the saved record?            |
+| 20 to 30 minutes | One approved synthetic read in Developer Tools, then [an existing test](../apps/appointments/src/pages/__tests__/CalendarActions.test.tsx)                                                                                                                                                                  | What did the real request prove? What does the mocked test prove instead?                                  |
+| 30 to 40 minutes | [Change boundaries](architecture.md#choose-the-correct-change-boundary), [task template](task-brief-template.md)                                                                                                                                                                                            | Is the next issue configuration, presentation, service mapping or a native backend change? Who reviews it? |
+| 40 to 45 minutes | Each person's setup/trace note and proposed next checkpoint                                                                                                                                                                                                                                                 | What can you independently demonstrate now, and what prerequisite or explanation is still missing?         |
+
+If backend access is unavailable, trace the source and read the test, but explicitly leave the real-request checkpoint unverified. Do not improvise a server, credentials or successful result for the meeting.
+
+### Check understanding without expecting memorization
+
+Ask each person to answer in their own words, with the relevant source open:
+
+1. Does editing a React field save a hospital record? Show where this workflow actually sends a request.
+2. Where does this route enter the app, and which shared control/service does it reuse?
+3. Which identity is required: patient display ID, clinical UUID, appointment UUID or ERP numeric ID?
+4. Why can a visible button or a passing TypeScript check not grant server permission?
+5. What happens if a save times out after the server commits? Where is this workflow's recovery contract?
+6. Which source commit, backend/configuration and environment were actually tested?
+7. Which files could affect another developer, and who owns that shared boundary?
+8. What is the difference between ready for review, accepted and released?
+
+If an answer is unclear, pair on that boundary before assigning a sensitive write. These questions identify the next learning exercise, not a numerical employee-performance score. A newcomer can contribute useful reproduction steps, tests and documentation while learning implementation.
+
+### Leave with one concrete record per contributor
+
+Use an issue comment or the agreed internal tracker, not another duplicate status spreadsheet:
+
+```text
+Contributor / GitHub account:
+Task link / reviewer / independent tester:
+Approved base / starting SHA:
+Setup result and missing prerequisite:
+Workflow traced:
+Route -> page -> service -> endpoint -> native owner:
+One test run, and what it does not prove:
+Proposed next deliverable and files involved:
+Checkpoint date agreed with owner:
+Question needing a named decision owner:
+```
+
+Management can then allocate work from evidence rather than “tools installed”. Keep the first implementation small enough for the contributor to explain and the reviewer to inspect. Do not allocate concurrent changes to authentication, encounter recovery, the Billing gateway or stock-write contracts without an agreed shared owner. Use [team workflow](team-workflow.md) for ongoing coordination.

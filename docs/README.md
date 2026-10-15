@@ -8,6 +8,7 @@
 - [Beginner orientation](developer-start-here.md)
 - [Reading and changing code, with beginner explanations](reading-and-changing-code.md)
 - [Development playbook: architecture briefing, debugging, Git and review](development-playbook.md)
+- [First team architecture session: agenda, understanding checks and handover record](development-playbook.md#9-run-the-first-team-architecture-briefing)
 - [Local setup and troubleshooting](setup-guide.md)
 - [Architecture and data/session boundaries](architecture.md)
 - [Repository map](project-structure.md)

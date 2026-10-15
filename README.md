@@ -10,6 +10,17 @@ Joining with Aniket, Gautam or another team? Begin with the [new-team handover](
 
 For a practical starting checklist, use [your first session](docs/team-handover.md#first-session-checklist). Managers can use [the deliverable-review guidance](docs/team-handover.md#what-management-should-receive) together with the task template. These are onboarding instructions, not automatic task assignments or release approval.
 
+### Pick your starting point
+
+| Your role                        | Start with                                                                                                                              | First useful output                                                          |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| New developer                    | [Orientation](docs/developer-start-here.md), [setup](docs/setup-guide.md), then [the appointment exercise](docs/first-contribution.md)  | Explain one real read from screen to server before taking a write task       |
+| Architecture mentor or team lead | [First team briefing](docs/development-playbook.md#9-run-the-first-team-architecture-briefing) and [architecture](docs/architecture.md) | Agree boundaries, prerequisites and a bounded first task per contributor     |
+| Tester                           | [Testing guide](docs/testing-guide.md) and [module guide](docs/module-guide.md)                                                         | Repeat one workflow independently, with expected/actual results and versions |
+| Manager or vendor coordinator    | [Team workflow](docs/team-workflow.md) and [task brief](docs/task-brief-template.md)                                                    | Named owner, reviewer, tester, checkpoint, dependencies and evidence         |
+
+The handbook is a map, not a requirement to read every page before asking a question. Follow one workflow end to end, then expand into adjacent features.
+
 Read these in order. Each guide links back here and to the next step.
 
 | Step | Guide                                                | What you will learn                                                          |
