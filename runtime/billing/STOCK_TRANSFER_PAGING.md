@@ -1,5 +1,10 @@
 # Native order transfer paging
 
+Latest source consumer: [React summary/detail integration](STOCK_TRANSFER_DETAILS.md#react-api-consumer-checkpoint-16-october-2026).
+The panel now reads pages instead of the legacy graph. This is component-tested
+source, not a deployed UI or removal of large signed-action limits. Historical
+missing-consumer statements below describe those earlier checkpoints.
+
 ## Native HTTP client and copied-upgrade checkpoint (16 October 2026)
 
 A separate non-public synthetic database is cloned from the stopped return-49
@@ -205,10 +210,10 @@ not an installed-50 upgrade, new HTTP session, browser or gateway test.
 1. Extend native HTTP acceptance to broader roles/companies/configurations and
    verify the actual protected gateway in a later appropriate access window.
    The checkpoint above covers one explicitly scoped synthetic copied upgrade.
-2. Migrate React summary/detail navigation and stale-page recovery, when UI work
-   is in scope. Do not represent old full-list reads as paged reads.
+2. Accept the component-tested React summary/detail navigation and stale-page
+   recovery through a later approved gateway/browser review window.
 3. [Candidate 51 adds complete move/operation read pages](STOCK_TRANSFER_DETAILS.md).
-   Finish their React integration and complete large-transfer signed review/write
-   support without treating partial pages as complete action graphs.
+   Complete large-transfer signed review/write UI and recovery without treating
+   partial pages as complete action graphs.
 4. Verify broader role/company/configuration and realistic performance boundaries.
 5. Obtain a later owner-approved review window before browser testing or release.

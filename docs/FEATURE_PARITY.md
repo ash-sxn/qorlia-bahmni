@@ -1,5 +1,12 @@
 # Bahmni workflow parity ledger
 
+## 16 October paged transfer read consumer source
+
+- The source transfer panel now requests 25-summary pages and separate 50-row move/operation pages using one order-wide snapshot. It no longer calls the legacy full-graph reader. Native cursors, units, linked move identities and off-page selections survive navigation/refresh; changed identities discard open write views. Stale/mismatched/failed pages hide old tables and keep actions unavailable until reload.
+- Component cases traverse all 101 transfers, 501 moves and 2,001 operations with bounded detail tables, independent requests, session recovery, old-response suppression and keyboard terminal-page focus. The first focus regression is fixed without changing styles or adding a dependency. Enclosing order refresh tests use the new contract. See [the source and evidence boundary](../runtime/billing/STOCK_TRANSFER_DETAILS.md#react-api-consumer-checkpoint-16-october-2026).
+- Fresh Home suite: 809 tests/78 suites, including 35 transfer/paging cases. Library and focused actual-source/test types, scoped lint/format, diff and contributor links pass. Earlier native/gateway results are unchanged-source evidence, not a new native/full-addon run.
+- Large reads are connected in source, not all large stock writes. Existing dialogs remain legacy/capped; controls explain that large signed writes are not connected. Paged confirmation review/recovery and other large actions remain unfinished. No native/SDK change, data mutation, frontend build, browser/visual test, gate reopening, protected-gateway/native acceptance or tester/public deployment is claimed.
+
 ## 16 October paged confirmation client and native HTTP
 
 - Added separate typed compact/review/save/status/reference clients and exactly five source-gateway routes, retaining legacy contracts. Bounds, identities, snapshot/proof continuity, native numeric/generated ordering, fields/schema, related labels, private counts, reference privacy and terminal proofs are validated. There is no automatic next-page fetch or save. Home passes 788 tests/77 suites (62 new service cases); actual source/test and library types, lint/format, gateway-three and link checks pass.

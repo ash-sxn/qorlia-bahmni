@@ -51,6 +51,8 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
+Latest API-consumer source connects [paged transfer summaries and details](runtime/billing/STOCK_TRANSFER_DETAILS.md#react-api-consumer-checkpoint-16-october-2026), with component checks for 101 transfers, 501 moves and 2,001 operations. Large signed-write dialogs and gateway/browser acceptance remain unfinished. This does not update the hosted tester or reopen local review access.
+
 - [Feature parity ledger](docs/FEATURE_PARITY.md): dated evidence, accepted increments and remaining work.
 - [Backend readiness](docs/BACKEND_READINESS.md): backend compatibility, tested environments and integration gaps.
 - [Billing adapter](runtime/billing/README.md): native Odoo integration and limits.

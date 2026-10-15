@@ -1,5 +1,27 @@
 # Qorlia React frontend backend readiness
 
+## Paged transfer read consumer source (16 October 2026)
+
+The React transfer panel now consumes bounded summary and move/operation APIs
+using a pinned root snapshot, separate section cursors and guarded stale/error
+reloads. Component checks traverse 101 transfers, 501 moves and 2,001 operations,
+retain off-page selection after writes and reset on account/order changes.
+Existing native values/units and order refresh behavior are preserved. See the
+[consumer checkpoint](../runtime/billing/STOCK_TRANSFER_DETAILS.md#react-api-consumer-checkpoint-16-october-2026).
+
+Home passes **809 tests/78 suites**, including 35 transfer/paging cases. Library
+and focused actual-source/test types, scoped lint/format, diff and documentation
+links pass. Earlier native and gateway results remain unchanged-source evidence,
+not freshly rerun native/backend acceptance in this checkpoint.
+
+This updates API-consumer source, not native code, SDK or deployed runtime.
+Large signed-action dialogs remain capped, explicitly disabled for those graphs;
+the source-52 confirmation review/recovery UI is not yet connected. No gate is
+reopened, browser run performed, frontend built or protected tester updated.
+Earlier native and HTTP evidence below is not relabelled as this integration's
+browser acceptance. Wider configuration, gateway/native, scale and release gates
+remain open.
+
 ## Paged confirmation client and scoped native HTTP (16 October 2026)
 
 The typed client and five named source-gateway routes now cover the source-52

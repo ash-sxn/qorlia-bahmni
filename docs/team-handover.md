@@ -2,7 +2,7 @@
 
 [Project README](../README.md) · [Learning path](developer-start-here.md) · [Architecture](architecture.md) · [Team workflow](team-workflow.md)
 
-This is the entry brief for Aniket, Gautam and future contributors. It assumes no prior hospital-software or professional development experience. Read the linked guides progressively, not all source files at once. Updated 15 October 2026. Task owners must confirm current versions and access before implementation.
+This is the entry brief for Aniket, Gautam and future contributors. It assumes no prior hospital-software or professional development experience. Read the linked guides progressively, not all source files at once. Updated 16 October 2026. Task owners must confirm current versions and access before implementation.
 
 For the team's architecture discussion, use [the development playbook](development-playbook.md#1-explain-the-architecture-back-to-the-team). Have each contributor explain one request chain back to the reviewer. Its debugging and Git sections support the next step from reading the code to contributing a tested change.
 
@@ -30,11 +30,18 @@ Use the [parity ledger](FEATURE_PARITY.md) and [backend readiness](BACKEND_READI
 
 ### Current integration checkpoint, in plain language
 
-For the newest backend-only work, source 51 has complete transfer detail read
-pages and source 52 adds a separate large-transfer confirmation protocol. Read
+For the newest integration, the source React panel now reads summary/detail pages
+from one snapshot, with component coverage of 101 transfers, 501 moves and 2,001
+operations. Read the [consumer checkpoint](../runtime/billing/STOCK_TRANSFER_DETAILS.md#react-api-consumer-checkpoint-16-october-2026)
+for its source-only evidence and remaining gateway/browser acceptance. Large
+write controls remain unavailable in that view; do not treat readable pages as
+a completed review of a stock action.
+
+Source 51 has complete transfer detail read pages and source 52 adds a separate
+large-transfer confirmation protocol. Read
 the [paged confirmation guide](../runtime/billing/STOCK_CONFIRMATION_PAGING.md)
 before working on it. Typed clients/named source routes now exist, with scoped
-private native HTTP review/save/recovery evidence, but no migrated React consumer
+private native HTTP review/save/recovery evidence, but no confirmation review/recovery UI
 or opened review gate. The guide includes the API sequence, signing/recovery rules and
 remaining acceptance boundaries. A native backend candidate is not an available
 tester UI; it must not be wired into the old full-graph modal or used to reopen

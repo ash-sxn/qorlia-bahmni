@@ -3,6 +3,15 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest API consumer source: [paged transfer summaries and details](STOCK_TRANSFER_DETAILS.md#react-api-consumer-checkpoint-16-october-2026).
+The panel reads 25 summaries and 50 rows per detail section using one snapshot,
+rejects mismatched/stale pages and retains off-page selections across refresh.
+Component checks cover 101 transfers, 501 moves and 2,001 operations. Large reads
+no longer depend on the old full-graph cap; large signed write controls remain
+explicitly unavailable until their complete review/recovery UI is implemented.
+This is not browser/runtime acceptance or a tester update. Review stays closed.
+The earlier missing-consumer statements below retain their historical scope.
+
 Latest native backend candidate: [complete paged confirmation](STOCK_CONFIRMATION_PAGING.md).
 Source 52 adds compact transfer loading, sequential HMAC-bound effect pages,
 terminal review proof, duplicate-safe save/status and paged created references.

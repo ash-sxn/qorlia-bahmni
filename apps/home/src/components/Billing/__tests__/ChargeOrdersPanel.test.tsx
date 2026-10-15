@@ -14,12 +14,16 @@ import {
   getChargeOrders,
   getInvoices,
   getDocumentReports,
-  getOrderDeliveries,
+  getOrderDeliveryPage,
+  getOrderTransferDetailPage,
   OrderWorkflow,
 } from '../billingService';
 import { ChargeOrdersPanel } from '../ChargeOrdersPanel';
 import { loadStockWriteRecovery } from '../stockReservationRecovery';
-import { orderDeliveryFixture } from './orderDeliveryFixture';
+import {
+  orderDeliveryPageFixture,
+  orderTransferDetailPageFixture,
+} from './orderDeliveryFixture';
 import { workflowFixture as mockWorkflowFixture } from './workflowFixture';
 
 jest.mock('../billingService', () => ({
@@ -28,7 +32,8 @@ jest.mock('../billingService', () => ({
   getChargeOrderLines: jest.fn(),
   getInvoices: jest.fn(),
   getDocumentReports: jest.fn(),
-  getOrderDeliveries: jest.fn(),
+  getOrderDeliveryPage: jest.fn(),
+  getOrderTransferDetailPage: jest.fn(),
 }));
 jest.mock('../stockReservationRecovery', () => ({
   ...jest.requireActual('../stockReservationRecovery'),
@@ -135,7 +140,6 @@ const show = (
 
 describe('Charge orders workspace', () => {
   it('reloads delivered order quantities after returning from stock validation', async () => {
-    jest.mocked(getOrderDeliveries).mockResolvedValue(orderDeliveryFixture());
     show();
     fireEvent.click(
       await screen.findByRole('button', { name: 'View order QORLIAQA-ORDER' }),
@@ -154,7 +158,7 @@ describe('Charge orders workspace', () => {
         name: 'View transfer QORLIAQA/OUT/11',
       }),
     );
-    const validate = screen.getByRole('button', {
+    const validate = await screen.findByRole('button', {
       name: 'Review transfer validation',
     });
     await waitFor(() => expect(validate).toBeEnabled());
@@ -179,7 +183,6 @@ describe('Charge orders workspace', () => {
     ).toHaveTextContent('2');
   });
   it('opens stock transfers with the selected saved order and returns to its details', async () => {
-    (getOrderDeliveries as jest.Mock).mockResolvedValue(orderDeliveryFixture());
     show();
     fireEvent.click(
       await screen.findByRole('button', { name: 'View order QORLIAQA-ORDER' }),
@@ -190,7 +193,7 @@ describe('Charge orders workspace', () => {
     await screen.findByRole('table', {
       name: 'Native transfers linked to this order',
     });
-    expect(getOrderDeliveries).toHaveBeenCalledWith(9);
+    expect(getOrderDeliveryPage).toHaveBeenCalledWith(9, 0, false, 25);
     fireEvent.click(
       screen.getByRole('button', { name: 'Back to order details' }),
     );
@@ -219,6 +222,14 @@ describe('Charge orders workspace', () => {
   });
   beforeEach(() => {
     jest.clearAllMocks();
+    jest
+      .mocked(getOrderDeliveryPage)
+      .mockResolvedValue(orderDeliveryPageFixture());
+    jest
+      .mocked(getOrderTransferDetailPage)
+      .mockImplementation(async (_order, _id, section) =>
+        orderTransferDetailPageFixture(section),
+      );
     jest.mocked(loadStockWriteRecovery).mockResolvedValue(null);
     (getChargeOrders as jest.Mock).mockResolvedValue([order]);
     (getChargeOrderLines as jest.Mock).mockResolvedValue([line]);

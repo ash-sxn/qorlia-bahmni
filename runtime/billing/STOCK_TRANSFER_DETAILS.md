@@ -1,5 +1,53 @@
 # Native transfer detail pages
 
+## React API consumer checkpoint, 16 October 2026
+
+The source transfer panel now uses `getOrderDeliveryPage` instead of the capped
+legacy full graph. It requests 25 summaries at a time, appending only pages from
+the same order-wide snapshot. Selecting a transfer starts independent move and
+operation reads using that summary's version. Each detail table displays at most
+50 rows with native identity cursors and Previous/Next navigation. Missing detail
+is never represented as empty arrays or a complete signed-action graph.
+
+The [summary panel](../../apps/home/src/components/Billing/OrderDeliveriesPanel.tsx),
+[detail reader](../../apps/home/src/components/Billing/OrderTransferDetails.tsx)
+and [snapshot checks](../../apps/home/src/components/Billing/stockTransferPages.ts)
+reuse existing queries, controls, tokens and styles. During detail fetches, old
+tables are hidden and stock actions disabled. Failed or mismatched pages hide
+both sections until reload. Refresh restarts the root snapshot and both detail
+cursors; selected transfer identity is retained even if it is outside the reset
+first summary page. Account/order changes discard selections and open write views.
+Closing a write view refreshes summaries, details, recovery and order quantities.
+The new cache keys cannot reuse the old full-graph response shape.
+
+Component checks traverse all 101 summaries, 501 moves and 2,001 operations,
+including exact cursors, independent section reads, old-response suppression,
+off-page selections/linked moves, terminal/back navigation, session expiry,
+snapshot/header mismatches and keyboard focus after the final page. The existing
+14 transfer-panel cases and enclosing order refresh cases remain covered. The
+first run exposed lost focus when a synchronous final page removed Load more;
+the effect now also observes page count and the failing regression passes.
+
+Fresh Home verification passes **809 tests in 78 suites**, including 35 cases
+across the existing transfer panel and new paging consumer suites. Library and
+focused actual-source/test types, scoped ESLint, formatting, diff and contributor
+link checks pass. The initial full run exposed two enclosing order tests still
+mocking the old getter; they now use the page contract and await details. No
+product guard or failing assertion was removed to make that run pass.
+
+This is **source and mocked-component evidence**, not a new frontend build,
+browser/visual acceptance, actual protected-gateway/native integration, installed
+upgrade or hospital-scale performance result. No native code, SDK, data or public
+runtime changes occur in this checkpoint. The owner-closed gate stays closed and
+the protected tester is not updated. Earlier native/HTTP checkpoints below retain
+their original versions and scope.
+
+Write dialogs still use their separate legacy full-graph contracts. For a
+transfer above 500 moves or 2,000 operations, reads remain available but those
+write controls are explicitly disabled with an explanation. The source-52 paged
+confirmation client is **not yet connected to a review/recovery UI**. Reservation,
+operation, validation and return parity for large graphs also remain open.
+
 ## Candidate 51, 16 October 2026
 
 Candidate source `16.0.1.51.0` adds complete, bounded read traversal of a
@@ -131,7 +179,7 @@ copied records remain outside this repository.
 
 ## Next work
 
-Integrate the summary/detail readers in React when UI work is in scope. Implement
-complete large-transfer signed review/write support, check the actual protected
-gateway, and perform broader role/company/configuration and representative scale
-testing.
+The source integration above supersedes the earlier missing-reader status.
+Implement complete large-transfer signed review/write UI and recovery, check the
+actual protected gateway in an owner-approved window, and perform browser,
+broader role/company/configuration and representative scale testing.

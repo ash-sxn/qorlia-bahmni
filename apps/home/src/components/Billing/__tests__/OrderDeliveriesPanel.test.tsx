@@ -6,10 +6,18 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { BillingSessionExpired, getOrderDeliveries } from '../billingService';
+import {
+  BillingSessionExpired,
+  getOrderDeliveryPage,
+  getOrderTransferDetailPage,
+} from '../billingService';
 import { OrderDeliveriesPanel } from '../OrderDeliveriesPanel';
 import { loadStockWriteRecovery } from '../stockReservationRecovery';
-import { orderDeliveryFixture } from './orderDeliveryFixture';
+import {
+  orderDeliveryFixture,
+  orderDeliveryPageFixture,
+  orderTransferDetailPageFixture,
+} from './orderDeliveryFixture';
 import { confirmationRequest } from './stockConfirmationFixture';
 import { operationRequest, operationSelection } from './stockOperationFixture';
 import { validationRequest } from './stockValidationFixture';
@@ -47,9 +55,12 @@ jest.mock('../StockReservationModal', () => ({
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
-  getOrderDeliveries: jest.fn(),
+  getOrderDeliveryPage: jest.fn(),
+  getOrderTransferDetailPage: jest.fn(),
 }));
-const get = jest.mocked(getOrderDeliveries);
+const get = jest.mocked(getOrderDeliveryPage);
+const details = jest.mocked(getOrderTransferDetailPage);
+let fixture = orderDeliveryFixture();
 const close = jest.fn();
 const reconnect = jest.fn();
 const show = () =>
@@ -67,14 +78,20 @@ const show = () =>
       />
     </QueryClientProvider>,
   );
+const openTransfer = async () => {
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: 'View transfer QORLIAQA/OUT/11',
+    }),
+  );
+  await screen.findByRole('table', {
+    name: /Demand and reservation quantities/,
+  });
+};
 describe('Order stock transfer review', () => {
   it('opens native validation from details with focus return and refresh, not a raw Validate action', async () => {
     show();
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'View transfer QORLIAQA/OUT/11',
-      }),
-    );
+    await openTransfer();
     const opener = screen.getByRole('button', {
       name: 'Review transfer validation',
     });
@@ -112,11 +129,7 @@ describe('Order stock transfer review', () => {
       fireEvent.click(
         screen.getByRole('button', { name: 'Return from validation' }),
       );
-      fireEvent.click(
-        await screen.findByRole('button', {
-          name: 'View transfer QORLIAQA/OUT/11',
-        }),
-      );
+      await openTransfer();
       for (const name of [
         'Review transfer validation',
         'Review transfer confirmation',
@@ -128,11 +141,7 @@ describe('Order stock transfer review', () => {
   );
   it('opens the native confirmation review from transfer details and reloads on close', async () => {
     show();
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'View transfer QORLIAQA/OUT/11',
-      }),
-    );
+    await openTransfer();
     fireEvent.click(
       screen.getByRole('button', { name: 'Review transfer confirmation' }),
     );
@@ -165,7 +174,7 @@ describe('Order stock transfer review', () => {
     });
     const next = orderDeliveryFixture();
     next.rows = [];
-    get.mockResolvedValue(next);
+    fixture = next;
     show();
     fireEvent.click(
       await screen.findByRole('button', {
@@ -181,15 +190,31 @@ describe('Order stock transfer review', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(loadStockWriteRecovery).mockResolvedValue(null);
-    get.mockResolvedValue(orderDeliveryFixture());
+    fixture = orderDeliveryFixture();
+    get
+      .mockReset()
+      .mockImplementation(async (_order, after = 0, _version, limit = 25) =>
+        orderDeliveryPageFixture(fixture, after, limit),
+      );
+    details
+      .mockReset()
+      .mockImplementation(
+        async (order, id, section, after = 0, version, limit = 50) => {
+          if (order !== fixture.order_id || version !== fixture.version)
+            throw new Error('Native snapshot changed.');
+          return orderTransferDetailPageFixture(
+            section,
+            fixture,
+            id,
+            after,
+            limit,
+          );
+        },
+      );
   });
   it('shows native transfers then exact demand, operation units, batches and no invented completion', async () => {
     show();
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'View transfer QORLIAQA/OUT/11',
-      }),
-    );
+    await openTransfer();
     const table = screen.getByRole('table', {
       name: /Detailed operations, quantities/,
     });
@@ -203,7 +228,7 @@ describe('Order stock transfer review', () => {
     expect(
       screen.queryByRole('button', { name: /Validate|Dispense|Pay/ }),
     ).not.toBeInTheDocument();
-    expect(get).toHaveBeenCalledWith(9);
+    expect(get).toHaveBeenCalledWith(9, 0, false, 25);
     fireEvent.click(
       screen.getByRole('button', { name: 'All order transfers' }),
     );
@@ -216,7 +241,7 @@ describe('Order stock transfer review', () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
   it('renders empty service orders without inventing stock quantities', async () => {
-    get.mockResolvedValue({ ...orderDeliveryFixture(), rows: [] });
+    fixture = { ...orderDeliveryFixture(), rows: [] };
     show();
     await screen.findByText(/No stock transfers are linked/);
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
@@ -245,15 +270,11 @@ describe('Order stock transfer review', () => {
   });
   it('does not retain a transfer that disappeared from the refreshed order', async () => {
     show();
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'View transfer QORLIAQA/OUT/11',
-      }),
-    );
-    get.mockResolvedValue({
+    await openTransfer();
+    fixture = {
       ...orderDeliveryFixture(),
       rows: [{ ...orderDeliveryFixture().rows[0], id: 22 }],
-    });
+    };
     fireEvent.click(screen.getByRole('button', { name: 'Refresh transfers' }));
     await screen.findByText(/no longer linked to the order/);
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
@@ -264,17 +285,13 @@ describe('Order stock transfer review', () => {
   });
   it('reloads saved transfer quantities when a reservation view closes before finish', async () => {
     show();
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'View transfer QORLIAQA/OUT/11',
-      }),
-    );
+    await openTransfer();
     fireEvent.click(
       screen.getByRole('button', { name: 'Review stock preparation' }),
     );
     const refreshed = orderDeliveryFixture();
     refreshed.rows[0].moves[0].reserved = 12;
-    get.mockResolvedValue(refreshed);
+    fixture = refreshed;
     fireEvent.click(
       screen.getByRole('button', { name: 'Return from reservation' }),
     );
@@ -288,11 +305,7 @@ describe('Order stock transfer review', () => {
   });
   it('opens new and saved operations with their exact move identities, then reloads saved values', async () => {
     show();
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'View transfer QORLIAQA/OUT/11',
-      }),
-    );
+    await openTransfer();
     await waitFor(() =>
       expect(
         screen.getByRole('button', { name: 'Add operation for QA Medicine' }),
@@ -320,7 +333,7 @@ describe('Order stock transfer review', () => {
     });
     const next = orderDeliveryFixture();
     next.rows[0].operations[0].done = 2;
-    get.mockResolvedValue(next);
+    fixture = next;
     fireEvent.click(
       screen.getByRole('button', { name: 'Return from operation' }),
     );
@@ -344,7 +357,7 @@ describe('Order stock transfer review', () => {
     jest.mocked(loadStockWriteRecovery).mockResolvedValue(pending);
     const next = orderDeliveryFixture();
     next.rows[0].operations = [];
-    get.mockResolvedValue(next);
+    fixture = next;
     show();
     fireEvent.click(
       await screen.findByRole('button', { name: 'Resume operation request' }),
@@ -355,11 +368,7 @@ describe('Order stock transfer review', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Return from operation' }),
     );
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'View transfer QORLIAQA/OUT/11',
-      }),
-    );
+    await openTransfer();
     expect(
       screen.getByRole('button', { name: 'Add operation for QA Medicine' }),
     ).toBeDisabled();
@@ -375,11 +384,7 @@ describe('Order stock transfer review', () => {
       .mocked(loadStockWriteRecovery)
       .mockRejectedValueOnce(new Error('Storage failed'));
     show();
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'View transfer QORLIAQA/OUT/11',
-      }),
-    );
+    await openTransfer();
     expect(
       screen.getByRole('button', { name: 'Edit operation #13' }),
     ).toBeDisabled();

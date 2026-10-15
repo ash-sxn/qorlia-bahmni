@@ -1,12 +1,17 @@
 import { Button } from '@bahmni/design-system';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useRef, useState } from 'react';
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './BillingPage.module.scss';
 import {
   BillingSessionExpired,
-  getOrderDeliveries,
+  getOrderDeliveryPage,
   StockOperationSelection,
 } from './billingService';
+import { OrderTransferDetails } from './OrderTransferDetails';
 import { StockConfirmationModal } from './StockConfirmationModal';
 import { StockOperationEditor } from './StockOperationEditor';
 import { StockReservationModal } from './StockReservationModal';
@@ -16,33 +21,29 @@ import {
   isStockValidationRequest,
   loadStockWriteRecovery,
 } from './stockReservationRecovery';
+import {
+  coherentTransferPages,
+  transferStates,
+  transferLabel as label,
+} from './stockTransferPages';
 import { StockValidationModal } from './StockValidationModal';
 
-const transferStates = {
-  draft: 'Draft',
-  waiting: 'Waiting for another operation',
-  confirmed: 'Waiting for availability',
-  assigned: 'Ready',
-  done: 'Done',
-  cancel: 'Cancelled',
-};
-const label = (relation: [number, string] | false) =>
-  relation ? relation[1] : 'Not set';
-
-export function OrderDeliveriesPanel({
-  uid,
-  orderId,
-  close,
-  reconnect,
-}: {
+type Props = {
   uid: number;
   orderId: number;
   close: () => void;
   reconnect: () => void;
-}) {
+};
+export function OrderDeliveriesPanel(props: Props) {
+  return <OrderTransfers key={`${props.uid}:${props.orderId}`} {...props} />;
+}
+function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
   const client = useQueryClient();
   const confirmationOpener = useRef<HTMLButtonElement | null>(null);
   const backButton = useRef<HTMLButtonElement | null>(null);
+  const refreshButton = useRef<HTMLButtonElement | null>(null);
+  const lastTransferButton = useRef<HTMLButtonElement | null>(null);
+  const moreFocus = useRef<HTMLButtonElement | null>(null);
   const restoreConfirmationFocus = useCallback(() => {
     const target =
       confirmationOpener.current?.isConnected &&
@@ -74,29 +75,66 @@ export function OrderDeliveriesPanel({
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
-  const result = useQuery({
-    queryKey: ['billing', 'order-deliveries', uid, orderId],
-    queryFn: () => getOrderDeliveries(orderId),
+  const result = useInfiniteQuery({
+    queryKey: ['billing', 'order-deliveries', uid, orderId, 'pages'],
+    initialPageParam: { after: 0, version: false as string | false },
+    queryFn: ({ pageParam }) =>
+      getOrderDeliveryPage(orderId, pageParam.after, pageParam.version, 25),
+    getNextPageParam: (page) =>
+      page.next_after === false
+        ? undefined
+        : { after: page.next_after, version: page.version },
     retry: false,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
-  const transfer = result.data?.rows.find((row) => row.id === transferId);
+  const pages = result.data?.pages ?? [];
+  const first = pages[0];
+  const rows = pages.flatMap((page) => page.rows);
+  const mismatch = !!first && !coherentTransferPages(pages, orderId);
+  useEffect(() => {
+    if (result.isFetching || !moreFocus.current) return;
+    const previous = moreFocus.current;
+    moreFocus.current = null;
+    if (
+      document.activeElement !== document.body &&
+      document.activeElement !== previous
+    )
+      return;
+    const target =
+      result.isError || mismatch
+        ? refreshButton.current
+        : previous.isConnected && !previous.disabled
+          ? previous
+          : lastTransferButton.current;
+    target?.focus();
+  }, [result.isFetching, result.isError, mismatch, pages.length]);
   const stockLocked =
     recovery.isPending ||
     recovery.isFetching ||
     recovery.isError ||
     !!recovery.data ||
     result.isFetching ||
-    result.isError;
+    result.isError ||
+    mismatch;
+  const refresh = () => {
+    client.removeQueries({
+      queryKey: ['billing', 'order-transfer-details', uid, orderId],
+    });
+    void client.resetQueries({
+      queryKey: ['billing', 'order-deliveries', uid, orderId, 'pages'],
+      exact: true,
+    });
+  };
   const reloadTransfers = () => {
+    confirmationOpener.current = null;
+    backButton.current?.focus();
     setReservation(null);
     setOperation(null);
     setConfirmation(null);
     setValidation(null);
-    void client.invalidateQueries({
-      queryKey: ['billing', 'order-deliveries', uid, orderId],
-    });
+    refresh();
     void client.invalidateQueries({
       queryKey: ['billing', 'reservation-recovery', uid],
     });
@@ -159,9 +197,10 @@ export function OrderDeliveriesPanel({
           Back to order details
         </Button>
         <Button
+          ref={refreshButton}
           kind="tertiary"
           disabled={result.isFetching}
-          onClick={() => void result.refetch()}
+          onClick={refresh}
         >
           Refresh transfers
         </Button>
@@ -181,139 +220,50 @@ export function OrderDeliveriesPanel({
           Reload stock recovery
         </Button>
       ) : null}
-      {result.isFetching ? (
+      {result.isPending || (result.isFetching && !result.isFetchingNextPage) ? (
         <p role="status">Loading native order transfers...</p>
-      ) : result.isError ? (
+      ) : result.isError || mismatch ? (
         <div role="alert">
           <p>
-            {result.error.message} Previous transfer details are hidden until a
-            successful reload.
+            {result.error?.message ??
+              'Transfer pages no longer match the current order snapshot.'}{' '}
+            Previous transfer details are hidden until a successful reload.
           </p>
           {result.error instanceof BillingSessionExpired ? (
             <Button onClick={reconnect}>Reconnect Billing</Button>
           ) : null}
         </div>
-      ) : result.data ? (
+      ) : first ? (
         <>
-          <h3>{result.data.order_name}</h3>
-          {!result.data.rows.length ? (
+          <h3>{first.order_name}</h3>
+          {first.total_count === 0 ? (
             <p>
               No stock transfers are linked to this order. Service-only orders
               may not require a transfer.
             </p>
           ) : transferId === null ? (
-            <div
-              className={styles.tableScroll}
-              role="region"
-              aria-label="Order transfer list"
-              tabIndex={0}
-            >
-              <table>
-                <caption>Native transfers linked to this order</caption>
-                <thead>
-                  <tr>
-                    {[
-                      'Transfer',
-                      'Operation',
-                      'Status',
-                      'Scheduled (UTC)',
-                      'Completed (UTC)',
-                      'Backorder of',
-                      'Details',
-                    ].map((title) => (
-                      <th scope="col" key={title}>
-                        {title}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.data.rows.map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.name}</td>
-                      <td>{label(row.operation_type)}</td>
-                      <td>{transferStates[row.state]}</td>
-                      <td>{row.scheduled_date || 'Not set'}</td>
-                      <td>{row.date_done || 'Not completed'}</td>
-                      <td>{label(row.backorder)}</td>
-                      <td>
-                        <Button
-                          kind="ghost"
-                          onClick={() => setTransferId(row.id)}
-                        >
-                          View transfer {row.name}
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : transfer ? (
             <>
-              <h3>{transfer.name}</h3>
-              <Button
-                kind="tertiary"
-                disabled={stockLocked}
-                onClick={(event) => {
-                  confirmationOpener.current = event.currentTarget;
-                  setValidation({ orderId, transferId: transfer.id });
-                }}
-              >
-                Review transfer validation
-              </Button>
-              <Button
-                kind="tertiary"
-                disabled={stockLocked}
-                onClick={(event) => {
-                  confirmationOpener.current = event.currentTarget;
-                  setConfirmation({ orderId, transferId: transfer.id });
-                }}
-              >
-                Review transfer confirmation
-              </Button>
-              <Button
-                kind="tertiary"
-                disabled={stockLocked}
-                onClick={() =>
-                  setReservation({ orderId, transferId: transfer.id })
-                }
-              >
-                Review stock preparation
-              </Button>
-              <p>
-                Status: {transferStates[transfer.state]} · Company:{' '}
-                {label(transfer.company)}
-              </p>
-              <p>
-                Customer: {label(transfer.customer)} · Reference:{' '}
-                {transfer.origin || 'Not set'}
-              </p>
-              <p>
-                From: {label(transfer.source)} · To:{' '}
-                {label(transfer.destination)}
+              <p role="status">
+                Showing {rows.length} of {first.total_count} transfers.
               </p>
               <div
                 className={styles.tableScroll}
                 role="region"
-                aria-label="Transfer demand and reservations"
+                aria-label="Order transfer list"
                 tabIndex={0}
               >
                 <table>
-                  <caption>
-                    Demand and reservation quantities in the unit shown
-                  </caption>
+                  <caption>Native transfers linked to this order</caption>
                   <thead>
                     <tr>
                       {[
-                        'Product',
-                        'Unit',
-                        'Demand',
-                        'Reserved',
-                        'Recorded done',
-                        'Move status',
-                        'Order item',
-                        'Operations',
+                        'Transfer',
+                        'Operation',
+                        'Status',
+                        'Scheduled (UTC)',
+                        'Completed (UTC)',
+                        'Backorder of',
+                        'Details',
                       ].map((title) => (
                         <th scope="col" key={title}>
                           {title}
@@ -322,32 +272,26 @@ export function OrderDeliveriesPanel({
                     </tr>
                   </thead>
                   <tbody>
-                    {transfer.moves.map((move) => (
-                      <tr key={move.id}>
-                        <td>{label(move.product)}</td>
-                        <td>{label(move.unit)}</td>
-                        <td>{move.demand}</td>
-                        <td>{move.reserved}</td>
-                        <td>{move.done}</td>
-                        <td>{move.state}</td>
-                        <td>{label(move.order_line)}</td>
+                    {rows.map((row, index) => (
+                      <tr key={row.id}>
+                        <td>{row.name}</td>
+                        <td>{label(row.operation_type)}</td>
+                        <td>{transferStates[row.state]}</td>
+                        <td>{row.scheduled_date || 'Not set'}</td>
+                        <td>{row.date_done || 'Not completed'}</td>
+                        <td>{label(row.backorder)}</td>
                         <td>
                           <Button
+                            ref={
+                              index === rows.length - 1
+                                ? lastTransferButton
+                                : undefined
+                            }
                             kind="ghost"
-                            disabled={
-                              stockLocked ||
-                              ['done', 'cancel'].includes(move.state)
-                            }
-                            onClick={() =>
-                              setOperation({
-                                order_id: orderId,
-                                transfer_id: transfer.id,
-                                move_id: move.id,
-                                operation_id: false,
-                              })
-                            }
+                            disabled={result.isFetching}
+                            onClick={() => setTransferId(row.id)}
                           >
-                            Add operation for {label(move.product)}
+                            View transfer {row.name}
                           </Button>
                         </td>
                       </tr>
@@ -355,97 +299,44 @@ export function OrderDeliveriesPanel({
                   </tbody>
                 </table>
               </div>
-              {!transfer.moves.length ? (
-                <p>No stock moves are recorded in this transfer.</p>
+              {result.hasNextPage ? (
+                <Button
+                  kind="tertiary"
+                  disabled={result.isFetching}
+                  onClick={(event) => {
+                    moreFocus.current =
+                      event.currentTarget === document.activeElement
+                        ? event.currentTarget
+                        : null;
+                    void result.fetchNextPage();
+                  }}
+                >
+                  Load more transfers
+                </Button>
               ) : null}
-              <div
-                className={styles.tableScroll}
-                role="region"
-                aria-label="Detailed stock operations"
-                tabIndex={0}
-              >
-                <table>
-                  <caption>
-                    Detailed operations, quantities in the unit shown
-                  </caption>
-                  <thead>
-                    <tr>
-                      {[
-                        'Product',
-                        'Unit',
-                        'Reserved',
-                        'Recorded done',
-                        'Batch / serial',
-                        'Expiry (UTC)',
-                        'Source',
-                        'Destination',
-                        'Source package',
-                        'Destination package',
-                        'Owner',
-                        'Edit',
-                      ].map((title) => (
-                        <th scope="col" key={title}>
-                          {title}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transfer.operations.map((line) => (
-                      <tr key={line.id}>
-                        <td>{label(line.product)}</td>
-                        <td>{label(line.unit)}</td>
-                        <td>{line.reserved}</td>
-                        <td>{line.done}</td>
-                        <td>
-                          {line.lot ? line.lot[1] : line.lot_name || 'Not set'}
-                        </td>
-                        <td>{line.expiry_date || 'Not set'}</td>
-                        <td>{label(line.source)}</td>
-                        <td>{label(line.destination)}</td>
-                        <td>{label(line.source_package)}</td>
-                        <td>{label(line.destination_package)}</td>
-                        <td>{label(line.owner)}</td>
-                        <td>
-                          {line.move_id ? (
-                            <Button
-                              kind="ghost"
-                              disabled={
-                                stockLocked ||
-                                ['done', 'cancel'].includes(transfer.state)
-                              }
-                              onClick={() =>
-                                setOperation({
-                                  order_id: orderId,
-                                  transfer_id: transfer.id,
-                                  move_id: line.move_id as number,
-                                  operation_id: line.id,
-                                })
-                              }
-                            >
-                              Edit operation #{line.id}
-                            </Button>
-                          ) : (
-                            'No linked move'
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {!transfer.operations.length ? (
-                <p>
-                  No detailed operations are recorded. Demand alone does not
-                  mean stock has been reserved or delivered.
-                </p>
+              {result.isFetchingNextPage ? (
+                <p role="status">Loading more native transfers...</p>
               ) : null}
             </>
           ) : (
-            <p role="status">
-              This transfer is no longer linked to the order. Return to the
-              updated transfer list.
-            </p>
+            <OrderTransferDetails
+              uid={uid}
+              transferId={transferId}
+              snapshot={first}
+              stockLocked={stockLocked}
+              validation={(event) => {
+                confirmationOpener.current = event.currentTarget;
+                setValidation({ orderId, transferId });
+              }}
+              confirmation={(event) => {
+                confirmationOpener.current = event.currentTarget;
+                setConfirmation({ orderId, transferId });
+              }}
+              reservation={() => setReservation({ orderId, transferId })}
+              operation={setOperation}
+              reload={refresh}
+              reconnect={reconnect}
+            />
           )}
         </>
       ) : null}
