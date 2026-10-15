@@ -3,6 +3,19 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest receipt-completion checkpoint, adapter 48 (15 October): actual isolated
+React/gateway saves complete a five-unit incoming receipt, create one reviewed
+priced batch and reload Done stock with exact recovery cleared. Independent
+read-back verifies stock ten to fifteen, batch prices/expiry, one native valuation,
+zero customer delivery and unchanged unrelated stock/protected finance. Twelve
+native step cases pass, adding full-receipt and balanced automatic-valuation journal
+regressions with duplicate-safe replay. The combined mandatory-analytics run passes
+108 cases; Home passes 696 cases/74 suites, including 24 modal cases. Library and
+test-source types/lint/format pass. Automatic-valuation browser acceptance and
+remaining release gates are not complete. The temporary loopback gate expired
+and stays closed; the hosted tester remains adapter 43. Read
+[the precise receipt checkpoint](STOCK_VALIDATION.md#browser-completed-receipt-and-native-automatic-valuation-regression-15-october-2026).
+
 Latest completed-stock browser checkpoint, adapter 48 (15 October): actual React
 saves complete prepared/immediate five-unit deliveries and a separate two-unit
 partial delivery with exactly one three-unit backorder. Independent native reads

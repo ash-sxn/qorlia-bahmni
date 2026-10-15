@@ -1,5 +1,32 @@
 # Qorlia React frontend backend readiness
 
+## Completed receipt browser checkpoint and native valuation regression (15 October 2026)
+
+The isolated adapter-48 React/gateway path now completes a five-unit incoming
+receipt through its actual native batch review. Finish checks and clears the
+exact continuation, then reloads Done with five recorded units and no reservation.
+Independent read-only assertions verify one correctly scoped batch, reviewed
+prices/expiry, warehouse stock ten to fifteen and one native standard-cost
+valuation of five/value twenty. Customer delivery stays zero and manual valuation
+creates no journal. Original batch metadata, unrelated stock, earlier receipts,
+protected stored accounting and financial/analytic counts remain unchanged.
+
+Twelve native step cases pass with mandatory analytics, adding full-batch receipt
+and balanced posted-journal/analytics regressions with duplicate-safe retry/status.
+The combined mandatory-analytics fulfillment run passes 108 cases with no failures,
+errors or skips. Home passes 696 cases/74 suites, including 24 modal cases. Library
+types, lint/format and twelve actual test-source roots pass. Final independent reads
+preserve the four completed fixtures and separately match protected tester stock,
+stored accounting and operation/preparation baselines. This is native
+automatic-valuation evidence, not its browser acceptance.
+See [the exact checkpoint and limits](../runtime/billing/STOCK_VALIDATION.md#browser-completed-receipt-and-native-automatic-valuation-regression-15-october-2026).
+
+The temporary loopback gate expires and returns 410 without renewal. No application
+runtime/build or hosted tester upgrade occurs. Automatic journal browser acceptance,
+session expiry, wider configurations/roles, reports/multi-transfer, notifications,
+scale and matching-source protected release remain open. Tester remains adapter 43;
+production/public demo unchanged.
+
 ## Completed delivery and backorder browser checkpoint (15 October 2026)
 
 The isolated adapter-48 React/gateway path now completes prepared and immediate

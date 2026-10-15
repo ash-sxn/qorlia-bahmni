@@ -18,6 +18,7 @@ from . import test_stock_validation_preview as preview_contract
 class StockValidationStepTest(native_contract.StockValidationFixture, TransactionCase):
     prepared = preview_contract.StockValidationPreviewTest.prepared
     load = preview_contract.StockValidationPreviewTest.load
+    automatic_valuation = native_contract.StockValidationContractTest.automatic_valuation
 
     def request(self, picking, previous=None, decision=None):
         version = self.load(picking)['version']
@@ -99,6 +100,84 @@ class StockValidationStepTest(native_contract.StockValidationFixture, Transactio
         self.assertTrue(result['terminal'])
         self.assert_delivered(picking, 5)
         self.assertEqual(result, picking.qorlia_validation_step_status(request))
+
+    def test_full_receipt_creates_one_priced_batch_and_valuation_without_replay(self):
+        picking = self.picking(self.in_type)
+        picking.action_confirm()
+        picking.action_assign()
+        picking.move_ids.group_id = self.env['procurement.group'].create({
+            'name': 'QorliaQA Full step receipt', 'sale_id': self.order.id, 'partner_id': self.customer.id})
+        batch_name = 'QorliaQA Full step new batch'
+        picking.move_line_ids.write({'qty_done': 5, 'lot_name': batch_name,
+            'cost_price': 2.5, 'sale_price': 5, 'mrp': 7, 'expiration_date': '2027-02-01 00:00:00'})
+        original_batch = self.lot.read(['cost_price', 'sale_price', 'mrp', 'expiration_date'])
+        opening = self.request(picking)
+        result = picking.qorlia_validation_step_save(opening)
+        self.assertEqual(result['next_step']['kind'], 'receipt')
+        confirm = self.request(picking, opening, {'kind': 'receipt', 'confirm': True})
+        batches = self.env['stock.lot'].search([('product_id', '=', self.product.id), ('name', '=', batch_name)])
+        self.assertFalse(batches, 'Preview must roll back batch creation')
+        self.assertEqual(self.source_stock(), 10)
+        accepted = picking.qorlia_validation_step_save(confirm)
+        self.assertTrue(accepted['terminal'])
+        self.assertEqual(picking.state, 'done')
+        batch = picking.move_line_ids.lot_id
+        self.assertEqual(len(batch), 1)
+        self.assertEqual(batch.name, batch_name)
+        self.assertEqual((batch.cost_price, batch.sale_price, batch.mrp), (2.5, 5, 7))
+        self.assertEqual(fields.Datetime.to_string(batch.expiration_date), '2027-02-01 00:00:00')
+        self.assertEqual(batch.product_id, self.product)
+        self.assertEqual(batch.company_id, picking.company_id)
+        self.assertEqual(self.source_stock(), 15)
+        self.assertEqual(self.sale_line.qty_delivered, 0, 'An incoming receipt is not a customer delivery')
+        layers = self.env['stock.valuation.layer'].search([('stock_move_id', 'in', picking.move_ids.ids)])
+        self.assertEqual(len(layers), 1)
+        self.assertEqual((layers.quantity, layers.value), (5, 20))
+        self.assertFalse(layers.account_move_id)
+        self.assertFalse(self.env['stock.picking'].search([('backorder_id', '=', picking.id)]))
+        self.assertEqual(accepted, picking.qorlia_validation_step_status(confirm))
+        self.assertEqual(accepted, picking.qorlia_validation_step_save(confirm))
+        self.assertEqual(self.source_stock(), 15)
+        self.assertEqual(self.env['stock.lot'].search_count([
+            ('product_id', '=', self.product.id), ('name', '=', batch_name)]), 1)
+        self.assertEqual(self.env['stock.valuation.layer'].search([
+            ('stock_move_id', 'in', picking.move_ids.ids)]), layers)
+        self.assertEqual(self.lot.read(['cost_price', 'sale_price', 'mrp', 'expiration_date']), original_batch)
+        receipts = self.receipts(picking)
+        self.assertEqual(len(receipts), 2)
+        self.assertEqual(receipts[opening['request_key']]['consumed_by'], confirm['request_key'])
+
+    def test_automatic_valuation_step_posts_one_balanced_journal_with_analytics(self):
+        accounts, journal = self.automatic_valuation()
+        picking = self.prepared(5).with_user(self.env.user)
+        finance_count = self.env['account.move'].search_count([])
+        analytic_count = self.env['account.analytic.line'].search_count([])
+        request = self.request(picking)
+        self.assertEqual(self.env['account.move'].search_count([]), finance_count)
+        self.assertEqual(self.env['account.analytic.line'].search_count([]), analytic_count)
+        accepted = picking.qorlia_validation_step_save(request)
+        self.assertTrue(accepted['terminal'])
+        self.assert_delivered(picking, 5)
+        layers = self.env['stock.valuation.layer'].search([('stock_move_id', 'in', picking.move_ids.ids)])
+        self.assertEqual(len(layers), 1)
+        self.assertEqual((layers.quantity, layers.value), (-5, -20))
+        entry = layers.account_move_id
+        self.assertEqual(len(entry), 1)
+        self.assertEqual((entry.state, entry.move_type), ('posted', 'entry'))
+        self.assertEqual(entry.journal_id, journal)
+        self.assertEqual(sum(entry.line_ids.mapped('balance')), 0)
+        self.assertEqual(sum(entry.line_ids.filtered(lambda row: row.account_id == accounts['valuation']).mapped('balance')), -20)
+        self.assertEqual(sum(entry.line_ids.filtered(lambda row: row.account_id == accounts['output']).mapped('balance')), 20)
+        self.assertTrue(all(entry.line_ids.mapped('analytic_distribution')))
+        analytics = entry.line_ids.analytic_line_ids
+        self.assertTrue(analytics)
+        self.assertEqual(self.env['account.move'].search_count([]), finance_count + 1)
+        self.assertEqual(accepted, picking.qorlia_validation_step_save(request))
+        self.assertEqual(accepted, picking.qorlia_validation_step_status(request))
+        self.assertEqual(self.env['account.move'].search_count([]), finance_count + 1)
+        self.assertEqual(entry.line_ids.analytic_line_ids, analytics)
+        self.assertEqual(self.source_stock(), 5)
+        self.assertEqual(len(self.receipts(picking)), 1)
 
     def test_false_immediate_choice_does_not_move_or_prepare_stock(self):
         picking = self.prepared()

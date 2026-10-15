@@ -97,6 +97,8 @@ The later [expiry and response-loss browser checkpoint](../runtime/billing/STOCK
 
 The subsequent [completed-stock browser checkpoint](../runtime/billing/STOCK_VALIDATION.md#browser-completed-delivery-and-order-refresh-checkpoint-15-october-2026) verifies full/immediate delivery and partial delivery with one backorder on isolated manual-valuation fixtures. Closing a stock workflow also invalidates order-line queries: refreshing transfer state alone left delivered quantities stale in the still-mounted order parent. Receipt completion, automatic journal browser acceptance and matching protected release remain separate gates.
 
+The later [completed-receipt checkpoint](../runtime/billing/STOCK_VALIDATION.md#browser-completed-receipt-and-native-automatic-valuation-regression-15-october-2026) adds actual incoming receipt completion through the React/gateway path. Native batch prices/expiry and standard-cost valuation remain separate concepts. Stock rises by five without claiming a customer delivery. New native step regressions verify duplicate-safe full receipts and balanced automatic journals with analytics; automatic-journal browser acceptance remains open. The temporary loopback gate has expired without renewal, and no hosted tester upgrade is implied.
+
 ## Authentication and configuration
 
 Clinical login establishes an OpenMRS session. Billing needs a separate ERP session. The [development proxy](../distro/webpack.config.js) and [review gateway](../scripts/review-host/server.cjs) isolate cookies and verify clinical access before forwarding allowed ERP requests.

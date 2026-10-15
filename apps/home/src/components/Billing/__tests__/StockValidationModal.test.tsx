@@ -351,7 +351,7 @@ describe('Per-RPC native validation UI and legacy recovery', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows native receipt columns and warnings read-only only after the opening step is saved', async () => {
+  it('reviews native receipt rows and completes only the separately saved batch decision', async () => {
     const step: StockValidationStep = {
       ...validationStep(),
       kind: 'receipt',
@@ -412,6 +412,36 @@ describe('Per-RPC native validation UI and legacy recovery', () => {
       decisions: [{ kind: 'receipt', confirm: true }],
     });
     expect(save).toHaveBeenCalledTimes(1);
+    save.mockImplementationOnce(async (exact) => {
+      const receipt = accepted(exact);
+      receipt.references['new:stock.lot:0'] = {
+        model: 'stock.lot',
+        id: 23,
+        name: 'New batch',
+        available: true,
+      };
+      return receipt;
+    });
+    await saveReview();
+    expect(save).toHaveBeenCalledTimes(2);
+    const confirmation = save.mock.calls[1][0];
+    expect(confirmation).toMatchObject({
+      request_key: key(2),
+      continuation_key: key(),
+      decisions: [{ kind: 'receipt', confirm: true }],
+    });
+    expect(replace).toHaveBeenCalledWith(3, request(), confirmation);
+    expect(
+      screen.getByRole('region', { name: 'Saved validation references' }),
+    ).toHaveTextContent('Batch / serial: New batch (#23)');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Finish and reload transfers' }),
+    );
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(status).toHaveBeenLastCalledWith(confirmation);
+    expect(clear).toHaveBeenCalledWith(3, confirmation);
+    expect(disk).toBeNull();
+    expect(save).toHaveBeenCalledTimes(2);
   });
 
   it('keeps assigned fields, currencies and private counts and escapes effect markup', async () => {

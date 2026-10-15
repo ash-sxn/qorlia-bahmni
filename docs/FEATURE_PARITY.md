@@ -1,5 +1,13 @@
 # Bahmni workflow parity ledger
 
+## 15 October completed receipt browser acceptance and valuation regressions
+
+- Actual isolated React/gateway saves complete one five-unit incoming receipt through its native batch review. Finish checks/clears the exact continuation and reloads Done with five recorded units, zero reservation and completed-operation editing disabled.
+- Independent read-only assertions verify one new batch with the reviewed product/company, prices and expiry; unchanged original-batch metadata; warehouse stock ten to fifteen; one native standard-cost valuation of five/value twenty; no backorder; and correctly zero customer delivered quantity. Unrelated stock, prior receipts, protected stored accounting and financial/analytic counts remain unchanged.
+- Two new native step regressions cover full new-batch receipt and automatic valuation with preview rollback and duplicate-safe replay/status. Twelve focused native cases pass with mandatory analytics and no failures/errors/skips. The strengthened receipt UI case checks its separate save, created batch reference and exact recovery clear; all twenty-four modal cases, lint/format and twelve source-test roots pass.
+- The combined mandatory-analytics fulfillment run passes 108 cases without failures/errors/skips. Home passes 696 cases/74 suites; library types and 27 contributor guides/478 local links pass. Final independent reads preserve the four completed browser fixtures and separately match protected tester accounting/stock/delivered/preparation/operation baselines. The full addon suite is not rerun for these test-only changes.
+- Automatic posted-journal/analytics evidence is native adapter testing, not browser acceptance. No runtime/build upgrade or protected publication occurs. The temporary loopback gate expires and returns 410 without renewal. Automatic journal browser checks, session expiry, wider configurations, notifications, scale and matching-source release remain open. Tester stays adapter 43; public demo/production unchanged. See [precise scope](../runtime/billing/STOCK_VALIDATION.md#browser-completed-receipt-and-native-automatic-valuation-regression-15-october-2026).
+
 ## 15 October completed delivery, backorder and order-cache correction
 
 - Actual isolated adapter-48 React browser saves complete prepared and immediate five-unit deliveries. A separate partial delivery completes two units and creates exactly one three-unit backorder. Finish checks/clears the exact recovery request and reloads native transfers.
