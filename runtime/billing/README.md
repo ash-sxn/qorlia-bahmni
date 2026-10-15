@@ -3,14 +3,20 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Next integration: [native stock returns](STOCK_RETURNS.md). The installed native
+Current integration: [native stock returns](STOCK_RETURNS.md). The installed native
 form and override audit distinguishes return creation from physical validation and
 financial refunds. Candidate source 49 adds native form reconstruction, bounded
 location search, signed rollback review and duplicate-safe create/status. It uses
-existing private receipt schema; disposable native tests are not a running HTTP
-upgrade. Browser recovery, the return editor, real HTTP/browser acceptance and
-protected publication remain gates. Do not claim completed receipt or a released
-return control from this source checkpoint.
+existing private receipt schema. A separate private installed-49 copy now passes
+actual TypeScript/native HTTP for outgoing, incoming and chained returns, including
+overlapping identical sessions, withheld accepted-response recovery, exact replay,
+native rejection and logout/re-authentication. Independent SQL verifies one linked
+return/receipt per case and unchanged physical stock/unrelated stock/stored finance.
+The diagnostic socket is closed and temporary HTTP container stopped afterward.
+The existing validation copy stays 48, hosted tester 43 and owner-closed UI gate 410.
+See [the precise HTTP boundary](STOCK_RETURNS.md#native-http-client-and-concurrent-return-checkpoint-15-october-2026).
+Protected-gateway/browser acceptance, browser recovery, the return editor and
+publication remain gates. Creation is not completed receipt or a financial refund.
 
 Latest receipt-completion checkpoint, adapter 48 (15 October): actual isolated
 React/gateway saves complete a five-unit incoming receipt, create one reviewed

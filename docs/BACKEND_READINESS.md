@@ -1,5 +1,36 @@
 # Qorlia React frontend backend readiness
 
+## Return native HTTP/client checkpoint, review gate closed (15 October 2026)
+
+A separate installed-49 private database/runtime passes the actual TypeScript
+service against native HTTP for outgoing, incoming and chained return form,
+location search, review, creation and exact status. It uses the pinned image and
+matching source, rotated copied signing identity and no published ports. An
+SSH Unix-domain diagnostic socket provides operator transport, not a browser
+review route or the protected gateway.
+
+Overlapping saves from two authenticated sessions resolve to one linked return
+and receipt through native serialization handling. A real accepted response
+withheld at the client-transport boundary is recovered by the same request's
+status/retry. Altered requests reject; anonymous/logout and re-authentication
+paths retain the same accepted return. This is not browser session/storage proof.
+
+Independent SQL verifies exact request/author/company/order hashes and return IDs,
+one uncompleted return per original, zero return valuation, unchanged delivered
+and physical stock, and native chained unreservation. Complete stored rows in
+six financial tables and unrelated quants match the original copy. Computed
+invoice totals are not independently recalculated. SMS configuration is preserved;
+synthetic contacts have no delivery destinations. External notification delivery
+is still not accepted.
+
+The diagnostic sessions/socket are closed and temporary HTTP container stopped.
+Its private database/evidence remain; existing validation-48 and hosted-tester-43
+baselines are unchanged. The actual UI gate remains 410. There is no new UI,
+public deployment or frontend build/test run; the earlier 152 native and 715 Home
+results are not relabelled as fresh runs. Protected-gateway return acceptance,
+React editor/durable recovery, wider native HTTP configurations, browser checks,
+notifications and scale remain open. See [the precise checkpoint](../runtime/billing/STOCK_RETURNS.md#native-http-client-and-concurrent-return-checkpoint-15-october-2026).
+
 ## Return lifecycle backend verification, gate kept closed (15 October 2026)
 
 Eight additional native regressions connect API-created returns to atomic and
