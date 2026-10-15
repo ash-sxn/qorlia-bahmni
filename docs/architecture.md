@@ -95,6 +95,8 @@ The subsequent [native persistence audit and step contract](../runtime/billing/S
 
 The later [expiry and response-loss browser checkpoint](../runtime/billing/STOCK_VALIDATION.md#browser-expiry-decline-and-lost-response-checkpoint-15-october-2026) verifies immediate preparation survives declined expiry, and a truly lost accepted Fetch response survives full reload and explicit status recovery without another save. Independent read-back binds the original request digest, author and companies. Accepted preparation remains distinct from delivery. Its narrow/keyboard prompt check does not accept every screen or authorize release.
 
+The subsequent [completed-stock browser checkpoint](../runtime/billing/STOCK_VALIDATION.md#browser-completed-delivery-and-order-refresh-checkpoint-15-october-2026) verifies full/immediate delivery and partial delivery with one backorder on isolated manual-valuation fixtures. Closing a stock workflow also invalidates order-line queries: refreshing transfer state alone left delivered quantities stale in the still-mounted order parent. Receipt completion, automatic journal browser acceptance and matching protected release remain separate gates.
+
 ## Authentication and configuration
 
 Clinical login establishes an OpenMRS session. Billing needs a separate ERP session. The [development proxy](../distro/webpack.config.js) and [review gateway](../scripts/review-host/server.cjs) isolate cookies and verify clinical access before forwarding allowed ERP requests.

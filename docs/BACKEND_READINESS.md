@@ -1,5 +1,25 @@
 # Qorlia React frontend backend readiness
 
+## Completed delivery and backorder browser checkpoint (15 October 2026)
+
+The isolated adapter-48 React/gateway path now completes prepared and immediate
+five-unit deliveries and a separate two-unit partial delivery with exactly one
+three-unit backorder. Independent native reads verify delivered progress, stock,
+one valuation layer per completed transfer and scoped receipts. Unrelated stock,
+protected stored accounting, prior browser receipts and financial/analytic counts
+remain unchanged. These are manual-valuation fixtures, not automatic journal proof.
+
+A reproduced stale order-line cache is fixed in the shared stock-modal close path.
+Full/immediate browser returns now show five delivered without page/order refresh.
+Home passes 696 tests/74 suites; 50 focused cases, scoped lint, library types,
+twelve test-source roots and build `7cc4dd5ec31fb26f` pass. The build includes nine
+unrelated clinical working files, so it is not a clean source-only release artifact.
+See [the evidence and remaining gates](../runtime/billing/STOCK_VALIDATION.md#browser-completed-delivery-and-order-refresh-checkpoint-15-october-2026).
+
+Receipt completion, automatic-valuation journal browser acceptance, session expiry,
+wider roles/configurations, scale and matching protected publication remain.
+The protected tester stays adapter 43; production/public demo and access gates are unchanged.
+
 ## Browser expiry decline and lost-response recovery (15 October 2026)
 
 The isolated adapter-48 React build now verifies three separate native actions:

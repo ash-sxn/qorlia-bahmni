@@ -1,5 +1,12 @@
 # Bahmni workflow parity ledger
 
+## 15 October completed delivery, backorder and order-cache correction
+
+- Actual isolated adapter-48 React browser saves complete prepared and immediate five-unit deliveries. A separate partial delivery completes two units and creates exactly one three-unit backorder. Finish checks/clears the exact recovery request and reloads native transfers.
+- Independent read-only assertions verify native delivered quantities, stock ten to five/eight, one valuation layer per completed transfer and author/company/order-bound receipts. Unrelated stock, protected stored accounting, prior browser receipts and financial/analytic counts remain unchanged. These manual-valuation configurations produce no new stock journal.
+- Fixed stale charge-line cache after closing a stock workflow. The regression fails before the change and passes afterward; full/immediate browser returns show five delivered without a page or order-list refresh. Home passes 696 tests/74 suites, including 50 focused cases; scoped lint, library types, twelve test-source roots and build `7cc4dd5ec31fb26f` pass. The build retains nine unrelated clinical working files, not a clean release artifact.
+- Receipt completion, automatic-valuation journal browser acceptance, session expiry, wider configuration/roles, scale and protected publication remain open. The tester stays adapter 43; public demo/production and gates are unchanged. This is not complete fulfillment, Billing or whole-product acceptance. See [precise scope](../runtime/billing/STOCK_VALIDATION.md#browser-completed-delivery-and-order-refresh-checkpoint-15-october-2026).
+
 ## 15 October browser expiry decline, response-loss recovery and narrow prompt acceptance
 
 - Actual isolated browser saves verify native Validate, immediate preparation and expiry decline as three separate accepted actions. Five prepared units remain assigned and zero delivered. Finish refreshes the displayed quantities without claiming completed delivery.

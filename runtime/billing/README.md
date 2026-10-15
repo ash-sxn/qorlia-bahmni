@@ -3,6 +3,16 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest completed-stock browser checkpoint, adapter 48 (15 October): actual React
+saves complete prepared/immediate five-unit deliveries and a separate two-unit
+partial delivery with exactly one three-unit backorder. Independent native reads
+verify stock, delivered progress, valuation and scoped receipts without unrelated
+stock/protected accounting changes. Fixed stale delivered quantities on returning
+from a stock modal; a failing-then-passing regression and actual rebuilt browser
+return verify the correction. Home passes 696 tests/74 suites, with 50 focused
+cases, types/lint and development build. Receipt completion, automatic journal
+browser acceptance and release checks remain. The protected tester stays adapter 43. Read [the precise completed-stock checkpoint](STOCK_VALIDATION.md#browser-completed-delivery-and-order-refresh-checkpoint-15-october-2026).
+
 Latest isolated browser checkpoint, adapter 48 (15 October): immediate preparation
 followed by expiry decline preserves five prepared units, assigned state and zero
 delivery through three separate native actions. A later opening's accepted HTTP

@@ -100,6 +100,9 @@ export function OrderDeliveriesPanel({
     void client.invalidateQueries({
       queryKey: ['billing', 'reservation-recovery', uid],
     });
+    void client.invalidateQueries({
+      queryKey: ['billing', 'charge-lines', uid],
+    });
   };
   return (
     <section className={styles.card} aria-label="Order stock transfers">
