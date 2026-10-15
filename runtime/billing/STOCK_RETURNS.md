@@ -24,6 +24,8 @@ Do not invent a cap equal to the default quantity: the installed native engine c
 
 Native return creation can also unreserve unfinished downstream moves. That is a reviewable business effect even though physical stock has not moved. The chained-operation warning belongs to the form's onchange state; its read-only value need not persist on the saved transient wizard. Reading only that saved transient would lose the warning shown to the native user.
 
+An earlier uncompleted return can itself be one of those downstream moves. In the inspected engine, creating a second return unreserves the first. Native remaining quantity subtracts currently reserved units for assigned/partly available returns and product quantity for completed returns. It does not simply subtract every requested return quantity. For example, after delivering five, creating a two-unit return and then a three-unit return leaves the first unreserved, the second reserved for three and a native default of two. Preserve these native effects and defaults rather than displaying an independent cumulative return balance.
+
 ## Inspected installed implementation
 
 The audit uses the existing isolated pinned Bahmni/Odoo image, not an assumed latest upstream implementation:
@@ -91,6 +93,23 @@ There is still no durable browser return request slot or return editor. The UI m
 - Three additional synthetic native save scenarios (outgoing, incoming and chained) pass while capturing real load/review/create/status results. The actual TypeScript client accepts all thirteen captured responses, including an unknown request and accepted transfer references. This is actual native response compatibility, not live HTTP or browser acceptance.
 - Independent read-only checks after the runs/capture preserve earlier stock/valuation/receipt fixtures and protected stored accounting. The hosted adapter-43 baseline separately remains unchanged, and the local gate returns 410 without renewal. These SQL checks do not independently recalculate computed invoice totals. The contributor check verifies 28 documents/504 local links. No frontend build or full legacy addon run is claimed for this source increment.
 
+## Return lifecycle regression scope, 15 October 2026
+
+Eight additional source regressions cover native-to-adapter behaviour beyond creation:
+
+- Separate atomic validation of an actual API-created return receives two units, reduces delivered quantity by two and produces one native manual valuation, without a credit note, payment or reconciliation. Exact validation and creation retries retain their original receipts and transfer.
+- Standard-cost automatic validation creates one posted balanced native journal with analytic entries under mandatory analytics, not a customer financial refund.
+- Per-RPC step validation opens the real receipt prompt, consumes it once, completes the same return and rejects a new nonce against the consumed prompt. Atomic compatibility and current step behaviour are distinct checks.
+- A cancelled return remains cancelled when its creation request is replayed. A later-deleted synthetic return is reported unavailable and is not recreated from its accepted receipt.
+- Revoking access to the original transfer denies both status and replay without another creation. Receipt ownership does not bypass current native permissions.
+- Direct native and adapter cases verify the second-return unreservation/default behaviour described above. Preview must preserve the first reservation until Save; two explicitly reviewed creations remain two native transfers and old replay creates nothing.
+
+These are native transaction tests, not real HTTP calls, browser recovery or publication. The native implementation is unchanged source 49; tests do not upgrade either running HTTP copy. The owner has asked to keep the expired local review gate closed and continue backend work. Existing frontend test/build results above are historical, not rerun evidence for this test-only increment.
+
+The final combined isolated run passes 152 selected native fulfillment/return cases, with mandatory analytics, zero test failures/errors/skips and earlier browser fixture states/receipts preserved. This comprises 108 existing fulfillment cases and 44 return cases. Native source and the changed test hashes match the executed snapshot. The initial 150-case run had one wrong test expectation: zero remaining instead of the native two after the second creation. The installed implementation confirmed prior-return unreservation. Correcting the expectation, adding the direct native case and including per-step completion produced the final green run; the initial failure is not counted as a pass.
+
+Independent read-only checks after the run preserve the completed delivery/backorder/receipt fixtures, original stock, valuation, earlier receipts and protected stored accounting. The hosted adapter-43 baseline separately remains unchanged. These SQL checks do not independently recalculate computed invoice totals. Nine gateway/configuration checks and the 28-guide/505-local-link contributor check pass. The actual expired gate returns 410 without renewal. There is no new Home test run/build, full legacy addon run, live HTTP/browser acceptance, separate-transaction concurrency proof or protected publication. Known bootstrap/native warnings remain outside the selected passing test assertions.
+
 ## Acceptance requirements still to finish
 
 - Complete the independently tested native form/preview contract, including company/role, units, partial/over-return and chained-operation behaviour.
@@ -104,7 +123,7 @@ There is still no durable browser return request slot or return editor. The UI m
 
 - [Direct native contracts](qorlia_billing_ui/tests/test_stock_return_contract.py): native Form defaults, partial/base units, creation versus completion, quantity-update semantics, cancelled/reserved/completed returns, native over-return, automatic valuation and downstream unreservation.
 - [Adapter read/preview checks](qorlia_billing_ui/tests/test_stock_return_preview.py): native defaults, rollback, callbacks, stale inventory, bounded location roles/domain, invalid identities/values and hidden dependencies.
-- [Native create/status checks](qorlia_billing_ui/tests/test_stock_return_save.py): exact-once linked creation, state/reference recovery, stable dates, namespaces/permissions, changed effects, notification rejection and chained unreservation.
+- [Native create/status checks](qorlia_billing_ui/tests/test_stock_return_save.py): exact-once linked creation, state/reference recovery, stable dates, namespaces/permissions, changed effects, notification rejection, chained unreservation and integration with atomic/per-step completion, valuation and later cancellation/deletion/access changes.
 - [Frontend return contracts](../../apps/home/src/components/Billing/__tests__/stockReturnService.test.ts): strict native form/move association, unchanged review selection, bounded location pages, malformed payload rejection and native error propagation.
 - [Gateway tests](../../scripts/review-host/server.test.cjs): five named return APIs behind review/clinical gates, isolated ERP cookies, body/method/context restrictions and rejection of raw return-wizard writes.
 

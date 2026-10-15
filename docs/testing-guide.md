@@ -54,6 +54,21 @@ This supplies the Nx target context used by its Webpack plugin. The protected 14
 
 ## Native runtime testing
 
+For return work, start with [the native return contract](../runtime/billing/STOCK_RETURNS.md).
+Run the direct `StockReturnContractTest`, adapter `StockReturnPreviewTest` and
+`StockReturnSaveTest` classes against the operator-provided isolated native copy.
+The direct class establishes what the installed engine does; the adapter classes
+must preserve that behaviour, not replace it with a browser inventory formula.
+Also run the confirmation and validation regressions when changing their shared
+effect snapshots, receipt storage or locks. Return creation and subsequent stock
+validation are separate actions. Cover their integration, not just each method
+in isolation. Keep the runtime/company/analytics configuration and exact source
+with the results, and independently read protected records after rollback.
+
+An expired or explicitly closed review gate is not permission to renew it or
+create a replacement UI route. Continue approved native/backend tests without
+claiming HTTP, browser or hosted acceptance. Ask the owner before changing access.
+
 The [adapter 48 step-contract checkpoint](../runtime/billing/STOCK_VALIDATION.md#native-intermediate-persistence-audit-and-adapter-48-step-contract) supersedes the terminal-only validation assumptions below. Native prompts can commit preparation before a later prompt closes. That native checkpoint passes 10 focused step cases, 106 combined mandatory-analytics cases and a 684-case legacy-copy harness with mandatory analytics restored. The subsequent [React/browser checkpoint](../runtime/billing/STOCK_VALIDATION.md#react-per-step-migration-and-receipt-browser-checkpoint-15-october-2026) migrates fresh validations to individual steps and schema 4 recovery, with 695 Home tests/74 suites and nine gateway/configuration checks. Actual isolated browser receipt saves, full reload/tab reopen, exact status recovery and closing the saved prompt have independent read-back. Other browser wizard/transport-loss/keyboard/narrow cases and matching protected release remain separate gates. Keep older entries below as history, not competing instructions for a new implementation.
 
 The subsequent [React validation wizard checkpoint](../runtime/billing/STOCK_VALIDATION.md#react-wizard-and-recovery-source-checkpoint-15-october-2026) passes 663 Home cases, 445 design-system cases/14 snapshots, ten selected actual test-source roots and library checks. Open shared-dialog/validation-preview accessibility tests run without disabling rules. Carbon's closed DOM is retained for CSS transitions, so closed/narrow visibility still needs browser checks. These component/storage tests are not real browser saves, full-reload IndexedDB or hosted acceptance; native adapter 47 is unchanged and its previous tests were not rerun as new UI evidence.

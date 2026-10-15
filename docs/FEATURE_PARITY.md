@@ -1,5 +1,13 @@
 # Bahmni workflow parity ledger
 
+## 15 October return lifecycle backend verification with review access closed
+
+- Eight new native regressions cover API-created return completion through atomic and per-RPC validation, one-time receipt prompt consumption, manual valuation, a balanced posted standard-cost journal with mandatory analytics, cancelled/deleted return recovery, revoked original-transfer access and multiple separately reviewed returns. Creation remains distinct from physical receipt or customer financial refund.
+- The installed native engine unreserves an earlier unfinished return when another is created. Its default quantity uses current reservations/completed moves, not the sum of requested returns. Direct native and adapter checks preserve that behaviour, including preview rollback of the earlier reservation. See [the lifecycle contract](../runtime/billing/STOCK_RETURNS.md#return-lifecycle-regression-scope-15-october-2026).
+- The final combined isolated run passes 152 selected cases: 108 fulfillment and 44 return cases, with mandatory analytics and no test failures/errors/skips. Earlier browser states/receipts are preserved, and source/test hashes match the executed snapshot. The first 150-case run had one incorrect zero-remaining expectation; installed-code inspection, the corrected expectation and the expanded final rerun are recorded rather than hiding that failure.
+- Independent read-only checks preserve earlier completed fixtures, stock/valuation/receipts and protected stored accounting, with the hosted adapter-43 baseline unchanged. Computed invoice totals are not independently recalculated. Nine gateway/configuration and 28-guide/505-link documentation checks pass. Existing bootstrap/native warnings remain; this is not a full legacy addon run.
+- This increment changes tests/docs only, not native source 49, runtime schema, frontend/build or a deployment. Isolated HTTP metadata stays 48; the protected tester stays 43. At the owner's request the local gate remains closed and returns 410. No browser, live HTTP or separate-transaction concurrency acceptance is added. Return editor/recovery and whole Billing/product parity remain unfinished.
+
 ## 15 October signed native return creation and exact status
 
 - Candidate source 49 adds exact signed create/status to the existing return form/location/review methods. The signature binds selected original moves/quantities/location, form metadata, public/private native effects and resulting state. Native effects are verified again under deterministic locks and after the actual action, with savepoint/callback rollback on mismatch.

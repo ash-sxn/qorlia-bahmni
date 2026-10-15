@@ -11,13 +11,16 @@ from odoo.tests import TransactionCase, tagged
 
 from . import test_stock_return_contract as native_contract
 from . import test_stock_validation_preview as preview_contract
+from . import test_stock_validation_step as step_contract
 from .test_stock_validation_contract import StockValidationFixture
 
 
 @tagged('post_install', '-at_install')
 class StockReturnSaveTest(StockValidationFixture, TransactionCase):
     prepared = preview_contract.StockValidationPreviewTest.prepared
+    load = preview_contract.StockValidationPreviewTest.load
     delivered = native_contract.StockReturnContractTest.delivered
+    automatic_valuation = native_contract.StockReturnContractTest.automatic_valuation
 
     def request(self, picking, quantity=2):
         loaded = picking.qorlia_return_load(self.order.id, picking.id)
@@ -31,6 +34,185 @@ class StockReturnSaveTest(StockValidationFixture, TransactionCase):
     def receipts(self, picking):
         self.env.cr.execute('SELECT qorlia_validation_receipts FROM stock_picking WHERE id = %s', [picking.id])
         return self.env.cr.fetchone()[0] or {}
+
+    def validation_request(self, returned):
+        returned.move_line_ids.write({'qty_done': 2, 'lot_id': self.lot.id})
+        loaded = returned.qorlia_validation_load(self.order.id, returned.id)
+        first = returned.qorlia_validation_preview(self.order.id, returned.id, loaded['version'], [])
+        self.assertEqual(first['next_step']['kind'], 'receipt')
+        reviewed = returned.qorlia_validation_preview(self.order.id, returned.id, loaded['version'],
+            [{'kind': 'receipt', 'confirm': True}])
+        self.assertTrue(reviewed['terminal'])
+        self.assertEqual(reviewed['state_after'], 'done')
+        self.assertEqual(returned.state, 'assigned')
+        self.assertEqual(self.source_stock(), 5)
+        self.assertEqual(self.sale_line.qty_delivered, 5)
+        return {key: copy.deepcopy(reviewed[key]) for key in (
+            'order_id', 'transfer_id', 'version', 'decisions', 'review_version')} | {
+            'request_key': str(uuid.uuid4())}
+
+    def test_created_return_completes_through_separate_validation_api_once_without_a_financial_refund(self):
+        picking = self.delivered()
+        request = self.request(picking)
+        created = picking.qorlia_return_save(request)
+        returned = picking.browse(created['return_transfer']['id'])
+        finance = {name: self.env[name].search_count([]) for name in (
+            'account.move', 'account.payment', 'account.partial.reconcile')}
+        validation = self.validation_request(returned)
+        accepted = returned.qorlia_validation_save(validation)
+        self.assertTrue(accepted['accepted'])
+        self.assertEqual(accepted['state_after'], 'done')
+        self.assertEqual(returned.state, 'done')
+        self.assertEqual(self.source_stock(), 7)
+        self.assertEqual(self.sale_line.qty_delivered, 3)
+        valuation = self.env['stock.valuation.layer'].search([('stock_move_id', 'in', returned.move_ids.ids)])
+        self.assertEqual((valuation.quantity, valuation.value), (2, 8))
+        self.assertFalse(valuation.account_move_id)
+        self.assertEqual(finance, {name: self.env[name].search_count([]) for name in finance})
+        count = self.env['stock.valuation.layer'].search_count([])
+        self.assertEqual(returned.qorlia_validation_status(validation), accepted)
+        self.assertEqual(returned.qorlia_validation_save(validation), accepted)
+        recovered = picking.qorlia_return_status(request)
+        self.assertTrue(recovered['accepted'])
+        self.assertEqual(recovered['state_after'], created['state_after'])
+        self.assertEqual(recovered['return_transfer']['id'], returned.id)
+        self.assertEqual(picking.qorlia_return_save(request), recovered)
+        self.assertEqual(self.env['stock.valuation.layer'].search_count([]), count)
+        self.assertEqual(len(self.receipts(picking)), 1)
+        self.assertEqual(len(self.receipts(returned)), 1)
+
+    def test_completed_return_api_posts_one_native_balanced_journal_with_mandatory_analytics(self):
+        self.automatic_valuation()
+        picking = self.delivered().with_user(self.env.user)
+        request = self.request(picking)
+        returned = picking.browse(picking.qorlia_return_save(request)['return_transfer']['id'])
+        count = self.env['account.move'].search_count([])
+        payments = self.env['account.payment'].search_count([])
+        validation = self.validation_request(returned)
+        accepted = returned.qorlia_validation_save(validation)
+        valuation = self.env['stock.valuation.layer'].search([('stock_move_id', 'in', returned.move_ids.ids)])
+        self.assertEqual((valuation.quantity, valuation.value), (2, 8))
+        entry = valuation.account_move_id
+        self.assertEqual(len(entry), 1)
+        self.assertEqual(entry.state, 'posted')
+        self.assertEqual(sorted(entry.line_ids.mapped('balance')), [-8, 8])
+        self.assertTrue(entry.line_ids.analytic_line_ids)
+        self.assertEqual(self.source_stock(), 7)
+        self.assertEqual(self.sale_line.qty_delivered, 3)
+        self.assertEqual(returned.qorlia_validation_save(validation), accepted)
+        self.assertEqual(self.env['account.move'].search_count([]), count + 1)
+        self.assertEqual(self.env['account.payment'].search_count([]), payments)
+        self.assertEqual(picking.qorlia_return_status(request)['return_transfer']['id'], returned.id)
+
+    def test_return_completion_uses_reviewed_steps_and_consumes_the_receipt_prompt_once(self):
+        picking = self.delivered()
+        request = self.request(picking)
+        created = picking.qorlia_return_save(request)
+        returned = picking.browse(created['return_transfer']['id'])
+        returned.move_line_ids.write({'qty_done': 2, 'lot_id': self.lot.id})
+        opening = step_contract.StockValidationStepTest.request(self, returned)
+        opened = returned.qorlia_validation_step_save(opening)
+        self.assertFalse(opened['terminal'])
+        self.assertEqual(opened['next_step']['kind'], 'receipt')
+        self.assertEqual(self.source_stock(), 5)
+        confirm = step_contract.StockValidationStepTest.request(self, returned, opening,
+            {'kind': 'receipt', 'confirm': True})
+        self.assertEqual(returned.state, 'assigned')
+        accepted = returned.qorlia_validation_step_save(confirm)
+        self.assertTrue(accepted['accepted'])
+        self.assertTrue(accepted['terminal'])
+        self.assertEqual(accepted['state_after'], 'done')
+        self.assertEqual(returned.qorlia_validation_step_status(confirm), accepted)
+        self.assertEqual(returned.qorlia_validation_step_save(confirm), accepted)
+        receipts = self.receipts(returned)
+        self.assertEqual(len(receipts), 2)
+        self.assertEqual(receipts[opening['request_key']]['consumed_by'], confirm['request_key'])
+        with self.assertRaises(UserError):
+            returned.qorlia_validation_step_save(dict(confirm, request_key=str(uuid.uuid4())))
+        valuation = self.env['stock.valuation.layer'].search([('stock_move_id', 'in', returned.move_ids.ids)])
+        self.assertEqual((valuation.quantity, valuation.value), (2, 8))
+        self.assertEqual(self.source_stock(), 7)
+        self.assertEqual(self.sale_line.qty_delivered, 3)
+        self.assertEqual(picking.qorlia_return_save(request)['return_transfer']['id'], returned.id)
+
+    def test_cancelled_return_receipt_recovers_original_creation_without_reactivating_it(self):
+        picking = self.delivered()
+        request = self.request(picking)
+        accepted = picking.qorlia_return_save(request)
+        returned = picking.browse(accepted['return_transfer']['id'])
+        returned.action_cancel()
+        count = self.env['stock.picking'].search_count([])
+        recovered = picking.qorlia_return_status(request)
+        self.assertTrue(recovered['accepted'])
+        self.assertEqual(recovered['state_after'], accepted['state_after'])
+        self.assertEqual(recovered['return_transfer']['id'], returned.id)
+        self.assertEqual(recovered['current']['form']['lines'][0]['quantity'], 5)
+        self.assertEqual(picking.qorlia_return_save(request), recovered)
+        self.assertEqual(returned.state, 'cancel')
+        self.assertEqual(self.env['stock.picking'].search_count([]), count)
+        self.assertEqual(self.source_stock(), 5)
+        self.assertEqual(self.sale_line.qty_delivered, 5)
+
+    def test_deleted_return_is_reported_unavailable_and_never_recreated_from_its_receipt(self):
+        picking = self.delivered()
+        request = self.request(picking)
+        accepted = picking.qorlia_return_save(request)
+        returned = picking.browse(accepted['return_transfer']['id']).with_user(self.env.user)
+        removed = {key: row['model'] for key, row in accepted['references'].items()
+            if row['model'] in ('stock.picking', 'stock.move', 'stock.move.line')}
+        self.assertTrue(removed)
+        returned.action_cancel()
+        returned.unlink()
+        self.env.flush_all()
+        self.env.invalidate_all()
+        count = self.env['stock.picking'].search_count([])
+        recovered = picking.qorlia_return_status(request)
+        self.assertTrue(recovered['accepted'])
+        self.assertEqual(recovered['return_transfer'], {
+            'model': 'stock.picking', 'id': False, 'name': False, 'available': False})
+        for key, model in removed.items():
+            self.assertEqual(recovered['references'][key], {
+                'model': model, 'id': False, 'name': False, 'available': False})
+        self.assertEqual(picking.qorlia_return_save(request), recovered)
+        self.assertEqual(self.env['stock.picking'].search_count([]), count)
+        self.assertEqual(len(self.receipts(picking)), 1)
+        self.assertEqual(self.source_stock(), 5)
+
+    def test_revoked_original_transfer_access_denies_status_and_retry_without_new_creation(self):
+        picking = self.delivered()
+        request = self.request(picking)
+        picking.qorlia_return_save(request)
+        count = self.env['stock.picking'].search_count([])
+        self.env['ir.rule'].create({'name': 'QorliaQA Revoked original return access',
+            'model_id': self.env['ir.model']._get_id('stock.picking'),
+            'domain_force': "[('id', '!=', %d)]" % picking.id})
+        with self.assertRaises(AccessError):
+            picking.qorlia_return_status(request)
+        with self.assertRaises(AccessError):
+            picking.qorlia_return_save(request)
+        self.assertEqual(self.env['stock.picking'].search_count([]), count)
+        self.assertEqual(len(self.receipts(picking)), 1)
+
+    def test_two_explicit_reviews_use_native_remaining_quantity_and_old_replay_creates_nothing(self):
+        picking = self.delivered()
+        first_request = self.request(picking, 2)
+        first = picking.qorlia_return_save(first_request)
+        remaining = picking.qorlia_return_load(self.order.id, picking.id)
+        self.assertEqual(remaining['form']['lines'][0]['quantity'], 3)
+        second_request = self.request(picking, 3)
+        self.assertEqual(picking.browse(first['return_transfer']['id']).move_ids.reserved_availability, 2)
+        second = picking.qorlia_return_save(second_request)
+        self.assertNotEqual(first['return_transfer']['id'], second['return_transfer']['id'])
+        self.assertEqual(picking.browse(first['return_transfer']['id']).move_ids.reserved_availability, 0)
+        self.assertEqual(picking.browse(second['return_transfer']['id']).move_ids.reserved_availability, 3)
+        self.assertEqual(second['current']['form']['lines'][0]['quantity'], 2)
+        count = self.env['stock.picking'].search_count([])
+        self.assertEqual(picking.qorlia_return_save(first_request)['return_transfer'], first['return_transfer'])
+        self.assertEqual(picking.qorlia_return_save(second_request), second)
+        self.assertEqual(self.env['stock.picking'].search_count([]), count)
+        self.assertEqual(len(self.receipts(picking)), 2)
+        self.assertEqual(self.source_stock(), 5)
+        self.assertEqual(self.sale_line.qty_delivered, 5)
 
     def test_create_status_and_identical_retry_create_one_linked_return_without_receiving_stock(self):
         picking = self.delivered()

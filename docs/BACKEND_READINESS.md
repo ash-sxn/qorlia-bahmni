@@ -1,5 +1,32 @@
 # Qorlia React frontend backend readiness
 
+## Return lifecycle backend verification, gate kept closed (15 October 2026)
+
+Eight additional native regressions connect API-created returns to atomic and
+per-RPC validation, one-time receipt prompt consumption, manual valuation and
+standard-cost automatic journal/analytics. They also cover cancellation,
+deletion, revoked original-transfer access and two separately reviewed returns.
+The installed engine can unreserve the earlier unfinished return; native defaults
+must not be replaced with a sum of requested quantities.
+
+The final combined isolated run passes 152 selected cases, with mandatory
+analytics, no test failures/errors/skips and earlier browser states/receipts
+preserved. Source/test hashes match the executed snapshot. The initial 150-case
+run had one incorrect remaining-quantity expectation; the corrected expectation,
+direct native regression and per-step case pass in the final expanded run.
+Independent read-only checks preserve earlier completed stock/valuation/receipt
+fixtures and protected stored accounting. The hosted adapter-43 baseline is
+separately unchanged; computed invoice totals are not independently recalculated.
+Nine gateway/configuration checks and 28 contributor guides/505 local links pass.
+
+These are tests/docs changes only. Native source remains 49, isolated HTTP
+metadata 48 and protected tester 43. No schema/runtime/frontend-build upgrade,
+public deployment or gate renewal occurs. The actual local gate still returns
+410, as requested by the owner. Known bootstrap/native warnings remain; no new
+Home suite/build, full legacy addon run, real HTTP/browser or separate-transaction
+concurrency acceptance is claimed. Return UI/recovery and full Billing remain
+open. See [the detailed lifecycle scope](../runtime/billing/STOCK_RETURNS.md#return-lifecycle-regression-scope-15-october-2026).
+
 ## Signed return create/status candidate (15 October 2026)
 
 Source 49 adds native signed return creation and exact status/retry, using a

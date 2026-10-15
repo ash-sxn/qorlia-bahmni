@@ -105,6 +105,18 @@ class StockReturnContractTest(native_contract.StockValidationFixture, Transactio
         self.assertEqual(self.return_wizard(picking).product_return_moves.quantity, 5)
         self.assertEqual(self.source_stock(), 5)
 
+    def test_second_native_return_unreserves_prior_return_and_recomputes_remaining_quantity(self):
+        picking = self.delivered()
+        first = self.create_return(picking, 2)
+        self.assertEqual(first.move_ids.reserved_availability, 2)
+        second = self.create_return(picking, 3)
+        self.assertEqual(first.move_ids.reserved_availability, 0)
+        self.assertNotIn(first.state, ('done', 'cancel'))
+        self.assertEqual(second.move_ids.reserved_availability, 3)
+        self.assertEqual(self.return_wizard(picking).product_return_moves.quantity, 2)
+        self.assertEqual(self.source_stock(), 5)
+        self.assertEqual(self.sale_line.qty_delivered, 5)
+
     def test_completed_return_updates_stock_and_native_delivered_quantity(self):
         picking = self.delivered()
         returned = self.create_return(picking)
