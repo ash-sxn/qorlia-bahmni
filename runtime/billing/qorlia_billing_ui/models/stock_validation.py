@@ -181,7 +181,7 @@ class StockValidation(models.Model):
         wizard[relation].write({flag: decision[field]})
         return wizard.process()
 
-    def _qorlia_validation_native(self, decisions):
+    def _qorlia_validation_native(self, decisions, *, start_action=None, include_action=False):
         # Apply the same external-send guard during preview and the exact reviewed save.
         self = self.with_context(qorlia_validation_preview_token=_PREVIEW_TOKEN)
         self._track_prepare(self._fields)
@@ -189,7 +189,7 @@ class StockValidation(models.Model):
         configuration = self._qorlia_confirmation_stamp(config_tables, semantic=True)
         before = self._qorlia_confirmation_capture(VALIDATION_MODELS)
         started = fields.Datetime.now()
-        action = self.button_validate()
+        action = self.button_validate() if start_action is None else copy.deepcopy(start_action)
         next_step = False
         for index in range(len(decisions) + 1):
             if action is True or action is None or action is False:
@@ -199,6 +199,10 @@ class StockValidation(models.Model):
             wizard, descriptor = self._qorlia_validation_wizard(action)
             if index == len(decisions):
                 next_step = descriptor
+                if include_action:
+                    action = dict(action, res_id=wizard.id,
+                        context={key: value for key, value in action.get('context', {}).items()
+                            if key != 'qorlia_validation_preview_token'})
             else:
                 action = self._qorlia_validation_choose(wizard, descriptor, decisions[index])
         self.env.flush_all()
@@ -213,7 +217,8 @@ class StockValidation(models.Model):
         references = {'new:%s:%s' % (name, index): {'model': name, 'id': identifier}
             for name in VALIDATION_MODELS if name not in AUDIT_MODELS
             for index, identifier in enumerate(sorted(set(after[0][name]) - set(before[0][name])))}
-        return effects, private, self.state, next_step, references
+        result = effects, private, self.state, next_step, references
+        return (*result, action if next_step else False) if include_action else result
 
     def _qorlia_validation_assigned(self, before, after, started, finished):
         original, current = before[0], after[0]
@@ -329,6 +334,9 @@ class StockValidation(models.Model):
         request, digest = self._qorlia_validation_request(payload)
         picking, _order = self._qorlia_reservation_transfer(request['order_id'], request['transfer_id'])
         receipt, _receipts = picking._qorlia_validation_receipt(request, digest)
+        return self._qorlia_validation_response(request, picking, receipt)
+
+    def _qorlia_validation_response(self, request, picking, receipt):
         references = {}
         for key, item in (receipt['references'].items() if receipt else []):
             record = self.env[item['model']].browse(item['id']).exists()

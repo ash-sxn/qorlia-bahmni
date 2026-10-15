@@ -4810,6 +4810,17 @@ async function validationRequest(
   const data = await stockCall<StockValidationStatus>(method, {
     payload: exact,
   });
+  return checkedValidationStatus(
+    data,
+    exact,
+    method === 'qorlia_validation_save',
+  );
+}
+function checkedValidationStatus(
+  data: StockValidationStatus,
+  exact: StockValidationRequest,
+  requireAccepted: boolean,
+) {
   if (
     !confirmationKeys(data, [
       'accepted',
@@ -4820,7 +4831,7 @@ async function validationRequest(
     ]) ||
     typeof data.accepted !== 'boolean' ||
     data.request_key !== exact.request_key ||
-    (method === 'qorlia_validation_save' && !data.accepted) ||
+    (requireAccepted && !data.accepted) ||
     (data.accepted
       ? !validationStates.includes(String(data.state_after))
       : data.state_after !== false) ||
@@ -4850,6 +4861,181 @@ export const saveStockValidation = (request: StockValidationRequest) =>
   validationRequest('qorlia_validation_save', request);
 export const getStockValidationStatus = (request: StockValidationRequest) =>
   validationRequest('qorlia_validation_status', request);
+
+export interface StockValidationStepSelection extends StockValidationSelection {
+  continuation_key: string | false;
+}
+export interface StockValidationStepRequest extends StockValidationRequest {
+  continuation_key: string | false;
+}
+export interface StockValidationStepReview
+  extends Omit<StockValidationReview, 'review_version'> {
+  continuation_key: string | false;
+  review_version: string;
+}
+export interface StockValidationStepStatus extends StockValidationStatus {
+  next_step: StockValidationStep | false;
+  continuation_key: string | false;
+  continuation_reason: string | false;
+  terminal: boolean;
+}
+const validationRequestKey = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value);
+function checkedValidationStepSelection(value: StockValidationStepSelection) {
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'decisions',
+      'continuation_key',
+    ]) ||
+    (value.continuation_key !== false &&
+      !validationRequestKey(value.continuation_key))
+  )
+    throw new Error('Use the exact native validation step and continuation.');
+  const decisions = checkedStockValidationDecisions(value.decisions);
+  if (decisions.length !== (value.continuation_key ? 1 : 0))
+    throw new Error('Review exactly one native validation step.');
+  return {
+    ...checkedConfirmationSelection(value),
+    decisions,
+    continuation_key: value.continuation_key,
+  };
+}
+export function checkedStockValidationStepRequest(
+  value: StockValidationStepRequest,
+): StockValidationStepRequest {
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'decisions',
+      'review_version',
+      'request_key',
+      'continuation_key',
+    ])
+  )
+    throw new Error('Use the exact reviewed native validation step.');
+  const { continuation_key, ...base } = value;
+  const request = checkedStockValidationRequest(base);
+  checkedValidationStepSelection({
+    ...checkedConfirmationSelection(value),
+    decisions: value.decisions,
+    continuation_key,
+  });
+  if (continuation_key === request.request_key)
+    throw new Error('A step cannot continue its own request.');
+  return { ...request, continuation_key };
+}
+export async function previewStockValidationStep(
+  selection: StockValidationStepSelection,
+) {
+  const exact = checkedValidationStepSelection(selection);
+  const data = await stockCall<StockValidationStepReview>(
+    'qorlia_validation_step_preview',
+    exact,
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'decisions',
+      'continuation_key',
+      'review_version',
+      'next_step',
+      'terminal',
+      'state_after',
+      'effects',
+      'write_ready',
+    ]) ||
+    data.order_id !== exact.order_id ||
+    data.transfer_id !== exact.transfer_id ||
+    data.version !== exact.version ||
+    data.continuation_key !== exact.continuation_key ||
+    JSON.stringify(checkedStockValidationDecisions(data.decisions)) !==
+      JSON.stringify(exact.decisions) ||
+    !stockVersion(data.review_version) ||
+    data.write_ready !== true ||
+    !validationStates.includes(data.state_after) ||
+    typeof data.terminal !== 'boolean' ||
+    (data.terminal
+      ? data.next_step !== false
+      : data.next_step === false ||
+        !validValidationStep(data.next_step, exact.transfer_id) ||
+        data.next_step.kind === 'sms') ||
+    !validValidationEffects(data.effects)
+  )
+    throw new Error(
+      'Invalid native step review. Reload and review the transfer again.',
+    );
+  return data;
+}
+async function validationStepRequest(
+  method: string,
+  value: StockValidationStepRequest,
+) {
+  const exact = checkedStockValidationStepRequest(value);
+  const data = await stockCall<StockValidationStepStatus>(method, {
+    payload: exact,
+  });
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'request_key',
+      'references',
+      'state_after',
+      'current',
+      'next_step',
+      'continuation_key',
+      'continuation_reason',
+      'terminal',
+    ])
+  )
+    throw new Error('Invalid native step receipt. Recover the exact request.');
+  const {
+    next_step,
+    continuation_key,
+    continuation_reason,
+    terminal,
+    ...base
+  } = data;
+  checkedValidationStatus(
+    base,
+    exact,
+    method === 'qorlia_validation_step_save',
+  );
+  if (
+    typeof terminal !== 'boolean' ||
+    (!data.accepted
+      ? terminal !== false ||
+        next_step !== false ||
+        continuation_key !== false ||
+        continuation_reason !== false
+      : terminal
+        ? next_step !== false ||
+          continuation_key !== false ||
+          continuation_reason !== false
+        : next_step === false
+          ? continuation_key !== false ||
+            typeof continuation_reason !== 'string' ||
+            !continuation_reason
+          : !validValidationStep(next_step, exact.transfer_id) ||
+            next_step.kind === 'sms' ||
+            continuation_key !== exact.request_key ||
+            continuation_reason !== false)
+  )
+    throw new Error('Invalid native continuation. Recover the exact request.');
+  return data;
+}
+export const saveStockValidationStep = (request: StockValidationStepRequest) =>
+  validationStepRequest('qorlia_validation_step_save', request);
+export const getStockValidationStepStatus = (
+  request: StockValidationStepRequest,
+) => validationStepRequest('qorlia_validation_step_status', request);
 
 export interface OrderWorkflow {
   id: number;

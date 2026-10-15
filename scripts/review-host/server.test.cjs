@@ -149,11 +149,19 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     .matchAll(/^    def (qorlia_validation_\w+)\(/gm)].map(match => match[1]);
   assert.deepEqual([...validationMethods].sort(), ['load', 'preview', 'save', 'status'].map(action => `qorlia_validation_${action}`).sort(),
     'Only the four named native validation APIs are covered.');
+  const validationStepMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_validation_step.py'), 'utf8')
+    .matchAll(/^    def (qorlia_validation_step_\w+)\(/gm)].map(match => match[1]);
+  assert.deepEqual([...validationStepMethods].sort(), ['preview', 'save', 'status'].map(action => `qorlia_validation_step_${action}`).sort(),
+    'Only three named native step APIs are covered, without raw wizard methods.');
+  for (const [model, method] of [['stock.picking', 'button_validate'], ['stock.immediate.transfer', 'process'],
+    ['stock.picking.validate.wizard', 'btn_confirm'], ['stock.backorder.confirmation', 'process'], ['expiry.picking.confirmation', 'process']])
+    assert.equal((await rpc(`/web/dataset/call_kw/${model}/${method}`, allCookies, {model, method, args: [], kwargs: {}})).status, 404);
   for (const [model, method] of [
     ...['load', 'preview', 'run', 'status'].map(action => ['stock.picking', `qorlia_transfer_${action}`]),
     ...['load', 'onchange', 'choices', 'preview', 'save', 'status'].map(action => ['stock.picking', `qorlia_operation_${action}`]),
     ...confirmationMethods.map(method => ['stock.picking', method]),
     ...validationMethods.map(method => ['stock.picking', method]),
+    ...validationStepMethods.map(method => ['stock.picking', method]),
     ...bankMethods.map(method => ['account.bank.statement.line', method]),
     ...checkpointMethods.map(method => ['account.bank.statement', method]),
   ]) {

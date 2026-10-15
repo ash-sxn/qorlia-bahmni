@@ -28,6 +28,8 @@ Use the [parity ledger](FEATURE_PARITY.md) and [backend readiness](BACKEND_READI
 
 At this checkpoint, protected Billing review remains on adapter 43. Later adapter 45 confirmation source has separate isolated native HTTP/local-browser evidence. Native delivery validation has adapter 47 service/gateway and actual isolated HTTP checks, including exact receipt recovery. Its React wizard and shared recovery controls have component/storage tests, not actual browser save/reload or publication acceptance yet. Do not upgrade the tester, copy unfinished code or disable gates to make versions match. See the [confirmation contract](../runtime/billing/STOCK_CONFIRMATION.md) and [delivery-validation contract](../runtime/billing/STOCK_VALIDATION.md).
 
+The subsequent adapter 48 [step contract](../runtime/billing/STOCK_VALIDATION.md#native-intermediate-persistence-audit-and-adapter-48-step-contract) corrects native intermediate-commit semantics. Its native/service/gateway checks and isolated HTTP/read-back pass; React/storage migration is still pending. Do not treat a terminal-only wizard as complete native close/cancel parity or replay a decision after it has committed.
+
 ## 3. Resources needed to begin
 
 - Your own GitHub account, Git, Node.js 22, Yarn Classic 1.22, an editor and a browser. Follow [setup](setup-guide.md), including its Windows instructions.

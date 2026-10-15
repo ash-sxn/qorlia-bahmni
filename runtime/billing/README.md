@@ -76,6 +76,21 @@ Actual browser save/reload, visual review and publication remain unfinished.
 This is not a public release or complete stock fulfillment.
 Read [the dated validation contract](STOCK_VALIDATION.md) for precise versions and gates.
 
+The intermediate-persistence audit found that preparation can commit before the
+next native prompt is closed. Adapter 48 adds per-RPC signed step preview/save/status,
+private author/company-bound continuations and one-time prompt consumption. Old
+atomic recovery remains available. Ten focused and 106 combined mandatory-analytics
+native cases pass, with strict TypeScript and named gateway contracts. React/storage
+migration and browser/publication acceptance are unfinished. See the
+[step contract](STOCK_VALIDATION.md#native-intermediate-persistence-audit-and-adapter-48-step-contract).
+
+The 684-case legacy harness also passes on its separate optional-analytics copy,
+with mandatory analytics restored. Actual loopback gateway/TypeScript HTTP and
+independent native read-back verify both intermediate commits, exact recovery,
+one-time continuation and concurrent identical saves. Physical stock, protected
+finance and the main adapter-43 snapshot are unchanged. This is not React/browser
+or public-host acceptance.
+
 Earlier preview-only checkpoint, superseded above: [native delivery validation and its wizard sequence](STOCK_VALIDATION.md).
 The installed Bahmni receipt/internal, Odoo immediate/backorder and expired-batch
 paths now have 22 direct native contract cases, including manual/automatic valuation

@@ -91,6 +91,8 @@ The next [delivery-validation contract](../runtime/billing/STOCK_VALIDATION.md) 
 
 Invoices, payments, journals and banks have different contracts and native rules. Do not generalize stock logic into financial posting.
 
+The subsequent [native persistence audit and step contract](../runtime/billing/STOCK_VALIDATION.md#native-intermediate-persistence-audit-and-adapter-48-step-contract) confirms preparation can persist between prompts. Adapter 48 adds individually reviewed native RPC steps with private server-held continuations and one-time consumption. A consumed/expired prompt does not erase its receipt. React/storage migration is still required; replaying an already committed decision sequence is not an acceptable substitute.
+
 ## Authentication and configuration
 
 Clinical login establishes an OpenMRS session. Billing needs a separate ERP session. The [development proxy](../distro/webpack.config.js) and [review gateway](../scripts/review-host/server.cjs) isolate cookies and verify clinical access before forwarding allowed ERP requests.

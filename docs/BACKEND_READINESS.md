@@ -1,5 +1,29 @@
 # Qorlia React frontend backend readiness
 
+## Native validation intermediate-persistence correction (15 October 2026)
+
+Separate native HTTP requests prove receipt prices/immediate quantities can persist
+before the following backorder/expiry prompt is closed. Terminal-only atomic review
+is therefore not complete close/cancel parity. Adapter 48 adds per-RPC preview/save/status,
+private author/company-bound continuations and one-time prompt consumption. Ten focused
+and 106 combined fulfillment cases pass with mandatory analytics on another copy.
+Strict service/gateway contracts, 680 Home cases, eleven actual test-source roots
+and nine gateway/configuration checks pass separately.
+
+The 684-case legacy optional-analytics harness passes on the copy and restores
+mandatory analytics. Actual loopback protected gateway/TypeScript HTTP and independent
+native read-back verify both intermediate commits, exact receipts and concurrent
+identical processing without duplicate effects. Physical stock, delivery, valuation
+and protected finance remain unchanged. The main adapter-43 snapshot matches its
+prior baseline. Types/lint/diff and development build `2acf15ee3936b933` pass; it
+includes nine preserved clinical working files, not a source-only release artifact.
+
+React/storage has not migrated. Preserve pending atomic requests rather than
+reinterpret them as steps. Browser save/close/reload, loss/expiry and visual/accessibility
+acceptance remain, followed by matching-source protected publication. Tester remains
+adapter 43; production/public demo unchanged. See the
+[step contract](../runtime/billing/STOCK_VALIDATION.md#native-intermediate-persistence-audit-and-adapter-48-step-contract).
+
 ## React validation controls source checkpoint (15 October 2026)
 
 The redesigned transfer screen now opens native validation choices and signed

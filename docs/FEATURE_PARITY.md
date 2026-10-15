@@ -1,5 +1,13 @@
 # Bahmni workflow parity ledger
 
+## 15 October native intermediate-persistence correction and step contracts
+
+- Actual separate native HTTP calls prove two partial commits before a next prompt is closed: receipt batch cost/sale/MRP and immediate prepared quantities. Physical stock, delivered quantities and protected accounting remain unchanged. Terminal-only React review is not one-to-one cancel/close parity.
+- Adapter 48 adds per-RPC signed preview/save/status, private author/company/order-bound continuations, one-time prompt consumption and exact retry/status. Original atomic requests retain their contract. A missing/consumed/denied transient preserves its accepted receipt without recreating or exposing a native action.
+- Ten focused step and 106 combined fulfillment cases pass with mandatory analytics on another copy. Seventeen new service cases, 680 Home tests/74 suites, eleven source-based test roots and nine gateway/configuration checks pass separately. Native contexts/raw wizard methods remain unavailable through the gateway.
+- The 684-case legacy optional-analytics harness passes on the new copy with mandatory analytics restored. Real loopback gateway/TypeScript HTTP and independent native read-back verify four author-bound receipts, exactly-once prompt consumption, concurrent identical processing and accepted-return/status recovery. Physical stock, delivered quantity, valuation and protected finance remain unchanged. The main adapter-43 snapshot exactly matches its previous baseline.
+- Development build `2acf15ee3936b933`, types and scoped lint/diff pass. The build includes nine preserved unrelated clinical working files, not a clean source-only release artifact. React/storage migration, actual browser save/close/reload, loss/expiry, keyboard/focus/narrow acceptance and publication remain gates. Tester stays adapter 43; production/public demo unchanged. Full Billing and whole-product parity remain open. See the [step contract](../runtime/billing/STOCK_VALIDATION.md#native-intermediate-persistence-audit-and-adapter-48-step-contract).
+
 ## 15 October React validation wizard and durable recovery source
 
 - Added native validation review inside signed-in order transfers, with receipt operations/warnings, native default immediate/backorder selections, explicit expiry proceed/decline and ordered choice history/backtracking. Final signed effects are reviewed before save; an accepted assigned outcome is labelled as preparation, not delivery. Unsupported SMS setup remains blocked with its native reason.

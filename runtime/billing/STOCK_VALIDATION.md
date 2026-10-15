@@ -156,6 +156,64 @@ Home passes 663 tests/73 suites, including 15 validation UI cases, three new cro
 
 Next gates are actual browser native save/read-back, persistent recovery across full reload, loss/expiry testing, keyboard/focus and narrow visual review, then an approved matching-source protected release. Verify legacy intermediate-wizard persistence and cancellation separately: this UI previews choices until terminal save, so it does not establish parity with separate native RPC steps that may persist preparation before another prompt. Do not equate final-outcome tests with acceptance of every cancel/close boundary. Broader native configurations, notifications, reports/multi-transfer, scale, full Billing and whole-product parity remain open. The hosted tester and production/public demo are unchanged.
 
+## Native intermediate persistence audit and adapter 48 step contract
+
+Separate native HTTP requests confirmed the missing close/cancel boundary on 15 October 2026:
+
+- Incoming receipt confirmation writes existing batch cost/sale/MRP before returning the backorder prompt. Closing that next prompt leaves those prices saved while the transfer remains assigned and physical/delivered quantities remain unchanged.
+- Immediate transfer processing sets prepared `qty_done` before returning the expired-batch prompt. Closing that prompt leaves preparation saved without delivery, valuation or accounting movement.
+
+These are observed native commits, not assumptions from a single-transaction test. The initial audit incorrectly expected a fixture's proposed expiry date to override its existing lot-derived date. Captured native state corrected that assertion; the already processed receipt was recovered and read back, not processed again. Price and quantity persistence were verified through fresh requests.
+
+The terminal-only React wizard does not reproduce these boundaries. Adapter 48 adds three native APIs and TypeScript/gateway contracts for a per-RPC replacement. Old six-key atomic APIs remain for their existing requests. They are not evidence of intermediate-step UI parity.
+
+### Step selection and exact request
+
+`qorlia_validation_step_preview` accepts the five-key selection below. Initially use `continuation_key: false` and `decisions: []` to preview native Validate once. Thereafter use the preceding accepted request's key and exactly one decision for its prompt. The client never supplies an action, transient ID, model, method, context or skip flag.
+
+```text
+order_id: saved positive order ID
+transfer_id: saved positive transfer ID
+version: current load's 64-character fingerprint
+continuation_key: false, or previous accepted step's canonical UUID
+decisions: [] initially, otherwise one existing native decision shape
+```
+
+Every writable review, including a nonterminal one, returns a signed `review_version`, native effects, actual `state_after`, `terminal` and `next_step`. Preview rolls business/transient changes and callbacks back. Notification setup/send remains blocked. Receipt rows, prices, units, locations, batch warnings and private financial visibility use the existing projector.
+
+`qorlia_validation_step_save` and `qorlia_validation_step_status` accept `{payload: request}`. The exact request adds only `review_version` and a new `request_key` to that selection. Opening Validate is one reviewed native RPC; confirming/declining its next prompt is another. Do not replay decisions after they have committed.
+
+### Saved continuation and recovery
+
+The protected per-transfer receipt stores the next native action and actual transient privately, bound to author, companies and original order. Native context stays server-owned and does not appear in the response. Existing receipt-field create/write/read restrictions remain.
+
+Save takes native table locks, repeats rollback review, compares actual effects and commits the action/receipt together. A successful continuation marks the preceding prompt consumed by this request. Another nonce cannot process it again; an identical retry returns its receipt instead of rerunning the native method.
+
+Status retains accepted/request/reference/current-state fields and adds:
+
+```text
+next_step: permitted native prompt descriptor, or false
+continuation_key: this accepted request's key when that prompt is available, otherwise false
+continuation_reason: false, or why the accepted prompt cannot continue
+terminal: whether this accepted action returned no next prompt
+```
+
+An unaccepted status has false state/prompt/continuation/reason/terminal and no references. An accepted but consumed, expired/deleted or newly denied prompt keeps its receipt and a reason. It must not recreate a transient, expose a private action or claim terminal delivery. Current native state may differ from the historical receipt.
+
+### Acceptance boundaries
+
+Ten focused step cases and the 106-case combined fulfillment suite pass with mandatory analytics on another isolated copy. Coverage includes intermediate persistence, terminal outcomes, author/continuation scope, one-time consumption, missing transient recovery, stale/tampered review, actual-effect rollback and notification guards. The TypeScript contracts add 17 cases; Home passes 680 cases/74 suites. Nine gateway/configuration checks and eleven selected actual test-source roots pass separately.
+
+The full 684-case legacy-addon harness also passes on that copy using its existing optional-analytics fixtures, with mandatory analytics restored afterward. It does not replace the 106-case mandatory-analytics acceptance. Earlier harness import/assertion/fixture-cleanup failures are retained privately as diagnostics, not accepted runs. Installed Python source/test hashes match the reviewed source.
+
+Actual loopback HTTP through the real protected gateway, separate clinical/ERP sessions and the current TypeScript service accepts two synthetic workflows: receipt confirmation stops at backorder with saved batch prices; immediate processing stops at expiry with saved quantity. Four journalled requests produce four author-bound receipts. Concurrent identical processing creates one receipt, and status/identical retry recover the accepted requests without repeating the native method. Discarding an accepted return value and re-reading status is API receipt evidence, not a transport-loss or browser-reload test. Follow-up terminal previews roll back without movement.
+
+Independent native read-back verifies request digests/authors, actual transient ownership, exactly two receipts per fixture, one-time consumption and saved preparation. All physical stock, protected finance/financial counts and delivered quantities remain unchanged, with no new valuation. Three named APIs reject absent gates and malformed model/method/args/context/cross-origin requests. Raw native wizard methods remain unavailable. The independent main adapter-43 snapshot exactly matches its prior finance/bank/stock/receipt baseline.
+
+Home/library and selected actual test-source types, scoped lint/format/diff checks, documentation links and development build `2acf15ee3936b933` pass. The build uses the isolated copy's database setting and includes the nine preserved unrelated clinical working files, so it is not a clean source-only release artifact. No validation-step UI was accepted by building it.
+
+React and durable storage still need migration to per-step execution while preserving pending atomic requests. Actual UI save/close/reload, loss/expiry, keyboard/focus/narrow checks and matching-source protected publication remain open. There is no public HTTPS release or production switch here. Notifications, reports/multi-transfer, wider configurations/roles, coarse-lock/global-snapshot scaling and full Billing/product parity remain open.
+
 ### Adapter 47 service and isolated HTTP checkpoint, 15 October 2026
 
 The actual TypeScript parser and native HTTP APIs now cover these synthetic scenarios on the separate database copy:
