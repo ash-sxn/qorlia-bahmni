@@ -1,5 +1,15 @@
 # Bahmni workflow parity ledger
 
+## 15 October confirmation UI and isolated HTTP/browser acceptance
+
+- Added native transfer-confirmation review/save/status controls using the existing design system. Native effects retain field metadata, relations, generated references and assigned-on-save labels; audit markup is escaped. Keyboard disclosures and safe return focus are covered.
+- Extended the existing durable per-account stock slot with explicit confirmation schema 2 while preserving legacy reservation/operation schema 1. Persist-before-HTTP, exact retry/status, definitive rejection, expiry/reconnect, double-click and delayed-storage/unmount paths have regressions.
+- Real HTTP through the actual frontend service accepted two concurrent exact requests and an identical retry with one receipt/one upstream move on a separate synthetic database copy. This is not the hosted tester database.
+- Actual local browser login, clinical gateway and ERP session exercised order S05170/transfer 368: rollback review, save, real upstream transfer 374/move 472/operation 1123, close-before-Finish, full page reload, same-request status recovery, exact clear and parent reload. Independent native reads confirm one receipt/one upstream move, no financial/physical-stock changes and zero delivered quantity.
+- Added the operator build setting `BAHMNI_BILLING_DATABASE` with existing `odoo` default. No user database picker, authentication bypass or broader account rights were added.
+- 627 Home tests/71 suites and eight gateway/configuration checks pass, with library/touched-test source types, scoped lint/format and distribution build. Browser session logs retain pre-login date-setting 401s and development-server restart/HMR warnings. Read-only verification recovered from one transient connection failure without repeating a write.
+- This supersedes the pending isolated UI/HTTP gates below, not protected publication, all configurations, fault injection or scale acceptance. Tester stays adapter 43/stock-operation-edit-r2. Full Billing, clinical and separate-product parity remain open; PR 4 stays draft. See the [native confirmation contract](../runtime/billing/STOCK_CONFIRMATION.md).
+
 ## 15 October confirmation save/status and frontend-contract source checkpoint
 
 - Adapter 45 adds exact-payload author/company-bound confirmation receipts/status,

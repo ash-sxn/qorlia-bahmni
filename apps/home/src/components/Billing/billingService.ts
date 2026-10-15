@@ -2895,7 +2895,7 @@ export const getBillingSession = () =>
 
 export const signInToBilling = (login: string, password: string) =>
   rpc<BillingSession>('/web/session/authenticate', {
-    db: 'odoo',
+    db: process.env.BAHMNI_BILLING_DATABASE ?? 'odoo',
     login,
     password,
   });
@@ -3956,6 +3956,7 @@ export interface StockConfirmationSelection {
   version: string;
 }
 export interface StockConfirmationRequest extends StockConfirmationSelection {
+  action?: never;
   review_version: string;
   request_key: string;
 }

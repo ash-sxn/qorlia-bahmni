@@ -3,17 +3,28 @@ import {
   StockReservationRequest,
   checkedStockOperationRequest,
   StockOperationRequest,
+  checkedStockConfirmationRequest,
+  StockConfirmationRequest,
 } from './billingService';
 
-export type StockWriteRequest = StockReservationRequest | StockOperationRequest;
+export type StockWriteRequest =
+  | StockReservationRequest
+  | StockOperationRequest
+  | StockConfirmationRequest;
+export const isStockConfirmationRequest = (
+  request: StockWriteRequest,
+): request is StockConfirmationRequest => !Object.hasOwn(request, 'action');
 export const isStockOperationRequest = (
   request: StockWriteRequest,
 ): request is StockOperationRequest =>
-  request.action === 'save' || request.action === 'delete';
+  'action' in request &&
+  (request.action === 'save' || request.action === 'delete');
 const checkedWriteRequest = (value: StockWriteRequest) =>
-  value && isStockOperationRequest(value)
-    ? checkedStockOperationRequest(value)
-    : checkedStockReservationRequest(value as StockReservationRequest);
+  value && isStockConfirmationRequest(value)
+    ? checkedStockConfirmationRequest(value)
+    : value && isStockOperationRequest(value)
+      ? checkedStockOperationRequest(value)
+      : checkedStockReservationRequest(value as StockReservationRequest);
 
 const DATABASE = 'qorlia.billing.stock-reservation-recovery';
 const STORE = 'pending';
@@ -79,9 +90,18 @@ async function recovery(
             if (
               typeof value !== 'object' ||
               Array.isArray(value) ||
-              value?.schema !== 1 ||
               value.uid !== uid ||
-              Object.keys(value).sort().join(',') !== 'request,schema,uid'
+              (value.schema === 2
+                ? value.kind !== 'confirmation' ||
+                  Object.keys(value).sort().join(',') !==
+                    'kind,request,schema,uid' ||
+                  !value.request ||
+                  !isStockConfirmationRequest(value.request)
+                : value.schema !== 1 ||
+                  Object.keys(value).sort().join(',') !==
+                    'request,schema,uid' ||
+                  !value.request ||
+                  isStockConfirmationRequest(value.request))
             )
               throw new Error(
                 'Stored reservation recovery is invalid. Ask your Billing administrator to check the previous request.',
@@ -97,7 +117,12 @@ async function recovery(
               return;
             }
             if (operation === 'save') {
-              store.put({ schema: 1, uid, request: exact }, uid);
+              store.put(
+                exact && isStockConfirmationRequest(exact)
+                  ? { schema: 2, kind: 'confirmation', uid, request: exact }
+                  : { schema: 1, uid, request: exact },
+                uid,
+              );
               result = exact;
             } else {
               store.delete(uid);
@@ -120,6 +145,10 @@ async function recovery(
 export const loadStockWriteRecovery = (uid: number) => recovery(uid, 'read');
 export async function loadStockReservationRecovery(uid: number) {
   const pending = await loadStockWriteRecovery(uid);
+  if (pending && isStockConfirmationRequest(pending))
+    throw new Error(
+      'A confirmation request is pending. Resume it from stock transfers before another reservation.',
+    );
   if (pending && isStockOperationRequest(pending))
     throw new Error(
       'An operation request is pending. Resume it from stock transfers before another reservation.',
@@ -128,6 +157,10 @@ export async function loadStockReservationRecovery(uid: number) {
 }
 export async function loadStockOperationRecovery(uid: number) {
   const pending = await loadStockWriteRecovery(uid);
+  if (pending && isStockConfirmationRequest(pending))
+    throw new Error(
+      'A confirmation request is pending. Resume it from stock transfers before editing operations.',
+    );
   if (pending && !isStockOperationRequest(pending))
     throw new Error(
       'A reservation request is pending. Resume it from stock transfers before editing operations.',
@@ -149,4 +182,20 @@ export const persistStockOperationRecovery = (
 export const clearStockOperationRecovery = (
   uid: number,
   request: StockOperationRequest,
+) => recovery(uid, 'clear', request);
+export async function loadStockConfirmationRecovery(uid: number) {
+  const pending = await loadStockWriteRecovery(uid);
+  if (pending && !isStockConfirmationRequest(pending))
+    throw new Error(
+      'Another stock request is pending. Resume it from stock transfers before confirming a transfer.',
+    );
+  return pending;
+}
+export const persistStockConfirmationRecovery = (
+  uid: number,
+  request: StockConfirmationRequest,
+) => recovery(uid, 'save', request);
+export const clearStockConfirmationRecovery = (
+  uid: number,
+  request: StockConfirmationRequest,
 ) => recovery(uid, 'clear', request);

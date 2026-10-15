@@ -10,6 +10,7 @@ import { BillingSessionExpired, getOrderDeliveries } from '../billingService';
 import { OrderDeliveriesPanel } from '../OrderDeliveriesPanel';
 import { loadStockWriteRecovery } from '../stockReservationRecovery';
 import { orderDeliveryFixture } from './orderDeliveryFixture';
+import { confirmationRequest } from './stockConfirmationFixture';
 import { operationRequest, operationSelection } from './stockOperationFixture';
 
 jest.mock('../stockReservationRecovery', () => ({
@@ -17,6 +18,13 @@ jest.mock('../stockReservationRecovery', () => ({
   loadStockWriteRecovery: jest.fn(),
 }));
 const mockEditor = jest.fn();
+const mockConfirmation = jest.fn();
+jest.mock('../StockConfirmationModal', () => ({
+  StockConfirmationModal: (props: { close: () => void }) => {
+    mockConfirmation(props);
+    return <button onClick={props.close}>Return from confirmation</button>;
+  },
+}));
 jest.mock('../StockOperationEditor', () => ({
   StockOperationEditor: (props: { close: () => void }) => {
     mockEditor(props);
@@ -52,6 +60,58 @@ const show = () =>
     </QueryClientProvider>,
   );
 describe('Order stock transfer review', () => {
+  it('opens the native confirmation review from transfer details and reloads on close', async () => {
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View transfer QORLIAQA/OUT/11',
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review transfer confirmation' }),
+    );
+    expect(mockConfirmation.mock.calls.at(-1)?.[0]).toMatchObject({
+      uid: 3,
+      orderId: 9,
+      transferId: 11,
+    });
+    const returnFocus = mockConfirmation.mock.calls.at(-1)?.[0].returnFocus;
+    const opener = screen.getByRole('button', {
+      name: 'Review transfer confirmation',
+    });
+    returnFocus();
+    expect(opener).toHaveFocus();
+    opener.setAttribute('disabled', '');
+    returnFocus();
+    expect(
+      screen.getByRole('button', { name: 'Back to order details' }),
+    ).toHaveFocus();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Return from confirmation' }),
+    );
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+  });
+  it('resumes pending confirmation even after its native transfer no longer appears in the displayed order', async () => {
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue({
+      ...confirmationRequest(),
+      order_id: 10,
+      transfer_id: 12,
+    });
+    const next = orderDeliveryFixture();
+    next.rows = [];
+    get.mockResolvedValue(next);
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Resume confirmation request',
+      }),
+    );
+    expect(mockConfirmation.mock.calls.at(-1)?.[0]).toMatchObject({
+      uid: 3,
+      orderId: 10,
+      transferId: 12,
+    });
+  });
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(loadStockWriteRecovery).mockResolvedValue(null);
@@ -239,6 +299,9 @@ describe('Order stock transfer review', () => {
     ).toBeDisabled();
     expect(
       screen.getByRole('button', { name: 'Review stock preparation' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Review transfer confirmation' }),
     ).toBeDisabled();
   });
   it('blocks new stock actions when recovery storage fails and supports an explicit reload', async () => {

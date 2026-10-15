@@ -62,6 +62,8 @@ The later [confirmation contract](../runtime/billing/STOCK_CONFIRMATION.md) adds
 
 The 15 October adapter 45 source checkpoint supersedes that earlier case count: 29 focused confirmation cases pass with mandatory analytics, and the combined 620-case legacy harness passes on the copy with optional analytics restored afterward. Native caller-attribution, actual-effect rollback and cancelled/deleted-RFQ recovery are covered. TypeScript/gateway source checks are separate from native acceptance; browser controls and actual HTTP/browser confirmation still require integration. Record the tested version rather than treating these historical counts as a permanent threshold.
 
+A later 15 October increment adds confirmation controls, shared recovery and actual isolated HTTP/browser acceptance. The Home suite passes 627 tests/71 suites and eight gateway/configuration checks. The browser exercised synthetic transfer review/save, native generated references, close/reload recovery, exact status/clear and parent refresh. Independent native reads checked receipt uniqueness and protected finance/physical stock. See [the contract's dated checkpoint](../runtime/billing/STOCK_CONFIRMATION.md). These tests did not publish or accept the new source through the protected tester gateway, and do not cover hospital-scale concurrency or every configuration.
+
 ## Synthetic workflow acceptance
 
 Obtain permission before creating/editing test records. Use clearly labelled records and record their identifiers privately as appropriate. Do not use real patients, financial records or an employee's private credentials.

@@ -40,6 +40,8 @@ Study [editor](../apps/home/src/components/Billing/StockOperationEditor.tsx), [s
 
 Deleting a row does not delete its receipt. Recovery must work after the row is gone. Do not re-create it to check whether deletion succeeded. Unknown writes must survive unmount/reload, and a double click must not issue two fresh mutations.
 
+Transfer confirmation now uses that same pending slot, with an explicit versioned confirmation envelope. See [confirmation UI and native contract](../runtime/billing/STOCK_CONFIRMATION.md). Do not reinterpret a malformed legacy operation as a confirmation or overwrite another kind of pending stock request. Its isolated browser/HTTP acceptance does not establish protected-host publication or full delivery validation.
+
 ## Permission and session rules
 
 Keep native ACLs, record/field rules, company boundaries and installation privileges. UI visibility is not authorization. Do not send arbitrary Odoo model/method/context, use `sudo`, or forward clinical credentials to ERP. Keep the [gateway allowlist](../scripts/review-host/server.cjs) and its tests aligned with a new named API.

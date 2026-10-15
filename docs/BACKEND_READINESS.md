@@ -1,5 +1,36 @@
 # Qorlia React frontend backend readiness
 
+## Confirmation React and isolated HTTP/browser checkpoint (15 October 2026)
+
+The house-style transfer dialog now integrates native load, rollback effect review,
+save and receipt/status recovery. The existing durable stock slot explicitly stores
+confirmation schema 2 without reinterpreting schema 1 reservation/operation records.
+Requests persist before HTTP; unknown outcomes and expiry keep exact recovery data.
+Definitive rejections require a fresh load/review. Busy/double-click/unmount and
+keyboard-focus paths have frontend regressions.
+
+Actual TypeScript-to-native HTTP on a non-public database copy confirms two
+concurrent exact requests plus retry produce one receipt/one upstream move. Actual
+local browser acceptance on synthetic order S05170/transfer 368 covers review/save,
+real generated references, close-before-Finish, full-reload recovery, status,
+receipt-checked clear and authoritative parent refresh. Independent native read-back
+confirms unchanged protected finance/physical stock and zero delivered quantities.
+This is not acceptance of every sales/procurement configuration.
+
+The operator build setting `BAHMNI_BILLING_DATABASE` defaults to `odoo`; the separate
+copy is selected without changing backend database filters, roles or session gates.
+627 Home tests/71 suites, eight gateway/configuration checks, library/touched-test
+source types, scoped lint/format and the development distribution build pass. Browser
+logs include pre-login date-format 401s and server-restart/HMR warnings. An initial
+read-back connection failed transiently; a live-forward/native-service check and
+read-only retry passed, without reissuing a write.
+
+The tester remains on adapter 43 and stock-operation-edit-r2. Protected-gateway
+publication, broader role/company/browser-fault tests and scale acceptance remain.
+Global capture/locks and JSON receipt limits remain; full fulfillment/wizards,
+returns/POS/synchronization and whole-product parity are not complete. See
+[confirmation integration](../runtime/billing/STOCK_CONFIRMATION.md).
+
 ## Confirmation save/status source checkpoint (15 October 2026)
 
 Adapter 45 implements exact author/company-bound receipts, recovery/status,

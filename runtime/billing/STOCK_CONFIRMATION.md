@@ -2,7 +2,23 @@
 
 [Billing adapter](README.md) · [Architecture](../../docs/architecture.md) · [Parity ledger](../../docs/FEATURE_PARITY.md)
 
-Source adapter 45 adds native confirmation save/status to the adapter 44 load/rollback-preview foundation. It is not a released browser confirmation workflow. The protected tester still uses adapter 43 and its preparation/operation editor, not this source checkpoint.
+Source adapter 45 adds native confirmation save/status to the adapter 44 load/rollback-preview foundation. The React review/save/recovery path now has isolated HTTP and browser acceptance below. It is not released to the protected tester, which still uses adapter 43 and its preparation/operation editor.
+
+## 15 October React and isolated HTTP/browser checkpoint
+
+The [confirmation dialog](../../apps/home/src/components/Billing/StockConfirmationModal.tsx) opens from saved-order transfer details. Native load supplies action availability and quantities; rollback preview displays created/changed/deleted records with typed fields, labelled relations, generated links and assigned-on-save metadata. Native audit HTML is escaped text. Hidden audit content remains protected. The UI uses existing Carbon controls and styling, keyboard-operable disclosures, and focus restoration with a safe fallback when the original button is disabled or gone.
+
+The existing per-account IndexedDB stock slot now includes confirmation requests. Schema 2 explicitly identifies confirmations; existing schema 1 reservation/operation records stay readable. A malformed legacy record is not reinterpreted as a confirmation. Only one stock request can occupy the slot. The exact reviewed request is committed before HTTP; double clicks and busy dismissal are guarded. Unknown outcomes/expiry retain the request. Reconnect, status checks, identical retries and explicit receipt-checked completion do not invent another nonce or silently repeat procurement. Definitive rejection discards the stale review and requires reload.
+
+Actual HTTP tests used a non-public service against a separate synthetic database copy, not the tester's ERP database. The actual TypeScript service verified load/preview/save/status, rollback-only preview, two concurrent exact saves and a later identical retry. Native read-back found one receipt and one upstream move; protected finance, physical stock and delivery quantities were unchanged. This supersedes the earlier lack of HTTP evidence, not the protected-gateway or scale gates.
+
+The browser then used the real React login, clinical session gate and separate ERP login through the local proxy. Synthetic order `S05170`, transfer `WH/QCH15/00002` (368), moved from draft to waiting. It created native upstream transfer `WH/IN/00188` (374), move 472 and operation 1123. The UI showed those actual references. Closing before Finish and fully reloading preserved the same request. Explicit status recovery returned its receipt; Finish checked again, cleared recovery and reloaded both transfers. Independent authenticated native reads before and after confirmed one receipt, one upstream move, zero done/delivered quantity and unchanged protected finance/physical stock. This fixture exercises the transfer contract, not every normal sales/procurement configuration.
+
+The ERP database name is now an operator build setting, `BAHMNI_BILLING_DATABASE`, defaulting to `odoo`. This enables an isolated copy without exposing a user-controlled database selector or changing backend authentication/database restrictions. It is not a secret or authorization mechanism. See [setup](../../docs/setup-guide.md).
+
+Home checks passed 627 tests/71 suites, eight gateway/configuration checks, source-based touched-test and library types, and scoped lint/format. Browser evidence includes the keyboard disclosure, native effect review, save, full-reload recovery, final parent state and screenshots. Logged-out date-format requests logged 401s before login; restarting the local server also produced HMR warnings. Do not report an entirely clean session log. One independent read initially hit a transient refused connection; the still-live SSH forward and native HTTP service were checked, then read-back passed without replaying a write.
+
+Remaining: actual protected-gateway/runtime publication, additional role/company/configuration and browser fault-injection acceptance, hospital-scale concurrency/performance, and full validation/wizard/backorder/return/POS/synchronization workflows. The protected tester, public demo and production remain unchanged. Historical evidence below describes its dated checkpoint, not a superseding whole-product acceptance claim.
 
 ## 15 October save/status source checkpoint
 

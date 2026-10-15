@@ -53,10 +53,14 @@ export BAHMNI_API_ORIGIN='https://your-approved-synthetic-backend.example'
 # export BAHMNI_STANDARD_CONFIG_REF='the-reviewed-40-character-commit-sha'
 # Only for an assigned Billing task:
 # export BAHMNI_BILLING_ORIGIN='https://your-approved-billing-backend.example'
+# Only if the operator's approved ERP database is not the default 'odoo':
+# export BAHMNI_BILLING_DATABASE='your_approved_synthetic_database'
 NX_DAEMON=false yarn nx serve @bahmni/distro --skipSync
 ```
 
 These example values are placeholders, not test servers. A moving branch name is not a pinned configuration reference.
+
+`BAHMNI_BILLING_DATABASE` is a build-time, non-secret deployment setting, not a user-facing database selector. Restart the development server or rebuild after changing it. The ERP server must independently restrict permitted databases and enforce authentication/authorization. This setting does not grant access. Never put a password or connection string in it or in any browser build variable.
 
 Windows PowerShell uses:
 

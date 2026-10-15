@@ -7,7 +7,11 @@ import {
   loadStockOperationRecovery,
   loadStockWriteRecovery,
   persistStockOperationRecovery,
+  clearStockConfirmationRecovery,
+  loadStockConfirmationRecovery,
+  persistStockConfirmationRecovery,
 } from '../stockReservationRecovery';
+import { confirmationRequest } from './stockConfirmationFixture';
 import { operationRequest } from './stockOperationFixture';
 import { stockRequest } from './stockReservationFixture';
 
@@ -99,6 +103,93 @@ function database() {
 }
 
 describe('Stock reservation IndexedDB recovery', () => {
+  it('stores explicitly typed confirmations in the existing durable per-account slot', async () => {
+    const fake = database();
+    await persistStockConfirmationRecovery(3, confirmationRequest());
+    expect(fake.records.get(3)).toEqual({
+      schema: 2,
+      kind: 'confirmation',
+      uid: 3,
+      request: confirmationRequest(),
+    });
+    expect(await loadStockConfirmationRecovery(3)).toEqual(
+      confirmationRequest(),
+    );
+    await expect(loadStockReservationRecovery(3)).rejects.toThrow(
+      /confirmation request is pending/,
+    );
+    await expect(loadStockOperationRecovery(3)).rejects.toThrow(
+      /confirmation request is pending/,
+    );
+    await expect(persistStockReservationRecovery(3, request())).rejects.toThrow(
+      /Another stock request/,
+    );
+    await expect(
+      persistStockOperationRecovery(3, operationRequest()),
+    ).rejects.toThrow(/Another stock request/);
+    expect(await clearStockReservationRecovery(3, request())).toEqual(
+      confirmationRequest(),
+    );
+    expect(
+      await clearStockConfirmationRecovery(3, {
+        ...confirmationRequest(),
+        request_key: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+      }),
+    ).toEqual(confirmationRequest());
+    await persistStockConfirmationRecovery(4, confirmationRequest());
+    await clearStockConfirmationRecovery(3, confirmationRequest());
+    expect(await loadStockWriteRecovery(3)).toBeNull();
+    expect(await loadStockConfirmationRecovery(4)).toEqual(
+      confirmationRequest(),
+    );
+    expect(fake.db.transaction).toHaveBeenCalledWith('pending', 'readwrite', {
+      durability: 'strict',
+    });
+  });
+  it('never reinterprets an old request missing its action as confirmation', async () => {
+    const fake = database();
+    for (const value of [
+      { schema: 1, uid: 3, request: confirmationRequest() },
+      {
+        schema: 2,
+        uid: 3,
+        kind: 'reservation',
+        request: confirmationRequest(),
+      },
+      { schema: 2, uid: 3, kind: 'confirmation', request: request() },
+      {
+        schema: 2,
+        uid: 3,
+        kind: 'confirmation',
+        request: { ...confirmationRequest(), extra: true },
+      },
+    ]) {
+      fake.records.set(3, value);
+      await expect(loadStockWriteRecovery(3)).rejects.toThrow();
+      await expect(
+        persistStockConfirmationRecovery(3, confirmationRequest()),
+      ).rejects.toThrow();
+      expect(fake.records.get(3)).toEqual(value);
+    }
+  });
+  it('keeps legacy reservations and operations recoverable while excluding a confirmation writer', async () => {
+    database();
+    for (const exact of [request(), operationRequest()]) {
+      if ('move_id' in exact) await persistStockOperationRecovery(3, exact);
+      else await persistStockReservationRecovery(3, exact);
+      await expect(loadStockConfirmationRecovery(3)).rejects.toThrow(
+        /Another stock request is pending/,
+      );
+      await expect(
+        persistStockConfirmationRecovery(3, confirmationRequest()),
+      ).rejects.toThrow(/Another stock request/);
+      expect(
+        await clearStockConfirmationRecovery(3, confirmationRequest()),
+      ).toEqual(exact);
+      if ('move_id' in exact) await clearStockOperationRecovery(3, exact);
+      else await clearStockReservationRecovery(3, exact);
+    }
+  });
   it('waits for transaction commit, not just successful record access', async () => {
     const fake = database();
     fake.hold();

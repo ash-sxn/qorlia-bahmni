@@ -1,16 +1,18 @@
 import { Button } from '@bahmni/design-system';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import styles from './BillingPage.module.scss';
 import {
   BillingSessionExpired,
   getOrderDeliveries,
   StockOperationSelection,
 } from './billingService';
+import { StockConfirmationModal } from './StockConfirmationModal';
 import { StockOperationEditor } from './StockOperationEditor';
 import { StockReservationModal } from './StockReservationModal';
 import {
   isStockOperationRequest,
+  isStockConfirmationRequest,
   loadStockWriteRecovery,
 } from './stockReservationRecovery';
 
@@ -37,6 +39,16 @@ export function OrderDeliveriesPanel({
   reconnect: () => void;
 }) {
   const client = useQueryClient();
+  const confirmationOpener = useRef<HTMLButtonElement | null>(null);
+  const backButton = useRef<HTMLButtonElement | null>(null);
+  const restoreConfirmationFocus = useCallback(() => {
+    const target =
+      confirmationOpener.current?.isConnected &&
+      !confirmationOpener.current.disabled
+        ? confirmationOpener.current
+        : backButton.current;
+    target?.focus();
+  }, []);
   const [transferId, setTransferId] = useState<number | null>(null);
   const [reservation, setReservation] = useState<{
     orderId: number;
@@ -45,6 +57,10 @@ export function OrderDeliveriesPanel({
   const [operation, setOperation] = useState<StockOperationSelection | null>(
     null,
   );
+  const [confirmation, setConfirmation] = useState<{
+    orderId: number;
+    transferId: number;
+  } | null>(null);
   const recovery = useQuery({
     queryKey: ['billing', 'reservation-recovery', uid],
     queryFn: () => loadStockWriteRecovery(uid),
@@ -70,6 +86,7 @@ export function OrderDeliveriesPanel({
   const reloadTransfers = () => {
     setReservation(null);
     setOperation(null);
+    setConfirmation(null);
     void client.invalidateQueries({
       queryKey: ['billing', 'order-deliveries', uid, orderId],
     });
@@ -91,9 +108,15 @@ export function OrderDeliveriesPanel({
           <Button
             kind="tertiary"
             disabled={recovery.isFetching || recovery.isError}
-            onClick={() => {
+            onClick={(event) => {
               const pending = recovery.data!;
-              if (isStockOperationRequest(pending))
+              if (isStockConfirmationRequest(pending)) {
+                confirmationOpener.current = event.currentTarget;
+                setConfirmation({
+                  orderId: pending.order_id,
+                  transferId: pending.transfer_id,
+                });
+              } else if (isStockOperationRequest(pending))
                 setOperation({
                   order_id: pending.order_id,
                   transfer_id: pending.transfer_id,
@@ -107,12 +130,14 @@ export function OrderDeliveriesPanel({
                 });
             }}
           >
-            {isStockOperationRequest(recovery.data)
-              ? 'Resume operation request'
-              : 'Resume reservation request'}
+            {isStockConfirmationRequest(recovery.data)
+              ? 'Resume confirmation request'
+              : isStockOperationRequest(recovery.data)
+                ? 'Resume operation request'
+                : 'Resume reservation request'}
           </Button>
         ) : null}
-        <Button kind="tertiary" onClick={close}>
+        <Button ref={backButton} kind="tertiary" onClick={close}>
           Back to order details
         </Button>
         <Button
@@ -209,6 +234,16 @@ export function OrderDeliveriesPanel({
           ) : transfer ? (
             <>
               <h3>{transfer.name}</h3>
+              <Button
+                kind="tertiary"
+                disabled={stockLocked}
+                onClick={(event) => {
+                  confirmationOpener.current = event.currentTarget;
+                  setConfirmation({ orderId, transferId: transfer.id });
+                }}
+              >
+                Review transfer confirmation
+              </Button>
               <Button
                 kind="tertiary"
                 disabled={stockLocked}
@@ -394,6 +429,16 @@ export function OrderDeliveriesPanel({
           transferId={reservation.transferId}
           close={reloadTransfers}
           reconnect={reconnect}
+        />
+      ) : null}
+      {confirmation ? (
+        <StockConfirmationModal
+          uid={uid}
+          orderId={confirmation.orderId}
+          transferId={confirmation.transferId}
+          close={reloadTransfers}
+          reconnect={reconnect}
+          returnFocus={restoreConfirmationFocus}
         />
       ) : null}
       {operation ? (
