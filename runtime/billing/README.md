@@ -81,7 +81,12 @@ next native prompt is closed. Adapter 48 adds per-RPC signed step preview/save/s
 private author/company-bound continuations and one-time prompt consumption. Old
 atomic recovery remains available. Ten focused and 106 combined mandatory-analytics
 native cases pass, with strict TypeScript and named gateway contracts. React/storage
-migration and browser/publication acceptance are unfinished. See the
+now uses those steps with schema 4 atomic pending-request replacement. Home passes
+695 tests/74 suites. Actual isolated browser receipt saves, full reload/tab reopen,
+exact status recovery and closing the saved backorder prompt pass with independent
+read-only stock/receipt/protected-finance checks. Immediate/expiry/terminal browser
+paths, transport loss, complete keyboard/narrow checks and publication remain.
+See the [current browser checkpoint](STOCK_VALIDATION.md#react-per-step-migration-and-receipt-browser-checkpoint-15-october-2026) and
 [step contract](STOCK_VALIDATION.md#native-intermediate-persistence-audit-and-adapter-48-step-contract).
 
 The 684-case legacy harness also passes on its separate optional-analytics copy,
@@ -345,8 +350,9 @@ company upload, retained old bytes and unchanged accounting/protected records.
 506 Home/58 suites, seven guards, types/lint/build pass; the recorded 515 native
 suite is not a rerun for this browser acceptance. Quota/cleanup failures and a
 newer different-request race are unit-only. Pending full reload/session expiry,
->10 MiB streaming and whole-product parity remain open. Production/public demo
-are unchanged; PR #1 is open, not merged. Source-only entries below are historical.
+
+> 10 MiB streaming and whole-product parity remain open. Production/public demo
+> are unchanged; PR #1 is open, not merged. Source-only entries below are historical.
 
 Latest editor source checkpoint: 16.0.1.35.0 supplies version-bound native upload/
 removal capabilities. The React attachment editor uses house styles, complete

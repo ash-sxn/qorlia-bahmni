@@ -1,5 +1,14 @@
 # Bahmni workflow parity ledger
 
+## 15 October React per-RPC validation migration and receipt recovery
+
+- Migrated fresh validations to individually reviewed adapter-48 steps. Accepted native receipts determine the next prompt; committed choices are not replayed. Existing atomic pending requests retain their original API and schema.
+- Added schema 4 in the same durable stock slot and strict atomic replacement of an accepted request by its exact reviewed continuation. Database/identity/kind mismatches and changed/missing prior records block a new write. Recovery persists before HTTP and survives unmount/reopen; exact clearing preserves another pending request.
+- Home passes 695 tests/74 suites; 57 focused modal/storage/transfer cases and 19 non-default-database storage cases pass. Scoped lint/format, Home library types, eleven selected source-test roots and nine gateway/configuration checks pass. Build `518385df713b69b1` includes the nine preserved unrelated clinical working files, not a clean release artifact.
+- Real local browser saves on the isolated adapter-48 copy verify receipt review persists batch prices and returns the actual backorder prompt. Full reload and tab reopen recover the identical second request without replaying the first. Closing the saved prompt clears recovery, reloads transfers and restores fallback focus.
+- Independent read-only assertions verify exactly two author/company/order-bound receipts, one-time prior-prompt consumption, saved prices 2.5/5/7, assigned state, two prepared and zero delivered. Original/new fixture stock, protected accounting stored fields and financial/valuation counts remain unchanged. The computed invoice total is not independently recalculated by this SQL check.
+- Remaining gates include actual browser immediate/expiry/terminal and valuation paths, transport loss, complete keyboard/narrow checks, wider native configurations and protected publication. Tester stays adapter 43; public demo/production unchanged. Full Billing and whole-product parity remain open. See the [current browser checkpoint](../runtime/billing/STOCK_VALIDATION.md#react-per-step-migration-and-receipt-browser-checkpoint-15-october-2026).
+
 ## 15 October native intermediate-persistence correction and step contracts
 
 - Actual separate native HTTP calls prove two partial commits before a next prompt is closed: receipt batch cost/sale/MRP and immediate prepared quantities. Physical stock, delivered quantities and protected accounting remain unchanged. Terminal-only React review is not one-to-one cancel/close parity.
@@ -535,8 +544,8 @@
   Unit storage mocks do not prove actual browser persistence or multi-tab races.
 - Not yet packaged/hosted/browser accepted. Protected download-only artifact
   checkpoint-attachments-20261012 remains deployed. Browser writes/recovery,
-  >10 MiB streaming, imports/pivot/graph and all remaining Banking/Billing/clinical/
-  external parity stay open. Production/public demo and clinical edits are intact.
+  > 10 MiB streaming, imports/pivot/graph and all remaining Banking/Billing/clinical/
+  > external parity stay open. Production/public demo and clinical edits are intact.
 
 ## 12 October native checkpoint attachment upload/removal source checkpoint
 
@@ -580,9 +589,9 @@
   documents, bank #37 and the preceding checkpoint. Analytics remain mandatory;
   read-only verifiers roll back. No financial browser writes were made.
 - Prior source suite/type/lint/build results are not fresh reruns. Upload/removal,
-  >10 MiB streaming, browser permission/error/recovery acceptance, import,
-  pivot/graph, wider banking, stock/POS/provider/sync and full product parity stay
-  open. Production/public demo and preserved clinical edits remain unchanged.
+  > 10 MiB streaming, browser permission/error/recovery acceptance, import,
+  > pivot/graph, wider banking, stock/POS/provider/sync and full product parity stay
+  > open. Production/public demo and preserved clinical edits remain unchanged.
 
 ## 12 October native checkpoint attachment source checkpoint
 

@@ -4,6 +4,22 @@
 
 This is a development integration contract, not a released delivery-validation control. The [native contract tests](qorlia_billing_ui/tests/test_stock_validation_contract.py) exercise installed Bahmni/Odoo behaviour directly. The [adapter source](qorlia_billing_ui/models/stock_validation.py) implements load, rollback preview, reviewed save and exact status recovery. Confirmation, reservations, recorded done quantity and completed movement remain different operations. Read the dated checkpoints separately from the API specification.
 
+## React per-step migration and receipt browser checkpoint, 15 October 2026
+
+Fresh React validations now use adapter 48's individually reviewed native RPC steps. Opening Validate previews and saves only that action. The actual accepted receipt supplies the next prompt; a choice receives its own signed review and save. Previously committed decisions are never replayed as a fresh decision history. Existing six-key atomic pending requests still use their original save/status APIs and are not converted into steps.
+
+The existing IndexedDB stock slot now supports an explicit schema 4 `validation_step` envelope with the fixed build's Billing database and exact seven-key request. Moving from an accepted prompt to its reviewed continuation replaces the preceding request in one strict read/write transaction. Changed, foreign, malformed or missing preceding records block the write. Storage commits before HTTP; unmount, expiry and uncertain responses preserve the exact request. Exact clearing must not delete another pending action. Schemas 1, 2 and 3 retain their original recovery contracts.
+
+The modal distinguishes an accepted native action from completed delivery, allows checking or retrying only an identical uncertain request, and allows closing an accepted nonterminal prompt without undoing earlier preparation. It reuses the existing modal, decision controls and physical/financial effect viewer. Account/order/transfer changes isolate late results. Existing transfer recovery can resume a validation even if its original transfer row is no longer listed.
+
+Checks on this source pass: 695 Home tests in 74 suites, including 24 validation-modal cases and 19 recovery-storage cases. The focused modal/storage/transfer-panel run has 57 cases. The 19 storage cases also pass with a non-default Billing database. Scoped lint, Home library types, eleven selected actual test-source roots and nine gateway/configuration cases pass separately. Development build `518385df713b69b1` targets the isolated adapter-48 copy; it includes nine preserved unrelated clinical working files, so it is not a clean source-only release artifact.
+
+Actual browser saves through the real protected loopback gateway and separate clinical/ERP sessions verify receipt preparation on a new synthetic fixture. Opening Validate creates one receipt. Confirming its receipt review creates a second receipt, persists batch cost/sale/MRP 2.5/5/7 and stops at the native backorder prompt. Closing while preserving recovery, full reload, closing/reopening the tab, and explicit status checking recover the identical second request and actual backorder prompt without replaying the first action. Closing the saved prompt clears its recovery banner, reloads transfers and returns focus to the transfer-screen fallback.
+
+Independent read-only database assertions find exactly two author/company/order-bound step receipts, the first consumed once by the second and the second unconsumed. Prepared prices remain saved, recorded quantity is two, delivered quantity is zero and transfer state remains assigned. All earlier stock rows match the prior baseline; both new fixture stock quantities/reservations remain unchanged. Protected accounting write dates, states and residuals, accounting/payment/reconciliation/valuation counts and both delivered quantities match their baselines. No new valuation is present. An initial read-back query incorrectly treated the native computed `invoice_total` as a stored SQL column; the corrected checker explicitly compares stored fields and does not claim to independently recalculate that computed amount.
+
+This accepts the stated receipt save/reopen/close path, not every wizard or browser failure mode. Actual browser immediate/expiry/terminal backorder/valuation paths, transport-loss recovery, broader roles/configurations, complete keyboard/narrow-layout acceptance and matching-source protected publication remain open. Notifications, native reports/multi-transfer and scalable locking/capture remain unfinished. The protected tester remains adapter 43; no public-demo or production redesign is deployed. Older checkpoints below remain historical evidence, not the current React implementation instructions.
+
 ## Installed implementation
 
 The audit used the isolated pinned `bahmni/odoo-16` image with digest `sha256:b3afea0fd5c6b8a6e3f7e70d01306d456c2c9cd1bcf03c17fda9cb52f47e2de8`. Read the installed methods and inherited views, not just a moving upstream branch:
@@ -125,12 +141,12 @@ This source still blocks external notifications rather than pretending to send o
 
 The [Billing service](../../apps/home/src/components/Billing/billingService.ts) exposes four named methods. Each uses `stock.picking` with empty positional arguments; the gateway does not expose raw wizard or stock write methods.
 
-| Frontend method | Native method | Keyword arguments |
-| --- | --- | --- |
-| `getStockValidation` | `qorlia_validation_load` | `order_id`, `transfer_id` |
-| `previewStockValidation` | `qorlia_validation_preview` | `order_id`, `transfer_id`, `version`, `decisions` |
-| `saveStockValidation` | `qorlia_validation_save` | `payload`: the exact six-key reviewed request |
-| `getStockValidationStatus` | `qorlia_validation_status` | `payload`: that identical request, including its original nonce |
+| Frontend method            | Native method               | Keyword arguments                                               |
+| -------------------------- | --------------------------- | --------------------------------------------------------------- |
+| `getStockValidation`       | `qorlia_validation_load`    | `order_id`, `transfer_id`                                       |
+| `previewStockValidation`   | `qorlia_validation_preview` | `order_id`, `transfer_id`, `version`, `decisions`               |
+| `saveStockValidation`      | `qorlia_validation_save`    | `payload`: the exact six-key reviewed request                   |
+| `getStockValidationStatus` | `qorlia_validation_status`  | `payload`: that identical request, including its original nonce |
 
 The runtime parser checks the native graph, matching order/transfer/version/decision sequence, terminal signature, next-step shape, actual state and effect schema. It preserves receipt product/unit/batch/quantity/expiry/prices/balance and native warnings. A blocked SMS step cannot be converted into an approved decision. Terminal states include `assigned`, not just `done`. A save without an accepted receipt rejects; an unaccepted status remains a valid unknown/not-yet-accepted result, not proof that the original request stopped.
 
@@ -218,14 +234,14 @@ React and durable storage still need migration to per-step execution while prese
 
 The actual TypeScript parser and native HTTP APIs now cover these synthetic scenarios on the separate database copy:
 
-| Scenario | Actual native outcome |
-| --- | --- |
-| Full prepared delivery | Five delivered; source stock falls from ten to five |
-| Immediate selection | Native quantity preparation followed by five delivered |
-| Partial delivery and backorder | Two delivered; exactly one three-unit remainder, including concurrent identical saves |
-| Receipt review | Five received; saved batch cost/sale/MRP 2.5/5/7 and the reviewed expiry |
-| Immediate then declined expiry | Five prepared, transfer still assigned, source stock ten and zero delivered |
-| Automatic valuation | Five delivered; one posted balanced stock journal with minus twenty/plus twenty lines and native analytics |
+| Scenario                       | Actual native outcome                                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Full prepared delivery         | Five delivered; source stock falls from ten to five                                                        |
+| Immediate selection            | Native quantity preparation followed by five delivered                                                     |
+| Partial delivery and backorder | Two delivered; exactly one three-unit remainder, including concurrent identical saves                      |
+| Receipt review                 | Five received; saved batch cost/sale/MRP 2.5/5/7 and the reviewed expiry                                   |
+| Immediate then declined expiry | Five prepared, transfer still assigned, source stock ten and zero delivered                                |
+| Automatic valuation            | Five delivered; one posted balanced stock journal with minus twenty/plus twenty lines and native analytics |
 
 The first full/immediate saves used adapter 46. The immediate test suppressed its accepted HTTP response, then recovered status and retried the identical request. Final adapter 47 rechecks those exact requests through the actual loopback review gateway. Backorder, receipt, expiry-decline and automatic valuation are fresh adapter 47 gateway saves. Two concurrent identical backorder calls both acknowledge one native result, not two remainders. Independent native reads find exactly one receipt for each transfer, matching its original request digest and author. No fresh request replaces an uncertain one.
 

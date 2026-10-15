@@ -7,16 +7,27 @@ import {
   StockConfirmationRequest,
   checkedStockValidationRequest,
   StockValidationRequest,
+  checkedStockValidationStepRequest,
+  StockValidationStepRequest,
 } from './billingService';
 
 export type StockWriteRequest =
   | StockReservationRequest
   | StockOperationRequest
   | StockConfirmationRequest
-  | StockValidationRequest;
+  | StockValidationRequest
+  | StockValidationStepRequest;
+export type StockValidationRecoveryRequest =
+  | StockValidationRequest
+  | StockValidationStepRequest;
+export const isStockValidationStepRequest = (
+  request: StockWriteRequest,
+): request is StockValidationStepRequest =>
+  Object.hasOwn(request, 'continuation_key');
 export const isStockValidationRequest = (
   request: StockWriteRequest,
-): request is StockValidationRequest => Object.hasOwn(request, 'decisions');
+): request is StockValidationRecoveryRequest =>
+  Object.hasOwn(request, 'decisions');
 export const isStockConfirmationRequest = (
   request: StockWriteRequest,
 ): request is StockConfirmationRequest =>
@@ -27,13 +38,15 @@ export const isStockOperationRequest = (
   'action' in request &&
   (request.action === 'save' || request.action === 'delete');
 const checkedWriteRequest = (value: StockWriteRequest) =>
-  value && isStockValidationRequest(value)
-    ? checkedStockValidationRequest(value)
-    : value && isStockConfirmationRequest(value)
-      ? checkedStockConfirmationRequest(value)
-      : value && isStockOperationRequest(value)
-        ? checkedStockOperationRequest(value)
-        : checkedStockReservationRequest(value as StockReservationRequest);
+  value && isStockValidationStepRequest(value)
+    ? checkedStockValidationStepRequest(value)
+    : value && isStockValidationRequest(value)
+      ? checkedStockValidationRequest(value)
+      : value && isStockConfirmationRequest(value)
+        ? checkedStockConfirmationRequest(value)
+        : value && isStockOperationRequest(value)
+          ? checkedStockOperationRequest(value)
+          : checkedStockReservationRequest(value as StockReservationRequest);
 
 const DATABASE = 'qorlia.billing.stock-reservation-recovery';
 const STORE = 'pending';
@@ -42,12 +55,24 @@ async function recovery(
   uid: number,
   operation: 'read' | 'save' | 'clear',
   request?: StockWriteRequest,
+  previous?: StockValidationStepRequest,
 ): Promise<StockWriteRequest | null> {
   if (!Number.isSafeInteger(uid) || uid <= 0)
     throw new Error(
       'A signed-in Billing account is required for reservation recovery.',
     );
   const exact = request ? checkedWriteRequest(request) : null;
+  const prior = previous ? checkedStockValidationStepRequest(previous) : null;
+  if (
+    prior &&
+    (operation !== 'save' ||
+      !exact ||
+      !isStockValidationStepRequest(exact) ||
+      exact.continuation_key !== prior.request_key ||
+      exact.order_id !== prior.order_id ||
+      exact.transfer_id !== prior.transfer_id)
+  )
+    throw new Error('Replace only the exact preceding native validation step.');
   if (operation !== 'read' && !exact)
     throw new Error('Use an exact reservation request for recovery storage.');
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -98,8 +123,8 @@ async function recovery(
           const value = get.result;
           if (value !== undefined) {
             if (
-              value?.schema === 3 &&
-              value.kind === 'validation' &&
+              ((value?.schema === 3 && value.kind === 'validation') ||
+                (value?.schema === 4 && value.kind === 'validation_step')) &&
               value.database !== BILLING_DATABASE
             )
               throw new Error(
@@ -110,25 +135,33 @@ async function recovery(
               typeof value !== 'object' ||
               Array.isArray(value) ||
               value.uid !== uid ||
-              (value.schema === 3
-                ? value.kind !== 'validation' ||
+              (value.schema === 4
+                ? value.kind !== 'validation_step' ||
                   value.database !== BILLING_DATABASE ||
                   Object.keys(value).sort().join(',') !==
                     'database,kind,request,schema,uid' ||
                   !value.request ||
-                  !isStockValidationRequest(value.request)
-                : value.schema === 2
-                  ? value.kind !== 'confirmation' ||
+                  !isStockValidationStepRequest(value.request)
+                : value.schema === 3
+                  ? value.kind !== 'validation' ||
+                    value.database !== BILLING_DATABASE ||
                     Object.keys(value).sort().join(',') !==
-                      'kind,request,schema,uid' ||
+                      'database,kind,request,schema,uid' ||
                     !value.request ||
-                    !isStockConfirmationRequest(value.request)
-                  : value.schema !== 1 ||
-                    Object.keys(value).sort().join(',') !==
-                      'request,schema,uid' ||
-                    !value.request ||
-                    isStockConfirmationRequest(value.request) ||
-                    isStockValidationRequest(value.request))
+                    !isStockValidationRequest(value.request) ||
+                    isStockValidationStepRequest(value.request)
+                  : value.schema === 2
+                    ? value.kind !== 'confirmation' ||
+                      Object.keys(value).sort().join(',') !==
+                        'kind,request,schema,uid' ||
+                      !value.request ||
+                      !isStockConfirmationRequest(value.request)
+                    : value.schema !== 1 ||
+                      Object.keys(value).sort().join(',') !==
+                        'request,schema,uid' ||
+                      !value.request ||
+                      isStockConfirmationRequest(value.request) ||
+                      isStockValidationRequest(value.request))
             )
               throw new Error(
                 'Stored reservation recovery is invalid. Ask your Billing administrator to check the previous request.',
@@ -136,26 +169,41 @@ async function recovery(
             result = checkedWriteRequest(value.request);
           }
           if (operation !== 'read') {
+            if (
+              prior &&
+              (!result || JSON.stringify(result) !== JSON.stringify(prior))
+            )
+              throw new Error(
+                'The preceding recovery request changed. No new step can be saved.',
+              );
             if (result && JSON.stringify(result) !== JSON.stringify(exact)) {
-              if (operation === 'save')
+              if (operation === 'save' && !prior)
                 throw new Error(
                   'Another stock request is pending for this Billing account. Resume it before changing stock.',
                 );
-              return;
+              if (operation === 'clear') return;
             }
             if (operation === 'save') {
               store.put(
-                exact && isStockValidationRequest(exact)
+                exact && isStockValidationStepRequest(exact)
                   ? {
-                      schema: 3,
-                      kind: 'validation',
+                      schema: 4,
+                      kind: 'validation_step',
                       database: BILLING_DATABASE,
                       uid,
                       request: exact,
                     }
-                  : exact && isStockConfirmationRequest(exact)
-                    ? { schema: 2, kind: 'confirmation', uid, request: exact }
-                    : { schema: 1, uid, request: exact },
+                  : exact && isStockValidationRequest(exact)
+                    ? {
+                        schema: 3,
+                        kind: 'validation',
+                        database: BILLING_DATABASE,
+                        uid,
+                        request: exact,
+                      }
+                    : exact && isStockConfirmationRequest(exact)
+                      ? { schema: 2, kind: 'confirmation', uid, request: exact }
+                      : { schema: 1, uid, request: exact },
                 uid,
               );
               result = exact;
@@ -252,9 +300,14 @@ export async function loadStockValidationRecovery(uid: number) {
 }
 export const persistStockValidationRecovery = (
   uid: number,
-  request: StockValidationRequest,
+  request: StockValidationRecoveryRequest,
 ) => recovery(uid, 'save', request);
 export const clearStockValidationRecovery = (
   uid: number,
-  request: StockValidationRequest,
+  request: StockValidationRecoveryRequest,
 ) => recovery(uid, 'clear', request);
+export const replaceStockValidationRecovery = (
+  uid: number,
+  previous: StockValidationStepRequest,
+  request: StockValidationStepRequest,
+) => recovery(uid, 'save', request, previous);

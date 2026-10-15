@@ -1,5 +1,27 @@
 # Qorlia React frontend backend readiness
 
+## React validation steps and isolated receipt browser acceptance (15 October 2026)
+
+Fresh React validations now use adapter 48's per-RPC preview/save/status contract.
+The actual accepted action supplies the next prompt. Schema 4 shares the existing
+stock recovery slot; a strict transaction replaces only its exact accepted prior
+request before a continuation is sent. Pending legacy atomic requests retain their
+original contract. Home passes 695 tests/74 suites, including 57 focused validation,
+storage and transfer cases; 19 storage cases also pass with a non-default database.
+
+Real local browser receipt saves preserve native intermediate prices and stop at
+backorder. Full reload and tab reopen recover the identical request without replay;
+closing that saved prompt clears recovery and reloads transfers. Independent
+read-only assertions verify two author/company/order-bound receipts, one-time prompt
+consumption, saved prices, unchanged stock/protected accounting stored fields and
+financial counts, and no delivery/valuation. See the [precise acceptance boundary](../runtime/billing/STOCK_VALIDATION.md#react-per-step-migration-and-receipt-browser-checkpoint-15-october-2026).
+
+Actual browser immediate/expiry/terminal/valuation and transport-loss cases remain,
+as do complete keyboard/narrow checks, wider configurations and matching protected
+publication. The development build includes unrelated clinical working files and
+is not a clean release artifact. Tester remains adapter 43; production/public demo
+unchanged. Historical migration-pending statements below describe older checkpoints.
+
 ## Native validation intermediate-persistence correction (15 October 2026)
 
 Separate native HTTP requests prove receipt prices/immediate quantities can persist
@@ -3069,8 +3091,7 @@ Start visit action produced one FHIR Encounter POST returning 201 and one
 OPEN_VISIT audit POST returning 200. Complete network captures were not
 truncated. Independent native reads confirm one active OPD visit,
 `f769b1e9-b6a4-4da6-907f-89da6c9a6e83`, with zero clinical encounters. Patient
-creation, dashboard access and visit open persisted as audit IDs 155, 156 and
-157. The redesigned audit filter displays all three messages translated with
+creation, dashboard access and visit open persisted as audit IDs 155, 156 and 157. The redesigned audit filter displays all three messages translated with
 their actual patient ID, user and visit type. Screenshot:
 `audit-native-writer-20261007.png` in the private staging evidence directory.
 The empty consultation was cancelled, not saved as clinical content.
@@ -3136,10 +3157,10 @@ following status GET fails. Missing or external configuration fails closed.
 The already approved isolated staging browser submitted two clearly labelled
 concept fixtures. Independent native status reads returned:
 
-| Import ID | Native status | Successful rows | Failed rows |
-| --- | --- | --- | --- |
-| 1 | COMPLETED | 1 | 0 |
-| 2 | COMPLETED_WITH_ERRORS | 0 | 1 |
+| Import ID | Native status         | Successful rows | Failed rows |
+| --------- | --------------------- | --------------- | ----------- |
+| 1         | COMPLETED             | 1               | 0           |
+| 2         | COMPLETED_WITH_ERRORS | 0               | 1           |
 
 The valid concept UUID is `e775e6d0-7b5f-4d70-a286-eb0b383f2e73`, named
 `QorliaQA CSV Concept 20261007`. Native search for the invalid fixture returns

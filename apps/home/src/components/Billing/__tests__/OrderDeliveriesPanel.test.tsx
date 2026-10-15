@@ -89,37 +89,43 @@ describe('Order stock transfer review', () => {
     );
     await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
   });
-  it('resumes validation for its original order and completed/disappeared transfer, blocking other writes', async () => {
-    jest.mocked(loadStockWriteRecovery).mockResolvedValue({
-      ...validationRequest(),
-      order_id: 10,
-      transfer_id: 12,
-    });
-    show();
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Resume validation request' }),
-    );
-    expect(mockValidation.mock.calls.at(-1)?.[0]).toMatchObject({
-      uid: 3,
-      orderId: 10,
-      transferId: 12,
-    });
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Return from validation' }),
-    );
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'View transfer QORLIAQA/OUT/11',
-      }),
-    );
-    for (const name of [
-      'Review transfer validation',
-      'Review transfer confirmation',
-      'Review stock preparation',
-      'Add operation for QA Medicine',
-    ])
-      expect(screen.getByRole('button', { name })).toBeDisabled();
-  });
+  it.each([false, true])(
+    'resumes validation (step protocol: %s) for its original order and missing transfer, blocking other writes',
+    async (step) => {
+      jest.mocked(loadStockWriteRecovery).mockResolvedValue({
+        ...validationRequest(),
+        order_id: 10,
+        transfer_id: 12,
+        ...(step ? { continuation_key: false } : {}),
+      });
+      show();
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Resume validation request',
+        }),
+      );
+      expect(mockValidation.mock.calls.at(-1)?.[0]).toMatchObject({
+        uid: 3,
+        orderId: 10,
+        transferId: 12,
+      });
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Return from validation' }),
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'View transfer QORLIAQA/OUT/11',
+        }),
+      );
+      for (const name of [
+        'Review transfer validation',
+        'Review transfer confirmation',
+        'Review stock preparation',
+        'Add operation for QA Medicine',
+      ])
+        expect(screen.getByRole('button', { name })).toBeDisabled();
+    },
+  );
   it('opens the native confirmation review from transfer details and reloads on close', async () => {
     show();
     fireEvent.click(

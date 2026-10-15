@@ -91,7 +91,7 @@ The next [delivery-validation contract](../runtime/billing/STOCK_VALIDATION.md) 
 
 Invoices, payments, journals and banks have different contracts and native rules. Do not generalize stock logic into financial posting.
 
-The subsequent [native persistence audit and step contract](../runtime/billing/STOCK_VALIDATION.md#native-intermediate-persistence-audit-and-adapter-48-step-contract) confirms preparation can persist between prompts. Adapter 48 adds individually reviewed native RPC steps with private server-held continuations and one-time consumption. A consumed/expired prompt does not erase its receipt. React/storage migration is still required; replaying an already committed decision sequence is not an acceptable substitute.
+The subsequent [native persistence audit and step contract](../runtime/billing/STOCK_VALIDATION.md#native-intermediate-persistence-audit-and-adapter-48-step-contract) confirms preparation can persist between prompts. Adapter 48 adds individually reviewed native RPC steps with private server-held continuations and one-time consumption. A consumed/expired prompt does not erase its receipt. React now follows those steps and atomically replaces only the exact accepted recovery request before sending its continuation. Old atomic pending requests retain their original API. The [receipt browser checkpoint](../runtime/billing/STOCK_VALIDATION.md#react-per-step-migration-and-receipt-browser-checkpoint-15-october-2026) verifies isolated save/reopen/close, not all wizard/failure cases or protected publication. Replaying an already committed decision sequence is not an acceptable substitute.
 
 ## Authentication and configuration
 

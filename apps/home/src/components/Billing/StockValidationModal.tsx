@@ -5,15 +5,17 @@ import styles from './BillingPage.module.scss';
 import {
   BillingActionRejected,
   BillingSessionExpired,
-  checkedStockValidationRequest,
+  checkedStockValidationStepRequest,
   getStockValidation,
   getStockValidationStatus,
-  previewStockValidation,
+  previewStockValidationStep,
+  getStockValidationStepStatus,
+  saveStockValidationStep,
   saveStockValidation,
   StockValidationDecision,
   StockValidationLoad,
-  StockValidationRequest,
-  StockValidationReview,
+  StockValidationStepReview,
+  StockValidationStepStatus,
   StockValidationStatus,
 } from './billingService';
 import {
@@ -24,6 +26,9 @@ import {
   clearStockValidationRecovery,
   loadStockValidationRecovery,
   persistStockValidationRecovery,
+  replaceStockValidationRecovery,
+  isStockValidationStepRequest,
+  StockValidationRecoveryRequest,
 } from './stockReservationRecovery';
 import { StockValidationStep } from './StockValidationStep';
 
@@ -59,6 +64,9 @@ const decisionLabel = (decision: StockValidationDecision) =>
           : 'Cancel remaining demand';
 const label = (relation: [number, string] | false) =>
   relation ? relation[1] : 'Not set';
+const isStepStatus = (
+  value: StockValidationStatus | StockValidationStepStatus,
+): value is StockValidationStepStatus => 'terminal' in value;
 function ValidationReview({
   uid,
   orderId,
@@ -82,11 +90,13 @@ function ValidationReview({
   }, [returnFocus]);
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<
-    StockValidationRequest | null | undefined
+    StockValidationRecoveryRequest | null | undefined
   >(undefined);
   const [current, setCurrent] = useState<StockValidationLoad | null>(null);
-  const [review, setReview] = useState<StockValidationReview | null>(null);
-  const [receipt, setReceipt] = useState<StockValidationStatus | null>(null);
+  const [review, setReview] = useState<StockValidationStepReview | null>(null);
+  const [receipt, setReceipt] = useState<
+    StockValidationStatus | StockValidationStepStatus | null
+  >(null);
   const [failure, setFailure] = useState<Error | null>(null);
   const [notice, setNotice] = useState('');
   const loaded = useQuery({
@@ -107,13 +117,25 @@ function ValidationReview({
   const request =
     pending === undefined ? (loaded.data?.request ?? null) : pending;
   const state = current ?? loaded.data?.state;
+  const stepReceipt = receipt && isStepStatus(receipt) ? receipt : null;
+  const continuing = !!(
+    review &&
+    request &&
+    isStockValidationStepRequest(request) &&
+    review.continuation_key === request.request_key &&
+    stepReceipt?.accepted
+  );
+  const exactStatus = (value: StockValidationRecoveryRequest) =>
+    isStockValidationStepRequest(value)
+      ? getStockValidationStepStatus(value)
+      : getStockValidationStatus(value);
   useEffect(() => {
     const target = failure
       ? errorMessage.current
-      : receipt
-        ? receiptHeading.current
-        : review && !request
-          ? reviewHeading.current
+      : review
+        ? reviewHeading.current
+        : receipt
+          ? receiptHeading.current
           : null;
     target?.focus();
   }, [failure, receipt, review, request]);
@@ -144,19 +166,44 @@ function ValidationReview({
       if (mounted.current) setBusy(false);
     }
   };
-  const preview = (decisions: StockValidationDecision[]) =>
+  const preview = (decision?: StockValidationDecision) =>
     run(async () => {
-      if (!state || request || state.reason || !state.write_ready) return;
+      if (!state || state.reason || !state.write_ready) return;
+      if (
+        request &&
+        (!isStockValidationStepRequest(request) ||
+          !stepReceipt?.next_step ||
+          !decision)
+      )
+        return;
       setReview(null);
-      const value = await previewStockValidation({
-        order_id: state.order_id,
-        transfer_id: state.transfer_id,
-        version: state.version,
-        decisions,
+      const accepted = request ? await exactStatus(request) : null;
+      if (!mounted.current) return;
+      if (
+        accepted &&
+        (!isStepStatus(accepted) ||
+          !accepted.accepted ||
+          !accepted.next_step ||
+          accepted.terminal)
+      )
+        throw new Error(
+          'The saved native prompt is unavailable. Check the exact request before continuing.',
+        );
+      const latest = accepted?.current ?? state;
+      const value = await previewStockValidationStep({
+        order_id: latest.order_id,
+        transfer_id: latest.transfer_id,
+        version: latest.version,
+        continuation_key: request?.request_key ?? false,
+        decisions: decision ? [decision] : [],
       });
-      if (mounted.current) setReview(value);
+      if (mounted.current) {
+        if (accepted) setReceipt(accepted);
+        setCurrent(latest);
+        setReview(value);
+      }
     });
-  const show = (result: StockValidationStatus) => {
+  const show = (result: StockValidationStatus | StockValidationStepStatus) => {
     if (!mounted.current) return;
     setCurrent(result.current);
     setReview(null);
@@ -169,34 +216,55 @@ function ValidationReview({
   };
   const save = () =>
     run(async () => {
-      if (receipt) return;
+      if (receipt && !review) return;
       let exact = request;
-      if (!exact) {
+      if (review) {
         if (
-          !review?.terminal ||
           !review.write_ready ||
           !state?.write_ready ||
           failure ||
-          typeof review.review_version !== 'string'
+          (request && !continuing)
         )
           return;
-        exact = checkedStockValidationRequest({
+        const next = checkedStockValidationStepRequest({
           order_id: review.order_id,
           transfer_id: review.transfer_id,
           version: review.version,
           decisions: review.decisions,
           review_version: review.review_version,
           request_key: crypto.randomUUID(),
+          continuation_key: review.continuation_key,
         });
+        exact = next;
+        if (continuing && request && isStockValidationStepRequest(request)) {
+          const accepted = await getStockValidationStepStatus(request);
+          if (!mounted.current) return;
+          if (!accepted.accepted || !accepted.next_step || accepted.terminal)
+            throw new Error(
+              'The saved native prompt is unavailable. Keep its exact recovery request.',
+            );
+          await replaceStockValidationRecovery(uid, request, next);
+        } else await persistStockValidationRecovery(uid, exact);
+      } else {
+        if (!exact) return;
+        await persistStockValidationRecovery(uid, exact);
       }
-      await persistStockValidationRecovery(uid, exact);
       if (!mounted.current) return;
       setPending(exact);
+      setReview(null);
+      setReceipt(null);
       try {
-        show(await saveStockValidation(exact));
+        show(
+          await (isStockValidationStepRequest(exact)
+            ? saveStockValidationStep(exact)
+            : saveStockValidation(exact)),
+        );
       } catch (error) {
         if (error instanceof BillingActionRejected) {
-          await clearStockValidationRecovery(uid, exact);
+          if (await clearStockValidationRecovery(uid, exact))
+            throw new Error(
+              'Recovery storage changed. Check the previous request before starting another step.',
+            );
           if (mounted.current) {
             setPending(null);
             setReview(null);
@@ -212,12 +280,15 @@ function ValidationReview({
   const finish = () =>
     run(async () => {
       if (!request) return;
-      const result = await getStockValidationStatus(request);
+      const result = await exactStatus(request);
       if (!result.accepted)
         throw new Error(
           'Accepted validation receipt unavailable. Keep this recovery request.',
         );
-      await clearStockValidationRecovery(uid, request);
+      if (await clearStockValidationRecovery(uid, request))
+        throw new Error(
+          'Recovery storage changed. Keep the pending request and reload its status.',
+        );
       await Promise.all([
         client.invalidateQueries({
           queryKey: ['billing', 'order-deliveries', uid],
@@ -257,9 +328,10 @@ function ValidationReview({
       >
         <p>
           Review the native receipt, immediate-transfer, backorder or expiry
-          decisions before saving. Validation can move stock and create
-          valuation or accounting records. Previews are rolled back; nothing is
-          saved until you confirm the final reviewed action.
+          decisions one native action at a time. Previews are rolled back. Each
+          saved step commits its reviewed effects. Closing the next prompt does
+          not undo earlier preparation. Validation can move stock and create
+          valuation or accounting records.
         </p>
         {loaded.isFetching ? (
           <p role="status">
@@ -285,6 +357,12 @@ function ValidationReview({
               <p role="status">
                 A previous validation for this order and transfer must be
                 resolved before starting another stock action.
+              </p>
+            ) : null}
+            {request && !isStockValidationStepRequest(request) ? (
+              <p role="status">
+                A legacy atomic validation request is stored. Recover that exact
+                request before starting the new step-by-step workflow.
               </p>
             ) : null}
             <div
@@ -340,24 +418,25 @@ function ValidationReview({
                       !state.write_ready ||
                       !!failure
                     }
-                    onClick={() => void preview([])}
+                    onClick={() => void preview()}
                   >
                     Review native validation
                   </Button>
                 ) : null}
               </>
             ) : null}
-            {review && !request ? (
+            {review && (!request || continuing) ? (
               <>
                 <h3 ref={reviewHeading} tabIndex={-1}>
                   Validation preview
                 </h3>
                 <p>
-                  Previewed native state after these decisions:{' '}
-                  {review.state_after}. This is not saved stock.
+                  Previewed native state after this action: {review.state_after}
+                  . These effects are not saved yet. Earlier accepted steps
+                  remain saved.
                 </p>
                 <section aria-label="Reviewed validation decisions">
-                  <h3>Decisions so far</h3>
+                  <h3>This step</h3>
                   {review.decisions.length ? (
                     <ol>
                       {review.decisions.map((decision, index) => (
@@ -371,57 +450,48 @@ function ValidationReview({
                       ))}
                     </ol>
                   ) : (
-                    <p>No wizard choices were needed so far.</p>
+                    <p>
+                      Open the native Validate action. No prompt decision is
+                      being processed yet.
+                    </p>
                   )}
                 </section>
                 {review.next_step ? (
-                  <StockValidationStep
-                    key={JSON.stringify([
-                      review.decisions,
-                      review.next_step.kind,
-                      review.next_step.transfers,
-                    ])}
-                    step={review.next_step}
-                    disabled={locked || !!failure}
-                    choose={(decision) =>
-                      void preview([...review.decisions, decision])
-                    }
-                  />
+                  <p>
+                    Next native prompt after saving: {review.next_step.title}.
+                    Its decision is not processed by this save.
+                  </p>
                 ) : null}
                 <StockConfirmationEffects effects={review.effects} />
-                {review.terminal ? (
-                  <>
-                    {review.state_after !== 'done' ? (
-                      <p role="status">
-                        This reviewed action leaves the transfer{' '}
-                        {review.state_after}. It does not complete delivery.
-                      </p>
-                    ) : null}
-                    <Button
-                      disabled={
-                        locked ||
-                        !!failure ||
-                        !review.write_ready ||
-                        !state.write_ready
-                      }
-                      onClick={() => void save()}
-                    >
-                      Save reviewed validation
-                    </Button>
-                  </>
+                {review.state_after !== 'done' ? (
+                  <p role="status">
+                    This reviewed action leaves the transfer{' '}
+                    {review.state_after}. It does not complete delivery.
+                  </p>
                 ) : null}
-                {review.decisions.length ? (
-                  <Button
-                    kind="tertiary"
-                    disabled={locked || !!failure}
-                    onClick={() => void preview(review.decisions.slice(0, -1))}
-                  >
-                    Review previous choice
-                  </Button>
-                ) : null}
+                <Button
+                  disabled={
+                    locked ||
+                    !!failure ||
+                    !review.write_ready ||
+                    !state.write_ready
+                  }
+                  onClick={() => void save()}
+                >
+                  Save reviewed validation step
+                </Button>
+                <Button
+                  kind="tertiary"
+                  disabled={locked || !!failure}
+                  onClick={() => setReview(null)}
+                >
+                  {request
+                    ? 'Back to saved native prompt'
+                    : 'Discard validation preview'}
+                </Button>
               </>
             ) : null}
-            {receipt ? (
+            {receipt && !review ? (
               <section aria-label="Saved validation references">
                 <h3 ref={receiptHeading} tabIndex={-1}>
                   Accepted native validation action: {receipt.state_after}
@@ -445,6 +515,26 @@ function ValidationReview({
                 {!Object.keys(receipt.references).length ? (
                   <p>No new business document references were created.</p>
                 ) : null}
+                {stepReceipt?.continuation_reason ? (
+                  <p role="status">{stepReceipt.continuation_reason}</p>
+                ) : null}
+                {stepReceipt?.next_step ? (
+                  <StockValidationStep
+                    key={JSON.stringify([
+                      request?.request_key,
+                      stepReceipt.next_step.kind,
+                      stepReceipt.next_step.transfers,
+                    ])}
+                    step={stepReceipt.next_step}
+                    disabled={
+                      locked ||
+                      !!failure ||
+                      !!state.reason ||
+                      !state.write_ready
+                    }
+                    choose={(decision) => void preview(decision)}
+                  />
+                ) : null}
               </section>
             ) : null}
           </>
@@ -461,14 +551,12 @@ function ValidationReview({
               kind="tertiary"
               disabled={locked}
               onClick={() =>
-                void run(async () =>
-                  show(await getStockValidationStatus(request)),
-                )
+                void run(async () => show(await exactStatus(request)))
               }
             >
               Check validation request
             </Button>
-            {!receipt ? (
+            {!receipt && !review ? (
               <Button
                 kind="danger"
                 disabled={locked}
@@ -476,15 +564,17 @@ function ValidationReview({
               >
                 Retry identical validation request
               </Button>
-            ) : (
+            ) : !review ? (
               <Button
                 kind="tertiary"
                 disabled={locked}
                 onClick={() => void finish()}
               >
-                Finish and reload transfers
+                {stepReceipt && !stepReceipt.terminal
+                  ? 'Close saved prompt and reload transfers'
+                  : 'Finish and reload transfers'}
               </Button>
-            )}
+            ) : null}
           </>
         ) : (
           <Button

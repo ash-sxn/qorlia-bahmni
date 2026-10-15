@@ -13,6 +13,8 @@ import {
   loadStockValidationRecovery,
   persistStockValidationRecovery,
   clearStockValidationRecovery,
+  replaceStockValidationRecovery,
+  isStockValidationStepRequest,
 } from '../stockReservationRecovery';
 import { confirmationRequest } from './stockConfirmationFixture';
 import { operationRequest } from './stockOperationFixture';
@@ -108,6 +110,193 @@ function database() {
 }
 
 describe('Stock reservation IndexedDB recovery', () => {
+  const stepRequest = () => ({
+    ...validationRequest(),
+    continuation_key: false as const,
+  });
+  const nextStep = () => ({
+    ...stepRequest(),
+    request_key: '22222222-2222-4333-8444-555555555555',
+    continuation_key: stepRequest().request_key,
+    decisions: [{ kind: 'immediate' as const, selected: true }],
+  });
+  it('stores step requests as explicit database-bound schema 4 without reinterpreting old atomic recovery', async () => {
+    const fake = database();
+    await persistStockValidationRecovery(3, stepRequest());
+    expect(fake.records.get(3)).toEqual({
+      schema: 4,
+      kind: 'validation_step',
+      database: billingDatabase,
+      uid: 3,
+      request: stepRequest(),
+    });
+    expect(await loadStockValidationRecovery(3)).toEqual(stepRequest());
+    expect(
+      isStockValidationStepRequest((await loadStockValidationRecovery(3))!),
+    ).toBe(true);
+    for (const load of [
+      loadStockReservationRecovery,
+      loadStockOperationRecovery,
+      loadStockConfirmationRecovery,
+    ])
+      await expect(load(3)).rejects.toThrow(/request is pending/);
+    for (const exact of [
+      validationRequest(),
+      confirmationRequest(),
+      operationRequest(),
+      request(),
+    ]) {
+      await expect(
+        persistStockValidationRecovery(
+          3,
+          exact as ReturnType<typeof validationRequest>,
+        ),
+      ).rejects.toThrow();
+    }
+    expect(await clearStockValidationRecovery(3, validationRequest())).toEqual(
+      stepRequest(),
+    );
+    await clearStockValidationRecovery(3, stepRequest());
+    await persistStockValidationRecovery(3, validationRequest());
+    expect(await loadStockValidationRecovery(3)).toEqual(validationRequest());
+    expect(
+      isStockValidationStepRequest((await loadStockValidationRecovery(3))!),
+    ).toBe(false);
+    expect(fake.records.get(3)).toMatchObject({
+      schema: 3,
+      kind: 'validation',
+    });
+  });
+  it('atomically replaces only the exact preceding step and waits for durable commit', async () => {
+    const fake = database();
+    await persistStockValidationRecovery(3, stepRequest());
+    fake.hold();
+    let resolved = false;
+    const saving = replaceStockValidationRecovery(
+      3,
+      stepRequest(),
+      nextStep(),
+    ).then(() => {
+      resolved = true;
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(resolved).toBe(false);
+    expect(fake.records.get(3)).toMatchObject({ request: stepRequest() });
+    fake.commit();
+    await saving;
+    expect(fake.records.get(3)).toMatchObject({
+      schema: 4,
+      kind: 'validation_step',
+      request: nextStep(),
+    });
+    expect(fake.db.transaction).toHaveBeenLastCalledWith(
+      'pending',
+      'readwrite',
+      { durability: 'strict' },
+    );
+  });
+  it('never replaces a missing, changed or older-kind recovery request', async () => {
+    const fake = database();
+    for (const stored of [
+      undefined,
+      {
+        schema: 3,
+        kind: 'validation',
+        database: billingDatabase,
+        uid: 3,
+        request: validationRequest(),
+      },
+      {
+        schema: 2,
+        kind: 'confirmation',
+        uid: 3,
+        request: confirmationRequest(),
+      },
+      { schema: 1, uid: 3, request: operationRequest() },
+      {
+        schema: 4,
+        kind: 'validation_step',
+        database: billingDatabase,
+        uid: 3,
+        request: {
+          ...stepRequest(),
+          request_key: '33333333-2222-4333-8444-555555555555',
+        },
+      },
+    ]) {
+      if (stored) fake.records.set(3, stored);
+      else fake.records.delete(3);
+      await expect(
+        replaceStockValidationRecovery(3, stepRequest(), nextStep()),
+      ).rejects.toThrow(/preceding recovery request changed/);
+      expect(fake.records.get(3)).toEqual(stored);
+    }
+  });
+  it('rejects wrong continuation and foreign/malformed schema 4 without losing the old request', async () => {
+    const fake = database();
+    await persistStockValidationRecovery(3, stepRequest());
+    for (const change of [
+      { continuation_key: false as const },
+      { transfer_id: 12 },
+      { order_id: 10 },
+    ]) {
+      await expect(
+        replaceStockValidationRecovery(3, stepRequest(), {
+          ...nextStep(),
+          ...change,
+        }),
+      ).rejects.toThrow();
+      expect(fake.records.get(3)).toMatchObject({ request: stepRequest() });
+    }
+    for (const stored of [
+      {
+        schema: 4,
+        kind: 'validation_step',
+        database: `${billingDatabase}_other`,
+        uid: 3,
+        request: stepRequest(),
+      },
+      {
+        schema: 4,
+        kind: 'validation_step',
+        database: billingDatabase,
+        uid: 3,
+        request: validationRequest(),
+      },
+      {
+        schema: 3,
+        kind: 'validation',
+        database: billingDatabase,
+        uid: 3,
+        request: stepRequest(),
+      },
+      {
+        schema: 4,
+        kind: 'validation',
+        database: billingDatabase,
+        uid: 3,
+        request: stepRequest(),
+      },
+    ]) {
+      fake.records.set(3, stored);
+      await expect(loadStockValidationRecovery(3)).rejects.toThrow();
+      await expect(
+        persistStockValidationRecovery(3, nextStep()),
+      ).rejects.toThrow();
+      expect(fake.records.get(3)).toEqual(stored);
+    }
+  });
+  it('keeps the previous step when an atomic replacement aborts', async () => {
+    const fake = database();
+    await persistStockValidationRecovery(3, stepRequest());
+    fake.fail();
+    await expect(
+      replaceStockValidationRecovery(3, stepRequest(), nextStep()),
+    ).rejects.toThrow(/could not be committed/);
+    expect(fake.records.get(3)).toMatchObject({ request: stepRequest() });
+  });
   it('keeps validation choices durable in schema 3 and excludes every other stock writer', async () => {
     const fake = database();
     const exact = {
