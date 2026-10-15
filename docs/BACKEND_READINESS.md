@@ -1,5 +1,37 @@
 # Qorlia React frontend backend readiness
 
+## Adapter 47 service and real isolated gateway HTTP (15 October 2026)
+
+The actual TypeScript validation boundary and four named gateway APIs now have
+isolated native HTTP evidence. Fresh adapter 47 gateway saves cover partial
+delivery/backorder, receipt metadata, declined expiry and automatic valuation.
+Earlier adapter 46 full/immediate saves, including a lost accepted response, are
+recovered through their exact receipts and identical retries under adapter 47.
+Concurrent identical backorder requests create one remainder. Gateway checks use
+real clinical/ERP sessions and preserve existing access, context, method and
+cookie boundaries. This is local loopback gateway acceptance, not public HTTPS
+or browser acceptance.
+
+Actual wire validation found a native translated-name object in a backorder's
+product-template relation label. Adapter 47 resolves that snapshot label to text
+with permission checks and native language fallback. No quantities, prices,
+accounting values or native date rules were discarded to make the parser pass.
+Ordinary confirmation retains its narrower effect contract.
+
+All 96 native fulfillment cases pass with mandatory analytics; the 674-case legacy
+addon harness passes on the copy with optional analytics restored to mandatory.
+Home passes 643 tests/72 suites, plus final focused confirmation/validation checks,
+source and test-source types, lint/format, nine gateway/configuration tests and a
+development build. Native mounted source hashes match. Synthetic native/API
+read-back covers quantities, delivery, one posted balanced stock journal and its
+analytics, while protected finance and unrelated stock remain unchanged.
+
+React wizard controls, shared pending-stock recovery integration and browser saves
+remain unfinished, along with notifications, native reports/multi-transfer flows,
+broader permissions/configurations and production scaling. The running protected
+tester stays adapter 43, not adapter 47. Production/public demo are unchanged.
+See [the current validation contract](../runtime/billing/STOCK_VALIDATION.md).
+
 ## Adapter 46 native validation save/status source (15 October 2026)
 
 Terminal validation review now signs its ordered decisions, visible/private native

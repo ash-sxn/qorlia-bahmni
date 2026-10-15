@@ -77,6 +77,8 @@ class StockValidationPreviewTest(native_contract.StockValidationFixture, Transac
         backorders = kept['effects']['created']['stock.picking']
         self.assertEqual(len(backorders), 1)
         self.assertEqual(backorders[0]['values']['backorder_id'], picking.id)
+        self.assertTrue(all(isinstance(label, str) for label in kept['effects']['labels'].values()))
+        self.assertEqual(kept['effects']['labels']['product.template:%s' % self.product.product_tmpl_id.id], self.product.name)
         cancelled = self.preview(picking, [{'kind': 'backorder', 'selected': False}])
         self.assertFalse(cancelled['effects']['created'].get('stock.picking'))
         self.assertEqual(cancelled['state_after'], 'done')

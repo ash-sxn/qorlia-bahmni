@@ -54,6 +54,8 @@ This supplies the Nx target context used by its Webpack plugin. The protected 14
 
 ## Native runtime testing
 
+The newest [adapter 47 validation checkpoint](../runtime/billing/STOCK_VALIDATION.md#adapter-47-service-and-isolated-http-checkpoint-15-october-2026) adds 16 service-boundary cases, 643 Home tests/72 suites, a final 30-case confirmation/validation run, nine gateway/configuration checks, types/lint/format and a development build. Native source passes 96 mandatory-analytics fulfillment cases and the 674-case legacy-copy harness with analytics restored. Six actual HTTP scenarios and independent receipt/accounting/stock read-back pass with the version distinctions recorded in that contract. This is not validation-wizard UI, browser recovery or hosted publication acceptance. The older counts below remain historical observations.
+
 Python Billing tests are in [the addon tests](../runtime/billing/qorlia_billing_ui/tests/); they run inside a compatible Odoo installation with matching Bahmni modules and synthetic configuration. Running ordinary `pytest` without that runtime does not reproduce those tests.
 
 The isolated adapter 43 checkpoint passed 28 focused operation-form/action checks and 578 full addon tests with no failures/errors/skips. Native mandatory analytical configuration was restored and installed source hashes matched. This does not accept full fulfillment, production deployment or every module. Native environment/test procedures are operator-provided; never copy private database settings into a public script.

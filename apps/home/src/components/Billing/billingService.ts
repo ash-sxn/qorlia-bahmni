@@ -3987,6 +3987,7 @@ export interface StockConfirmationEffects {
       id: number;
       before: Record<string, ConfirmationValue>;
       after: Record<string, ConfirmationValue>;
+      assigned_on_save?: string[];
     }[]
   >;
   deleted: Record<
@@ -4070,6 +4071,7 @@ function validConfirmationValue(value: unknown, depth = 0): boolean {
 function validConfirmationField(
   value: ConfirmationValue,
   field: { type: string; relation: string | false },
+  models = confirmationModels,
 ) {
   if (!validConfirmationValue(value)) return false;
   if (['integer', 'float', 'monetary'].includes(field.type))
@@ -4083,7 +4085,7 @@ function validConfirmationField(
         Number.isSafeInteger(value) &&
         value >= 0) ||
       (typeof value === 'string' &&
-        confirmationModels.some((model) => confirmationKey(value, model)))
+        models.some((model) => confirmationKey(value, model)))
     );
   const reference = (item: ConfirmationValue) =>
     item === false ||
@@ -4182,7 +4184,11 @@ function checkedConfirmationLoad(
     throw new Error('Invalid confirmation state. Reload the transfer.');
   return data;
 }
-function validConfirmationEffects(data: StockConfirmationEffects): boolean {
+function validConfirmationEffects(
+  data: StockConfirmationEffects,
+  validation = false,
+): boolean {
+  const allowedModels = validation ? validationModels : confirmationModels;
   if (
     !confirmationKeys(data, [
       'created',
@@ -4205,7 +4211,7 @@ function validConfirmationEffects(data: StockConfirmationEffects): boolean {
     return false;
   const models = Object.keys(data.schema);
   if (
-    !models.every((model) => confirmationModels.includes(model)) ||
+    !models.every((model) => allowedModels.includes(model)) ||
     ![data.created, data.updated, data.deleted].every(
       (rows) =>
         Object.keys(rows).sort().join(',') === [...models].sort().join(','),
@@ -4232,7 +4238,11 @@ function validConfirmationEffects(data: StockConfirmationEffects): boolean {
       Object.entries(row).every(
         ([key, value]) =>
           Object.hasOwn(schema, key) &&
-          validConfirmationField(value as ConfirmationValue, schema[key]),
+          validConfirmationField(
+            value as ConfirmationValue,
+            schema[key],
+            allowedModels,
+          ),
       );
     const created = data.created[model],
       updated = data.updated[model],
@@ -4251,7 +4261,9 @@ function validConfirmationEffects(data: StockConfirmationEffects): boolean {
           (field) =>
             typeof field === 'string' &&
             Object.hasOwn(row.values, field) &&
-            row.values[field] === false,
+            row.values[field] === false &&
+            (!validation ||
+              (validationCreatedAssignments[model] || []).includes(field)),
         )
       )
         return false;
@@ -4260,10 +4272,29 @@ function validConfirmationEffects(data: StockConfirmationEffects): boolean {
     if (
       !updated.every(
         (row) =>
-          confirmationKeys(row, ['id', 'before', 'after']) &&
+          confirmationKeys(row, [
+            'id',
+            'before',
+            'after',
+            ...(validation && Object.hasOwn(row, 'assigned_on_save')
+              ? ['assigned_on_save']
+              : []),
+          ]) &&
           stockId(row.id) &&
           values(row.before) &&
-          values(row.after),
+          values(row.after) &&
+          (!Object.hasOwn(row, 'assigned_on_save') ||
+            (validation &&
+              Array.isArray(row.assigned_on_save) &&
+              new Set(row.assigned_on_save).size ===
+                row.assigned_on_save.length &&
+              row.assigned_on_save.every(
+                (field) =>
+                  typeof field === 'string' &&
+                  Object.hasOwn(row.after, field) &&
+                  row.after[field] === false &&
+                  (validationUpdatedAssignments[model] || []).includes(field),
+              ))),
       ) ||
       !deleted.every(
         (row) =>
@@ -4278,14 +4309,17 @@ function validConfirmationEffects(data: StockConfirmationEffects): boolean {
   }
   return Object.entries(data.private_audit_counts).every(
     ([model, counts]) =>
-      [
-        'mail.message',
-        'mail.mail',
-        'mail.activity',
-        'mail.notification',
-        'mail.tracking.value',
-        'ir.attachment',
-      ].includes(model) &&
+      (validation
+        ? validationPrivateModels
+        : [
+            'mail.message',
+            'mail.mail',
+            'mail.activity',
+            'mail.notification',
+            'mail.tracking.value',
+            'ir.attachment',
+          ]
+      ).includes(model) &&
       confirmationKeys(counts, ['created', 'updated', 'deleted']) &&
       Object.values(counts).every(
         (count) => Number.isSafeInteger(count) && count >= 0,
@@ -4391,6 +4425,431 @@ export const saveStockConfirmation = (request: StockConfirmationRequest) =>
   confirmationRequest('qorlia_confirmation_save', request);
 export const getStockConfirmationStatus = (request: StockConfirmationRequest) =>
   confirmationRequest('qorlia_confirmation_status', request);
+
+export type StockValidationDecision =
+  | { kind: 'receipt'; confirm: true }
+  | { kind: 'immediate' | 'backorder'; selected: boolean }
+  | { kind: 'expiry'; proceed: boolean };
+export type StockValidationLoad = StockConfirmationLoad;
+export interface StockValidationSelection extends StockConfirmationSelection {
+  decisions: StockValidationDecision[];
+}
+export interface StockValidationRequest extends StockValidationSelection {
+  review_version: string;
+  request_key: string;
+}
+export interface StockValidationEffects
+  extends Omit<StockConfirmationEffects, 'private_audit_counts'> {
+  private_effect_counts: StockConfirmationEffects['private_audit_counts'];
+}
+export interface StockValidationOperation {
+  id: number;
+  product_id: Exclude<Relation, false>;
+  product_uom_id: Exclude<Relation, false>;
+  qty_done: number;
+  lot_id: Relation;
+  lot_name: string | false;
+  expiration_date: string | false;
+  cost_price: number;
+  sale_price: number;
+  mrp: number;
+  balance: number;
+  is_move_line_lot_expiring_soon: boolean;
+  expiry_warning: false | { title: string; type: 'warning'; message: string };
+}
+export interface StockValidationStep {
+  kind: 'receipt' | 'immediate' | 'backorder' | 'expiry' | 'sms';
+  title: string;
+  transfers: { transfer: Exclude<Relation, false>; selected: boolean }[];
+  lots: Exclude<Relation, false>[];
+  operations: StockValidationOperation[];
+  blocked_reason: string | false;
+  source?: Relation;
+  destination?: Relation;
+  picking_code?: 'incoming' | 'internal';
+  description?: string;
+}
+export interface StockValidationReview extends StockValidationSelection {
+  review_version: string | false;
+  state_after: OrderTransfer['state'];
+  effects: StockValidationEffects;
+  write_ready: boolean;
+  terminal: boolean;
+  next_step: StockValidationStep | false;
+}
+export interface StockValidationStatus
+  extends Omit<StockConfirmationStatus, 'state_after'> {
+  state_after: OrderTransfer['state'] | false;
+}
+const validationModels = [
+  ...confirmationModels,
+  'product.template',
+  'ir.property',
+  'account.move',
+  'account.move.line',
+  'account.payment',
+  'account.partial.reconcile',
+  'stock.valuation.layer',
+  'sale.order',
+  'sale.order.line',
+  'account.full.reconcile',
+  'account.analytic.line',
+];
+const validationPrivateModels = [
+  'mail.message',
+  'mail.mail',
+  'mail.activity',
+  'mail.notification',
+  'mail.tracking.value',
+  'ir.attachment',
+  'account.move',
+  'account.move.line',
+  'account.payment',
+  'account.partial.reconcile',
+  'stock.valuation.layer',
+  'sale.order',
+  'sale.order.line',
+  'account.full.reconcile',
+  'account.analytic.line',
+];
+const validationStates = [
+  'draft',
+  'waiting',
+  'confirmed',
+  'assigned',
+  'done',
+  'cancel',
+];
+const validationUpdatedAssignments: Record<string, string[]> = {
+  'stock.picking': ['date_done'],
+  'stock.move': ['date'],
+  'stock.move.line': ['date'],
+  'stock.quant': ['in_date'],
+  'sale.order': ['effective_date'],
+};
+const validationCreatedAssignments: Record<string, string[]> = {
+  ...validationUpdatedAssignments,
+  'stock.picking': ['name', 'date', 'date_done'],
+  'purchase.order': ['name'],
+  'account.move': ['name'],
+  'mail.message': ['date', 'message_id'],
+  'mail.mail': ['message_id'],
+};
+const validationRelation = (value: unknown): value is [number, string] =>
+  Array.isArray(value) && validRelation(value) && stockId(value[0]);
+export function checkedStockValidationDecisions(
+  value: unknown,
+): StockValidationDecision[] {
+  if (!Array.isArray(value) || value.length > 16)
+    throw new Error('Use the ordered native validation decisions.');
+  return value.map((decision) => {
+    const field =
+      decision?.kind === 'receipt'
+        ? 'confirm'
+        : decision?.kind === 'expiry'
+          ? 'proceed'
+          : ['immediate', 'backorder'].includes(decision?.kind)
+            ? 'selected'
+            : false;
+    if (
+      !field ||
+      !confirmationKeys(decision, ['kind', field]) ||
+      typeof decision[field] !== 'boolean' ||
+      (decision.kind === 'receipt' && decision[field] !== true)
+    )
+      throw new Error('Use the exact next native validation decision.');
+    if (decision.kind === 'receipt') return { kind: 'receipt', confirm: true };
+    if (decision.kind === 'expiry')
+      return { kind: 'expiry', proceed: decision.proceed };
+    return { kind: decision.kind, selected: decision.selected };
+  });
+}
+export function checkedStockValidationRequest(
+  value: StockValidationRequest,
+): StockValidationRequest {
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'decisions',
+      'review_version',
+      'request_key',
+    ])
+  )
+    throw new Error('Use the exact reviewed validation request.');
+  const selection = checkedConfirmationSelection(value);
+  if (
+    !stockVersion(value.review_version) ||
+    typeof value.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      value.request_key,
+    )
+  )
+    throw new Error('Use the exact reviewed validation request.');
+  return {
+    ...selection,
+    decisions: checkedStockValidationDecisions(value.decisions),
+    review_version: value.review_version,
+    request_key: value.request_key,
+  };
+}
+function validValidationEffects(data: StockValidationEffects): boolean {
+  return (
+    confirmationKeys(data, [
+      'created',
+      'updated',
+      'deleted',
+      'labels',
+      'schema',
+      'private_effect_counts',
+    ]) &&
+    validConfirmationEffects(
+      {
+        created: data.created,
+        updated: data.updated,
+        deleted: data.deleted,
+        labels: data.labels,
+        schema: data.schema,
+        private_audit_counts: data.private_effect_counts,
+      },
+      true,
+    )
+  );
+}
+function validValidationStep(
+  data: StockValidationStep,
+  transferId: number,
+): boolean {
+  const keys = [
+    'kind',
+    'title',
+    'transfers',
+    'lots',
+    'operations',
+    'blocked_reason',
+  ];
+  if (
+    !data ||
+    !['receipt', 'immediate', 'backorder', 'expiry', 'sms'].includes(
+      data.kind,
+    ) ||
+    !confirmationKeys(data, [
+      ...keys,
+      ...(data.kind === 'receipt'
+        ? ['source', 'destination', 'picking_code']
+        : data.kind === 'expiry'
+          ? ['description']
+          : []),
+    ]) ||
+    typeof data.title !== 'string' ||
+    !Array.isArray(data.transfers) ||
+    !Array.isArray(data.lots) ||
+    !Array.isArray(data.operations)
+  )
+    return false;
+  if (data.kind === 'sms')
+    return (
+      data.transfers.length === 0 &&
+      data.lots.length === 0 &&
+      data.operations.length === 0 &&
+      typeof data.blocked_reason === 'string' &&
+      data.blocked_reason.length > 0
+    );
+  if (data.blocked_reason !== false) return false;
+  if (data.kind === 'immediate' || data.kind === 'backorder')
+    return (
+      data.lots.length === 0 &&
+      data.operations.length === 0 &&
+      data.transfers.length === 1 &&
+      data.transfers.every(
+        (row) =>
+          confirmationKeys(row, ['transfer', 'selected']) &&
+          validationRelation(row.transfer) &&
+          row.transfer[0] === transferId &&
+          typeof row.selected === 'boolean',
+      )
+    );
+  if (data.transfers.length > 0) return false;
+  if (data.kind === 'expiry')
+    return (
+      data.operations.length === 0 &&
+      typeof data.description === 'string' &&
+      data.lots.length > 0 &&
+      data.lots.every(validationRelation) &&
+      new Set(data.lots.map((lot) => lot[0])).size === data.lots.length
+    );
+  return (
+    data.lots.length === 0 &&
+    ['incoming', 'internal'].includes(String(data.picking_code)) &&
+    validationRelation(data.source) &&
+    validationRelation(data.destination) &&
+    new Set(data.operations.map((row) => row?.id)).size ===
+      data.operations.length &&
+    data.operations.every(
+      (row) =>
+        confirmationKeys(row, [
+          'id',
+          'product_id',
+          'product_uom_id',
+          'qty_done',
+          'lot_id',
+          'lot_name',
+          'expiration_date',
+          'cost_price',
+          'sale_price',
+          'mrp',
+          'balance',
+          'is_move_line_lot_expiring_soon',
+          'expiry_warning',
+        ]) &&
+        stockId(row.id) &&
+        validationRelation(row.product_id) &&
+        validationRelation(row.product_uom_id) &&
+        (row.lot_id === false || validationRelation(row.lot_id)) &&
+        stockText(row.lot_name) &&
+        (row.expiration_date === false ||
+          (typeof row.expiration_date === 'string' &&
+            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?$/.test(
+              row.expiration_date,
+            ) &&
+            Number.isFinite(Date.parse(row.expiration_date)))) &&
+        ['qty_done', 'cost_price', 'sale_price', 'mrp', 'balance'].every(
+          (field) =>
+            typeof row[field as keyof StockValidationOperation] === 'number' &&
+            Number.isFinite(row[field as keyof StockValidationOperation]),
+        ) &&
+        row.qty_done > 0 &&
+        typeof row.is_move_line_lot_expiring_soon === 'boolean' &&
+        (row.is_move_line_lot_expiring_soon
+          ? confirmationKeys(row.expiry_warning, [
+              'title',
+              'type',
+              'message',
+            ]) &&
+            row.expiry_warning !== false &&
+            row.expiry_warning.type === 'warning' &&
+            typeof row.expiry_warning.title === 'string' &&
+            typeof row.expiry_warning.message === 'string'
+          : row.expiry_warning === false),
+    )
+  );
+}
+export async function getStockValidation(orderId: number, transferId: number) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  return checkedConfirmationLoad(
+    await stockCall<StockValidationLoad>('qorlia_validation_load', {
+      order_id: orderId,
+      transfer_id: transferId,
+    }),
+    orderId,
+    transferId,
+  );
+}
+export async function previewStockValidation(
+  selection: StockValidationSelection,
+) {
+  if (
+    !confirmationKeys(selection, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'decisions',
+    ])
+  )
+    throw new Error('Use the exact native validation selection.');
+  const exact = {
+    ...checkedConfirmationSelection(selection),
+    decisions: checkedStockValidationDecisions(selection.decisions),
+  };
+  const data = await stockCall<StockValidationReview>(
+    'qorlia_validation_preview',
+    exact,
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'decisions',
+      'review_version',
+      'next_step',
+      'terminal',
+      'state_after',
+      'effects',
+      'write_ready',
+    ]) ||
+    data.order_id !== exact.order_id ||
+    data.transfer_id !== exact.transfer_id ||
+    data.version !== exact.version ||
+    JSON.stringify(checkedStockValidationDecisions(data.decisions)) !==
+      JSON.stringify(exact.decisions) ||
+    !validationStates.includes(data.state_after) ||
+    typeof data.terminal !== 'boolean' ||
+    (data.terminal
+      ? data.next_step !== false ||
+        !stockVersion(data.review_version) ||
+        data.write_ready !== true
+      : data.next_step === false ||
+        !validValidationStep(data.next_step, exact.transfer_id) ||
+        data.review_version !== false ||
+        data.write_ready !== false) ||
+    !validValidationEffects(data.effects)
+  )
+    throw new Error(
+      'Invalid validation review. Reload and review the native transfer again.',
+    );
+  return data;
+}
+async function validationRequest(
+  method: string,
+  request: StockValidationRequest,
+) {
+  const exact = checkedStockValidationRequest(request);
+  const data = await stockCall<StockValidationStatus>(method, {
+    payload: exact,
+  });
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'request_key',
+      'references',
+      'state_after',
+      'current',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    (method === 'qorlia_validation_save' && !data.accepted) ||
+    (data.accepted
+      ? !validationStates.includes(String(data.state_after))
+      : data.state_after !== false) ||
+    !confirmationObject(data.references) ||
+    (!data.accepted && Object.keys(data.references).length > 0) ||
+    !Object.entries(data.references).every(
+      ([key, row]) =>
+        confirmationKeys(row, ['model', 'id', 'name', 'available']) &&
+        typeof row.model === 'string' &&
+        validationModels.includes(row.model) &&
+        !row.model.startsWith('mail.') &&
+        row.model !== 'ir.attachment' &&
+        confirmationKey(key, row.model) &&
+        typeof row.available === 'boolean' &&
+        (row.available
+          ? stockId(row.id) && typeof row.name === 'string'
+          : row.id === false && row.name === false),
+    )
+  )
+    throw new Error(
+      'Invalid validation receipt. Check the exact request before retrying.',
+    );
+  checkedConfirmationLoad(data.current, exact.order_id, exact.transfer_id);
+  return data;
+}
+export const saveStockValidation = (request: StockValidationRequest) =>
+  validationRequest('qorlia_validation_save', request);
+export const getStockValidationStatus = (request: StockValidationRequest) =>
+  validationRequest('qorlia_validation_status', request);
 
 export interface OrderWorkflow {
   id: number;

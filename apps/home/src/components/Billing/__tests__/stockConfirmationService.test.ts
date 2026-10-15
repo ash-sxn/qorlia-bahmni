@@ -282,6 +282,22 @@ describe('Native confirmation service boundary', () => {
           deleted: 0,
         };
       },
+      (data) => {
+        data.effects.updated['stock.picking'][0].assigned_on_save = [];
+      },
+      (data) => {
+        data.effects.private_audit_counts['account.move'] = {
+          created: 1,
+          updated: 0,
+          deleted: 0,
+        };
+      },
+      (data) => {
+        data.effects.schema['account.move'] = {};
+        data.effects.created['account.move'] = [];
+        data.effects.updated['account.move'] = [];
+        data.effects.deleted['account.move'] = [];
+      },
     ];
     for (const mutate of mutations) {
       const data = review();

@@ -185,13 +185,15 @@ class StockConfirmation(models.Model):
                             label = rows[field.comodel_name][target].get('name')
                             if label is not None:
                                 related.check_field_access_rights('read', ['name'])
+                            if isinstance(label, dict):
+                                label = label.get(self.env.lang) or label.get('en_US') or next(iter(label.values()), False)
                         else:
                             related.check_access_rights('read')
                             related.check_access_rule('read')
                             if not related.exists():
                                 raise UserError('A confirmation dependency is no longer available.')
                             label = related.display_name
-                        if label is not None:
+                        if isinstance(label, str):
                             result['labels']['%s:%s' % (field.comodel_name, target)] = label
                         return target
                     value = [reference(target) for target in value] if field.type == 'many2many' else reference(value)
