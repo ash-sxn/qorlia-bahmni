@@ -107,10 +107,10 @@ class StockConfirmation(models.Model):
             'version': picking._qorlia_confirmation_version(order_id, graph, stamp),
             'reason': reason, 'write_ready': True}
 
-    def _qorlia_confirmation_capture(self):
+    def _qorlia_confirmation_capture(self, model_names=GRAPH_MODELS):
         result, visible = {}, {}
         self.env.flush_all()
-        for name in GRAPH_MODELS:
+        for name in model_names:
             model = self.env[name]
             self.env.cr.execute(sql.SQL('SELECT row_to_json(record) FROM {} record ORDER BY id').format(sql.Identifier(model._table)))
             result[name] = {}
@@ -121,7 +121,7 @@ class StockConfirmation(models.Model):
                 result[name].update({item[0]['id']: item[0] for item in batch})
             visible[name] = set(model.with_context(active_test=False).search([('id', 'in', list(result[name]))]).ids) if model.check_access_rights('read', raise_exception=False) else set()
         links = {}
-        for name in GRAPH_MODELS:
+        for name in model_names:
             model = self.env[name]
             for field_name, field in model._fields.items():
                 if field.type == 'many2many' and field.store and field.relation:
@@ -134,15 +134,16 @@ class StockConfirmation(models.Model):
                     links[(name, field_name)] = mapping
         return result, visible, links
 
-    def _qorlia_confirmation_effects(self, before, after):
+    def _qorlia_confirmation_effects(self, before, after, model_names=GRAPH_MODELS,
+            private_models=AUDIT_MODELS, private_counts_key='private_audit_counts'):
         old, old_visible, old_links = before
         new, new_visible, new_links = after
         generated = {name: {identifier: 'new:%s:%s' % (name, index)
-            for index, identifier in enumerate(sorted(set(new[name]) - set(old[name])))} for name in GRAPH_MODELS}
+            for index, identifier in enumerate(sorted(set(new[name]) - set(old[name])))} for name in model_names}
         generated_names = {row.get('name'): generated[name][identifier]
             for name in ('stock.picking', 'purchase.order') for identifier, row in new[name].items()
             if identifier in generated[name] and row.get('name')}
-        result = {'created': {}, 'updated': {}, 'deleted': {}, 'labels': {}, 'schema': {}, 'private_audit_counts': {}}
+        result = {'created': {}, 'updated': {}, 'deleted': {}, 'labels': {}, 'schema': {}, private_counts_key: {}}
         private_audit = {}
 
         def project(name, identifier, rows, links, allowed, private=False):
@@ -195,7 +196,13 @@ class StockConfirmation(models.Model):
                 if name in ('mail.message', 'mail.activity') and field_name == 'res_id':
                     target_model = raw.get('model')
                     if not target_model and raw.get('res_model_id'):
-                        target_model = self.env['ir.model'].browse(raw['res_model_id']).model
+                        if private:
+                            # Internal normalization only; inaccessible model metadata never leaves private effects.
+                            self.env.cr.execute('SELECT model FROM ir_model WHERE id = %s', [raw['res_model_id']])
+                            metadata = self.env.cr.fetchone()
+                            target_model = metadata[0] if metadata else None
+                        else:
+                            target_model = self.env['ir.model'].browse(raw['res_model_id']).model
                     value = generated.get(target_model, {}).get(value, value)
                 if isinstance(value, str) and field_name in ('origin', 'reference', 'record_name', 'body', 'note', 'subject'):
                     for assigned_name, key in generated_names.items():
@@ -208,7 +215,7 @@ class StockConfirmation(models.Model):
                 values[field_name] = value
             return values
 
-        for name in GRAPH_MODELS:
+        for name in model_names:
             model = self.env[name]
             fields_allowed = set(model.check_field_access_rights('read', None))
             created, updated, deleted = [], [], []
@@ -221,11 +228,19 @@ class StockConfirmation(models.Model):
                 if original is not None and current is not None and clean(original) == clean(current) and not link_change:
                     continue
                 hidden = original is not None and identifier not in old_visible[name] or current is not None and identifier not in new_visible[name]
+                if not hidden and name in AUDIT_MODELS:
+                    try:
+                        if original:
+                            project(name, identifier, old, old_links, fields_allowed)
+                        if current:
+                            project(name, identifier, new, new_links, fields_allowed)
+                    except AccessError:
+                        hidden = True
                 if hidden:
-                    if name not in AUDIT_MODELS:
+                    if name not in private_models:
                         raise AccessError('Confirmation changed a document this account cannot review (%s).' % name)
                     kind = 'created' if original is None else 'deleted' if current is None else 'updated'
-                    counts = result['private_audit_counts'].setdefault(name, {'created': 0, 'updated': 0, 'deleted': 0})
+                    counts = result[private_counts_key].setdefault(name, {'created': 0, 'updated': 0, 'deleted': 0})
                     counts[kind] += 1
                     private_audit.setdefault(name, []).append({'kind': kind,
                         'key': generated[name].get(identifier, identifier),

@@ -1,5 +1,16 @@
 # Bahmni workflow parity ledger
 
+## 15 October native delivery-validation load and rollback wizard review
+
+- Added an unreleased order/transfer-scoped validation load and ordered native wizard preview. Native `show_validate`, Stock User, record/field/company checks and canonical server-owned context apply. No client wizard IDs, arbitrary model/method/context or skip flags are accepted.
+- Receipt/internal, immediate-transfer, backorder and expiry decisions follow native return actions. Native receipt columns and expiring-soon warning text are retained. Declining an immediate/expiry step reports the actual uncompleted state, not a false delivery success.
+- Expanded the existing confirmation effect projector for physical stock, valuation, journals, reconciliation, sale delivery progress and analytics. Hidden financial rows return private change counts rather than extra rights or leaked accounting fields. Unreadable audit dependencies are also private. Native configuration changes outside the reviewed graph reject.
+- Fixed the preview baseline by draining prior native audit work before taking its fingerprint. Preview restores database state and all four callback queues. Known force-send email/immediate-SMS paths stop before dispatch; native SMS setup is a blocked next step, not a silent company-setting change or accepted send.
+- Fifteen adapter-preview cases and the combined 79-case native fulfillment suite pass on the separate copy with zero failures/errors/skips and mandatory analytics unchanged. This includes the 22 direct validation contracts and the existing 42 confirmation contract/preview cases. Earlier failed fixture, namespace, permission and baseline runs remain diagnostics, not accepted versions.
+- The complete 657-case addon regression also passes on the copy using legacy optional-analytics fixtures, restored to mandatory afterward. That does not substitute for the mandatory-analytics fulfillment run. Tested and mounted source hashes match. Nine unchanged gateway/configuration regressions pass; they do not expose the new validation methods.
+- Independent main-tester read-back exactly matches the prior protected snapshot: eight accounting records, financial/valuation counts, bank state, physical/preparation quantities and receipts. No running adapter/build, access gate, expiry or destination was changed.
+- No validation save/status, signed terminal review, receipt recovery, gateway contract or React validation control is released. Native post-validation reports, multi-transfer flows, broader configurations/roles, external notification handoff, performance and full fulfillment remain open. Tester stays adapter 43; production/public demo unchanged. See [the validation contract](../runtime/billing/STOCK_VALIDATION.md).
+
 ## 15 October protected-gateway confirmation and browser failure recovery
 
 - Fixed the review host's hardcoded login database. It now allows only the configured operator database, default `odoo`, with no client-controlled database choice or weakened authentication. Nine gateway/configuration checks pass, including invalid settings, default/custom login and gate/CSRF denial cases.

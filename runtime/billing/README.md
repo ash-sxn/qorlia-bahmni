@@ -50,6 +50,16 @@ publication. Coarse locks, global capture and per-transfer JSON receipts still
 need production scaling work. The running protected tester remains adapter 43
 and stock-operation-edit-r2; full fulfillment and whole-product parity remain open.
 
+The next action is [native delivery validation and its wizard sequence](STOCK_VALIDATION.md).
+The installed Bahmni receipt/internal, Odoo immediate/backorder and expired-batch
+paths now have 22 direct native contract cases, including manual/automatic valuation
+and full rollback. Development source also adds saved-order-scoped validation load
+and ordered native wizard replay inside rollback preview. It captures stock,
+valuation, accounting and analytics with native visibility, and blocks external
+notification dispatch. Save/receipt recovery, gateway/frontend controls and actual
+delivery acceptance remain unfinished. See the contract's dated evidence before
+treating a source method as released. The hosted tester remains unchanged.
+
 Historical form-only checkpoint, superseded above: adapter 42 adds scoped load,
 native onchange and paged choice APIs for saved and unsaved move operations.
 Native operation context is derived without executing the serial action's write.

@@ -33,3 +33,5 @@ from . import test_stock_reservation
 from . import test_stock_operation_form
 from . import test_stock_confirmation_contract
 from . import test_stock_confirmation_preview
+from . import test_stock_validation_contract
+from . import test_stock_validation_preview

@@ -1,5 +1,35 @@
 # Qorlia React frontend backend readiness
 
+## Native validation review source checkpoint (15 October 2026)
+
+The next fulfillment source adds saved-order-scoped validation load and ordered
+wizard replay inside rollback preview. Native permissions and `show_validate`
+govern eligibility. Receipt/internal review, immediate, backorder and expiry
+steps are projected from native actions, not client-provided model/method/context.
+Unsupported reports/multi-transfer actions reject; notification setup is blocked
+pending its own integration. Force-send email and immediate SMS are stopped before
+dispatch during this preview. No charges or notification-setting changes are accepted.
+
+Expanded native effect capture includes stock valuation, posted journal lines,
+reconciliation, sale progress and analytics. Hidden financial/audit dependencies
+remain private change counts, not additional user permissions or leaked rows.
+Prior audit work is flushed before the baseline; the full replay then rolls back
+state and isolated callbacks. Fifteen preview cases and 79 combined native cases
+pass with mandatory analytics unchanged and no failures/errors/skips on the copy.
+
+The full 657-case addon regression separately passes with the legacy fixtures'
+optional analytics in the copy only, restored to mandatory afterward. It is not
+proof of every mandatory-analytics workflow. Matched source/mounted hashes and an
+exact independent main-tester protected snapshot are recorded. Nine existing
+gateway/configuration regressions pass without adding validation routes.
+
+This is native source evidence, not HTTP/browser or hosted delivery acceptance.
+Signed terminal review, exact atomic save/status receipts, shared browser recovery,
+gateway/service contracts and house-style wizard controls remain to implement.
+Broader native configurations, notifications, roles/companies and scale also remain.
+The hosted tester stays adapter 43; production/public demo are unchanged. See the
+[validation contract](../runtime/billing/STOCK_VALIDATION.md) for API shapes and gates.
+
 ## Protected-gateway confirmation staging checkpoint (15 October 2026)
 
 The protected gateway's database restriction is now operator-configured and exact,

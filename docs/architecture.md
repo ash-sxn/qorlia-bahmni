@@ -87,6 +87,8 @@ A reviewed stock operation follows:
 
 Read [editor](../apps/home/src/components/Billing/StockOperationEditor.tsx), [recovery storage](../apps/home/src/components/Billing/stockReservationRecovery.ts), [native form](../runtime/billing/qorlia_billing_ui/models/stock_operation_form.py) and [native action](../runtime/billing/qorlia_billing_ui/models/stock_operation_edit.py). Recording preparation is not validating delivery. Validation/wizards/backorders/returns remain separate unfinished workflows.
 
+The next [delivery-validation contract](../runtime/billing/STOCK_VALIDATION.md) now has native source for load and ordered wizard replay inside rollback preview, including stock valuation/accounting/analytics effects. Immediate/backorder/expiry choices follow the native returned action. Financial record visibility is preserved, and external notification dispatch is blocked during review. Signed terminal review, atomic save/status recovery and its React/gateway flow remain integration work. This is not a released delivery control.
+
 Invoices, payments, journals and banks have different contracts and native rules. Do not generalize stock logic into financial posting.
 
 ## Authentication and configuration
