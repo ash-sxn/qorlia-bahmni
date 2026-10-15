@@ -4591,21 +4591,7 @@ async function confirmationRequest(
     !Object.entries(data.references).every(
       ([key, row]) =>
         confirmationKeys(row, ['model', 'id', 'name', 'available']) &&
-        typeof row.model === 'string' &&
-        confirmationModels.includes(row.model) &&
-        ![
-          'mail.message',
-          'mail.mail',
-          'mail.activity',
-          'mail.notification',
-          'mail.tracking.value',
-          'ir.attachment',
-        ].includes(row.model) &&
-        confirmationKey(key, row.model) &&
-        typeof row.available === 'boolean' &&
-        (row.available
-          ? stockId(row.id) && typeof row.name === 'string'
-          : row.id === false && row.name === false),
+        validConfirmationReference(key, row),
     )
   )
     throw new Error(
@@ -4618,6 +4604,362 @@ export const saveStockConfirmation = (request: StockConfirmationRequest) =>
   confirmationRequest('qorlia_confirmation_save', request);
 export const getStockConfirmationStatus = (request: StockConfirmationRequest) =>
   confirmationRequest('qorlia_confirmation_status', request);
+
+function validConfirmationReference(
+  key: string,
+  row: StockConfirmationStatus['references'][string],
+) {
+  return (
+    typeof row.model === 'string' &&
+    confirmationModels.includes(row.model) &&
+    ![
+      'mail.message',
+      'mail.mail',
+      'mail.activity',
+      'mail.notification',
+      'mail.tracking.value',
+      'ir.attachment',
+    ].includes(row.model) &&
+    confirmationKey(key, row.model) &&
+    typeof row.available === 'boolean' &&
+    (row.available
+      ? stockId(row.id) && typeof row.name === 'string'
+      : row.id === false && row.name === false)
+  );
+}
+
+export interface PagedStockConfirmationLoad extends StockConfirmationSelection {
+  transfer: OrderTransferSummary;
+  package_count: number;
+  reason: string | false;
+  write_ready: boolean;
+}
+export interface PagedStockConfirmationReview extends StockConfirmationReview {
+  after: number;
+  total_count: number;
+  next_after: number | false;
+  continuation_token: string | false;
+  review_complete_token: string | false;
+}
+export interface PagedStockConfirmationRequest
+  extends StockConfirmationRequest {
+  review_complete_token: string;
+}
+export interface PagedStockConfirmationStatus
+  extends Omit<StockConfirmationStatus, 'references' | 'current'> {
+  reference_count: number;
+  current: PagedStockConfirmationLoad;
+}
+export interface PagedStockConfirmationReferences {
+  request_key: string;
+  version: string;
+  after: number;
+  total_count: number;
+  next_after: number | false;
+  rows: (StockConfirmationStatus['references'][string] & { key: string })[];
+}
+
+function checkedPagedConfirmationLoad(
+  data: PagedStockConfirmationLoad,
+  orderId: number,
+  transferId: number,
+) {
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'transfer',
+      'package_count',
+      'reason',
+      'write_ready',
+    ]) ||
+    data.order_id !== orderId ||
+    data.transfer_id !== transferId ||
+    !stockVersion(data.version) ||
+    !validTransferSummary(data.transfer) ||
+    data.transfer.id !== transferId ||
+    !stockCount(data.package_count) ||
+    !stockText(data.reason) ||
+    typeof data.write_ready !== 'boolean'
+  )
+    throw new Error('Invalid compact confirmation state. Reload the transfer.');
+  return data;
+}
+
+export function checkedPagedStockConfirmationRequest(
+  value: PagedStockConfirmationRequest,
+): PagedStockConfirmationRequest {
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'review_version',
+      'review_complete_token',
+      'request_key',
+    ]) ||
+    !stockVersion(value.review_complete_token)
+  )
+    throw new Error('Use the exact completely reviewed confirmation request.');
+  const { review_complete_token, ...request } = value;
+  return { ...checkedStockConfirmationRequest(request), review_complete_token };
+}
+
+export async function getPagedStockConfirmation(
+  orderId: number,
+  transferId: number,
+) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  return checkedPagedConfirmationLoad(
+    await stockCall<PagedStockConfirmationLoad>(
+      'qorlia_confirmation_paged_load',
+      {
+        order_id: orderId,
+        transfer_id: transferId,
+      },
+    ),
+    orderId,
+    transferId,
+  );
+}
+
+function confirmationEffectPageRows(effects: StockConfirmationEffects) {
+  const rows: { model: string; kind: number; position: number }[] = [];
+  const labels = new Set<string>();
+  for (const model of Object.keys(effects.schema).sort()) {
+    const groups = [
+      effects.created[model].map((row) => ({
+        position: Number(row.key.slice(`new:${model}:`.length)),
+        values: [row.values],
+      })),
+      effects.updated[model].map((row) => ({
+        position: row.id,
+        values: [row.before, row.after],
+      })),
+      effects.deleted[model].map((row) => ({
+        position: row.id,
+        values: [row.values],
+      })),
+    ];
+    for (const [kind, group] of groups.entries()) {
+      for (const row of group) {
+        rows.push({ model, kind, position: row.position });
+        for (const values of row.values) {
+          for (const [field, value] of Object.entries(values)) {
+            const schema = effects.schema[model][field];
+            const references =
+              schema.type === 'many2many' && Array.isArray(value)
+                ? value
+                : schema.type === 'many2one'
+                  ? [value]
+                  : [];
+            for (const identifier of references)
+              labels.add(`${schema.relation}:${identifier}`);
+          }
+        }
+      }
+    }
+  }
+  const ordered = rows.every(
+    (row, index) =>
+      Number.isSafeInteger(row.position) &&
+      row.position >= 0 &&
+      (!index ||
+        row.model > rows[index - 1].model ||
+        (row.model === rows[index - 1].model &&
+          (row.kind > rows[index - 1].kind ||
+            (row.kind === rows[index - 1].kind &&
+              row.position > rows[index - 1].position)))),
+  );
+  return {
+    count: rows.length,
+    valid:
+      ordered &&
+      Object.keys(effects.labels).every((key) => labels.has(key)) &&
+      Object.keys(effects.schema).every((model) =>
+        rows.some((row) => row.model === model),
+      ),
+  };
+}
+
+export async function getPagedStockConfirmationReview(
+  selection: StockConfirmationSelection,
+  after = 0,
+  reviewVersion: string | false = false,
+  continuationToken: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedConfirmationSelection(selection);
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    (after === 0
+      ? reviewVersion !== false || continuationToken !== false
+      : !stockVersion(reviewVersion) || !stockVersion(continuationToken))
+  )
+    throw new Error(
+      'Review bounded confirmation pages in order with their original tokens.',
+    );
+  const data = await stockCall<PagedStockConfirmationReview>(
+    'qorlia_confirmation_paged_review',
+    {
+      ...exact,
+      after,
+      review_version: reviewVersion,
+      continuation_token: continuationToken,
+      limit,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'review_version',
+      'state_after',
+      'write_ready',
+      'after',
+      'total_count',
+      'next_after',
+      'effects',
+      'continuation_token',
+      'review_complete_token',
+    ]) ||
+    data.order_id !== exact.order_id ||
+    data.transfer_id !== exact.transfer_id ||
+    data.version !== exact.version ||
+    !stockVersion(data.review_version) ||
+    (reviewVersion !== false && data.review_version !== reviewVersion) ||
+    !confirmationStates.includes(data.state_after) ||
+    typeof data.write_ready !== 'boolean' ||
+    data.after !== after ||
+    !stockCount(data.total_count) ||
+    after > data.total_count ||
+    !validConfirmationEffects(data.effects)
+  )
+    throw new Error(
+      'Invalid paged confirmation review. Review the transfer again.',
+    );
+  const page = confirmationEffectPageRows(data.effects);
+  const end = after + page.count;
+  if (
+    !page.valid ||
+    page.count !== Math.min(limit, data.total_count - after) ||
+    (end < data.total_count
+      ? data.next_after !== end ||
+        !stockVersion(data.continuation_token) ||
+        data.review_complete_token !== false
+      : data.next_after !== false ||
+        data.continuation_token !== false ||
+        !stockVersion(data.review_complete_token))
+  )
+    throw new Error(
+      'Invalid confirmation page or completion proof. Review the transfer again.',
+    );
+  return data;
+}
+
+async function pagedConfirmationRequest(
+  method: string,
+  request: PagedStockConfirmationRequest,
+) {
+  const exact = checkedPagedStockConfirmationRequest(request);
+  const data = await stockCall<PagedStockConfirmationStatus>(method, {
+    payload: exact,
+  });
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'request_key',
+      'state_after',
+      'reference_count',
+      'current',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    !stockCount(data.reference_count) ||
+    (data.accepted
+      ? !confirmationStates.includes(String(data.state_after))
+      : data.state_after !== false || data.reference_count !== 0)
+  )
+    throw new Error(
+      'Invalid compact confirmation receipt. Check the exact request before retrying.',
+    );
+  checkedPagedConfirmationLoad(data.current, exact.order_id, exact.transfer_id);
+  return data;
+}
+
+export const savePagedStockConfirmation = (
+  request: PagedStockConfirmationRequest,
+) => pagedConfirmationRequest('qorlia_confirmation_paged_save', request);
+export const getPagedStockConfirmationStatus = (
+  request: PagedStockConfirmationRequest,
+) => pagedConfirmationRequest('qorlia_confirmation_paged_status', request);
+
+export async function getPagedStockConfirmationReferences(
+  request: PagedStockConfirmationRequest,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedPagedStockConfirmationRequest(request);
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !(version === false || stockVersion(version)) ||
+    (after > 0 && version === false)
+  )
+    throw new Error(
+      'Use a bounded confirmation reference page and its original version.',
+    );
+  const data = await stockCall<PagedStockConfirmationReferences>(
+    'qorlia_confirmation_paged_references',
+    {
+      payload: exact,
+      after,
+      version,
+      limit,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      'request_key',
+      'version',
+      'after',
+      'total_count',
+      'next_after',
+      'rows',
+    ]) ||
+    data.request_key !== exact.request_key ||
+    !stockVersion(data.version) ||
+    (version !== false && version !== data.version) ||
+    data.after !== after ||
+    !stockCount(data.total_count) ||
+    after > data.total_count ||
+    !Array.isArray(data.rows) ||
+    data.rows.length !== Math.min(limit, data.total_count - after) ||
+    !data.rows.every(
+      (row, index) =>
+        confirmationKeys(row, ['key', 'model', 'id', 'name', 'available']) &&
+        typeof row.key === 'string' &&
+        validConfirmationReference(row.key, row) &&
+        (!index || row.key > data.rows[index - 1].key),
+    ) ||
+    (after + data.rows.length < data.total_count
+      ? data.next_after !== after + data.rows.length
+      : data.next_after !== false)
+  )
+    throw new Error(
+      'Invalid confirmation reference page. Reload the reference pages.',
+    );
+  return data;
+}
 
 export type StockValidationDecision =
   | { kind: 'receipt'; confirm: true }

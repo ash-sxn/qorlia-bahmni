@@ -33,7 +33,9 @@ Use the [parity ledger](FEATURE_PARITY.md) and [backend readiness](BACKEND_READI
 For the newest backend-only work, source 51 has complete transfer detail read
 pages and source 52 adds a separate large-transfer confirmation protocol. Read
 the [paged confirmation guide](../runtime/billing/STOCK_CONFIRMATION_PAGING.md)
-before working on it. It includes the API sequence, signing/recovery rules and
+before working on it. Typed clients/named source routes now exist, with scoped
+private native HTTP review/save/recovery evidence, but no migrated React consumer
+or opened review gate. The guide includes the API sequence, signing/recovery rules and
 remaining acceptance boundaries. A native backend candidate is not an available
 tester UI; it must not be wired into the old full-graph modal or used to reopen
 the review gate. The historical browser evidence below concerns smaller workflows

@@ -145,6 +145,10 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     .matchAll(/^    def (qorlia_confirmation_\w+)\(/gm)].map(match => match[1]);
   assert.deepEqual([...confirmationMethods].sort(), ['load', 'preview', 'save', 'status'].map(action => `qorlia_confirmation_${action}`).sort(),
     'Only the four named native confirmation APIs are covered.');
+  const pagedConfirmationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_confirmation_paged.py'), 'utf8')
+    .matchAll(/^    def (qorlia_confirmation_paged_\w+)\(/gm)].map(match => match[1]);
+  assert.deepEqual([...pagedConfirmationMethods].sort(), ['load', 'review', 'save', 'status', 'references'].map(action => `qorlia_confirmation_paged_${action}`).sort(),
+    'Only five named paged confirmation APIs are covered, without raw native actions or client contexts.');
   const validationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_validation.py'), 'utf8')
     .matchAll(/^    def (qorlia_validation_\w+)\(/gm)].map(match => match[1]);
   assert.deepEqual([...validationMethods].sort(), ['load', 'preview', 'save', 'status'].map(action => `qorlia_validation_${action}`).sort(),
@@ -160,12 +164,15 @@ test('review gate protects UI, clinical API and named Billing actions with isola
   for (const [model, method] of [['stock.picking', 'button_validate'], ['stock.immediate.transfer', 'process'],
     ['stock.picking.validate.wizard', 'btn_confirm'], ['stock.backorder.confirmation', 'process'], ['expiry.picking.confirmation', 'process'],
     ['stock.return.picking', 'create_returns'], ['stock.return.picking', 'create'], ['stock.return.picking.line', 'write'],
-    ['stock.picking', 'qorlia_return_unknown'], ['stock.return.picking', '_create_returns']])
+    ['stock.picking', 'qorlia_return_unknown'], ['stock.return.picking', '_create_returns'],
+    ['stock.picking', 'qorlia_confirmation_paged_unknown'], ['stock.picking', 'qorlia_confirmation_paged_preview'],
+    ['stock.picking', '_qorlia_confirmation_paged_preview'], ['stock.picking', 'action_confirm']])
     assert.equal((await rpc(`/web/dataset/call_kw/${model}/${method}`, allCookies, {model, method, args: [], kwargs: {}})).status, 404);
   for (const [model, method] of [
     ...['load', 'preview', 'run', 'status'].map(action => ['stock.picking', `qorlia_transfer_${action}`]),
     ...['load', 'onchange', 'choices', 'preview', 'save', 'status'].map(action => ['stock.picking', `qorlia_operation_${action}`]),
     ...confirmationMethods.map(method => ['stock.picking', method]),
+    ...pagedConfirmationMethods.map(method => ['stock.picking', method]),
     ...validationMethods.map(method => ['stock.picking', method]),
     ...validationStepMethods.map(method => ['stock.picking', method]),
     ...returnMethods.map(method => ['stock.picking', method]),

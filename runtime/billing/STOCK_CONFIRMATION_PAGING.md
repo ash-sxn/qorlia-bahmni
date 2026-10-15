@@ -10,10 +10,89 @@ update. It adds a separate confirmation protocol for transfers above the legacy
 contracts and limits. Other stock actions do not gain large-transfer support from
 this change.
 
-The new methods are not yet allowed through the protected review gateway and do
-not have a TypeScript boundary or React consumer. Do not call the old modal with
-the compact response or represent it as a complete stock graph. The owner-closed
-review gate stays closed; it must not be bypassed to test this candidate.
+The source now has a typed client and five named protected-gateway routes, with
+the scoped native HTTP checks below. There is no React consumer yet. Do not call
+the old modal with the compact response or represent it as a complete stock graph.
+The owner-closed review gate stays closed; it must not be bypassed to test this
+candidate. Source route coverage is not a deployed gateway or tester upgrade.
+
+## Client and native HTTP checkpoint
+
+The [Billing service](../../apps/home/src/components/Billing/billingService.ts)
+exports these separate methods, without changing legacy consumers:
+
+| Native method                          | TypeScript method                     |
+| -------------------------------------- | ------------------------------------- |
+| `qorlia_confirmation_paged_load`       | `getPagedStockConfirmation`           |
+| `qorlia_confirmation_paged_review`     | `getPagedStockConfirmationReview`     |
+| `qorlia_confirmation_paged_save`       | `savePagedStockConfirmation`          |
+| `qorlia_confirmation_paged_status`     | `getPagedStockConfirmationStatus`     |
+| `qorlia_confirmation_paged_references` | `getPagedStockConfirmationReferences` |
+
+`checkedPagedStockConfirmationRequest` validates the exact six-field recovery
+payload. The compact types cannot stand in for a full transfer graph, and the
+legacy request validator rejects the new proof field. Existing native effects,
+typed field/reference validation and error/session handling are reused.
+
+The page client checks exact keys, selected identities, original state/review
+versions, safe counts, exact offsets/lengths/end cursors, mutually exclusive
+continuation/completion proofs and ordered native/generated identities. Generated
+ordinals are numeric, not lexical. It rejects unsafe ordinals, unused model groups
+and unrelated relation labels. Private audit counts remain global repeated
+metadata. It does not automatically fetch the next page or submit a save. Callers
+must display the reviewed pages and preserve the original recovery request.
+
+Reference pages preserve unavailable records without their identity/name, reject
+private audit reference models, and check lexical key order, exact bounds and the
+reference-specific snapshot. The [gateway](../../scripts/review-host/server.cjs)
+adds only the five public native names. Its three unit tests cover review/clinical
+gates, cookie/authorization isolation, exact database, origin/model/method/args/
+context restrictions and expiry, including denied raw/private/unknown actions.
+These tests use fake backends, not another gate for the real review environment.
+
+The actual TypeScript client also passes scoped native HTTP on a private
+installed-50 synthetic copy with source-52 code mounted read-only, no published
+port and no persistent module upgrade. Compact reads report all 501 moves and
+2,001 operations. A separate one-move/one-operation manual transfer reviews all
+five native effects across three pages. Skipping a page and using an intermediate
+proof to save reject. Two overlapping identical saves produce one receipt; one
+accepted response is deliberately withheld in private transport. Original status
+and exact replay recover it, changed accepted payloads reject, old source-50
+confirmation/operation receipts still recover, and anonymous/logout/re-login
+checks pass. Its accepted generated-reference page is empty. **Nonempty reference
+paging and complete large-transfer writes are not native HTTP acceptance here**;
+their native/unit evidence remains separate.
+
+The initial HTTP verifier exits nonzero because its full-row preservation check
+also detects the selected order's changed audit metadata. The investigation
+reconstructs its exact original whole-row SHA-256 using only the earlier
+`write_date`/`write_uid`. This proves every other field is unchanged, rather than
+dropping the order from financial checks. A subsequent read-only recovery verifier
+exits 0, confirms there were no further changes since that first run, and submits
+no new mutation. The initial failure, request and dispatch remain retained.
+
+Independent SQL verifies the exact purpose/request/actor/company-bound receipt
+hash, one receipt, zero recorded/reserved/delivered quantities for this case, and unchanged unrelated
+rows in 20 tables. Invoice/payment/valuation/bank and physical-quant rows are
+unchanged; selected-order audit metadata is the explicit exception, not an amount
+change. Original installed-49 rows and their copied rows are preserved in 18
+tables, with no new ledger/valuation rows. SMS and mandatory analytics remain
+enabled. The protected tester remains at 43 with unchanged stored stock/finance.
+Computed invoice totals are not independently recalculated.
+
+The temporary backend is stopped, sessions closed and the private SSH socket
+removed. Its synthetic data and private evidence remain. The actual review gate
+still returns 410. The TypeScript source SHA-256 used for the HTTP checkpoint is
+`3764949d86e0766e2a20c6202492607bb8be93040076cb3925891a95675dba67`.
+Known native/bootstrap and Unix-socket TCP_NODELAY warnings remain; no dependency
+or paid service is added. Library and real-source/test types, scoped lint/format
+and the contributor-link check pass. Current Home suite results are recorded in
+the readiness ledger.
+
+This checks **service to native API to stored data to typed result**, not a
+rendered user story. Actual protected-gateway/native integration, React page
+display and explicit human review, browser storage/recovery, installed upgrade,
+wider HTTP configurations and realistic scale remain release gates.
 
 ## Why a separate contract?
 
@@ -217,8 +296,7 @@ Home/UI suite is claimed because client/UI code is unchanged. Pre-existing nativ
 warnings and the bootstrap's unsuccessful optional pandas lookup remain recorded
 in private logs; no new dependency is added.
 
-Still required: typed client validation, named protected-gateway routes, actual
-HTTP/session/concurrent-save acceptance, installed upgrade/recovery checks,
-React page display and explicit human review, browser recovery, realistic scale
-and protected release approval. Other large stock actions remain limited until
-their own complete review/write contracts are implemented and accepted.
+The client/native HTTP checkpoint above supersedes the earlier missing client
+and named-route work, not the untested configurations and release gates it lists.
+Other large stock actions remain limited until their own complete review/write
+contracts are implemented and accepted.

@@ -1,5 +1,36 @@
 # Qorlia React frontend backend readiness
 
+## Paged confirmation client and scoped native HTTP (16 October 2026)
+
+The typed client and five named source-gateway routes now cover the source-52
+protocol. Fresh Home verification passes **788 tests/77 suites**, including 62
+new paged-service cases; library and actual-source/test types, scoped lint/format,
+three gateway unit cases and documentation-link checks pass. Review/clinical
+gates, cookies, exact database and raw/private-action denial remain unchanged.
+
+Actual TypeScript/native HTTP on a non-public installed-50 copy reports 501/2,001
+compact counts and reviews five native effects across three pages on a separate
+small manual transfer. Skipped/premature proofs reject. Overlapping identical
+saves produce one receipt, a withheld accepted response recovers via the exact
+request, old source-50 saved statuses work, and anonymous/logout/re-login checks
+pass. Its accepted reference page is empty, not nonempty-paging HTTP acceptance.
+Read [the full scope and failure investigation](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#client-and-native-http-checkpoint).
+
+Independent SQL verifies the purpose/actor/company/request-bound sole receipt,
+unchanged physical and ledger/bank rows, zero done/reserved/delivered quantity for this case and
+preserved unrelated rows in 20 tables. The initial verifier flags selected-order
+audit metadata; restoring only the prior audit date/user reconstructs its exact
+original whole-row hash. No financial/business field is dropped from that check.
+Read-only recovery exits 0 without another mutation, and the failed run remains.
+Original installed-49/copy rows and hosted tester-43 stock/finance remain unchanged;
+SMS and mandatory analytics are retained. Computed invoice totals are not recalculated.
+
+The temporary backend/socket are closed and review stays 410. There is no React
+consumer, actual protected-gateway/native/browser check, full large-write or
+nonempty-reference HTTP acceptance, installed-52 upgrade, scale acceptance or
+public/tester deployment. Native source and its earlier 237-plus-corrected-one
+case evidence are unchanged, not a fresh full-addon run.
+
 ## Paged native confirmation backend candidate (16 October 2026)
 
 Source 52 adds compact loading and complete sequential HMAC-bound effects review,
