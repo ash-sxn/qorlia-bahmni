@@ -38,7 +38,7 @@ class StockReservation(models.Model):
     def _qorlia_reservation_transfer(self, order_id, transfer_id, lock=False):
         if type(transfer_id) is not int or transfer_id <= 0:
             raise ValidationError('Select a saved stock transfer.')
-        order = self.env['sale.order'].qorlia_order_deliveries(order_id)
+        order = self.env['sale.order']._qorlia_order_transfer_data(order_id, transfer_id)
         if not any(row['id'] == transfer_id for row in order['rows']):
             raise UserError('This transfer is no longer linked to this order.')
         picking = self.browse(transfer_id).exists()
@@ -46,7 +46,7 @@ class StockReservation(models.Model):
             self.env.cr.execute('SELECT id FROM res_company WHERE id = %s FOR UPDATE', [picking.company_id.id])
             self.env.cr.execute('SELECT id FROM stock_picking WHERE id = %s FOR UPDATE', [picking.id])
             self.env.invalidate_all()
-            order = self.env['sale.order'].qorlia_order_deliveries(order_id)
+            order = self.env['sale.order']._qorlia_order_transfer_data(order_id, transfer_id)
             if not any(row['id'] == transfer_id for row in order['rows']):
                 raise UserError('The transfer order changed while locking. Reload it.')
         return picking, order
@@ -126,7 +126,7 @@ class StockReservation(models.Model):
         return result
 
     def _qorlia_reservation_graph(self, order_id, original_lines=None, original_packages=None):
-        data = self.env['sale.order'].qorlia_order_deliveries(order_id)
+        data = self.env['sale.order']._qorlia_order_transfer_data(order_id, self.id)
         row = next((row for row in data['rows'] if row['id'] == self.id), None)
         if row is None:
             raise UserError('This transfer is no longer linked to the order.')

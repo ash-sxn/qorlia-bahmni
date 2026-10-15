@@ -1,5 +1,11 @@
 # Bahmni workflow parity ledger
 
+## 16 October transfer paging backend candidate
+
+- Candidate source 50 adds bounded summary pages, exact cursor/version continuity and fail-closed checks of the complete linked graph, including off-page records. Shared stock actions now select one linked transfer after the same check, removing their old order-wide 100-transfer dependency. See [the contract](../runtime/billing/STOCK_TRANSFER_PAGING.md).
+- The final native shared-stock regression passes 213 cases (16 paging/read plus 197 stock-action cases), with mandatory analytics and preserved existing browser/return states/receipts, stored finance/valuation and quants. Fifteen stored source-49 requests recover via native status; eleven exact return/validation save replays succeed in a database-enforced read-only transaction. Operation-save replay is not included because it locks rows. All 719 Home tests in 75 suites, library/focused source-test type checks, scoped ESLint and three review-host tests pass. Actual HTTP paging and installed-upgrade acceptance are pending; earlier 212-case evidence is overlapping, not an additional 212 independent tests.
+- This is backend/client-boundary source, not a new UI release: the React panel still uses the capped legacy list. Per-transfer detail above 500 moves or 2,000 operations, browser recovery and realistic scale remain open. No persistent runtime upgrade or publication; review access remains closed (410). Historical 15 October evidence below is not relabelled as current paging acceptance.
+
 ## 15 October native HTTP return preparation, completion and valuation
 
 - Four API-created two-unit returns complete through the actual TypeScript service/native HTTP: manual customer, manual supplier, same-company internal chained and automatic standard-cost customer. Existing native operation APIs prepare the original batches; per-RPC validation preserves each native receipt/terminal boundary. Warehouse/delivered progress, zero final reservation, case-specific valuation and original return references are independently verified. See [the complete case matrix](../runtime/billing/STOCK_RETURNS.md#native-http-return-completion-and-valuation-checkpoint-15-october-2026).

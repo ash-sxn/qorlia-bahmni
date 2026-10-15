@@ -1,5 +1,24 @@
 # Qorlia React frontend backend readiness
 
+## Transfer paging backend candidate (16 October 2026)
+
+Source 50 adds bounded native order-transfer summaries with order-wide permission
+checks and stale-page detection. Selected stock actions load only their linked
+transfer's detail after that complete check, rather than the legacy full list.
+The final native shared-stock suite passes 213 cases, including 16 paging/read
+cases, 101 linked transfers, signed confirmation recovery, inherited display-label
+changes, hidden off-page data and preserved detail caps. Mandatory analytics,
+existing browser/return receipts, stored finance/valuation and quants are preserved.
+Fifteen old source-49 requests recover through native status; eleven exact save
+replays succeed in a database-enforced read-only transaction. Operation save is
+not included in that read-only replay check because it locks rows.
+All 719 Home tests in 75 suites, library/focused source-test type checks, scoped
+ESLint and three review-host tests pass. Actual HTTP paging and installed-upgrade
+acceptance are still pending. React still uses the legacy list and retains
+its cap; nested detail paging and performance acceptance remain. No deployment or
+browser acceptance is claimed; the owner-closed gate remains 410. Read the
+[contract and exact limits](../runtime/billing/STOCK_TRANSFER_PAGING.md).
+
 ## Return native HTTP completion and valuation (15 October 2026)
 
 Four API-created returns now complete through actual TypeScript/native HTTP:

@@ -3175,6 +3175,17 @@ export interface OrderDeliveries {
   rows: OrderTransfer[];
 }
 
+export interface OrderDeliveryPage extends Omit<OrderDeliveries, 'rows'> {
+  after: number;
+  position: number;
+  total_count: number;
+  next_after: number | false;
+  rows: (Omit<OrderTransfer, 'moves' | 'operations'> & {
+    move_count: number;
+    operation_count: number;
+  })[];
+}
+
 type TransferReviewRow = Omit<OrderTransfer, 'operations'> & {
   operations: (Omit<OrderTransfer['operations'][number], 'id'> & {
     id: number | false;
@@ -3191,11 +3202,7 @@ const stockDate = (value: unknown) =>
   (typeof value === 'string' &&
     /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value));
 
-function validTransfer(row: TransferReviewRow, preview = false) {
-  const unique = (rows: { id: number | false }[]) => {
-    const saved = rows.filter((item) => item.id !== false);
-    return new Set(saved.map((item) => item.id)).size === saved.length;
-  };
+function validTransferHeader(row: Omit<OrderTransfer, 'moves' | 'operations'>) {
   return (
     !!row &&
     stockId(row.id) &&
@@ -3214,7 +3221,16 @@ function validTransfer(row: TransferReviewRow, preview = false) {
     row.company !== false &&
     stockDate(row.scheduled_date) &&
     stockDate(row.date_done) &&
-    stockText(row.origin) &&
+    stockText(row.origin)
+  );
+}
+function validTransfer(row: TransferReviewRow, preview = false) {
+  const unique = (rows: { id: number | false }[]) => {
+    const saved = rows.filter((item) => item.id !== false);
+    return new Set(saved.map((item) => item.id)).size === saved.length;
+  };
+  return (
+    validTransferHeader(row) &&
     Array.isArray(row.moves) &&
     row.moves.length <= 500 &&
     row.moves.every(
@@ -3276,6 +3292,65 @@ export async function getOrderDeliveries(
   )
     throw new Error(
       'Invalid stock transfer response. Reload the order transfers.',
+    );
+  return data;
+}
+
+export async function getOrderDeliveryPage(
+  orderId: number,
+  after = 0,
+  version: string | false = false,
+  limit = 25,
+): Promise<OrderDeliveryPage> {
+  const count = (value: unknown) =>
+    Number.isSafeInteger(value) && Number(value) >= 0;
+  if (
+    !stockId(orderId) ||
+    !count(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !(version === false || stockVersion(version)) ||
+    (after > 0 && version === false)
+  )
+    throw new Error('Use a bounded transfer page and its original version.');
+  const data = await draftCall<OrderDeliveryPage>(
+    'qorlia_order_delivery_page',
+    { order_id: orderId, after, version, limit },
+  );
+  if (
+    !data ||
+    Object.keys(data).sort().join(',') !==
+      'after,next_after,order_id,order_name,order_state,position,read_only,rows,total_count,version' ||
+    data.order_id !== orderId ||
+    typeof data.order_name !== 'string' ||
+    !['draft', 'sent', 'sale', 'done', 'cancel'].includes(data.order_state) ||
+    data.read_only !== true ||
+    !stockVersion(data.version) ||
+    (version !== false && data.version !== version) ||
+    data.after !== after ||
+    !count(data.position) ||
+    !count(data.total_count) ||
+    data.position > data.total_count ||
+    (after === 0 ? data.position !== 0 : data.position === 0) ||
+    !Array.isArray(data.rows) ||
+    data.rows.length !== Math.min(limit, data.total_count - data.position) ||
+    !data.rows.every(
+      (row, index) =>
+        row &&
+        Object.keys(row).sort().join(',') ===
+          'backorder,company,customer,date_done,destination,id,move_count,name,operation_count,operation_type,origin,scheduled_date,source,state' &&
+        validTransferHeader(row) &&
+        count(row.move_count) &&
+        count(row.operation_count) &&
+        row.id > (index ? data.rows[index - 1].id : after),
+    ) ||
+    (data.position + data.rows.length < data.total_count
+      ? data.next_after !== data.rows.at(-1)?.id
+      : data.next_after !== false)
+  )
+    throw new Error(
+      'Invalid native transfer page. Reload the order transfers.',
     );
   return data;
 }

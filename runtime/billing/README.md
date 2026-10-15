@@ -3,6 +3,14 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Backend candidate 50: [bounded order-transfer summaries](STOCK_TRANSFER_PAGING.md)
+and selected-transfer loading beyond the old 100-transfer order cap. The final
+213-case native shared-stock regression and 719 Home tests pass. Fifteen old
+source-49 request statuses and eleven exact read-only replays also pass under the
+candidate source. The React panel still uses the legacy list.
+No runtime upgrade, reopened review access or paging HTTP/browser acceptance is
+claimed. The dated return checkpoints below remain separate evidence.
+
 Current integration: [native stock returns](STOCK_RETURNS.md). The installed native
 form and override audit distinguishes return creation from physical validation and
 financial refunds. Candidate source 49 adds native form reconstruction, bounded
