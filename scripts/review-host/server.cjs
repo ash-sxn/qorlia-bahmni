@@ -12,9 +12,11 @@ const cookieNamed = (header = '', name) =>
   header.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name}=`)) || '';
 const gatePage = (message = '') => `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Qorlia tester access</title><style>body{margin:0;background:#f2f5f2;color:#202723;font:18px system-ui;display:grid;place-items:center;min-height:100vh}main{box-sizing:border-box;max-width:480px;width:90%;padding:36px;background:white;border:1px solid #d6e0d9;border-radius:24px}h1{color:#20543b}label,input,button{display:block;box-sizing:border-box;width:100%}input{margin:12px 0 20px;padding:14px;font:inherit;border:1px solid #9db4a4;border-radius:10px}button{padding:14px;background:#20543b;color:white;border:0;border-radius:10px;font:inherit;cursor:pointer}small{display:block;line-height:1.6;color:#526158}p{line-height:1.5}.error{color:#a3261b}</style><main><h1>Qorlia</h1><h2>Tester access</h2><p>Enter the shared testing code. Then sign in with your test account.</p><p class="error" role="alert">${message}</p><form action="/review-access" method="post"><label for="code">Testing access code</label><input id="code" name="code" type="password" autocomplete="off" required maxlength="128"><button>Open the review build</button></form><p><small>Test environment only. Use synthetic records, not real patient information.</small></p></main></html>`;
 
-function createReviewApp({ code, signingKey, expiresAt, backend, billing, staticDir }) {
+function createReviewApp({ code, signingKey, expiresAt, backend, billing, staticDir, billingDatabase = 'odoo' }) {
   if (!code || code.length < 20 || !signingKey || signingKey.length < 32 || !Number.isFinite(expiresAt))
     throw new Error('Review access secrets and expiry are required.');
+  if (typeof billingDatabase !== 'string' || !billingDatabase.trim() || billingDatabase.length > 63)
+    throw new Error('One configured Billing database is required.');
   const app = express();
   app.disable('x-powered-by');
   const attempts = new Map();
@@ -144,7 +146,7 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
         (!Array.isArray(params.args) || params.args.length || !params.kwargs ||
           typeof params.kwargs !== 'object' || Array.isArray(params.kwargs) ||
           Object.keys(params.kwargs).includes('context'))) ||
-      (req.path.endsWith('/authenticate') && params.db !== 'odoo')) return res.sendStatus(400);
+      (req.path.endsWith('/authenticate') && params.db !== billingDatabase)) return res.sendStatus(400);
     next();
   }, createProxyMiddleware({
     target: billing, changeOrigin: true, secure: true,
@@ -204,6 +206,7 @@ if (require.main === module) {
     expiresAt: Date.parse(process.env.REVIEW_EXPIRES),
     backend: process.env.BAHMNI_API_ORIGIN,
     billing: process.env.BAHMNI_BILLING_ORIGIN,
+    billingDatabase: process.env.BAHMNI_BILLING_DATABASE,
     staticDir: '/app/static',
   }).listen(8080, '0.0.0.0', () => console.log('Qorlia review gateway listening on port 8080'));
 }

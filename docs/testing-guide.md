@@ -64,6 +64,8 @@ The 15 October adapter 45 source checkpoint supersedes that earlier case count: 
 
 A later 15 October increment adds confirmation controls, shared recovery and actual isolated HTTP/browser acceptance. The Home suite passes 627 tests/71 suites and eight gateway/configuration checks. The browser exercised synthetic transfer review/save, native generated references, close/reload recovery, exact status/clear and parent refresh. Independent native reads checked receipt uniqueness and protected finance/physical stock. See [the contract's dated checkpoint](../runtime/billing/STOCK_CONFIRMATION.md). These tests did not publish or accept the new source through the protected tester gateway, and do not cover hospital-scale concurrency or every configuration.
 
+The subsequent protected-gateway staging check passes nine gateway/configuration cases and real gateway HTTP/static-browser acceptance on loopback. A temporary transport suppressed accepted responses; an explicit browser 503 left the identical request durable across reload, status recovery and receipt-checked clear. The first disconnect reached accepted UI and was not counted as an unknown state. This verifies the real gateway code with isolated native services, not the public HTTPS/container release. Fault injection and private credentials do not belong in product source. See the newest [confirmation checkpoint](../runtime/billing/STOCK_CONFIRMATION.md).
+
 ## Synthetic workflow acceptance
 
 Obtain permission before creating/editing test records. Use clearly labelled records and record their identifiers privately as appropriate. Do not use real patients, financial records or an employee's private credentials.

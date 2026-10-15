@@ -62,6 +62,8 @@ These example values are placeholders, not test servers. A moving branch name is
 
 `BAHMNI_BILLING_DATABASE` is a build-time, non-secret deployment setting, not a user-facing database selector. Restart the development server or rebuild after changing it. The ERP server must independently restrict permitted databases and enforce authentication/authorization. This setting does not grant access. Never put a password or connection string in it or in any browser build variable.
 
+For the protected review host, the operator must set the same `BAHMNI_BILLING_DATABASE` on the gateway process. The gateway defaults to `odoo` and rejects authentication for every other database, including a name submitted manually by the client. A custom frontend build alone cannot change that server-side allowlist. Keep the review access gate, clinical session check and native ERP account restrictions in place.
+
 Windows PowerShell uses:
 
 ```powershell

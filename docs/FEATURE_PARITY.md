@@ -1,5 +1,13 @@
 # Bahmni workflow parity ledger
 
+## 15 October protected-gateway confirmation and browser failure recovery
+
+- Fixed the review host's hardcoded login database. It now allows only the configured operator database, default `odoo`, with no client-controlled database choice or weakened authentication. Nine gateway/configuration checks pass, including invalid settings, default/custom login and gate/CSRF denial cases.
+- Real clinical/ERP sessions and the actual TypeScript service exercised native load/preview/save/status through the protected gateway. Accepted-response suppression followed by status and identical retry produced one receipt/one upstream move. Six malformed/context/raw-action/cross-origin requests and an unapproved database login were denied.
+- A compiled static browser build (`139db930700308d8`) exercised synthetic S05172/transfer 376 through the gateway. An explicit injected 503 after acknowledgement of the identical saved request left the exact nonce recoverable through full reload and status. Finish checked the receipt, cleared recovery and refreshed both transfers. The first disconnect reached accepted UI, so it was not counted as unknown-state proof.
+- Independent native read-back matches the same author-bound receipt and generated references (transfer 382, move 480, operation 1129), with one upstream move, zero delivered quantity and unchanged protected finance/physical stock. Fault injection is private local test transport, not product code.
+- This supersedes the pending loopback gateway-code and this browser failure-path acceptance, not public HTTPS/container publication, all role/company/configuration cases or scale. Tester stays adapter 43/stock-operation-edit-r2; production/public demo unchanged. Full fulfillment and whole-product parity remain open. See [the native contract](../runtime/billing/STOCK_CONFIRMATION.md).
+
 ## 15 October confirmation UI and isolated HTTP/browser acceptance
 
 - Added native transfer-confirmation review/save/status controls using the existing design system. Native effects retain field metadata, relations, generated references and assigned-on-save labels; audit markup is escaped. Keyboard disclosures and safe return focus are covered.

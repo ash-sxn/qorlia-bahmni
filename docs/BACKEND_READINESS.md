@@ -1,5 +1,29 @@
 # Qorlia React frontend backend readiness
 
+## Protected-gateway confirmation staging checkpoint (15 October 2026)
+
+The protected gateway's database restriction is now operator-configured and exact,
+with the existing `odoo` default. A different client-supplied database is rejected;
+invalid operator settings fail startup. Review/clinical/ERP gates, cookie isolation,
+named methods and context restrictions remain. Nine gateway/configuration checks
+pass, including default/custom database and denial regressions.
+
+Real gateway HTTP and a compiled static browser build on loopback now cover the
+confirmation flow against the separate native database copy. An accepted-response
+loss was recovered by HTTP status/exact retry. Browser transfer 376 additionally
+received an explicit injected 503 for its identical saved request, retained that
+request across reload, recovered the same native references and cleared only after
+receipt-checked Finish. The earlier disconnect reached accepted UI and was not
+counted as proof of an unknown state. Independent reads match the one native receipt
+and upstream move, with protected finance/physical stock and delivery unchanged.
+
+Build `139db930700308d8` used the separate database setting. This is protected-gateway
+code acceptance on loopback staging, not publication to the public HTTPS tester.
+Temporary local transport provided fault injection; it was not added to the product.
+Tester remains adapter 43; production/public demo are unchanged. Pre-login date-format
+401 logging, broader role/company cases, scale and native full fulfillment remain.
+See [confirmation evidence](../runtime/billing/STOCK_CONFIRMATION.md).
+
 ## Confirmation React and isolated HTTP/browser checkpoint (15 October 2026)
 
 The house-style transfer dialog now integrates native load, rollback effect review,

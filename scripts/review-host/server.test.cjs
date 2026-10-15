@@ -56,6 +56,8 @@ test('review gate protects UI, clinical API and named Billing actions with isola
   assert.equal(seenClinical, 'JSESSIONID=valid');
   assert.equal(seenBilling, 'session_id=erp-current');
   assert.equal(seenBillingAuth, undefined);
+  assert.equal((await rpc('/web/session/authenticate', allCookies, { db: 'odoo', login: 'synthetic', password: 'synthetic' })).status, 200);
+  assert.equal((await rpc('/web/session/authenticate', allCookies, { db: 'unapproved-copy', login: 'synthetic', password: 'synthetic' })).status, 400);
   assert.match(session.headers.get('set-cookie'), /Path=\/openmrs\/qorlia-billing-api/);
   assert.doesNotMatch(session.headers.get('set-cookie'), /Domain=/);
   assert.equal((await rpc('/web/database/list', allCookies)).status, 404);
@@ -194,6 +196,56 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     method: 'POST', headers: { Origin: base, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'code=wrong',
   })).status, 401);
   assert.equal((await request('/review-access', { method: 'POST', headers: { Origin: base }, body: 'code=wrong' })).status, 429);
+});
+
+test('configured Billing database remains exact and behind both review and clinical gates', async (t) => {
+  let forwarded = 0;
+  let forwardedDatabase;
+  const backend = http.createServer((req, res) => {
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ authenticated: req.headers.cookie === 'JSESSIONID=valid' }));
+  }).listen(0, '127.0.0.1');
+  const billing = http.createServer(async (req, res) => {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    forwarded++;
+    forwardedDatabase = JSON.parse(body).params.db;
+    assert.equal(req.headers.cookie, undefined);
+    assert.equal(req.headers.authorization, undefined);
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ result: { uid: 2, db: forwardedDatabase } }));
+  }).listen(0, '127.0.0.1');
+  await Promise.all([backend, billing].map((server) => new Promise((resolve) => server.once('listening', resolve))));
+  const originOf = (server) => `http://127.0.0.1:${server.address().port}`;
+  const options = { code: 'temporary-test-code-123456789', signingKey: 'test-signing-key-12345678901234567890',
+    expiresAt: Date.now() + 60000, backend: originOf(backend), billing: originOf(billing),
+    billingDatabase: 'qorlia_synthetic_copy', staticDir: resolve(__dirname, '../../distro/dist') };
+  for (const invalid of ['', ' ', null, 3, 'x'.repeat(64)])
+    assert.throws(() => createReviewApp({ ...options, billingDatabase: invalid }), /configured Billing database/);
+  const server = createReviewApp(options).listen(0, '127.0.0.1');
+  await new Promise((resolve) => server.once('listening', resolve));
+  t.after(() => { for (const instance of [server, backend, billing]) { instance.closeAllConnections(); instance.close(); } });
+  const base = originOf(server);
+  const gate = await fetch(`${base}/review-access`, { method: 'POST', redirect: 'manual',
+    headers: { Origin: base, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'code=temporary-test-code-123456789' });
+  assert.equal(gate.status, 303);
+  const cookie = gate.headers.get('set-cookie').split(';')[0];
+  const login = (db, cookies = `${cookie}; JSESSIONID=valid`, origin = base) => fetch(`${base}/openmrs/qorlia-billing-api/web/session/authenticate`, {
+    method: 'POST', headers: { Origin: origin, Cookie: cookies, Authorization: 'Basic never-forward', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params: { db, login: 'synthetic', password: 'synthetic' }, id: 1 }),
+  });
+  for (const wrong of ['odoo', 'qorlia_synthetic_copy ', null, ['qorlia_synthetic_copy'], { name: 'qorlia_synthetic_copy' }])
+    assert.equal((await login(wrong)).status, 400);
+  assert.equal((await login(options.billingDatabase, cookie)).status, 401);
+  assert.equal((await login(options.billingDatabase, `${cookie}; JSESSIONID=invalid`)).status, 401);
+  assert.equal((await login(options.billingDatabase, 'JSESSIONID=valid')).status, 401);
+  assert.equal((await login(options.billingDatabase, undefined, 'https://evil.example')).status, 403);
+  assert.equal(forwarded, 0);
+  const accepted = await login(options.billingDatabase);
+  assert.equal(accepted.status, 200);
+  assert.equal((await accepted.json()).result.db, options.billingDatabase);
+  assert.equal(forwardedDatabase, options.billingDatabase);
+  assert.equal(forwarded, 1);
 });
 
 test('expired review link fails closed', async (t) => {

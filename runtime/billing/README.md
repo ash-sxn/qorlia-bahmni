@@ -38,10 +38,17 @@ legacy optional-fixture suite pass on the separate copy; analytics is restored.
 The final source also accepts two simultaneous identical requests with one receipt
 and one supply move using native RPC retries. Sixteen captured native response
 contracts pass the actual TypeScript service across four synthetic scenarios.
-Frontend/gateway source checks pass, but React controls, the shared browser recovery
-slot and actual HTTP/browser confirmation acceptance remain open. Coarse locks,
-global capture and per-transfer JSON receipts still need production scaling work.
-The running protected tester remains adapter 43 and stock-operation-edit-r2.
+React controls and the shared durable recovery slot now have actual isolated HTTP
+and browser acceptance. A later compiled static build also passes through the real
+protected gateway on loopback with separate clinical/ERP sessions and an exact
+operator database allowlist. An injected 503 for the identical saved request is
+recoverable after reload through its same native receipt; independent reads find
+one upstream move and unchanged protected finance/physical stock and delivery.
+Nine gateway/configuration checks pass. See the dated confirmation contract for
+the precise fixtures, evidence and limits. This is not public HTTPS/container
+publication. Coarse locks, global capture and per-transfer JSON receipts still
+need production scaling work. The running protected tester remains adapter 43
+and stock-operation-edit-r2; full fulfillment and whole-product parity remain open.
 
 Historical form-only checkpoint, superseded above: adapter 42 adds scoped load,
 native onchange and paged choice APIs for saved and unsaved move operations.

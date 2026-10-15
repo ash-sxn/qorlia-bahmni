@@ -75,6 +75,8 @@ Invoices, payments, journals and banks have different contracts and native rules
 
 Clinical login establishes an OpenMRS session. Billing needs a separate ERP session. The [development proxy](../distro/webpack.config.js) and [review gateway](../scripts/review-host/server.cjs) isolate cookies and verify clinical access before forwarding allowed ERP requests.
 
+For a non-default ERP database, the operator sets the same `BAHMNI_BILLING_DATABASE` in the frontend build and review gateway. The gateway permits only that exact login database, default `odoo`; it does not trust a client's database selection. Native database filters and permissions remain independent safeguards. See [setup](setup-guide.md).
+
 Buttons are not security boundaries. Native ACLs (model permissions), record rules, company scope and field permissions still apply. Do not add arbitrary model/method forwarding, `sudo`, privilege bypasses or frontend credentials.
 
 Installation configuration determines concepts, forms, programme attributes, locations, menus and appointment transitions. Backend modules determine endpoint availability. A mismatched frontend/config/backend can render while saving incorrectly.
