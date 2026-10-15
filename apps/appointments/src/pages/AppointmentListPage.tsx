@@ -18,6 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
+  canResetAppointmentStatus,
   getAllowedTransitions,
   type TransitionConfig,
 } from './appointmentActions';
@@ -80,6 +81,8 @@ export const AppointmentListPage = () => {
   const canManage =
     hasPrivilege(userPrivileges, 'app:appointments:manageAppointmentsTab') &&
     hasPrivilege(userPrivileges, 'Manage Appointments');
+  const canReset =
+    canManage && hasPrivilege(userPrivileges, 'Reset Appointment Status');
   const queryClient = useQueryClient();
   const [actionMessage, setActionMessage] = useState('');
   const [editMessage, setEditMessage] = useState('');
@@ -535,6 +538,33 @@ export const AppointmentListPage = () => {
                                     {action}
                                   </button>
                                 ))}
+                                {canReset &&
+                                  canResetAppointmentStatus(
+                                    transitionConfig.data,
+                                    appointment.status,
+                                  ) && (
+                                    <button
+                                      type="button"
+                                      className={styles.textButton}
+                                      disabled={statusChange.isPending}
+                                      onClick={() => {
+                                        if (
+                                          !window.confirm(
+                                            t('APPOINTMENTS_CONFIRM_RESET'),
+                                          )
+                                        )
+                                          return;
+                                        setActionMessage('');
+                                        statusChange.mutate({
+                                          uuid: appointment.uuid,
+                                          status: 'Scheduled',
+                                        });
+                                      }}
+                                      aria-label={`${t('APPOINTMENTS_RESET')}: ${appointment.patient.name}`}
+                                    >
+                                      {t('APPOINTMENTS_RESET')}
+                                    </button>
+                                  )}
                               </div>
                             </td>
                           )}

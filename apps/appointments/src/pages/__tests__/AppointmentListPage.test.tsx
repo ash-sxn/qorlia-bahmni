@@ -200,3 +200,72 @@ it('refreshes all appointment views after a status change', async () => {
     queryKey: ['appointment-calendar'],
   });
 });
+
+it('offers the configured reset for checked-in appointments only with the reset privilege', () => {
+  const mutate = jest.fn();
+  (useMutation as jest.Mock).mockReturnValue({
+    mutate,
+    isPending: false,
+    isError: false,
+  });
+  (useQuery as jest.Mock).mockImplementation(({ queryKey }) => ({
+    data:
+      queryKey[0] === 'legacy-appointment-actions'
+        ? {
+            config: {
+              allowedActions: ['CheckedIn', 'Completed', 'Missed', 'Cancelled'],
+              allowedActionsByStatus: {
+                CheckedIn: ['Completed', 'Missed', 'Cancelled'],
+              },
+              enableResetAppointmentStatuses: ['CheckedIn'],
+            },
+          }
+        : queryKey[0] === 'appointment-list-day'
+          ? [
+              {
+                uuid: 'appointment-1',
+                patient: { uuid: 'patient-1', name: 'Demo Patient' },
+                status: 'CheckedIn',
+                startDateTime: Date.parse('2099-01-01T09:00:00Z'),
+              },
+            ]
+          : [],
+    isLoading: false,
+    isError: false,
+  }));
+  const managePrivileges = [
+    { name: 'app:appointments' },
+    { name: 'app:appointments:manageAppointmentsTab' },
+    { name: 'Manage Appointments' },
+  ];
+  const privileges = useUserPrivilege as jest.Mock;
+  privileges.mockReturnValue({
+    userPrivileges: managePrivileges,
+    isLoading: false,
+  });
+  const { rerender } = render(
+    <MemoryRouter initialEntries={['/bahmni-v2/appointments/list']}>
+      <AppointmentListPage />
+    </MemoryRouter>,
+  );
+  expect(
+    screen.queryByRole('button', { name: 'Reset: Demo Patient' }),
+  ).not.toBeInTheDocument();
+
+  privileges.mockReturnValue({
+    userPrivileges: [...managePrivileges, { name: 'Reset Appointment Status' }],
+    isLoading: false,
+  });
+  rerender(
+    <MemoryRouter initialEntries={['/bahmni-v2/appointments/list']}>
+      <AppointmentListPage />
+    </MemoryRouter>,
+  );
+  const confirmation = jest.spyOn(window, 'confirm').mockReturnValue(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Reset: Demo Patient' }));
+  expect(mutate).toHaveBeenCalledWith({
+    uuid: 'appointment-1',
+    status: 'Scheduled',
+  });
+  confirmation.mockRestore();
+});
