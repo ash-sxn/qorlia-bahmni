@@ -4,6 +4,11 @@
 
 Source adapter 45 adds native confirmation save/status to the adapter 44 load/rollback-preview foundation. The React review/save/recovery path now has isolated HTTP and browser acceptance below. It is not released to the protected tester, which still uses adapter 43 and its preparation/operation editor.
 
+For the separate source-52 large-transfer backend candidate, read the
+[complete paged review/save contract](STOCK_CONFIRMATION_PAGING.md). It does not
+change the existing API/modal contract, reopen review access or constitute a
+protected release. The dated checks below concern the original smaller-graph path.
+
 ## 15 October protected-gateway staging and ambiguous-response checkpoint
 
 The review gateway now accepts one operator-configured `BAHMNI_BILLING_DATABASE`, defaulting to `odoo`, and rejects every other client-supplied database. Frontend and gateway settings must agree. Invalid operator configuration fails startup. The review code gate, expiry, clinical verification, separate ERP session, named action allowlist, context restrictions and cookie isolation remain enforced. Regression checks cover the unchanged default and a separate-copy configuration.

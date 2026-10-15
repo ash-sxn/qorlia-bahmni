@@ -324,8 +324,16 @@ class StockConfirmation(models.Model):
             raise UserError('The transfer, inventory or native configuration changed. Reload it.')
         if current['reason']:
             raise UserError(current['reason'])
-        tables = picking._qorlia_confirmation_tables()
-        stamp = picking._qorlia_confirmation_stamp(tables)
+        effects, private_audit, state = picking._qorlia_confirmation_preview_effects()
+        # Native signing secret prevents the public review digest becoming a dictionary oracle for hidden audit data.
+        return {'order_id': order_id, 'transfer_id': transfer_id, 'version': version,
+            'state_after': state, 'effects': effects, 'write_ready': True,
+            'review_version': picking._qorlia_confirmation_signature(version, effects, private_audit, state)}
+
+    def _qorlia_confirmation_preview_effects(self):
+        self.ensure_one()
+        tables = self._qorlia_confirmation_tables()
+        stamp = self._qorlia_confirmation_stamp(tables)
         cr = self.env.cr
         cr.flush()
         hooks = {name: getattr(cr, name) for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
@@ -333,17 +341,14 @@ class StockConfirmation(models.Model):
             for name in hooks:
                 setattr(cr, name, tools.Callbacks())
             with closing(cr.savepoint()):
-                effects, private_audit, state, _references = picking._qorlia_confirmation_native()
+                effects, private_audit, state, _references = self._qorlia_confirmation_native()
         finally:
             for name, callbacks in hooks.items():
                 setattr(cr, name, callbacks)
             self.env.invalidate_all()
-        if picking._qorlia_confirmation_stamp(tables) != stamp:
+        if self._qorlia_confirmation_stamp(tables) != stamp:
             raise UserError('Native state changed during confirmation preview. Reload and review it again.')
-        # Native signing secret prevents the public review digest becoming a dictionary oracle for hidden audit data.
-        return {'order_id': order_id, 'transfer_id': transfer_id, 'version': version,
-            'state_after': state, 'effects': effects, 'write_ready': True,
-            'review_version': picking._qorlia_confirmation_signature(version, effects, private_audit, state)}
+        return effects, private_audit, state
 
     def _qorlia_confirmation_request(self, payload):
         if not isinstance(payload, dict) or set(payload) != {'order_id', 'transfer_id', 'version', 'review_version', 'request_key'}:
@@ -370,6 +375,12 @@ class StockConfirmation(models.Model):
         request, digest = self._qorlia_confirmation_request(payload)
         picking, _order = self._qorlia_reservation_transfer(request['order_id'], request['transfer_id'])
         receipt = picking._qorlia_confirmation_receipt(request, digest)
+        references = picking._qorlia_confirmation_reference_labels(receipt)
+        return {'accepted': bool(receipt), 'request_key': request['request_key'],
+            'state_after': receipt['state'] if receipt else False, 'references': references,
+            'current': self.qorlia_confirmation_load(request['order_id'], request['transfer_id'])}
+
+    def _qorlia_confirmation_reference_labels(self, receipt):
         references = {}
         for key, item in (receipt['references'].items() if receipt else []):
             record = self.env[item['model']].browse(item['id']).exists()
@@ -382,9 +393,7 @@ class StockConfirmation(models.Model):
                     pass
             references[key] = {'model': item['model'], 'id': item['id'] if available else False,
                 'name': record.display_name if available else False, 'available': available}
-        return {'accepted': bool(receipt), 'request_key': request['request_key'],
-            'state_after': receipt['state'] if receipt else False, 'references': references,
-            'current': self.qorlia_confirmation_load(request['order_id'], request['transfer_id'])}
+        return references
 
     @api.model
     def qorlia_confirmation_save(self, payload):

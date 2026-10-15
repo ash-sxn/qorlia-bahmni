@@ -523,3 +523,336 @@ class StockConfirmationPreviewTest(TransactionCase):
         messages = self.env['mail.message'].search([('model', '=', 'stock.picking'), ('res_id', '=', self.picking.id), ('tracking_value_ids', '!=', False)])
         self.assertGreaterEqual(len(messages), 2)
         self.assertEqual(messages.author_id, self.user.partner_id)
+
+    def paged_load(self):
+        return self.api().qorlia_confirmation_paged_load(self.order.id, self.picking.id)
+
+    def paged_review(self, limit=100):
+        version = self.paged_load()['version']
+        pages, after, review, token = [], 0, False, False
+        while True:
+            page = self.api().qorlia_confirmation_paged_review(self.order.id, self.picking.id,
+                version, after=after, review_version=review, continuation_token=token, limit=limit)
+            pages.append(page)
+            if page['next_after'] is False:
+                return pages
+            self.assertFalse(page['review_complete_token'])
+            self.assertTrue(page['continuation_token'])
+            after, review, token = page['next_after'], page['review_version'], page['continuation_token']
+
+    def paged_request(self):
+        reviewed = self.paged_review()[-1]
+        return {key: reviewed[key] for key in ('order_id', 'transfer_id', 'version', 'review_version', 'review_complete_token')} | {
+            'request_key': str(uuid.uuid4())}
+
+    def test_paged_review_preserves_all_native_effects_and_callback_queues(self):
+        route = self.pull_route()
+        self.move.write({'procure_method': 'make_to_order', 'route_ids': [(6, 0, route.ids)]})
+        before = self.paged_load()
+        full = self.preview()
+        hooks = {name: getattr(self.env.cr, name) for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
+        pages = self.paged_review(limit=2)
+        merged = {kind: {} for kind in ('created', 'updated', 'deleted', 'labels', 'schema')}
+        merged['private_audit_counts'] = pages[0]['effects']['private_audit_counts']
+        for page in pages:
+            self.assertEqual(page['version'], before['version'])
+            self.assertEqual(page['review_version'], pages[0]['review_version'])
+            count = sum(len(rows) for kind in ('created', 'updated', 'deleted') for rows in page['effects'][kind].values())
+            self.assertGreater(count, 0)
+            self.assertLessEqual(count, 2)
+            for kind in ('created', 'updated', 'deleted'):
+                for model, rows in page['effects'][kind].items():
+                    merged[kind].setdefault(model, []).extend(rows)
+            merged['labels'].update(page['effects']['labels'])
+            merged['schema'].update(page['effects']['schema'])
+            self.assertEqual(page['effects']['private_audit_counts'], merged['private_audit_counts'])
+        self.assertEqual(merged, full['effects'])
+        self.assertNotEqual(pages[0]['review_version'], full['review_version'])
+        self.assertTrue(pages[-1]['review_complete_token'])
+        self.assertFalse(pages[-1]['continuation_token'])
+        self.assertEqual(before, self.paged_load())
+        for name, callbacks in hooks.items():
+            self.assertIs(getattr(self.env.cr, name), callbacks)
+        self.assertEqual(self.picking.state, 'draft')
+        self.assertEqual(self.quant.quantity, 10)
+        json.dumps(pages, allow_nan=False)
+
+    def test_paged_review_rejects_skipped_tampered_and_wrong_purpose_tokens(self):
+        version = self.paged_load()['version']
+        page = self.api().qorlia_confirmation_paged_review(self.order.id, self.picking.id, version, limit=1)
+        self.assertGreater(page['total_count'], 2)
+        for after, review, token in (
+                (2, page['review_version'], page['continuation_token']),
+                (1, 'e' * 64, page['continuation_token']),
+                (1, page['review_version'], 'f' * 64)):
+            with self.assertRaises(UserError):
+                self.api().qorlia_confirmation_paged_review(self.order.id, self.picking.id, version,
+                    after=after, review_version=review, continuation_token=token, limit=1)
+        request = {key: page[key] for key in ('order_id', 'transfer_id', 'version', 'review_version')}
+        request.update(request_key=str(uuid.uuid4()), review_complete_token=page['continuation_token'])
+        with self.assertRaises(UserError):
+            self.api().qorlia_confirmation_paged_save(request)
+        self.assertEqual(self.picking.state, 'draft')
+        self.assertFalse(self.picking.qorlia_confirmation_receipts)
+
+    def test_paged_review_has_strict_first_page_cursor_and_request_shapes(self):
+        version = self.paged_load()['version']
+        for values in ({'after': True}, {'after': -1}, {'after': 1}, {'limit': 0}, {'limit': 101},
+                {'limit': True}, {'review_version': 'a' * 64}, {'continuation_token': 'a' * 64}, {'version': []}):
+            with self.assertRaises(ValidationError):
+                self.api().qorlia_confirmation_paged_review(self.order.id, self.picking.id,
+                    **({'version': version} | values))
+        request = self.paged_request()
+        for change in ({'extra': True}, {'review_complete_token': False}, {'request_key': 'invalid'},
+                {'order_id': True}, {'version': []}, {'transfer_id': []}):
+            with self.assertRaises(ValidationError):
+                self.api().qorlia_confirmation_paged_status(request | change)
+        with self.assertRaises(ValidationError):
+            self.api().qorlia_confirmation_save(request)
+
+    def test_paged_confirmation_saves_all_501_moves_without_weakening_legacy_caps(self):
+        values = self.move.copy_data()[0]
+        self.env['stock.move'].create([dict(values, picking_id=self.picking.id) for _ in range(500)])
+        before = self.paged_load()
+        self.assertEqual(before['transfer']['move_count'], 501)
+        self.assertNotIn('moves', before['transfer'])
+        with self.assertRaises(UserError):
+            self.load()
+        pages = self.paged_review()
+        removed = [row['id'] for page in pages for row in page['effects']['deleted'].get('stock.move', [])]
+        self.assertEqual(len(removed), 500)
+        self.assertEqual(len(set(removed)), 500)
+        self.assertEqual(before, self.paged_load())
+        request = {key: pages[-1][key] for key in ('order_id', 'transfer_id', 'version', 'review_version', 'review_complete_token')}
+        request['request_key'] = str(uuid.uuid4())
+        accepted = self.api().qorlia_confirmation_paged_save(request)
+        self.assertTrue(accepted['accepted'])
+        self.assertEqual(accepted['current']['transfer']['move_count'], 1)
+        self.assertEqual(self.picking.move_ids.product_uom_qty, 2505)
+        self.assertEqual(self.api().qorlia_confirmation_paged_save(request), accepted)
+        self.assertEqual(len(self.picking.qorlia_confirmation_receipts), 1)
+        self.assertEqual(self.quant.quantity, 10)
+        self.assertEqual(self.sale_line.qty_delivered, 0)
+
+    def test_paged_confirmation_load_and_review_all_2001_operations(self):
+        self.env['stock.move.line'].create([{'picking_id': self.picking.id, 'move_id': self.move.id,
+            'product_id': self.product.id, 'product_uom_id': self.product.uom_id.id,
+            'location_id': self.picking.location_id.id, 'location_dest_id': self.picking.location_dest_id.id,
+            'lot_id': self.lot.id, 'reserved_uom_qty': 0, 'qty_done': 0} for _ in range(2001)])
+        before = self.paged_load()
+        self.assertEqual(before['transfer']['operation_count'], 2001)
+        self.assertNotIn('operations', before['transfer'])
+        with self.assertRaises(UserError):
+            self.load()
+        pages = self.paged_review()
+        operations = [row['id'] for page in pages for row in page['effects']['updated'].get('stock.move.line', [])]
+        self.assertEqual(set(operations), set(self.picking.move_line_ids.ids))
+        self.assertEqual(len(operations), 2001)
+        self.assertEqual(before, self.paged_load())
+        self.assertEqual(len(self.picking.move_line_ids), 2001)
+        request = {key: pages[-1][key] for key in ('order_id', 'transfer_id', 'version', 'review_version', 'review_complete_token')}
+        request['request_key'] = str(uuid.uuid4())
+        accepted = self.api().qorlia_confirmation_paged_save(request)
+        self.assertTrue(accepted['accepted'])
+        self.assertEqual(accepted['current']['transfer']['operation_count'], 2001)
+        self.assertEqual(self.api().qorlia_confirmation_paged_status(request), accepted)
+        self.assertEqual(self.api().qorlia_confirmation_paged_save(request), accepted)
+        self.assertEqual(self.quant.quantity, 10)
+        self.assertEqual(self.move.quantity_done, 0)
+
+    def test_paged_confirmation_reserves_without_delivery_and_recovers_exactly(self):
+        self.warehouse.out_type_id.reservation_method = 'at_confirm'
+        before = {name: self.env[name].search_count([]) for name in ('account.move', 'account.payment', 'stock.valuation.layer')}
+        request = self.paged_request()
+        self.assertFalse(self.api().qorlia_confirmation_paged_status(request)['accepted'])
+        accepted = self.api().qorlia_confirmation_paged_save(request)
+        self.assertTrue(accepted['accepted'])
+        self.assertEqual(accepted['state_after'], 'assigned')
+        self.assertEqual(accepted['reference_count'], 1)
+        self.assertNotIn('references', accepted)
+        self.assertEqual(self.api().qorlia_confirmation_paged_status(request), accepted)
+        self.assertEqual(self.api().qorlia_confirmation_paged_save(request), accepted)
+        self.assertEqual(self.quant.quantity, 10)
+        self.assertEqual(self.quant.reserved_quantity, 5)
+        self.assertEqual(self.move.quantity_done, 0)
+        self.assertEqual(self.sale_line.qty_delivered, 0)
+        self.assertEqual(before, {name: self.env[name].search_count([]) for name in before})
+
+    def test_paged_confirmation_references_are_complete_bounded_and_snapshot_bound(self):
+        route = self.pull_route()
+        self.move.write({'procure_method': 'make_to_order', 'route_ids': [(6, 0, route.ids)]})
+        request = self.paged_request()
+        with self.assertRaises(UserError):
+            self.api().qorlia_confirmation_paged_references(request)
+        accepted = self.api().qorlia_confirmation_paged_save(request)
+        self.assertGreater(accepted['reference_count'], 1)
+        first = self.api().qorlia_confirmation_paged_references(request, limit=1)
+        second = self.api().qorlia_confirmation_paged_references(request, after=first['next_after'], version=first['version'], limit=100)
+        self.assertEqual(len(first['rows']), 1)
+        self.assertFalse(second['next_after'])
+        rows = first['rows'] + second['rows']
+        self.assertEqual(len(rows), accepted['reference_count'])
+        self.assertTrue({'stock.move', 'stock.picking'} <= {row['model'] for row in rows})
+        native = self.picking.qorlia_confirmation_receipts[request['request_key']]['references']
+        self.assertEqual({row['key']: {'model': row['model'], 'id': row['id']} for row in rows}, native)
+        self.assertTrue(all(row['available'] and row['id'] and row['name'] for row in rows))
+        self.move.move_orig_ids.picking_id.name = 'QorliaQA Renamed accepted supply'
+        with self.assertRaises(UserError):
+            self.api().qorlia_confirmation_paged_references(request, after=1, version=first['version'])
+        for values in ({'after': True}, {'after': -1}, {'after': 1}, {'limit': 101}, {'version': []}, {'after': 100000, 'version': first['version']}):
+            with self.assertRaises(UserError):
+                self.api().qorlia_confirmation_paged_references(request, **values)
+
+    def test_paged_confirmation_rejects_stale_review_inventory_and_other_author(self):
+        first = self.paged_review(limit=1)[0]
+        other = self.user.copy({'name': 'QorliaQA Other paged author', 'login': 'qorliaqa-other-paged-author'})
+        with self.assertRaises(UserError):
+            self.env['stock.picking'].with_user(other).qorlia_confirmation_paged_review(self.order.id, self.picking.id,
+                first['version'], after=first['next_after'], review_version=first['review_version'], continuation_token=first['continuation_token'])
+        request = self.paged_request()
+        self.env['stock.quant']._update_available_quantity(self.product, self.picking.location_id, 1, lot_id=self.lot)
+        with self.assertRaises(UserError):
+            self.api().qorlia_confirmation_paged_review(self.order.id, self.picking.id,
+                first['version'], after=first['next_after'], review_version=first['review_version'], continuation_token=first['continuation_token'])
+        with self.assertRaises(UserError):
+            self.api().qorlia_confirmation_paged_save(request)
+        self.assertEqual(self.picking.state, 'draft')
+        self.assertFalse(self.picking.qorlia_confirmation_receipts)
+
+    def test_paged_confirmation_checks_hidden_off_page_records_before_counts(self):
+        operation = self.env['stock.move.line'].create({'picking_id': self.picking.id, 'move_id': self.move.id,
+            'product_id': self.product.id, 'product_uom_id': self.product.uom_id.id,
+            'location_id': self.picking.location_id.id, 'location_dest_id': self.picking.location_dest_id.id})
+        self.env['ir.rule'].create({'name': 'QorliaQA Hidden paged operation',
+            'model_id': self.env['ir.model']._get_id('stock.move.line'),
+            'domain_force': "[('id', '!=', %s)]" % operation.id})
+        with self.assertRaises(AccessError):
+            self.paged_load()
+        with self.assertRaises(AccessError):
+            self.env['stock.picking'].with_user(self.env.ref('base.public_user')).qorlia_confirmation_paged_load(self.order.id, self.picking.id)
+
+    def test_paged_confirmation_rejects_actual_unreviewed_effect_and_restores_hooks(self):
+        request = self.paged_request()
+        original = type(self.picking).action_confirm
+        calls = []
+        hooks = {name: getattr(self.env.cr, name) for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
+        sizes = {name: len(callbacks._funcs) for name, callbacks in hooks.items()}
+        def changed(picking):
+            result = original(picking)
+            calls.append(True)
+            if len(calls) == 2:
+                picking.move_ids.product_uom_qty = 7
+                picking.env.cr.postcommit.add(lambda: self.fail('Unreviewed paged callback escaped.'))
+            return result
+        with patch.object(type(self.picking), 'action_confirm', changed), self.assertRaises(UserError):
+            self.api().qorlia_confirmation_paged_save(request)
+        self.assertEqual(self.picking.state, 'draft')
+        self.assertEqual(self.move.product_uom_qty, 5)
+        self.assertFalse(self.picking.qorlia_confirmation_receipts)
+        for name, callbacks in hooks.items():
+            self.assertIs(getattr(self.env.cr, name), callbacks)
+            self.assertEqual(len(callbacks._funcs), sizes[name])
+
+    def test_paged_confirmation_exact_receipt_author_and_cross_protocol_binding(self):
+        request = self.paged_request()
+        accepted = self.api().qorlia_confirmation_paged_save(request)
+        self.assertTrue(accepted['accepted'])
+        other = self.user.copy({'name': 'QorliaQA Other paged receipt author', 'login': 'qorliaqa-other-paged-receipt-author'})
+        with self.assertRaises(ValidationError):
+            self.env['stock.picking'].with_user(other).qorlia_confirmation_paged_status(request)
+        with self.assertRaises(ValidationError):
+            self.api().qorlia_confirmation_paged_save(request | {'review_complete_token': 'e' * 64})
+        with self.assertRaises(ValidationError):
+            self.api().qorlia_confirmation_status({key: value for key, value in request.items() if key != 'review_complete_token'})
+
+    def test_paged_native_preview_failure_restores_state_and_hooks(self):
+        version = self.paged_load()['version']
+        hooks = {name: getattr(self.env.cr, name) for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
+        original = type(self.picking).action_confirm
+        def failed(picking):
+            original(picking)
+            picking.env.cr.postcommit.add(lambda: self.fail('Paged preview callback escaped.'))
+            raise UserError('QorliaQA paged preview failure')
+        with patch.object(type(self.picking), 'action_confirm', failed), self.assertRaises(UserError):
+            self.api().qorlia_confirmation_paged_review(self.order.id, self.picking.id, version)
+        self.assertEqual(self.picking.state, 'draft')
+        for name, callbacks in hooks.items():
+            self.assertIs(getattr(self.env.cr, name), callbacks)
+
+    def test_paged_buy_confirmation_preserves_rfq_and_exact_retry(self):
+        vendor = self.env['res.partner'].create({'name': 'QorliaQA Paged vendor'})
+        self.env['product.supplierinfo'].create({'partner_id': vendor.id,
+            'product_tmpl_id': self.product.product_tmpl_id.id, 'product_id': self.product.id,
+            'min_qty': 0, 'price': 1, 'company_id': self.env.company.id})
+        route = self.pull_route()
+        route.rule_ids.action = 'buy'
+        self.move.write({'procure_method': 'make_to_order', 'route_ids': [(6, 0, route.ids)]})
+        request = self.paged_request()
+        accepted = self.api().qorlia_confirmation_paged_save(request)
+        self.assertTrue(accepted['accepted'])
+        self.assertEqual(accepted['state_after'], 'waiting')
+        purchase = self.env['purchase.order'].search([('partner_id', '=', vendor.id)])
+        self.assertEqual(len(purchase), 1)
+        self.assertEqual(purchase.state, 'draft')
+        self.assertEqual(purchase.order_line.product_qty, 5)
+        self.assertEqual(self.api().qorlia_confirmation_paged_save(request), accepted)
+        self.assertEqual(purchase.order_line.product_qty, 5)
+
+    def test_paged_confirmation_foreign_company_and_unavailable_transfers_reject(self):
+        other = self.env['sale.order'].create({'partner_id': self.customer.id, 'shop_id': self.shop.id})
+        with self.assertRaises(UserError):
+            self.api().qorlia_confirmation_paged_load(other.id, self.picking.id)
+        company = self.env['res.company'].create({'name': 'QorliaQA Other paged company'})
+        self.user.company_ids |= company
+        with self.assertRaises(AccessError):
+            self.api().with_context(allowed_company_ids=company.ids).qorlia_confirmation_paged_load(self.order.id, self.picking.id)
+        for identifier in (False, True, -1, [], '1'):
+            with self.assertRaises(ValidationError):
+                self.api().qorlia_confirmation_paged_load(self.order.id, identifier)
+        version = self.paged_load()['version']
+        self.picking.action_confirm()
+        self.assertTrue(self.paged_load()['reason'])
+        with self.assertRaises(UserError):
+            self.api().qorlia_confirmation_paged_review(self.order.id, self.picking.id, version)
+        with self.assertRaises(UserError):
+            self.api().qorlia_confirmation_paged_review(self.order.id, self.picking.id, self.paged_load()['version'])
+
+    def test_paged_confirmation_zero_visible_effects_still_binds_private_audit(self):
+        version = self.paged_load()['version']
+        effects = {kind: {} for kind in ('created', 'updated', 'deleted', 'labels', 'schema')}
+        effects['private_audit_counts'] = {'mail.message': {'created': 1, 'updated': 0, 'deleted': 0}}
+        with patch.object(type(self.picking), '_qorlia_confirmation_preview_effects', return_value=(
+                effects, {'QorliaQA private audit': 'A'}, 'confirmed')):
+            first = self.api().qorlia_confirmation_paged_review(self.order.id, self.picking.id, version)
+        with patch.object(type(self.picking), '_qorlia_confirmation_preview_effects', return_value=(
+                effects, {'QorliaQA private audit': 'B'}, 'confirmed')):
+            second = self.api().qorlia_confirmation_paged_review(self.order.id, self.picking.id, version)
+        self.assertEqual(first['total_count'], 0)
+        self.assertFalse(first['next_after'])
+        self.assertTrue(first['review_complete_token'])
+        self.assertEqual(first['effects'], effects)
+        self.assertNotIn('private_audit', first)
+        self.assertNotEqual(first['review_version'], second['review_version'])
+        self.assertNotEqual(first['review_complete_token'], second['review_complete_token'])
+
+    def test_paged_confirmation_hidden_created_rfq_references_remain_unavailable(self):
+        vendor = self.env['res.partner'].create({'name': 'QorliaQA Paged hidden vendor'})
+        self.env['product.supplierinfo'].create({'partner_id': vendor.id,
+            'product_tmpl_id': self.product.product_tmpl_id.id, 'product_id': self.product.id,
+            'min_qty': 0, 'price': 1, 'company_id': self.env.company.id})
+        route = self.pull_route()
+        route.rule_ids.action = 'buy'
+        self.move.write({'procure_method': 'make_to_order', 'route_ids': [(6, 0, route.ids)]})
+        request = self.paged_request()
+        self.api().qorlia_confirmation_paged_save(request)
+        old = self.api().qorlia_confirmation_paged_references(request, limit=1)
+        purchase = self.env['purchase.order'].search([('partner_id', '=', vendor.id)])
+        self.env['ir.rule'].create({'name': 'QorliaQA Hidden accepted paged RFQ',
+            'model_id': self.env['ir.model']._get_id('purchase.order'),
+            'domain_force': "[('id', '!=', %s)]" % purchase.id})
+        with self.assertRaises(UserError):
+            self.api().qorlia_confirmation_paged_references(request, after=1, version=old['version'])
+        rows = self.api().qorlia_confirmation_paged_references(request)['rows']
+        rfq = next(row for row in rows if row['model'] == 'purchase.order')
+        self.assertEqual((rfq['available'], rfq['id'], rfq['name']), (False, False, False))
+        self.assertTrue(self.api().qorlia_confirmation_paged_status(request)['accepted'])

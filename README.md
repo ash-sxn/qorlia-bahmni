@@ -54,6 +54,7 @@ The goal is full native workflow/API parity in a consistent Qorlia interface. Bi
 - [Feature parity ledger](docs/FEATURE_PARITY.md): dated evidence, accepted increments and remaining work.
 - [Backend readiness](docs/BACKEND_READINESS.md): backend compatibility, tested environments and integration gaps.
 - [Billing adapter](runtime/billing/README.md): native Odoo integration and limits.
+- [Large-transfer confirmation candidate](runtime/billing/STOCK_CONFIRMATION_PAGING.md): native paged review/save contract, distinct from released UI and tester capabilities.
 - [Stock returns in development](runtime/billing/STOCK_RETURNS.md): native return form, signed creation/status contracts and remaining browser recovery/UI/release gates.
 - [Reports adapter](runtime/reports/README.md): native report generation, export and branding limits.
 

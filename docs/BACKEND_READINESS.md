@@ -1,5 +1,27 @@
 # Qorlia React frontend backend readiness
 
+## Paged native confirmation backend candidate (16 October 2026)
+
+Source 52 adds compact loading and complete sequential HMAC-bound effects review,
+terminal proof, native save/status recovery and paged generated references for
+large transfers. It reuses the existing native action and rollback engine; legacy
+APIs and their graph limits are unchanged. Read the [contract and exact evidence
+split](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#native-validation-checkpoint).
+
+The broad run has 237 passes and one test-harness error among 238 cases. The
+corrected reference-page case then passes separately against byte-identical
+adapter code. That covers 238 distinct cases across runs, not a clean single
+238-case post-fix rerun/full-addon suite. All 501 moves and 2,001 operations are
+reviewed and saved in native tests, with exact recovery, permission/stale/token
+checks and preserved stock/financial boundaries. Original rows in 18 tables and
+mandatory analytics survive rollback. Protected tester/validation stored data are
+independently unchanged. The two earlier harness failures remain recorded.
+
+This is a backend-only source candidate on installed-49 synthetic data. Typed
+client/gateway integration, actual HTTP/concurrency, installed upgrade, React
+page display/browser recovery, representative scale and release acceptance remain.
+No UI gate reopening, published endpoint or tester upgrade occurs; review stays 410.
+
 ## Complete transfer detail read candidate (16 October 2026)
 
 Source 51 adds bounded move/operation pages linked to the summary's order-wide

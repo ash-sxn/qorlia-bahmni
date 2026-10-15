@@ -3,6 +3,14 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest native backend candidate: [complete paged confirmation](STOCK_CONFIRMATION_PAGING.md).
+Source 52 adds compact transfer loading, sequential HMAC-bound effect pages,
+terminal review proof, duplicate-safe save/status and paged created references.
+It reuses the existing native effects, rollback and guarded receipt engine rather
+than raising legacy caps or signing a partial graph. Client/gateway/UI integration,
+HTTP/concurrency and release acceptance remain separate work. No review gate is
+reopened and no tester runtime is upgraded by this source change.
+
 New backend candidate: [complete native transfer detail pages](STOCK_TRANSFER_DETAILS.md).
 Source 51 reads beyond 500 moves/2,000 operations in bounded pages with the same
 order-wide snapshot and native permissions/units. Native shared-stock regression

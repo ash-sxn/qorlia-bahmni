@@ -1,5 +1,11 @@
 # Bahmni workflow parity ledger
 
+## 16 October paged confirmation backend candidate
+
+- Source 52 adds a separate compact load, sequential complete-effects review, terminal HMAC proof, native save/status and paged created references. It does not raise old graph caps or sign only a page. Existing native confirmation, rollback and receipt helpers are reused. See [the protocol and precise evidence](../runtime/billing/STOCK_CONFIRMATION_PAGING.md).
+- The broad native run records 237 passes and one test-harness error among 238 cases. The corrected case passes separately with identical adapter code; only its assertion changes. These are 238 distinct cases across runs, not a clean single 238-case post-fix rerun or full-addon suite. Large native cases traverse/save all 501 moves and 2,001 operations and recover the exact request; other cases retain native permissions, hidden/private effects, financial/physical guards and callback rollback. Original 18-table rows and mandatory analytics are preserved. Earlier failed test assumptions are retained, not counted as extra independent coverage.
+- This is backend-only source on installed-49 synthetic data. The new APIs have no typed client, gateway allowlist or React consumer yet. No fresh Home/browser acceptance, installed-52 upgrade, HTTP/concurrency/scale acceptance, frontend build or public deployment is claimed. Hosted tester/earlier validation rows remain unchanged; the owner-closed gate stays 410. Other large stock actions and whole-product parity remain open.
+
 ## 16 October complete transfer detail read candidate
 
 - Candidate 51 adds bounded move/operation pages sharing the order summary's snapshot, with complete linked access/company checks and unchanged native units, batches, references and full-graph projections. Actual TypeScript/native HTTP traverses 501 moves and 2,001 operations with exact native value comparison and 20-table preservation. It uses installed-50 synthetic data, not an installed-51 upgrade. See [the contract](../runtime/billing/STOCK_TRANSFER_DETAILS.md).

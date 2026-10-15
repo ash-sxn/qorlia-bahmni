@@ -30,6 +30,15 @@ Use the [parity ledger](FEATURE_PARITY.md) and [backend readiness](BACKEND_READI
 
 ### Current integration checkpoint, in plain language
 
+For the newest backend-only work, source 51 has complete transfer detail read
+pages and source 52 adds a separate large-transfer confirmation protocol. Read
+the [paged confirmation guide](../runtime/billing/STOCK_CONFIRMATION_PAGING.md)
+before working on it. It includes the API sequence, signing/recovery rules and
+remaining acceptance boundaries. A native backend candidate is not an available
+tester UI; it must not be wired into the old full-graph modal or used to reopen
+the review gate. The historical browser evidence below concerns smaller workflows
+on earlier isolated runtimes.
+
 - **Hosted tester:** protected Billing review remains on adapter 43. An adapter is the backend code connecting Qorlia to native Odoo actions. Newer source in GitHub does not automatically update that server.
 - **Newer development work:** adapter 48 uses individually reviewed native validation steps. Some native actions save preparation before asking the next question. The interface must preserve that saved result instead of replaying the whole conversation. Earlier adapter contracts remain documented for history and recovery of older pending requests, not as the recommended new implementation.
 - **What has actual browser evidence:** on an isolated synthetic copy, receipt preparation survives reload/tab reopening; immediate preparation survives declining an expiry warning; and a genuinely lost accepted response can be recovered after full reload without another save. There is also a scoped narrow-screen/keyboard prompt check. Component tests, native tests, HTTP checks and browser checks are different evidence levels.

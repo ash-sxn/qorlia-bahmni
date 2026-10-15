@@ -135,6 +135,10 @@ class StockReservation(models.Model):
                 if operation['id'] not in original_lines:
                     operation['id'] = False
             row['operations'].sort(key=lambda item: _digest(item))
+        return {'transfer': row, 'packages': self._qorlia_reservation_package_graph(original_packages)}
+
+    def _qorlia_reservation_package_graph(self, original_packages=None):
+        self.ensure_one()
         packages = self.package_level_ids
         packages.check_access_rights('read')
         packages.check_access_rule('read')
@@ -145,7 +149,7 @@ class StockReservation(models.Model):
         packages = [{'id': item.id if original_packages is None or item.id in original_packages else False,
             'state': item.state, **{name: _label(item[name]) for name in package_fields if name != 'state'}} for item in packages]
         packages.sort(key=lambda item: _digest(item))
-        return {'transfer': row, 'packages': packages}
+        return packages
 
     @api.model
     def qorlia_transfer_load(self, order_id, transfer_id):
