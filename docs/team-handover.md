@@ -24,7 +24,7 @@ Use the [parity ledger](FEATURE_PARITY.md) and [backend readiness](BACKEND_READI
 | Unfinished Billing integration                  | [Draft PR 4](https://github.com/ash-sxn/qorlia-bahmni/pull/4)                                                   | Not a completed-product release or permission to merge              |
 | Running review environment                      | Operator's private environment pack                                                                             | Record source, build, backend and configuration versions separately |
 
-At this checkpoint, protected Billing review remains on adapter 43. Later adapter 45 confirmation source has separate isolated native HTTP/local-browser evidence. Native delivery-validation work is still under development. Do not upgrade the tester, copy unfinished code or disable gates to make versions match. See the [confirmation contract](../runtime/billing/STOCK_CONFIRMATION.md).
+At this checkpoint, protected Billing review remains on adapter 43. Later adapter 45 confirmation source has separate isolated native HTTP/local-browser evidence. Adapter 46 adds native delivery-validation save/status and exact recovery receipts, with native tests on a separate database copy. Its frontend service/gateway work is still uncommitted integration work; React wizard controls and actual validation HTTP/browser acceptance are not complete. Do not upgrade the tester, copy unfinished code or disable gates to make versions match. See the [confirmation contract](../runtime/billing/STOCK_CONFIRMATION.md) and [delivery-validation contract](../runtime/billing/STOCK_VALIDATION.md).
 
 ## 3. Resources needed to begin
 
@@ -34,6 +34,21 @@ At this checkpoint, protected Billing review remains on adapter 43. Later adapte
 - A bounded first task and time to read existing code. Installing all hospital services, buying a server or obtaining the owner's AI account is not an onboarding prerequisite.
 
 Python/Odoo runtime access is needed only for assigned Billing backend work. Docker/Java or specialist tools are task-specific, not compulsory requests for every newcomer. Test libraries are already project dependencies. Do not install a second framework or replace the lockfile to get started.
+
+### First-session checklist
+
+Do this in order. If a prerequisite is missing, report it rather than spending the session guessing configuration.
+
+- [ ] Read this handover, [orientation](developer-start-here.md) and [architecture](architecture.md). Explain in your own words which system owns clinical data and which owns Billing.
+- [ ] Send your own GitHub username and available working hours privately to Ashutosh. Confirm the assigned issue, reviewer and base branch before coding.
+- [ ] Follow [setup](setup-guide.md). Record Git, Node and Yarn versions, your branch, starting SHA and dependency-install result.
+- [ ] Obtain the approved synthetic environment pack privately. Never paste it into a public issue, screenshot or PR.
+- [ ] Open the exact local `/bahmni-v2/login` route. If it fails, report the sanitized error and the boundary that failed, not just “not working”.
+- [ ] Complete [the appointment read exercise](first-contribution.md). Identify the route, component, service, endpoint and response. Start with a read, not a clinical or accounting write.
+- [ ] Run the relevant [focused checks](testing-guide.md). Record both failures and successes. A setup failure should name the prerequisite needed.
+- [ ] Send a short setup/read-trace note using [the daily update](team-workflow.md#daily-update-with-evidence). Ask the reviewer to agree the next bounded task.
+
+Do not commit an unchanged setup note just to produce a PR. A useful first checkpoint can be a sanitized issue comment with the trace and evidence. If a real defect is reproduced, agree its scope before fixing it.
 
 ## 4. First checkpoints, based on evidence
 
@@ -77,6 +92,14 @@ No installation, tutorial, AI-generated patch, passing mock test or screenshot a
 Use [team workflow](team-workflow.md) for phase/status definitions and the daily update. Use GitHub issues/PRs as code evidence; link them from the agreed internal board. This handbook does not create a board or assign dates automatically.
 
 Monitor concrete outputs: traced workflow, reproduced issue, PR, tests, independent replay, blocker and next checkpoint. Do not judge progress by lines of code, number of screenshots or a guessed percentage. Re-estimate after an audit exposes unknown native behaviour. Clarify what “EL” means with management before treating it as an allocation field.
+
+### What management should receive
+
+For each project and phase, request one named owner, a concrete deliverable, its dependencies, a target checkpoint and evidence links. The next checkpoint might be “Appointments read audit reviewed”, not an unqualified promise to complete a module. The [task template](task-brief-template.md) captures these fields.
+
+At a short review, each contributor should be able to demonstrate their result and explain one request from screen to server. The reviewer checks the diff and tests; a tester independently repeats the acceptance steps. If a blocker changes the estimate, report the changed assumption and decision needed. Installation, implementation, acceptance and release are separate milestones.
+
+For vendors, add source handover, dependency/licence inventory, reproducible checks and the agreed acceptance reviewer. Commercial terms and payments remain private owner decisions. This workflow is deliverable monitoring, not permission to monitor personal devices or unrelated activity.
 
 The owner can share this short introduction with the team:
 

@@ -8,6 +8,8 @@ This public repository contains the React hospital application, shared UI/servic
 
 Joining with Aniket, Gautam or another team? Begin with the [new-team handover](docs/team-handover.md): current versions, resources, first checkpoints, proposed work split and the path from a requirement to a reviewed feature. It includes a short message Ashutosh can share with the team.
 
+For a practical starting checklist, use [your first session](docs/team-handover.md#first-session-checklist). Managers can use [the deliverable-review guidance](docs/team-handover.md#what-management-should-receive) together with the task template. These are onboarding instructions, not automatic task assignments or release approval.
+
 Read these in order. Each guide links back here and to the next step.
 
 | Step | Guide                                                | What you will learn                                                          |
