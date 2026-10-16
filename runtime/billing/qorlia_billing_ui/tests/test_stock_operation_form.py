@@ -176,6 +176,95 @@ class StockOperationFormTest(TransactionCase):
         self.assertEqual((len(second['rows']), second['has_more']), (5, False))
         self.assertFalse(set(row[0] for row in first['rows']) & set(row[0] for row in second['rows']))
 
+    def test_single_form_over_500_moves_uses_complete_scope_not_legacy_graph(self):
+        extra = self.env['stock.move'].create([
+            dict(self.move.copy_data()[0], picking_id=self.picking.id) for _index in range(500)])
+        self.assertEqual(len(self.picking.move_ids), 501)
+        with patch.object(type(self.env['sale.order']), '_qorlia_delivery_data',
+                side_effect=AssertionError('A single form must not load the full transfer graph.')):
+            loaded = self.load()
+            changed = self.change([{'field': 'qty_done', 'value': 2}], loaded)
+            self.assertEqual(changed['values']['qty_done'], 2)
+            self.assertIn(self.lot.id, [row[0] for row in self.choices('lot_id')['rows']])
+            self.assertFalse(self.load(False)['operation_id'])
+            self.assertFalse({'graph', 'moves', 'operations'} & set(loaded))
+            self.assertFalse(loaded['write_ready'])
+            self.assertFalse(loaded['can_delete'])
+            self.assertIn('complete paged operation effects', loaded['reason'])
+            extra[-1].product_uom_qty += 1
+            with self.assertRaises(UserError):
+                self.change([{'field': 'qty_done', 'value': 2}], loaded)
+        # The legacy effects/save protocol still rejects oversized graphs, never a partial review.
+        with self.assertRaises(UserError):
+            self.edit_review([{'field': 'qty_done', 'value': 2}])
+        self.assertEqual(self.line.qty_done, 0)
+        self.assertFalse(self.picking.qorlia_operation_receipts)
+
+    def test_single_form_over_2000_operations_preserves_off_page_identity_and_no_writes(self):
+        extra = self.env['stock.move.line'].create([{
+            'picking_id': self.picking.id, 'move_id': self.move.id, 'product_id': self.product.id,
+            'product_uom_id': self.product.uom_id.id, 'location_id': self.move.location_id.id,
+            'location_dest_id': self.move.location_dest_id.id, 'lot_id': self.lot.id,
+        } for _index in range(2000)])
+        self.assertEqual(len(self.picking.move_line_ids), 2001)
+        self.line = extra[-1]
+        self.env.flush_all()
+        tables = ['stock_picking', 'stock_move', 'stock_move_line', 'stock_quant', 'stock_lot',
+            'stock_package_level', 'product_product', 'product_template', 'sale_order', 'sale_order_line',
+            'account_move', 'account_move_line', 'account_payment', 'account_analytic_line', 'stock_valuation_layer']
+        before = self.picking._qorlia_confirmation_stamp(tables)
+        with patch.object(type(self.env['sale.order']), '_qorlia_delivery_data',
+                side_effect=AssertionError('A single form must not load the full transfer graph.')):
+            loaded = self.load()
+            self.assertEqual(loaded['operation_id'], extra[-1].id)
+            self.assertFalse(loaded['write_ready'])
+            self.assertFalse(loaded['can_delete'])
+            self.assertEqual(self.change([{'field': 'qty_done', 'value': 2}], loaded)['values']['qty_done'], 2)
+            self.assertIn(self.lot.id, [row[0] for row in self.choices('lot_id')['rows']])
+        self.env.flush_all()
+        self.assertEqual(self.picking._qorlia_confirmation_stamp(tables), before)
+        with self.assertRaises(UserError):
+            self.edit_review([{'field': 'qty_done', 'value': 2}], loaded=loaded)
+        self.assertFalse(self.picking.qorlia_operation_receipts)
+
+    def test_form_version_binds_sibling_operation_inventory_and_package_changes(self):
+        sibling = self.line.copy({'reserved_uom_qty': 0})
+        loaded = self.load()
+        sibling.qty_done = 1
+        with self.assertRaises(UserError):
+            self.change([{'field': 'qty_done', 'value': 2}], loaded)
+        loaded = self.load()
+        self.env['stock.quant']._update_available_quantity(self.product, self.picking.location_id, 1, lot_id=self.lot)
+        with self.assertRaises(UserError):
+            self.change([{'field': 'qty_done', 'value': 2}], loaded)
+        package = self.env['stock.quant.package'].create({'name': 'QorliaQA Form scope package'})
+        level = self.env['stock.package_level'].create({'package_id': package.id,
+            'picking_id': self.picking.id, 'company_id': self.env.company.id,
+            'location_id': self.move.location_id.id, 'location_dest_id': self.move.location_dest_id.id})
+        loaded = self.load()
+        level.state = 'confirmed'
+        with self.assertRaises(UserError):
+            self.change([{'field': 'qty_done', 'value': 2}], loaded)
+
+    def test_form_rejects_hidden_sibling_without_returning_selected_partial_form(self):
+        sibling = self.line.copy({'reserved_uom_qty': 0})
+        self.env['ir.rule'].create({'name': 'QorliaQA Hidden sibling operation form scope',
+            'model_id': self.env['ir.model']._get_id('stock.move.line'),
+            'domain_force': "[('id', '!=', %d)]" % sibling.id})
+        with self.assertRaises(AccessError):
+            self.load()
+        with self.assertRaises(AccessError):
+            self.load(False)
+
+    def test_form_rejects_foreign_missing_moves_and_malformed_transfer_identity(self):
+        foreign = self.picking.copy()
+        for move_id in (foreign.move_ids[0].id, 2147483647):
+            with self.assertRaises(ValidationError):
+                self.api().qorlia_operation_load(self.order.id, self.picking.id, move_id)
+        for transfer_id in (True, False, 0, -1, '1'):
+            with self.assertRaises(ValidationError):
+                self.api().qorlia_operation_load(self.order.id, transfer_id, self.move.id)
+
     def test_onchange_discards_unexpected_native_write_and_callbacks(self):
         native = type(self.line).onchange
         def writing(records, *args, **kwargs):

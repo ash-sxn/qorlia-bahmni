@@ -1,5 +1,24 @@
 # Qorlia React frontend backend readiness
 
+## Compact stock operation form candidate 53 (16 October 2026)
+
+The form reader now reuses complete paged-reader stock scope rather than the
+capped full-transfer loader. Existing load/onchange/choice contracts and native
+field rules remain, with explicit inspection-only flags for oversized transfers.
+Small save/status contracts remain unchanged; complete large operation effects
+and recovery are not implemented. See [implementation and limits](../runtime/billing/STOCK_OPERATION_FORMS.md).
+
+The initial implementation passes 770 full-addon cases; the final inspection-flag
+and strengthened row-check revision passes 33 native form cases. No failures,
+errors or skips in either run. Both preserve 25 monitored tables after rollback
+with mandatory analytics retained, using source-53 on installed-49 synthetic
+data without HTTP. Final Python source hashes match the retained native log.
+Home passes 810 tests/78 suites; types, scoped lint/format, parsing/diff and
+contributor-document links pass. These are distinct scoped runs, not a final
+full-addon rerun. Earlier source-52 HTTP evidence does not cover these production
+changes. No review reopening, UI build/browser, protected-gateway/native HTTP,
+installed upgrade or tester update has occurred.
+
 ## Full-addon native regression with mandatory analytics (16 October 2026)
 
 The final native addon run passes **765 cases, zero failures/errors/skips**, with

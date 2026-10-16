@@ -3,7 +3,16 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest native regression: [765 full-addon cases with mandatory analytics](STOCK_CONFIRMATION_PAGING.md#full-addon-mandatory-analytics-regression-16-october-2026).
+Candidate 53: [single-operation forms without the full-transfer graph](STOCK_OPERATION_FORMS.md).
+Load, rollback-only onchange and choices reuse complete stock-scope checks.
+Oversized forms are explicitly inspection-only; complete paged operation
+save/recovery is still pending. The initial implementation passes 770 full-addon
+cases; the final flag/row-check revision passes 33 native form cases. Both
+preserve 25 monitored tables after rollback with mandatory analytics enabled.
+Home passes 810 tests. These are separate scoped runs, not a final full-addon or
+browser/runtime release. Review stays closed, with no tester update or deployment.
+
+Prior candidate-52 native regression: [765 full-addon cases with mandatory analytics](STOCK_CONFIRMATION_PAGING.md#full-addon-mandatory-analytics-regression-16-october-2026).
 The final run has zero failures/errors/skips and preserves 25 monitored tables
 after rollback. Corrected synthetic allocations/defaults remove older fixture
 errors without changing production validation. Failed runs remain recorded.

@@ -1,5 +1,20 @@
 # Bahmni workflow parity ledger
 
+## 16 October compact native operation form checkpoint
+
+- Candidate 53 loads one operation without the capped full-transfer graph, using
+  complete order-wide snapshot/access checks and native form/onchange/choices.
+  Tests cover 501 moves, 2,001 operations, off-page identity and stale/hidden cases.
+- Oversized transfers explicitly return inspection-only flags. Full paged
+  operation effects/save/recovery remain unfinished; no legacy cap is raised.
+- Initial implementation: 770 full-addon cases pass. Final inspection flags and
+  stronger row comparison: 33 native form cases pass. Both preserve 25 monitored
+  tables after rollback with mandatory analytics. Home passes 810 tests/78 suites.
+  These are separate scoped runs, not a final full-addon rerun or browser/runtime
+  release. Source 53 runs on an installed-49 synthetic copy without HTTP.
+- Read [the implementation, retained evidence and limits](../runtime/billing/STOCK_OPERATION_FORMS.md).
+  Review stays closed; no UI server, gateway/native HTTP or tester deployment.
+
 ## 16 October full-addon native mandatory-analytics regression
 
 - Final full addon: 765 cases, zero failures/errors/skips, mandatory analytics enabled throughout and original rows in 25 monitored stock/finance/bank/analytic-configuration/company tables preserved after rollback. Source-52 application models run on the isolated installed-49 copy without HTTP or a persistent upgrade.

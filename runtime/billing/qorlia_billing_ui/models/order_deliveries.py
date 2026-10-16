@@ -200,11 +200,17 @@ class OrderDeliveries(models.Model):
             'stamps': stamps, 'labels': labels, 'policy': policy})
         return order, scopes['stock.picking'], version
 
-    def _qorlia_order_transfer_data(self, order_id, transfer_id):
+    def _qorlia_delivery_transfer_scope(self, order_id, transfer_id):
+        if type(transfer_id) is not int or transfer_id <= 0:
+            raise ValidationError('Select a saved stock transfer.')
         order, pickings, version = self._qorlia_delivery_scope(order_id)
         picking = pickings.filtered(lambda record: record.id == transfer_id)
         if not picking:
             raise UserError('This transfer is no longer linked to this order.')
+        return picking, order, version
+
+    def _qorlia_order_transfer_data(self, order_id, transfer_id):
+        picking, order, version = self._qorlia_delivery_transfer_scope(order_id, transfer_id)
         result = self._qorlia_delivery_data(order, picking)
         result['version'] = _digest({'index': version, 'data': result['version']})
         return result

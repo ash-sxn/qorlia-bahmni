@@ -24,6 +24,7 @@ const files = [
   "docs/task-brief-template.md",
   "runtime/billing/STOCK_RETURNS.md",
   "runtime/billing/STOCK_CONFIRMATION_PAGING.md",
+  "runtime/billing/STOCK_OPERATION_FORMS.md",
   "apps/home/README.md",
   "apps/clinical/README.md",
   "apps/registration/README.md",

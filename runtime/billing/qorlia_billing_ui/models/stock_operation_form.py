@@ -27,16 +27,16 @@ class StockOperationForm(models.Model):
             raise ValidationError('Select a native stock move and operation.')
         if not self.env.user.has_group('stock.group_stock_user'):
             raise AccessError('Stock operation forms require the native Stock User role.')
-        picking, _order = self._qorlia_reservation_transfer(order_id, transfer_id)
-        loaded = self.qorlia_transfer_load(order_id, transfer_id)
-        picking._qorlia_reservation_scope()
-        if not any(item['id'] == move_id for item in loaded['graph']['transfer']['moves']):
-            raise ValidationError('This move does not belong to the selected order transfer.')
-        move = self.env['stock.move'].browse(move_id)
+        picking, _order, scope = self.env['sale.order']._qorlia_delivery_transfer_scope(order_id, transfer_id)
+        inventory = picking._qorlia_reservation_scope()
+        packages = picking._qorlia_reservation_package_graph()
+        move = self.env['stock.move'].browse(move_id).exists()
         line = self.env['stock.move.line'].browse(operation_id).exists() if operation_id else self.env['stock.move.line']
         for records in (move, line):
             records.check_access_rights('read')
             records.check_access_rule('read')
+        if not move or move.picking_id != picking:
+            raise ValidationError('This move does not belong to the selected order transfer.')
         if operation_id and (not line or line.picking_id != picking or line.move_id != move):
             raise ValidationError('This operation does not belong to the selected move and transfer.')
         line.check_field_access_rights('read', OPERATION_FIELDS + IDENTITY_FIELDS + ('reserved_uom_qty', 'balance'))
@@ -64,7 +64,8 @@ class StockOperationForm(models.Model):
             'move': move.read(['write_date', 'state', 'origin_returned_move_id']),
             'product': move.product_id.read(['write_date', 'tracking', 'use_expiration_date', 'expiration_time']),
             'type': move.picking_type_id.read(['write_date', 'use_existing_lots', 'use_create_lots', 'show_entire_packs'])}
-        version = _digest({'source': loaded['version'], 'operation_id': operation_id,
+        # Bind every linked row and inventory dependency without returning a full transfer graph.
+        version = _digest({'scope': scope, 'inventory': inventory, 'packages': packages, 'operation_id': operation_id,
             'values': values, 'configuration': configuration})
         return picking, move, line, model, identity, values, groups, version
 
@@ -116,6 +117,9 @@ class StockOperationForm(models.Model):
                 record = form[name]._origin or form[name]
                 labels[name] = _label(record)
         rules, reason = self._qorlia_operation_rules(picking, move, line, form, groups, model.env.context)
+        oversized = len(picking.move_ids) > 500 or len(picking.move_line_ids) > 2000
+        if oversized and not reason:
+            reason = 'This form can be inspected, but saving needs complete paged operation effects and recovery.'
         return {'order_id': picking.sale_id.id, 'transfer_id': picking.id, 'move_id': move.id,
             'operation_id': line.id or False, 'version': version, 'product': _label(move.product_id),
             'state': move.state, 'tracking': move.product_id.tracking,
@@ -123,7 +127,7 @@ class StockOperationForm(models.Model):
             'rules': rules, 'labels': labels, 'reserved': line.reserved_uom_qty if line else 0,
             'balance': form.balance, 'expiry_warning': bool(form.is_move_line_lot_expiring_soon),
             'warning': warning, 'reason': reason, 'write_ready': not bool(reason),
-            'can_delete': self._qorlia_operation_can_delete(picking, move, line)}
+            'can_delete': not oversized and self._qorlia_operation_can_delete(picking, move, line)}
 
     @api.model
     def qorlia_operation_load(self, order_id, transfer_id, move_id, operation_id=False):

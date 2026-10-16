@@ -53,12 +53,7 @@ class StockConfirmationPaged(models.Model):
             if key in self.env.context})
 
     def _qorlia_confirmation_paged_transfer(self, order_id, transfer_id, lock=False):
-        if type(transfer_id) is not int or transfer_id <= 0:
-            raise ValidationError('Select a saved stock transfer.')
-        order, pickings, version = self.env['sale.order']._qorlia_delivery_scope(order_id)
-        picking = pickings.filtered(lambda record: record.id == transfer_id)
-        if not picking:
-            raise UserError('This transfer is no longer linked to this order.')
+        picking, order, version = self.env['sale.order']._qorlia_delivery_transfer_scope(order_id, transfer_id)
         if lock:
             self.env.cr.execute('SELECT id FROM res_company WHERE id = %s FOR UPDATE', [picking.company_id.id])
             self.env.cr.execute('SELECT id FROM stock_picking WHERE id = %s FOR UPDATE', [picking.id])

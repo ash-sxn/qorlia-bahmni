@@ -18,6 +18,10 @@ The existing redesign includes React login/navigation, module screens, shared de
 
 Use the [parity ledger](FEATURE_PARITY.md) and [backend readiness](BACKEND_READINESS.md) for scoped evidence. Features described in a proposal, AI roadmap or management presentation are not automatically implemented capabilities.
 
+For a small current backend example, read [the native operation-form walkthrough](../runtime/billing/STOCK_OPERATION_FORMS.md).
+It traces a form through scope checks, native onchange and review boundaries,
+and explains why a compact readable form does not make a large save complete.
+
 ## 2. Which version should I open?
 
 | Purpose                                         | Where to look                                                                                                   | Important distinction                                               |

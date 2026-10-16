@@ -199,6 +199,44 @@ describe('Native operation editor and exact-request recovery', () => {
     expect(change).not.toHaveBeenCalled();
     expect(save).not.toHaveBeenCalled();
   });
+  it('keeps an oversized inspection form out of save and removal review after native onchange', async () => {
+    const form = {
+      ...operationForm(),
+      write_ready: false,
+      can_delete: false,
+      reason:
+        'This form can be inspected, but saving needs complete paged operation effects and recovery.',
+    };
+    get.mockResolvedValue(form);
+    change.mockResolvedValue({
+      ...form,
+      values: { ...form.values, qty_done: 2 },
+    });
+    show();
+    const input = await screen.findByRole('spinbutton', {
+      name: 'Recorded done quantity',
+    });
+    expect(screen.getByText(form.reason)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Review operation removal$/ }),
+    ).toBeDisabled();
+    fireEvent.change(input, { target: { value: '2' } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(change).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Applying native operation rules...'),
+      ).not.toBeInTheDocument(),
+    );
+    const reviewButton = screen.getByRole('button', {
+      name: 'Review operation changes',
+    });
+    expect(reviewButton).toBeDisabled();
+    fireEvent.click(reviewButton);
+    expect(preview).not.toHaveBeenCalled();
+    expect(persist).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+  });
   it('waits for durable storage before HTTP, blocks double clicks and only finishes after accepted status', async () => {
     let commit!: (value: StockOperationRequest) => void;
     persist.mockImplementation(
