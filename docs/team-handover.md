@@ -70,7 +70,10 @@ failures/errors/skips and all 88 Python hashes matched. The typed client accepts
 285 native JSON frames with mocked transport. Separate actual native HTTP checks
 pass four requests over seven effect pages on 2,001 quants, with native choices,
 exact recovery and independent post-close SQL/hash verification. The diagnostic
-is stopped; the full 814-case native regression is still pending. The existing dialog and choice
+is stopped. The separate full native regression passes all 814 cases, zero
+failures/errors/skips, with 117-table preservation and all 88 Python hashes
+matched to `71c04d26` on installed-49. It does not verify later client-only source.
+The existing operation dialog and choice
 component still use the legacy protocol, so this is not a tester UI update.
 Do not reopen expired access or change your assigned task base to try these APIs.
 

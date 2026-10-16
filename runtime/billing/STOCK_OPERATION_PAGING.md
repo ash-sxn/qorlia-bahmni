@@ -61,8 +61,8 @@ the callback test now verifies that its writes roll back, deferred callbacks do
 not run, and original queue objects are restored. It does not incorrectly demand
 that precommit never executes. No running hospital configuration is changed.
 
-Scoped candidate-57 native HTTP evidence is recorded separately below. No actual
-protected-gateway/browser, final full-addon, installed upgrade, review reopening,
+Scoped candidate-57 native HTTP and full-addon evidence are recorded separately
+below. No actual protected-gateway/browser, installed upgrade, review reopening,
 frontend build or tester/public deployment is claimed. The earlier six-method
 contract and historical evidence below keep their own scope.
 
@@ -98,8 +98,32 @@ with `verify-operation-inventory-http57-20261016.cjs` and the post-close verifie
 The private diagnostic and Unix-socket tunnel are stopped; no TCP port was
 published. This is not the protected review gateway, browser, React/recovery
 migration, realistic performance/concurrency acceptance or a tester deployment.
-The full 814-case native addon regression is running separately on installed-49;
-it is not counted as a pass while unfinished.
+The separate full 814-case native addon regression on installed-49 passes with
+the exact source verification below; it is not actual HTTP or UI acceptance.
+
+## Full native candidate 57 regression, 16 October 2026
+
+All 814 addon cases pass with zero failures, errors or skips on the isolated
+installed-49 synthetic copy, with `--no-http` and no persistent module upgrade.
+Original rows in all 117 checked tables are preserved after rollback. Mandatory
+analytics and native SMS remain enabled. The complete 88-file Python set and
+every SHA-256 match Git source commit
+`71c04d26d5cd02cf2f302876a87fd9a99564e0e7`, independently of later client-only
+commits. This covers the complete inventory integrations in candidates 56/57,
+not merely the earlier candidate-55 full regression.
+
+Private evidence: `full-addon57-native-tests-20261016.log`,
+`verify-full-addon57-source-20261016.cjs` and
+`full-addon57-source-verification-20261016.json`. The terminal process exits zero
+and its temporary no-HTTP container is removed. Bootstrap warnings remain in the
+log; this is not a clean installation/dependency audit or acceptance of other
+native configurations/addons. No port was published.
+
+This closes the clean full-addon gap for that native source/configuration only.
+It does not verify the later React dialog/recovery source, actual protected
+gateway/browser, IndexedDB, multi-tab faults, installed upgrade, realistic scale
+or all Billing/whole-product parity. Review access remains closed and no tester,
+public demo or production deployment is updated.
 
 ## Candidate 54, 16 October 2026
 

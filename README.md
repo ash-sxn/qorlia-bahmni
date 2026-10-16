@@ -68,7 +68,7 @@ stock-action consumer gates remain. This is not a built or published UI update.
 - [Complete reservation inventory scope](runtime/billing/STOCK_INVENTORY_SCOPE.md): checked stock paging and legacy compatibility, with scoped native evidence and remaining UI gates.
 - [Large-transfer confirmation candidate](runtime/billing/STOCK_CONFIRMATION_PAGING.md): native paged review/save contract, distinct from released UI and tester capabilities.
 - [Large confirmation HTTP verification](runtime/billing/STOCK_CONFIRMATION_PAGING.md#large-native-http-and-recovery-checkpoint-16-october-2026): complete 501-move/2,001-operation saves and generated-reference recovery, with explicit remaining gateway/UI/scale limits.
-- [Full native regression](runtime/billing/STOCK_CONFIRMATION_PAGING.md#full-addon-mandatory-analytics-regression-16-october-2026): 765 addon cases passing with mandatory analytics enabled, retained failed-run history and unchanged production validation.
+- [Full native candidate-57 regression](runtime/billing/STOCK_OPERATION_PAGING.md#full-native-candidate-57-regression-16-october-2026): 814 addon cases passing with mandatory analytics, 117-table preservation and exact committed Python source hashes. This is not installed-upgrade or later client/browser acceptance.
 - [Stock returns in development](runtime/billing/STOCK_RETURNS.md): native return form, signed creation/status contracts and remaining browser recovery/UI/release gates.
 - [Reports adapter](runtime/reports/README.md): native report generation, export and branding limits.
 

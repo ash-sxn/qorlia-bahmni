@@ -31,8 +31,11 @@ client accepts 285 native JSON frames with mocked transport. Separate actual
 pass four accepted requests over seven effect pages on 2,001 quants, including
 choice search, duplicate/lost-response recovery and deletion. Independent
 post-close SQL verifies receipts, restored stock, table accounting and hashes.
-The full 814-case native regression is still running. No UI migration, actual
-protected gateway/browser, persistent upgrade or runtime release is claimed.
+The separate [full native regression](STOCK_OPERATION_PAGING.md#full-native-candidate-57-regression-16-october-2026)
+passes all 814 cases, zero failures/errors/skips, with 117-table preservation,
+mandatory analytics/SMS and all 88 Python hashes matched to commit `71c04d26`.
+This does not verify later client-only UI/recovery changes, actual protected
+gateway/browser, a persistent upgrade or runtime release.
 
 Candidate 56: [complete inventory scope for paged reservation](STOCK_INVENTORY_SCOPE.md).
 The new reservation protocol scans/checks every relevant quant in batches of

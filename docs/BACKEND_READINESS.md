@@ -42,7 +42,11 @@ over seven effect pages on 2,001 quants, including native choice search, exact
 duplicate/lost-response recovery and deletion. Post-close SQL verifies receipts,
 restored stock, 116 accounted guard tables, 25-table per-row checks, source hashes
 and no late writes. The private diagnostic is stopped without published ports.
-The full 814-case native addon run is still active, not counted as passed.
+The separate [full native addon run](../runtime/billing/STOCK_OPERATION_PAGING.md#full-native-candidate-57-regression-16-october-2026)
+passes all 814 cases, zero failures/errors/skips, with 117-table preservation,
+mandatory analytics/SMS and all 88 Python hashes matched to source `71c04d26`.
+It uses installed-49 synthetic data without HTTP, not an upgrade or verification
+of the later client-only dialog/recovery source.
 This is not UI migration, actual protected gateway/browser or a runtime upgrade.
 
 ## Complete reservation inventory scope candidate 56 (16 October 2026)

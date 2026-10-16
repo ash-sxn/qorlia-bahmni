@@ -52,8 +52,12 @@
   verification. The private diagnostic is stopped. See
   [the precise HTTP evidence](../runtime/billing/STOCK_OPERATION_PAGING.md#complete-inventory-native-http-checkpoint-16-october-2026).
 - React/dialog/choice/recovery migration, actual protected gateway/browser,
-  full-addon/configuration/scale acceptance and a runtime upgrade remain open.
-  The 814-case full native run is still active, not accepted yet.
+  broader configuration/scale acceptance and a runtime upgrade remain open.
+  The separate full native run passes all 814 cases, zero failures/errors/skips,
+  with 117-table preservation, mandatory analytics/SMS and all 88 Python hashes
+  matched to `71c04d26`. This is source-57 on installed-49 without HTTP, not
+  verification of later client-only UI/recovery changes. See
+  [the scoped full-addon result](../runtime/billing/STOCK_OPERATION_PAGING.md#full-native-candidate-57-regression-16-october-2026).
   No review reopening, frontend build or public/tester deployment.
 
 ## 16 October complete reservation inventory scope candidate 56
