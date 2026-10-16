@@ -9,8 +9,16 @@ reuse native availability, actions and full effects for all four stock-preparati
 actions. Home passes 886 tests, including 36 new client cases. The first native
 run has one preview-state guard error among 135 cases, with 117-table preservation;
 the corrected callback-baseline ordering passes two focused regressions, with
-117-table preservation. A corrected 136-case native run is in progress.
-React/recovery migration and runtime acceptance remain separate.
+117-table preservation. The corrected combined run passes all 136 native cases
+with zero failures/errors/skips, 117-table preservation and all 88 Python hashes
+matched. The actual client accepts 152 native JSON frames with mocked transport.
+The later [native HTTP reservation/recovery checkpoint](STOCK_RESERVATION_PAGING.md#native-http-reservation-and-recovery-checkpoint-16-october-2026)
+completes ten logical actions over 24 effect pages on small, 501-move and
+2,001-operation fixtures. Post-close SQL verifies exact receipts, original stock
+identities/totals and source hashes; retained observer failures and the first
+recovered action's evidence limitation are documented. A full candidate-55 addon
+regression is still running separately. React/recovery migration and actual
+gateway/browser acceptance remain separate.
 Review stays closed, with no installed upgrade or public/tester deployment.
 
 Candidate 54 now also has [actual native HTTP operation/recovery evidence](STOCK_OPERATION_PAGING.md#native-http-operation-and-recovery-checkpoint-16-october-2026):

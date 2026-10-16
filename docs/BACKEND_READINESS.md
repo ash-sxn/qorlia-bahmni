@@ -9,10 +9,19 @@ financial/physical guards and the 2,000-quant guard remain. Home passes 886 test
 in 80 suites, including 36 new client cases; types/lint/format and three gateway
 tests pass. The first native run retains one preview-state guard error among 135
 cases. A shared pending-audit baseline correction passes two focused regressions,
-with 117-table preservation; the corrected combined 136-case run is in progress. Read
+with 117-table preservation. The corrected combined run passes all 136 cases,
+zero failures/errors/skips, preserving all 117 checked tables with mandatory
+analytics and SMS still enabled. All 88 Python hashes match the candidate.
+The actual typed client accepts 152 captured native JSON frames with mocked
+transport. A separate real native HTTP run completes ten logical accepted actions
+over 24 effect pages across small, 501-move and 2,001-operation fixtures, including
+lost-response/duplicate/deleted-reference recovery. Post-close independent SQL
+verifies exact receipts, original stock identities/totals and source hashes.
+Retained observer failures and the initial recovered action's weaker before-image
+evidence are explicit. The full source-55 addon regression is still running. Read
 [the contract and remaining gates](../runtime/billing/STOCK_RESERVATION_PAGING.md).
 No React dialog/recovery migration, reopened review access, installed upgrade,
-actual source-55 HTTP/browser or public/tester deployment is claimed.
+actual gateway/browser or public/tester deployment is claimed.
 
 ## Native operation HTTP and recovery checkpoint (16 October 2026)
 

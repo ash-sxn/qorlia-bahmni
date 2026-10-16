@@ -34,7 +34,13 @@ synthetic transfers. It is not an available tester UI. Source 55 adds
 [paged reservation actions](../runtime/billing/STOCK_RESERVATION_PAGING.md), with
 typed clients and source gateway checks; its first native run has one preview
 guard error. The corrected pending-audit baseline passes two focused tests;
-the broader native rerun is in progress. The existing React dialogs and durable
+the broader corrected run passes all 136 native cases, with 117-table preservation
+and 88 matching Python source hashes. The actual client also accepts 152 native
+JSON frames with mocked transport. A separate native HTTP run completes ten
+logical actions over 24 effect pages with exact-request recovery and independent
+post-close SQL checks. The contract documents retained observer failures and
+before-image limits; this is not a running tester UI or browser acceptance.
+The existing React dialogs and durable
 recovery still need migration.
 Do not reopen expired access or change your assigned task base to try these APIs.
 

@@ -24,13 +24,13 @@ record/field access, company scope and order/transfer linkage are required.
 Entry strips caller-selected context. No generic native model write or stock
 action is exposed by the gateway.
 
-| Method | Input and output |
-| --- | --- |
-| `qorlia_reservation_paged_load` | `order_id`, `transfer_id`; returns a compact transfer with complete move/operation counts, package count, native reasons for each action, readiness and a source version. |
-| `qorlia_reservation_paged_review` | Exact selection payload plus bounded sequential effect-page parameters. Only the terminal page returns a completion proof. |
-| `qorlia_reservation_paged_save` | Exact completely reviewed payload; rechecks and applies the native action once, compares actual effects and records a protected receipt. |
-| `qorlia_reservation_paged_status` | Same original payload; returns acceptance, original action/state, generated-reference count and compact current transfer state. |
-| `qorlia_reservation_paged_references` | Same original payload plus bounded snapshot-bound reference pagination; inaccessible/deleted references do not expose IDs or labels. |
+| Method                                | Input and output                                                                                                                                                          |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `qorlia_reservation_paged_load`       | `order_id`, `transfer_id`; returns a compact transfer with complete move/operation counts, package count, native reasons for each action, readiness and a source version. |
+| `qorlia_reservation_paged_review`     | Exact selection payload plus bounded sequential effect-page parameters. Only the terminal page returns a completion proof.                                                |
+| `qorlia_reservation_paged_save`       | Exact completely reviewed payload; rechecks and applies the native action once, compares actual effects and records a protected receipt.                                  |
+| `qorlia_reservation_paged_status`     | Same original payload; returns acceptance, original action/state, generated-reference count and compact current transfer state.                                           |
+| `qorlia_reservation_paged_references` | Same original payload plus bounded snapshot-bound reference pagination; inaccessible/deleted references do not expose IDs or labels.                                      |
 
 Review selection has exactly four fields:
 
@@ -102,13 +102,75 @@ of quantities already entered; a client must not manually zero rows instead.
   No effects/financial/configuration guard is weakened. Both the original
   2,001-operation case and a new pending-precommit regression pass on corrected
   source, with 117-table preservation and all 88 Python source hashes matched.
-  The broader corrected 136-case native
-  run is in progress. Focused success is not a clean combined/full-addon result.
+- The corrected combined reservation/operation/confirmation run passes all 136
+  native cases, with zero failures, errors or skips, original rows preserved in
+  all 117 checked tables, mandatory analytics and native SMS still enabled.
+  All 88 Python source hashes match the committed candidate. This is source 55
+  on an installed-50 isolated synthetic copy, not a persistent addon upgrade or
+  a full-addon regression.
+- The actual typed client accepts all 152 recorded native JSON frames across
+  load, review, save, status and references. This replay mocks transport; it is
+  not HTTP, gateway or browser acceptance.
 
 The React reservation dialog and durable recovery slot still use the older
 protocol and are not migrated by adding these clients. The operator review gate
-stays closed. No frontend build, browser test, protected-gateway/native HTTP,
-tester/public deployment or source-55 installed upgrade is claimed.
+stays closed. The native HTTP evidence below does not claim a frontend build,
+browser test, protected-gateway acceptance, tester/public deployment or source-55
+installed upgrade.
+
+## Native HTTP reservation and recovery checkpoint, 16 October 2026
+
+The committed source-55 adapter and actual typed client complete ten logical
+accepted actions over 24 sequential effect pages on an isolated installed-49
+synthetic database. The private native server has no published ports and is
+stopped after verification. No review gate, tester or production environment is
+opened or upgraded.
+
+- A small transfer and a transfer retaining all 501 original moves each run
+  native Check availability, Set quantities, Clear quantities and Unreserve.
+- A transfer retaining all 2,001 original operation rows runs Set quantities and
+  Clear quantities. Its original reservation of five units remains; the test
+  does not delete its original operations merely to clean up.
+- A deliberately withheld accepted response recovers using the exact recorded
+  request. Two overlapping identical reservation saves from separate sessions
+  resolve once. Old accepted requests remain accepted after Unreserve, with
+  deleted operation references unavailable and no repeated reservation.
+- Anonymous, logged-out and cross-author access are rejected. Re-authentication
+  recovers all ten accepted request statuses. Premature/skipped-page attempts do
+  not persist a receipt or business change.
+- Independent SQL accounts for changes across all 116 guard tables and checks
+  per-row hashes in 31 business/audit tables. Final original move/operation IDs,
+  physical stock, reserved totals and delivered quantities match the fixtures.
+  Financial/configuration rows remain unchanged. Native audit rows and protected
+  reservation receipts are expected changes, not erased to make the check pass.
+- The post-close read verifies all ten exact receipt digests, 88 Python source
+  hashes, the actual client hash and unchanged final table hashes. It also
+  verifies that the private diagnostic is stopped with no published ports.
+
+Retained verifier failures matter. The initial observer expected internal audit
+IDs among public business references, then corrected that assumption using
+independent SQL without resubmitting the accepted action under a new request.
+The first recovered action has reviewed post-save values and unrelated-row hash
+checks, but no separately persisted full stored-row before image; do not claim
+that stronger proof for it. Later actions capture their original stored rows.
+
+The large native Set quantities action also updates `write_uid`/`write_date` on
+2,000 zero-quantity rows. The observer initially rejected those extra row hashes.
+A read-only reconstruction of each original metadata pair exactly reproduces
+its saved original row hash, proving no other stored field changed on those
+rows. The final Clear quantities check captures every original operation row
+before dispatch. These are verifier corrections, not a weakened native stock,
+financial, access or configuration guard. Failed runs remain in private evidence;
+the completed record references them instead of rewriting their history.
+
+Evidence pack: `reservation-http55-acceptance-r4-20261016`, including
+`acceptance.json`, `postclose.json` and the exact-request recovery records.
+Earlier failed observer packs are retained separately. These are native
+HTTP/client checks, not gateway/browser, representative clinical configuration
+or hospital-scale acceptance. Timings include independent SQL verification and
+must not be advertised as native request latency. The full candidate-55 addon
+regression is still running separately; the completed 136-case run above covers
+reservation/operation/confirmation, not the whole addon.
 
 The existing 2,000-quant inventory guard remains. Paged effects do not turn an
 incomplete inventory scope into a safe reservation. Large inventory paging,

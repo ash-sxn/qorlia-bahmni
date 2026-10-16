@@ -8,12 +8,24 @@
 - Home passes 886 tests/80 suites, with 36 new client cases; types/lint/format and
   three gateway checks pass. The first native run has one preview-state guard
   error among 135 cases, with 117-table rollback preservation. The shared
-  pending-audit baseline correction passes two focused cases; a corrected
-  136-case combined native run remains in progress, not accepted yet.
+  pending-audit baseline correction passes two focused cases. The corrected
+  combined run passes all 136 native cases, zero failures/errors/skips, with
+  117-table preservation, mandatory analytics/SMS and 88 matching Python hashes.
+  The typed client accepts 152 recorded native frames with mocked transport.
+  These are not a full-addon regression or HTTP/browser acceptance.
   See [the exact protocol and remaining work](../runtime/billing/STOCK_RESERVATION_PAGING.md).
 - React dialog/durable recovery migration, installed upgrade, actual source-55
-  HTTP, protected gateway/browser, broader configuration and scale remain open.
+  protected gateway/browser, broader configuration and scale remain open.
   No review gate reopening or tester/public deployment.
+- Later actual native HTTP/client checks complete ten logical accepted actions
+  over 24 effect pages on small, 501-move and 2,001-operation fixtures. Exact
+  duplicate/lost-response/deleted-reference recovery and anonymous/cross-author/
+  logout/re-authentication checks pass. Independent post-close SQL verifies
+  receipts, original stock identities/totals, accounted 116-table changes,
+  per-row checks in 31 tables and all source hashes. Retained observer failures,
+  the first recovered action's before-image limitation and exact proof of 2,000
+  metadata-only updates are documented in the linked contract. The full source-55
+  addon run is still in progress. This is not UI migration or scale acceptance.
 
 ## 16 October native paged operation HTTP/recovery acceptance
 
