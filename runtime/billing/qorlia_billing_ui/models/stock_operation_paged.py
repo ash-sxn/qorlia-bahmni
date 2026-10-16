@@ -39,7 +39,7 @@ class StockOperationPaged(models.Model):
 
     def _qorlia_operation_paged_ready(self, view):
         source = self._qorlia_operation_source(**{key: view[key]
-            for key in ('order_id', 'transfer_id', 'move_id', 'operation_id')})
+            for key in ('order_id', 'transfer_id', 'move_id', 'operation_id')}, complete_inventory=True)
         picking, move, line, model, identity, _values, groups, version = source
         if version != view['version']:
             raise UserError('The stock form changed. Reload it before continuing.')
@@ -51,14 +51,20 @@ class StockOperationPaged(models.Model):
     @api.model
     def qorlia_operation_paged_load(self, order_id, transfer_id, move_id, operation_id=False):
         self = self._qorlia_operation_paged_context()
-        return self._qorlia_operation_paged_ready(self.qorlia_operation_load(
-            order_id, transfer_id, move_id, operation_id))
+        source = self._qorlia_operation_source(order_id, transfer_id, move_id, operation_id, complete_inventory=True)
+        return self._qorlia_operation_paged_ready(self._qorlia_operation_load_source(source))
 
     @api.model
     def qorlia_operation_paged_onchange(self, order_id, transfer_id, move_id, version, edits, operation_id=False):
         self = self._qorlia_operation_paged_context()
-        return self._qorlia_operation_paged_ready(self.qorlia_operation_onchange(
-            order_id, transfer_id, move_id, version, edits, operation_id))
+        source = self._qorlia_operation_source(order_id, transfer_id, move_id, operation_id, complete_inventory=True)
+        return self._qorlia_operation_paged_ready(self._qorlia_operation_onchange_source(source, version, edits))
+
+    @api.model
+    def qorlia_operation_paged_choices(self, order_id, transfer_id, move_id, version, edits, field, search='', offset=0, operation_id=False):
+        self = self._qorlia_operation_paged_context()
+        return self._qorlia_operation_choices(order_id, transfer_id, move_id, version, edits, field, search, offset,
+            operation_id, complete_inventory=True)
 
     def _qorlia_operation_paged_native(self, source, form, action):
         result = self._qorlia_stock_preparation_native(
@@ -85,13 +91,13 @@ class StockOperationPaged(models.Model):
     def _qorlia_operation_paged_preview(self, data):
         picking, _order, _scope = self._qorlia_confirmation_paged_transfer(
             data['order_id'], data['transfer_id'], lock=True)
-        picking._qorlia_reservation_scope(lock=True)
+        picking._qorlia_reservation_scope(lock=True, complete=True)
         selection = {key: data[key] for key in ('order_id', 'transfer_id', 'move_id', 'operation_id')}
         form = self.qorlia_operation_paged_onchange(**selection, version=data['version'], edits=data['edits'])
         self._qorlia_operation_selected(form, lock=True)
         self.env.invalidate_all()
         form = self.qorlia_operation_paged_onchange(**selection, version=data['version'], edits=data['edits'])
-        source = self._qorlia_operation_source(**selection)
+        source = self._qorlia_operation_source(**selection, complete_inventory=True)
         related = self._qorlia_operation_selected(form)
         tables = self._qorlia_operation_paged_tables()
         basis = _digest({'purpose': _PURPOSE, 'request': data, 'form': form, 'related': related,

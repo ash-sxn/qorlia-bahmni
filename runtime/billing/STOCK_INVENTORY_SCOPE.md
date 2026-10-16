@@ -2,6 +2,11 @@
 
 ## Candidate 56, 16 October 2026
 
+Later source candidate: [candidate 57's operation-form integration](STOCK_OPERATION_PAGING.md#candidate-57-complete-operation-inventory-16-october-2026)
+extends this reader to the new operation protocol and adds a matching choice
+search method. Its native verification and UI migration are separate; the
+candidate-56 results below do not automatically accept that newer path.
+
 Source candidate with scoped native evidence. This is not an installed upgrade,
 reopened review, frontend build, browser acceptance or tester release.
 Candidate-55 evidence does not automatically verify this newer implementation.

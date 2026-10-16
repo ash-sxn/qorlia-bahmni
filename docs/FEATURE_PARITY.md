@@ -1,5 +1,23 @@
 # Bahmni workflow parity ledger
 
+## 16 October complete operation inventory candidate 57
+
+- New operation load/onchange/readiness/review/save use the complete checked
+  inventory scope. The seventh named paged API, choices, preserves native
+  domains/groups/search bounds and validates the matching new form version.
+  Old form/choice/edit contracts remain; no caller scope/context flag is added.
+- Home passes 895 tests/80 suites, with nine new client cases. Types, scoped
+  lint/format/AST and three gateway unit cases pass. Eight new native cases are
+  added. The first 56-case run retains two assertion failures, zero errors/skips
+  and 117-table rollback preservation. The corrected run passes all 56 cases,
+  zero failures/errors/skips, with 117-table preservation, mandatory analytics/
+  SMS and all 88 Python hashes matched. The actual typed client accepts 285
+  native JSON frames across all seven APIs; only transport is mocked. See
+  [the source and evidence boundary](../runtime/billing/STOCK_OPERATION_PAGING.md#candidate-57-complete-operation-inventory-16-october-2026).
+- React/dialog/choice/recovery migration, actual candidate-57 HTTP/gateway/browser,
+  full-addon/configuration/scale acceptance and a runtime upgrade remain open.
+  No review reopening, frontend build or public/tester deployment.
+
 ## 16 October complete reservation inventory scope candidate 56
 
 - The new reservation protocol explicitly uses a complete, permission-checked

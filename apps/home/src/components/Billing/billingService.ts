@@ -3936,13 +3936,19 @@ export async function changeStockOperationForm(
     );
   return result;
 }
-export async function getStockOperationChoices(
+async function stockOperationChoices(
+  method: 'qorlia_operation_choices' | 'qorlia_operation_paged_choices',
   request: StockOperationFormRequest,
   field: (typeof stockOperationRelationFields)[number],
   search = '',
   offset = 0,
 ) {
   const exact = checkedOperationRequest(request);
+  if (
+    method === 'qorlia_operation_paged_choices' &&
+    !confirmationKeys(request, Object.keys(exact))
+  )
+    throw new Error('Use only the exact native operation form edits.');
   if (
     !stockOperationRelationFields.includes(field) ||
     typeof search !== 'string' ||
@@ -3956,7 +3962,7 @@ export async function getStockOperationChoices(
     rows: [number, string][];
     has_more: boolean;
     offset: number;
-  }>('qorlia_operation_choices', { ...exact, field, search, offset });
+  }>(method, { ...exact, field, search, offset });
   if (
     !result ||
     !Array.isArray(result.rows) ||
@@ -3969,6 +3975,36 @@ export async function getStockOperationChoices(
   )
     throw new Error('Invalid native stock field choices. Reload the search.');
   return result;
+}
+
+export async function getStockOperationChoices(
+  request: StockOperationFormRequest,
+  field: (typeof stockOperationRelationFields)[number],
+  search = '',
+  offset = 0,
+) {
+  return stockOperationChoices(
+    'qorlia_operation_choices',
+    request,
+    field,
+    search,
+    offset,
+  );
+}
+
+export async function getPagedStockOperationChoices(
+  request: StockOperationFormRequest,
+  field: (typeof stockOperationRelationFields)[number],
+  search = '',
+  offset = 0,
+) {
+  return stockOperationChoices(
+    'qorlia_operation_paged_choices',
+    request,
+    field,
+    search,
+    offset,
+  );
 }
 
 export interface StockOperationSelectionRequest

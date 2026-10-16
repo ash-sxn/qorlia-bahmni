@@ -1,5 +1,68 @@
 # Complete paged stock operation review
 
+## Candidate 57, complete operation inventory (16 October 2026)
+
+The new operation protocol now uses the complete inventory reader from
+[candidate 56](STOCK_INVENTORY_SCOPE.md), not the legacy 2,000-quant response.
+Load, rollback-only onchange, readiness, review and save bind the same checked
+inventory summary. Shared private form helpers preserve native field defaults,
+domains, readonly rules, warnings and callback/savepoint handling. Legacy public
+form/edit/choice endpoints keep their signatures, inventory shape and cap.
+
+There are now seven named paged operation APIs. The added
+`qorlia_operation_paged_choices` uses the same native field domains, groups,
+`name_search`, 25-row pages and search/offset bounds as the existing choice
+reader, but it validates the new form's complete-inventory version. Its typed
+client is `getPagedStockOperationChoices`; the gateway adds only this exact
+named route. No generic model write, arbitrary domain or caller-selected scope
+flag is exposed.
+
+Use the new choice method with a new paged form version. Do not feed that version
+to the legacy choice reader or infer a protocol from the opaque version hash.
+Accepted earlier operation receipts still recover without rescanning inventory
+or applying an operation again. An old unaccepted form must reload/review after
+its source version changes, not be silently converted to another request.
+
+The prefix/offset choice-search limit remains. Complete inventory validation is
+not a new unbounded catalog search or proof of bounded total ORM/effects memory,
+preview CPU or acceptable hospital-scale locking. The React dialog, choice
+component and durable recovery slot have not yet migrated to this protocol.
+
+Current source checks: Home passes 895 tests/80 suites, including nine new client
+cases; library and focused actual-source/test type checks, scoped lint/format,
+Python AST and three gateway unit cases pass. Eight native regressions cover
+large inventory load/onchange/choices, stale/hidden tails, native create/edit/
+delete/recovery, previous accepted receipts, choice domains/groups/bounds,
+caller-context stripping and preview writes/callbacks. The first 56-case native
+run retains two assertion failures, zero errors/skips and original rows in all
+117 checked tables after rollback. The corrected run passes all 56 cases, zero
+failures/errors/skips, with all 117 tables preserved and mandatory analytics/SMS
+retained. Its exact set of 88 Python files and hashes matches the working source.
+The actual typed client accepts 285 captured native JSON frames: 35 loads,
+141 onchanges, 42 reviews, 32 statuses, 25 saves, five choice pages and five
+reference pages. Client SHA-256 is
+`af0d73a86ac2dccb7329f7d297d8f65a83a995f8a44189532859654a7dde6bb5`.
+Only replay transport is mocked; this does not prove real HTTP/authentication.
+
+Retained private evidence: `operation-inventory57-native-tests-20261016.log`
+(failed first run), `operation-inventory57-r2-native-tests-20261016.log`,
+`operation-inventory57-r2-source-verification-20261016.json` and
+`operation-inventory57-r2-native-wire-result-20261016.json`. These are source-57
+models on installed-49 isolated synthetic data, with `--no-http`, not a persistent
+upgrade or final full-addon result.
+
+Both corrections are in test fixtures, not product guards. Lot tracking is
+implied by this stack's Internal User feature group, so the absence fixture must
+remove that implication inside its rollback transaction before asserting the
+role is absent. Native precommit work runs to flush inside the preview savepoint;
+the callback test now verifies that its writes roll back, deferred callbacks do
+not run, and original queue objects are restored. It does not incorrectly demand
+that precommit never executes. No running hospital configuration is changed.
+
+No actual candidate-57 HTTP/gateway/browser, final full-addon, installed upgrade,
+review reopening, frontend build or tester/public deployment is claimed. The
+earlier six-method contract and historical evidence below keep their own scope.
+
 ## Candidate 54, 16 October 2026
 
 This backend/client checkpoint removes the legacy full-graph dependency from
@@ -20,14 +83,14 @@ role, native read/write/unlink permissions and an order/transfer relationship in
 the actor's active companies. Extra caller context is discarded at native entry;
 the gateway rejects caller-selected models, methods and contexts.
 
-| Endpoint | Contract |
-| --- | --- |
-| `qorlia_operation_paged_load` | Same single-operation form shape as the existing reader, with readiness based on native rules rather than the old review-graph cap. |
-| `qorlia_operation_paged_onchange` | Same ordered native edit history and base form version. Preview writes and all four transaction callback queues are rolled back. |
-| `qorlia_operation_paged_review` | Exact selection/action/edits, bounded effect pages, sequential continuation and a terminal completion proof. |
-| `qorlia_operation_paged_save` | Exact terminal request, actual native create/edit/delete, rechecked effects and a protected duplicate-safe receipt. |
-| `qorlia_operation_paged_status` | Exact-request recovery with historical operation ID/state and a compact current transfer summary. It does not need the original row to still exist. |
-| `qorlia_operation_paged_references` | Snapshot-bound pages mapping reviewed virtual keys to available saved native references. Hidden references do not expose IDs or labels. |
+| Endpoint                            | Contract                                                                                                                                            |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `qorlia_operation_paged_load`       | Same single-operation form shape as the existing reader, with readiness based on native rules rather than the old review-graph cap.                 |
+| `qorlia_operation_paged_onchange`   | Same ordered native edit history and base form version. Preview writes and all four transaction callback queues are rolled back.                    |
+| `qorlia_operation_paged_review`     | Exact selection/action/edits, bounded effect pages, sequential continuation and a terminal completion proof.                                        |
+| `qorlia_operation_paged_save`       | Exact terminal request, actual native create/edit/delete, rechecked effects and a protected duplicate-safe receipt.                                 |
+| `qorlia_operation_paged_status`     | Exact-request recovery with historical operation ID/state and a compact current transfer summary. It does not need the original row to still exist. |
+| `qorlia_operation_paged_references` | Snapshot-bound pages mapping reviewed virtual keys to available saved native references. Hidden references do not expose IDs or labels.             |
 
 Choice search continues to use `qorlia_operation_choices` with its native field
 domains. That endpoint does not depend on the old full transfer graph.

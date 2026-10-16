@@ -795,3 +795,166 @@ class StockOperationFormTest(TransactionCase):
         self.assertEqual(self.line.qty_done, 1)
         self.assertEqual(self.sale_line.qty_delivered, 0)
 
+    def grow_inventory(self):
+        lots = self.env['stock.lot'].create([{'name': 'QorliaQA Operation inventory %s' % index,
+            'product_id': self.product.id, 'company_id': self.env.company.id,
+            'expiration_date': '2027-01-01 00:00:00'} for index in range(2000)])
+        quants = self.env['stock.quant'].create([{'product_id': self.product.id,
+            'location_id': self.picking.location_id.id, 'lot_id': lot.id, 'quantity': 1} for lot in lots])
+        self.env.cr.flush()
+        return quants
+
+    def paged_choices(self, loaded, field='lot_id', edits=None, **extra):
+        return self.api().qorlia_operation_paged_choices(self.order.id, self.picking.id, self.move.id,
+            loaded['version'], edits or [], field, operation_id=loaded['operation_id'], **extra)
+
+    def test_complete_inventory_form_onchange_choices_preserve_legacy_guard(self):
+        quants = self.grow_inventory()
+        before = self.picking._qorlia_confirmation_stamp(self.picking._qorlia_operation_paged_tables())
+        with self.assertRaises(UserError):
+            self.load()
+        form = self.api().qorlia_operation_paged_load(self.order.id, self.picking.id, self.move.id, self.line.id)
+        self.assertTrue(form['write_ready'])
+        self.assertEqual(form['reserved'], 5)
+        self.assertNotIn('quants', form)
+        changed = self.api().qorlia_operation_paged_onchange(self.order.id, self.picking.id, self.move.id,
+            form['version'], [{'field': 'qty_done', 'value': 2}], self.line.id)
+        self.assertEqual(changed['values']['qty_done'], 2)
+        choices = self.paged_choices(form, search=quants[-1].lot_id.name)
+        self.assertEqual([row[0] for row in choices['rows']], [quants[-1].lot_id.id])
+        self.assertEqual(self.line.qty_done, 0)
+        self.assertEqual(before, self.picking._qorlia_confirmation_stamp(self.picking._qorlia_operation_paged_tables()))
+
+    def test_complete_inventory_tail_changes_reject_onchange_choices_and_review(self):
+        quants = self.grow_inventory()
+        data = self.paged_data()
+        quants[-1].quantity = 2
+        with self.assertRaises(UserError):
+            self.api().qorlia_operation_paged_onchange(self.order.id, self.picking.id, self.move.id,
+                data['version'], data['edits'], self.line.id)
+        with self.assertRaises(UserError):
+            self.paged_choices(data)
+        with self.assertRaises(UserError):
+            self.paged_pages(data)
+        self.assertFalse(self.picking.qorlia_operation_receipts)
+
+    def test_complete_inventory_hidden_tail_and_field_access_cannot_be_bypassed(self):
+        quants = self.grow_inventory()
+        loaded = self.api().qorlia_operation_paged_load(self.order.id, self.picking.id, self.move.id, self.line.id)
+        for model, identifier in (('stock.quant', quants[-1].id), ('stock.lot', quants[-1].lot_id.id)):
+            rule = self.env['ir.rule'].create({'name': 'QorliaQA Operation hidden inventory tail',
+                'model_id': self.env['ir.model']._get_id(model), 'domain_force': "[('id', '!=', %s)]" % identifier})
+            with self.assertRaises(AccessError):
+                self.api().qorlia_operation_paged_load(self.order.id, self.picking.id, self.move.id, self.line.id)
+            with self.assertRaises(AccessError):
+                self.paged_choices(loaded)
+            rule.unlink()
+        model = type(self.env['stock.quant'])
+        original = model.check_field_access_rights
+        def restricted(records, operation, names=None):
+            if operation == 'read' and names and 'reserved_quantity' in names:
+                raise AccessError('QorliaQA Inventory field access denied.')
+            return original(records, operation, names)
+        with patch.object(model, 'check_field_access_rights', restricted):
+            with self.assertRaises(AccessError):
+                self.api().qorlia_operation_paged_load(self.order.id, self.picking.id, self.move.id, self.line.id)
+            with self.assertRaises(AccessError):
+                self.paged_choices(loaded)
+
+    def test_complete_inventory_edit_create_delete_recovery_preserves_stock_and_finance(self):
+        self.grow_inventory()
+        originals = set(self.picking.move_line_ids.ids)
+        for quantity in (2, 0):
+            request = self.paged_exact(self.paged_data([{'field': 'qty_done', 'value': quantity}]))
+            accepted = self.api().qorlia_operation_paged_save(request)
+            self.assertEqual(accepted, self.api().qorlia_operation_paged_status(request))
+            self.assertEqual(accepted, self.api().qorlia_operation_paged_save(request))
+            self.assertEqual(self.line.qty_done, quantity)
+        created_request = self.paged_exact(self.paged_data([
+            {'field': 'qty_done', 'value': 1}, {'field': 'lot_id', 'value': self.lot.id}], new=True))
+        created = self.api().qorlia_operation_paged_save(created_request)
+        form = self.api().qorlia_operation_paged_load(self.order.id, self.picking.id, self.move.id, created['operation_id'])
+        data = {key: form[key] for key in ('order_id', 'transfer_id', 'move_id', 'operation_id', 'version')} | {'edits': [], 'action': 'delete'}
+        self.api().qorlia_operation_paged_save(self.paged_exact(data))
+        self.assertEqual(set(self.picking.move_line_ids.ids), originals)
+        self.assertEqual(self.line.qty_done, 0)
+        self.assertEqual(self.line.reserved_uom_qty, 5)
+        self.assertEqual(sum(self.env['stock.quant'].search([('product_id', '=', self.product.id)]).mapped('quantity')), 2010)
+        self.assertEqual(self.sale_line.qty_delivered, 0)
+        self.assertEqual(len(self.picking.qorlia_operation_receipts), 4)
+        before = self.picking._qorlia_confirmation_stamp(self.picking._qorlia_operation_paged_tables())
+        self.assertTrue(self.api().qorlia_operation_paged_save(created_request)['accepted'])
+        refs = self.api().qorlia_operation_paged_references(created_request)
+        self.assertTrue(any(row['model'] == 'stock.move.line' and not row['available'] and row['id'] is False for row in refs['rows']))
+        self.assertEqual(before, self.picking._qorlia_confirmation_stamp(self.picking._qorlia_operation_paged_tables()))
+
+    def test_complete_inventory_accepted_prior_scope_request_recovery_does_not_rescan(self):
+        model = type(self.picking)
+        original = model._qorlia_operation_source
+        def legacy_source(records, *args, **kwargs):
+            return original(records, *args, **{**kwargs, 'complete_inventory': False})
+        with patch.object(model, '_qorlia_operation_source', legacy_source):
+            request = self.paged_exact()
+            accepted = self.api().qorlia_operation_paged_save(request)
+        with patch.object(model, '_qorlia_operation_source', side_effect=AssertionError('Accepted recovery must not rescan.')):
+            self.assertEqual(self.api().qorlia_operation_paged_status(request), accepted)
+            self.assertEqual(self.api().qorlia_operation_paged_save(request), accepted)
+        self.assertEqual(self.line.qty_done, 2)
+        self.assertEqual(len(self.picking.qorlia_operation_receipts), 1)
+
+    def test_complete_inventory_choices_keep_native_domains_groups_and_bounds(self):
+        self.grow_inventory()
+        loaded = self.api().qorlia_operation_paged_load(self.order.id, self.picking.id, self.move.id, self.line.id)
+        page = self.paged_choices(loaded, search='QorliaQA Operation inventory', offset=25)
+        native = self.env['stock.lot'].with_user(self.user).name_search(name='QorliaQA Operation inventory',
+            args=[('product_id', '=', self.product.id), ('company_id', '=', self.env.company.id)], operator='ilike', limit=51)
+        self.assertEqual([row[0] for row in page['rows']], [row[0] for row in native[25:50]])
+        self.assertTrue(page['has_more'])
+        for extra in ({'offset': True}, {'offset': 100001}, {'search': 'x' * 201}):
+            with self.assertRaises(ValidationError):
+                self.paged_choices(loaded, **extra)
+        with self.assertRaises(AccessError):
+            self.paged_choices(loaded, field='product_uom_id')
+        feature = self.env.ref('stock.group_production_lot')
+        self.env.ref('base.group_user').implied_ids -= feature
+        self.user.groups_id -= feature
+        self.assertFalse(self.user.has_group('stock.group_production_lot'))
+        hidden = self.api().qorlia_operation_paged_load(self.order.id, self.picking.id, self.move.id, self.line.id)
+        self.assertTrue(hidden['rules']['lot_id']['readonly'])
+        with self.assertRaises(AccessError):
+            self.paged_choices(hidden)
+
+    def test_complete_inventory_caller_defaults_cannot_select_another_scope(self):
+        self.grow_inventory()
+        plain = self.api().qorlia_operation_paged_load(self.order.id, self.picking.id, self.move.id, self.line.id)
+        caller = self.api().with_context(default_qty_done=99, default_lot_id=False,
+            tracking_disable=True, complete_inventory=False, active_test=False)
+        self.assertEqual(caller.qorlia_operation_paged_load(self.order.id, self.picking.id, self.move.id, self.line.id), plain)
+        self.assertEqual(caller.qorlia_operation_paged_choices(self.order.id, self.picking.id, self.move.id,
+            plain['version'], [], 'lot_id', operation_id=self.line.id), self.paged_choices(plain))
+
+    def test_complete_inventory_onchange_and_choices_discard_writes_and_callbacks(self):
+        self.grow_inventory()
+        loaded = self.api().qorlia_operation_paged_load(self.order.id, self.picking.id, self.move.id, self.line.id)
+        self.env.cr.flush()
+        before = self.picking._qorlia_confirmation_stamp(self.picking._qorlia_operation_paged_tables())
+        cr = self.env.cr
+        hooks = {name: getattr(cr, name) for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
+        model = type(self.env['stock.move.line'])
+        original = model.onchange
+        called = []
+        def noisy(records, *args, **kwargs):
+            self.env['mail.message'].create({'body': 'QorliaQA Operation onchange rolled back', 'message_type': 'comment'})
+            for name in hooks:
+                getattr(cr, name).add(lambda kind=name: called.append(kind))
+            return original(records, *args, **kwargs)
+        with patch.object(model, 'onchange', noisy):
+            self.api().qorlia_operation_paged_onchange(self.order.id, self.picking.id, self.move.id,
+                loaded['version'], [{'field': 'qty_done', 'value': 2}], self.line.id)
+            self.paged_choices(loaded, edits=[{'field': 'qty_done', 'value': 2}])
+        # Precommit flushes inside the savepoint; only deferred callbacks must not execute.
+        self.assertEqual(called, ['precommit', 'precommit'])
+        self.assertEqual(before, self.picking._qorlia_confirmation_stamp(self.picking._qorlia_operation_paged_tables()))
+        for name, callbacks in hooks.items():
+            self.assertIs(getattr(cr, name), callbacks)
+

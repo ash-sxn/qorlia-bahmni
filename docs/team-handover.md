@@ -53,6 +53,12 @@ migrate the operation editor or expose a stock browser. Its separate actual
 native HTTP check passes all four preparation actions on 2,001 quants with
 independent post-close SQL, restored stock totals and exact-request recovery.
 Actual gateway/browser and scale acceptance remain separate.
+Candidate 57 [integrates the complete reader with the new operation form](../runtime/billing/STOCK_OPERATION_PAGING.md#candidate-57-complete-operation-inventory-16-october-2026)
+and adds a matching native choice-search API/client. Home/source checks pass;
+the corrected native run passes all 56 cases with 117-table preservation, zero
+failures/errors/skips and all 88 Python hashes matched. The typed client accepts
+285 native JSON frames with mocked transport. The existing dialog and choice
+component still use the legacy protocol, so this is not a tester UI update.
 Do not reopen expired access or change your assigned task base to try these APIs.
 
 ## 2. Which version should I open?

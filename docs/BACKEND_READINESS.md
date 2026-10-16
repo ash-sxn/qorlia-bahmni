@@ -1,5 +1,20 @@
 # Qorlia React frontend backend readiness
 
+## Complete operation inventory candidate 57 (16 October 2026)
+
+The new operation form path now uses complete checked inventory for load,
+onchange, readiness and review/save. A seventh named API and typed client handle
+native choice search against the matching new form version. Legacy contracts,
+native domains/groups and search bounds remain. Home passes 895 tests/80 suites;
+types, scoped lint/format/AST and three gateway unit cases pass. The first native
+56-case run retains two test-assumption failures, zero errors/skips and 117-table
+rollback preservation. The corrected run passes all 56 cases, zero failures/
+errors/skips, with 117-table preservation, mandatory analytics/SMS and all 88
+Python hashes matched. The typed client accepts 285 captured native JSON frames
+with mocked transport, covering all seven APIs. Read
+[the protocol and exact remaining gates](../runtime/billing/STOCK_OPERATION_PAGING.md#candidate-57-complete-operation-inventory-16-october-2026).
+This is not UI migration, actual candidate-57 HTTP/browser or a runtime upgrade.
+
 ## Complete reservation inventory scope candidate 56 (16 October 2026)
 
 The new paged reservation load/review path now checks every relevant stock quant

@@ -5,6 +5,7 @@ import {
   checkedPagedStockOperationRequest,
   checkedStockOperationRequest,
   getPagedStockOperationForm,
+  getPagedStockOperationChoices,
   getPagedStockOperationReferences,
   getPagedStockOperationReview,
   getPagedStockOperationStatus,
@@ -117,7 +118,7 @@ describe('Complete paged operation API boundary', () => {
   beforeEach(() => {
     global.fetch = jest.fn();
   });
-  it('uses six named APIs, existing form shape and exact completion-proof payloads', async () => {
+  it('uses seven named APIs, existing form shape and exact completion-proof payloads', async () => {
     reply(operationForm());
     expect(await getPagedStockOperationForm(operationSelection())).toEqual(
       operationForm(),
@@ -125,6 +126,14 @@ describe('Complete paged operation API boundary', () => {
     expect(await changePagedStockOperationForm(formRequest())).toEqual(
       operationForm(),
     );
+    reply({ rows: [[7, 'QorliaQA Batch']], has_more: false, offset: 0 });
+    expect(
+      await getPagedStockOperationChoices(formRequest(), 'lot_id'),
+    ).toEqual({
+      rows: [[7, 'QorliaQA Batch']],
+      has_more: false,
+      offset: 0,
+    });
     reply(review());
     expect(
       await getPagedStockOperationReview(operationSelectionRequest()),
@@ -137,11 +146,17 @@ describe('Complete paged operation API boundary', () => {
       references(),
     );
     expect(params().map((item) => item.method)).toEqual(
-      ['load', 'onchange', 'review', 'save', 'status', 'references'].map(
-        (action) => `qorlia_operation_paged_${action}`,
-      ),
+      [
+        'load',
+        'onchange',
+        'choices',
+        'review',
+        'save',
+        'status',
+        'references',
+      ].map((action) => `qorlia_operation_paged_${action}`),
     );
-    expect(params()[3].kwargs).toEqual({ payload: request() });
+    expect(params()[4].kwargs).toEqual({ payload: request() });
     expect(checkedPagedStockOperationRequest(request())).toEqual(request());
     expect(() => checkedStockOperationRequest(request())).toThrow();
     for (const item of params()) {
@@ -149,6 +164,65 @@ describe('Complete paged operation API boundary', () => {
       expect(item.args).toEqual([]);
     }
   });
+  it('keeps paged choices exact, native and bounded without changing the legacy route', async () => {
+    const choices = {
+      rows: [[7, 'QorliaQA Batch']],
+      has_more: false,
+      offset: 25,
+    };
+    reply(choices);
+    expect(
+      await getPagedStockOperationChoices(formRequest(), 'lot_id', 'Batch', 25),
+    ).toEqual(choices);
+    expect(params()[0].kwargs).toEqual({
+      ...formRequest(),
+      field: 'lot_id',
+      search: 'Batch',
+      offset: 25,
+    });
+    expect(params()[0].method).toBe('qorlia_operation_paged_choices');
+    for (const result of [
+      {
+        rows: [
+          [7, 'Batch'],
+          [7, 'Duplicate'],
+        ],
+        has_more: false,
+        offset: 0,
+      },
+      { rows: [false], has_more: false, offset: 0 },
+      { rows: [[7, 'Batch']], has_more: true, offset: 0 },
+      { rows: [], has_more: false, offset: 25 },
+    ]) {
+      reply(result);
+      await expect(
+        getPagedStockOperationChoices(formRequest(), 'lot_id'),
+      ).rejects.toThrow('Invalid native stock field choices');
+    }
+  });
+  it.each([
+    [{ ...formRequest(), context: {} }, 'lot_id', '', 0],
+    [{ ...formRequest(), complete_inventory: true }, 'lot_id', '', 0],
+    [formRequest(), 'qty_done', '', 0],
+    [formRequest(), 'lot_id', 'x'.repeat(201), 0],
+    [formRequest(), 'lot_id', 12, 0],
+    [formRequest(), 'lot_id', '', -1],
+    [formRequest(), 'lot_id', '', 100001],
+    [formRequest(), 'lot_id', '', true],
+  ])(
+    'rejects invalid paged choice requests before HTTP: %j',
+    async (data, field, search, offset) => {
+      await expect(
+        getPagedStockOperationChoices(
+          data as Parameters<typeof getPagedStockOperationChoices>[0],
+          field as Parameters<typeof getPagedStockOperationChoices>[1],
+          search as string,
+          offset as number,
+        ),
+      ).rejects.toThrow();
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
   it('preserves native readonly and warning rules, but rejects changed onchange versions', async () => {
     const form = {
       ...operationForm(),

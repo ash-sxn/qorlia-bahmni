@@ -21,14 +21,14 @@ GROUPS = {'units': 'uom.group_uom', 'lots': 'stock.group_production_lot',
 class StockOperationForm(models.Model):
     _inherit = 'stock.picking'
 
-    def _qorlia_operation_source(self, order_id, transfer_id, move_id, operation_id=False):
+    def _qorlia_operation_source(self, order_id, transfer_id, move_id, operation_id=False, *, complete_inventory=False):
         if (type(move_id) is not int or move_id <= 0 or operation_id is not False
                 and (type(operation_id) is not int or operation_id <= 0)):
             raise ValidationError('Select a native stock move and operation.')
         if not self.env.user.has_group('stock.group_stock_user'):
             raise AccessError('Stock operation forms require the native Stock User role.')
         picking, _order, scope = self.env['sale.order']._qorlia_delivery_transfer_scope(order_id, transfer_id)
-        inventory = picking._qorlia_reservation_scope()
+        inventory = picking._qorlia_reservation_scope(complete=complete_inventory)
         packages = picking._qorlia_reservation_package_graph()
         move = self.env['stock.move'].browse(move_id).exists()
         line = self.env['stock.move.line'].browse(operation_id).exists() if operation_id else self.env['stock.move.line']
@@ -132,6 +132,9 @@ class StockOperationForm(models.Model):
     @api.model
     def qorlia_operation_load(self, order_id, transfer_id, move_id, operation_id=False):
         source = self._qorlia_operation_source(order_id, transfer_id, move_id, operation_id)
+        return self._qorlia_operation_load_source(source)
+
+    def _qorlia_operation_load_source(self, source):
         _picking, _move, line, model, identity, values, _groups, _version = source
         return self._qorlia_operation_snapshot(source, model.new({**identity, **values}, origin=line if line else None))
 
@@ -200,6 +203,9 @@ class StockOperationForm(models.Model):
     @api.model
     def qorlia_operation_onchange(self, order_id, transfer_id, move_id, version, edits, operation_id=False):
         source = self._qorlia_operation_source(order_id, transfer_id, move_id, operation_id)
+        return self._qorlia_operation_onchange_source(source, version, edits)
+
+    def _qorlia_operation_onchange_source(self, source, version, edits):
         # Native onchange hooks may evolve. Always discard writes and transaction callbacks.
         cr = self.env.cr
         cr.flush()
@@ -218,13 +224,18 @@ class StockOperationForm(models.Model):
 
     @api.model
     def qorlia_operation_choices(self, order_id, transfer_id, move_id, version, edits, field, search='', offset=0, operation_id=False):
+        return self._qorlia_operation_choices(order_id, transfer_id, move_id, version, edits, field, search, offset, operation_id)
+
+    def _qorlia_operation_choices(self, order_id, transfer_id, move_id, version, edits, field, search='', offset=0,
+            operation_id=False, *, complete_inventory=False):
         if (not isinstance(search, str) or len(search) > 200 or type(offset) is not int or offset < 0
                 or offset > 100000 or not isinstance(field, str) or field not in OPERATION_FIELDS):
             raise ValidationError('Use a supported stock field and search page.')
-        view = self.qorlia_operation_onchange(order_id, transfer_id, move_id, version, edits, operation_id)
+        source = self._qorlia_operation_source(order_id, transfer_id, move_id, operation_id, complete_inventory=complete_inventory)
+        view = self._qorlia_operation_onchange_source(source, version, edits)
         if view['rules'][field]['readonly']:
             raise AccessError('This stock field is hidden or read-only.')
-        picking, move, *_rest = self._qorlia_operation_source(order_id, transfer_id, move_id, operation_id)
+        picking, move, *_rest = self._qorlia_operation_source(order_id, transfer_id, move_id, operation_id, complete_inventory=complete_inventory)
         model_name, domain = self._qorlia_operation_domain(picking, move, field, view['values'])
         model = self.env[model_name]
         model.check_access_rights('read')

@@ -3,6 +3,17 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Candidate 57: [complete operation inventory](STOCK_OPERATION_PAGING.md#candidate-57-complete-operation-inventory-16-october-2026).
+New operation load/onchange/readiness/review/save use complete checked inventory.
+A seventh named API/client handles native choice search with the matching form
+version; legacy readers retain their contracts. Home passes 895 tests, types and
+three gateway unit cases pass. Eight new native regressions are added; the first
+56-case run retains two test-assumption failures with 117-table preservation.
+The corrected run passes all 56 cases, zero failures/errors/skips, with 117-table
+preservation, mandatory analytics/SMS and all 88 Python hashes matched. The typed
+client accepts 285 native JSON frames with mocked transport. No UI migration,
+actual candidate-57 HTTP/browser or runtime release is claimed.
+
 Candidate 56: [complete inventory scope for paged reservation](STOCK_INVENTORY_SCOPE.md).
 The new reservation protocol scans/checks every relevant quant in batches of
 500 and binds a compact full-scope digest, rather than lifting a truncation cap.
