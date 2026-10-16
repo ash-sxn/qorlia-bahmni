@@ -11,8 +11,13 @@ three gateway unit cases pass. Eight new native regressions are added; the first
 56-case run retains two test-assumption failures with 117-table preservation.
 The corrected run passes all 56 cases, zero failures/errors/skips, with 117-table
 preservation, mandatory analytics/SMS and all 88 Python hashes matched. The typed
-client accepts 285 native JSON frames with mocked transport. No UI migration,
-actual candidate-57 HTTP/browser or runtime release is claimed.
+client accepts 285 native JSON frames with mocked transport. Separate actual
+[native HTTP checks](STOCK_OPERATION_PAGING.md#complete-inventory-native-http-checkpoint-16-october-2026)
+pass four accepted requests over seven effect pages on 2,001 quants, including
+choice search, duplicate/lost-response recovery and deletion. Independent
+post-close SQL verifies receipts, restored stock, table accounting and hashes.
+The full 814-case native regression is still running. No UI migration, actual
+protected gateway/browser, persistent upgrade or runtime release is claimed.
 
 Candidate 56: [complete inventory scope for paged reservation](STOCK_INVENTORY_SCOPE.md).
 The new reservation protocol scans/checks every relevant quant in batches of

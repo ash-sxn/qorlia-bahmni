@@ -14,8 +14,14 @@
   SMS and all 88 Python hashes matched. The actual typed client accepts 285
   native JSON frames across all seven APIs; only transport is mocked. See
   [the source and evidence boundary](../runtime/billing/STOCK_OPERATION_PAGING.md#candidate-57-complete-operation-inventory-16-october-2026).
-- React/dialog/choice/recovery migration, actual candidate-57 HTTP/gateway/browser,
+- Separate actual client/native HTTP checks pass four accepted requests over
+  seven effect pages on 2,001 quants, with choice search, exact duplicate/lost-
+  response/deleted-reference recovery and independent post-close SQL/source
+  verification. The private diagnostic is stopped. See
+  [the precise HTTP evidence](../runtime/billing/STOCK_OPERATION_PAGING.md#complete-inventory-native-http-checkpoint-16-october-2026).
+- React/dialog/choice/recovery migration, actual protected gateway/browser,
   full-addon/configuration/scale acceptance and a runtime upgrade remain open.
+  The 814-case full native run is still active, not accepted yet.
   No review reopening, frontend build or public/tester deployment.
 
 ## 16 October complete reservation inventory scope candidate 56

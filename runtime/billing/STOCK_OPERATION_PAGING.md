@@ -59,9 +59,45 @@ the callback test now verifies that its writes roll back, deferred callbacks do
 not run, and original queue objects are restored. It does not incorrectly demand
 that precommit never executes. No running hospital configuration is changed.
 
-No actual candidate-57 HTTP/gateway/browser, final full-addon, installed upgrade,
-review reopening, frontend build or tester/public deployment is claimed. The
-earlier six-method contract and historical evidence below keep their own scope.
+Scoped candidate-57 native HTTP evidence is recorded separately below. No actual
+protected-gateway/browser, final full-addon, installed upgrade, review reopening,
+frontend build or tester/public deployment is claimed. The earlier six-method
+contract and historical evidence below keep their own scope.
+
+## Complete inventory native HTTP checkpoint, 16 October 2026
+
+Source commit `71c04d26` and the actual TypeScript client pass four logical
+accepted operation requests over seven effect pages against the existing
+isolated synthetic 2,001-quant inventory fixture. Before each action, the new
+form loads and choice search finds the last inventory batch. Legacy form access
+still rejects above its inventory cap. Two overlapping identical create requests
+from different sessions of the same actor resolve to one operation/receipt.
+The operation is then edited to two units, restored to zero and deleted.
+
+The accepted edit response is deliberately withheld. Exact status/replay recovers
+without another edit. A premature completion proof and skipped review position
+reject. Anonymous/logout access and cross-author recovery reject. Re-authentication
+recovers the four exact receipts; a deleted operation reference is unavailable,
+and replay does not recreate it. Native fields, effects and reference pages are
+checked against stored rows, not only UI-shaped fixtures.
+
+Independent read-only SQL after the diagnostic is stopped verifies all four
+receipt digests, accounted changes across 116 guard tables, 25-table per-row
+checks and no late/shutdown writes. Original move/operation and all quant IDs
+remain, with physical quantity 2,010 and reserved/done/delivered quantities zero.
+All 88 Python file hashes match both the actual mounted source and the Git
+commit; the actual client hash matches the replay result above. Mandatory
+analytics and native SMS remain enabled. This reuses the source-56 synthetic
+fixture on installed-50 with source-57 models, not a persistent module upgrade.
+
+Private evidence: `operation-inventory-http57-acceptance-20261016/acceptance.json`,
+its durable request/dispatch/before/after/reference records and `postclose.json`,
+with `verify-operation-inventory-http57-20261016.cjs` and the post-close verifier.
+The private diagnostic and Unix-socket tunnel are stopped; no TCP port was
+published. This is not the protected review gateway, browser, React/recovery
+migration, realistic performance/concurrency acceptance or a tester deployment.
+The full 814-case native addon regression is running separately on installed-49;
+it is not counted as a pass while unfinished.
 
 ## Candidate 54, 16 October 2026
 

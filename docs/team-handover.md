@@ -57,7 +57,10 @@ Candidate 57 [integrates the complete reader with the new operation form](../run
 and adds a matching native choice-search API/client. Home/source checks pass;
 the corrected native run passes all 56 cases with 117-table preservation, zero
 failures/errors/skips and all 88 Python hashes matched. The typed client accepts
-285 native JSON frames with mocked transport. The existing dialog and choice
+285 native JSON frames with mocked transport. Separate actual native HTTP checks
+pass four requests over seven effect pages on 2,001 quants, with native choices,
+exact recovery and independent post-close SQL/hash verification. The diagnostic
+is stopped; the full 814-case native regression is still pending. The existing dialog and choice
 component still use the legacy protocol, so this is not a tester UI update.
 Do not reopen expired access or change your assigned task base to try these APIs.
 
