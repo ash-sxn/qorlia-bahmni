@@ -1,5 +1,45 @@
 # Qorlia React frontend backend readiness
 
+## Full-addon native regression with mandatory analytics (16 October 2026)
+
+The final native addon run passes **765 cases, zero failures/errors/skips**, with
+mandatory analytics never disabled. It preserves original rows in 25 monitored
+stock/finance/bank/analytic-configuration/company tables after rollback. Source-52
+models run on the isolated installed-49 copy with `--no-http`, not an installed-52
+upgrade or a new UI/runtime release.
+
+The earlier 764-case run has 80 missing-allocation fixture errors. The next
+765-case run has three remaining cash-basis/adjustment fixture errors. Corrected
+positive fixtures now supply all native mandatory allocations for actual
+accounts, with explicit defaults for generated adjustments. A new rejection/
+success regression retains mandatory plans and guards against partial writes.
+No production model/API/SDK or validation guard changes. Read [the precise result
+and retained failures](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#full-addon-mandatory-analytics-regression-16-october-2026).
+
+This supersedes the earlier missing-clean-full-addon status for this source and
+synthetic native configuration only. Broader deployment, installed upgrade,
+gateway/browser, performance and remaining workflow/UI gates are still open.
+
+## Large confirmation native HTTP and independent recovery (16 October 2026)
+
+Actual TypeScript/source-52 native HTTP now reviews/saves 501 moves over six
+effect pages and 2,001 operations over 21 pages, with exact request status/replay.
+A three-batch case reserves seven of ten units and traverses three generated
+references; its deliberately withheld accepted response recovers once.
+Independent post-close SQL verifies all receipts, native operation/unit/lot
+identities, unchanged physical quantity/stored finance/configuration and no late
+changes across 24 monitored tables. Mandatory analytics and SMS stay enabled.
+
+The first 501-move verifier flags its selected product's audit stamp. Exact
+original-row hash reconstruction proves all business values unchanged; subsequent
+read-only recovery submits no save. The failed verifier and an expired-transport
+attempt are retained. Read [the exact cases, timing observations and boundaries](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#large-native-http-and-recovery-checkpoint-16-october-2026).
+
+The copy remains installed-50 with source-52 models. Its HTTP container/tunnels
+are closed; there is no reopened UI gate, native protected-gateway/browser test,
+installed-52 upgrade, accepted hospital-scale performance or public/tester update.
+Other large stock actions and confirmation review/recovery UI remain unfinished.
+
 ## Paged transfer read consumer source (16 October 2026)
 
 The React transfer panel now consumes bounded summary and move/operation APIs

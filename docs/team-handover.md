@@ -48,6 +48,18 @@ tester UI; it must not be wired into the old full-graph modal or used to reopen
 the review gate. The historical browser evidence below concerns smaller workflows
 on earlier isolated runtimes.
 
+The [large native HTTP checkpoint](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#large-native-http-and-recovery-checkpoint-16-october-2026)
+now covers complete 501-move and 2,001-operation confirmations and three generated
+references with exact recovery. It is API evidence on a private synthetic copy,
+not an available tester screen. Other large actions, the confirmation UI, broader
+configuration and performance acceptance remain separate work.
+
+The [full native addon regression](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#full-addon-mandatory-analytics-regression-16-october-2026)
+now passes 765 cases with mandatory analytics enabled and 25-table preservation.
+Older positive fixtures were corrected, not production validation relaxed. Follow
+the [mandatory-analytics fixture guidance](testing-guide.md#mandatory-analytic-configuration-is-part-of-the-test)
+when adding a test. This is not evidence that every screen or deployment is ready.
+
 - **Hosted tester:** protected Billing review remains on adapter 43. An adapter is the backend code connecting Qorlia to native Odoo actions. Newer source in GitHub does not automatically update that server.
 - **Newer development work:** adapter 48 uses individually reviewed native validation steps. Some native actions save preparation before asking the next question. The interface must preserve that saved result instead of replaying the whole conversation. Earlier adapter contracts remain documented for history and recovery of older pending requests, not as the recommended new implementation.
 - **What has actual browser evidence:** on an isolated synthetic copy, receipt preparation survives reload/tab reopening; immediate preparation survives declining an expiry warning; and a genuinely lost accepted response can be recovered after full reload without another save. There is also a scoped narrow-screen/keyboard prompt check. Component tests, native tests, HTTP checks and browser checks are different evidence levels.

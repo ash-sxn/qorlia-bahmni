@@ -3,6 +3,21 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest native regression: [765 full-addon cases with mandatory analytics](STOCK_CONFIRMATION_PAGING.md#full-addon-mandatory-analytics-regression-16-october-2026).
+The final run has zero failures/errors/skips and preserves 25 monitored tables
+after rollback. Corrected synthetic allocations/defaults remove older fixture
+errors without changing production validation. Failed runs remain recorded.
+This is source-52 on installed-49 synthetic data, not a runtime upgrade or release.
+
+Latest native HTTP evidence: [complete large confirmations and generated references](STOCK_CONFIRMATION_PAGING.md#large-native-http-and-recovery-checkpoint-16-october-2026).
+The actual typed client reviews/saves 501 moves and 2,001 operations and traverses
+three generated operation references, including withheld-response recovery.
+Independent post-close SQL verifies receipts, preserved physical/stored financial
+values and no late changes. The first product-audit verifier failure and its
+read-only recovery remain recorded. This is one isolated configuration, not
+gateway/browser, installed-52, performance or tester acceptance. No review access
+is reopened. Earlier small-save/empty-reference limits below are historical.
+
 Latest API consumer source: [paged transfer summaries and details](STOCK_TRANSFER_DETAILS.md#react-api-consumer-checkpoint-16-october-2026).
 The panel reads 25 summaries and 50 rows per detail section using one snapshot,
 rejects mismatched/stale pages and retains off-page selections across refresh.

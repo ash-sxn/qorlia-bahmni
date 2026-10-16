@@ -15,7 +15,12 @@ class BankMatchingTest(native_tests.NativeBankMatchingContractTest):
     """Run the independent native contract against the private adapter, then prove simulation."""
 
     def allocations(self, sources):
-        return [{'line_id': line.id, 'amount': amount} for line, amount in sources]
+        rows = []
+        for line, amount in sources:
+            distribution = self.required_distribution(line.account_id)
+            rows.append({'line_id': line.id, 'amount': amount,
+                **({'analytic_distribution': distribution} if distribution else {})})
+        return rows
 
     def apply(self, entry, allocations, fee_model=False, preserve=True):
         if not preserve:
@@ -55,8 +60,11 @@ class BankMatchingTest(native_tests.NativeBankMatchingContractTest):
         return preview
 
     def user(self, group='account.group_account_user'):
+        groups = self.env.ref(group)
+        if group == 'account.group_account_user' and any(self.analytic_defaults.values()):
+            groups |= self.env.ref('analytic.group_analytic_accounting')
         return self.env['res.users'].with_context(no_reset_password=True).create({'name': self.prefix + ' reviewer',
-            'login': uuid.uuid4().hex, 'groups_id': [Command.set(self.env.ref(group).ids)]})
+            'login': uuid.uuid4().hex, 'groups_id': [Command.set(groups.ids)]})
 
     def test_native_full_and_partial_simulation_match_saved_graph_without_side_effects(self):
         for amount in (30, 100):
@@ -216,7 +224,7 @@ class BankMatchingTest(native_tests.NativeBankMatchingContractTest):
         with self.assertRaises(ValidationError):
             entry._qorlia_bank_match_simulate([], model.id)
         self.assertEqual(self.unchanged(entry, self.env['account.move.line']), before)
-        model.line_ids.analytic_distribution = {str(account.id): 100}
+        model.line_ids.analytic_distribution = self.analytic_defaults[self.expense.id] | {str(account.id): 100}
         preview = self.prove(entry, model=model)
         self.assertTrue(preview['after']['account.analytic.line']['rows'])
         self.assertTrue(entry.is_reconciled)

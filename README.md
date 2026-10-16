@@ -57,6 +57,8 @@ Latest API-consumer source connects [paged transfer summaries and details](runti
 - [Backend readiness](docs/BACKEND_READINESS.md): backend compatibility, tested environments and integration gaps.
 - [Billing adapter](runtime/billing/README.md): native Odoo integration and limits.
 - [Large-transfer confirmation candidate](runtime/billing/STOCK_CONFIRMATION_PAGING.md): native paged review/save contract, distinct from released UI and tester capabilities.
+- [Large confirmation HTTP verification](runtime/billing/STOCK_CONFIRMATION_PAGING.md#large-native-http-and-recovery-checkpoint-16-october-2026): complete 501-move/2,001-operation saves and generated-reference recovery, with explicit remaining gateway/UI/scale limits.
+- [Full native regression](runtime/billing/STOCK_CONFIRMATION_PAGING.md#full-addon-mandatory-analytics-regression-16-october-2026): 765 addon cases passing with mandatory analytics enabled, retained failed-run history and unchanged production validation.
 - [Stock returns in development](runtime/billing/STOCK_RETURNS.md): native return form, signed creation/status contracts and remaining browser recovery/UI/release gates.
 - [Reports adapter](runtime/reports/README.md): native report generation, export and branding limits.
 

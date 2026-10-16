@@ -16,6 +16,109 @@ the old modal with the compact response or represent it as a complete stock grap
 The owner-closed review gate stays closed; it must not be bypassed to test this
 candidate. Source route coverage is not a deployed gateway or tester upgrade.
 
+## Full-addon mandatory-analytics regression, 16 October 2026
+
+The final native full-addon run passes **765 cases**, with zero failures, errors
+or skips. It loads unchanged source-52 application models against the isolated
+installed-49 return copy using a read-only source mount and `--no-http`. There is
+no persistent upgrade. All original rows in 25 monitored stock, finance, bank,
+analytic-plan/default-model, company and configuration tables retain their
+fingerprints after rollback. Mandatory analytics remain enabled throughout.
+
+The initial 764-case run records 80 errors in older bank/charge-order fixtures,
+not a successful full run. Those positive fixtures omitted required native
+allocations. The next 765-case run records three remaining errors: cash-basis
+sources using the customer's actual receivable account, and generated discount
+lines lacking their native default allocation. Both failed runs and their
+preservation checks remain retained. They are not counted as additional passing
+coverage or combined to manufacture the final clean result.
+
+The corrected fixtures query native plan applicability for the real company,
+account/product and business domain, and supply each mandatory plan separately.
+Test staff get the native analytic permission required for those allocations;
+explicit permission-rejection cases remain. Generated adjustment lines use an
+explicit synthetic partner/account-scoped native distribution rule, rather than
+guessing a department from one sale item. The new regression rejects a missing
+mandatory allocation without creating invoices or transfers, then confirms with
+the complete allocations while retaining the earlier plan's allocation.
+
+Only test fixtures/regressions and documentation change in this increment. No
+production model, API, SDK, gateway, authentication policy or dependency changes.
+Current Home-809 and gateway evidence remain earlier unchanged-source results,
+not newly rerun frontend checks. Native/bootstrap warnings remain in the logs.
+The full addon result does not establish installed-52 upgrade, every deployment
+configuration, HTTP/browser or representative performance acceptance. The
+separate native HTTP cases below have their own scope.
+
+Private evidence: `full-addon52-r4-20261016/native-tests.log` (764/80 errors),
+`full-addon52-r5-20261016/native-tests.log` (765/three errors), and
+`full-addon52-r6-20261016/native-tests.log` (final clean 765, 25-table preservation).
+Read [the fixture/testing guidance](../../docs/testing-guide.md#mandatory-analytic-configuration-is-part-of-the-test)
+before extending these tests. Credentials, launch configuration and raw rows stay
+outside the public repository.
+
+## Large native HTTP and recovery checkpoint, 16 October 2026
+
+The actual repository TypeScript client now exercises complete large confirmations
+and nonempty reference traversal against the private installed-50 synthetic copy
+with unchanged source-52 models. There is no mock business response or published
+port. Only the diagnostic URL-prefix/cookie transport is adapted.
+
+| Synthetic case | Visible effect rows reviewed | Accepted native result |
+| --- | --- | --- |
+| 501 moves | 505 records over six pages | 500 merge rows removed, one move retaining demand 501, no reservation or delivery |
+| 2,001 detailed operations | 2,005 records over 21 pages | All 2,001 operations retained, confirmation only, no reservation or delivery |
+| Three batches | 13 records in one review page, then three one-row reference pages | Seven units reserved across three new operations, ten physical units retained and zero delivered |
+
+Skipped-page and premature-save proofs reject. The 2,001-operation and three-batch
+cases pass exact status/save replay, request/actor/company-bound receipt hashing,
+logout/re-authentication and native value checks. The third case deliberately
+withholds its accepted response and recovers the original request and all three
+generated references without creating another receipt. Stored operations retain
+their native move, unit, lot, recorded and reserved quantities.
+
+The first 501-move verifier exits nonzero on its selected product's full-row audit
+stamp. Exact SQL reconstruction using only the earlier audit user/date reproduces
+the original whole-row hash: its free quantity was already ten and no product
+business value changed. A separate read-only recovery exits 0, checks the original
+receipt and state, and submits **no save**. The initial failure is retained. A
+first read-only recovery attempt loses an expired SSH transport; a fresh private
+Unix socket completes it. That transport failure is not counted as a pass or a
+reason to repeat a mutation. Later checks retain whole-product comparisons and
+allow business changes only when they appear in the reviewed effects.
+
+Independent post-close SQL checks all three receipts, native move/operation/batch
+identities and exact request hashes. All 24 monitored table fingerprints match
+the final accepted state, with no late writes. Across the diagnostic cases,
+stored ledger, payment, reconciliation, valuation, bank, configuration, template
+and lot rows remain unchanged. Physical quantity remains ten in each fixture;
+only the reviewed third case reserves seven. Mandatory analytics and native SMS
+remain enabled. Selected order/line business values are preserved; computed
+invoice totals are not independently recalculated.
+
+The reference fixture is separately declared synthetic opening stock. Its seed
+preserves all original rows in the same 24 tables and creates only its declared
+new rows. It is not stock created by the product confirmation endpoint. The
+native HTTP container is stopped and the diagnostic tunnels are closed. Data,
+original requests and failed/corrected evidence remain private and retained.
+
+This is correctness evidence in one synthetic configuration, not installed-52
+upgrade, actual protected-gateway, browser/human-review or representative hospital
+capacity acceptance. The 2,001-operation continuations take roughly 5.6 to 9.3
+seconds each and its save takes about 17.3 seconds in this constrained concurrent
+diagnostic. These are observations, not a latency/SLA commitment. Complete effects
+are still recomputed per page; scale and performance remain open. Other large
+stock actions and the paged confirmation review/recovery UI remain unfinished.
+No UI gate is reopened and no protected tester/public build is updated.
+
+Private evidence: `paged-confirmation-scale-http52-20261016`, its
+`read-only-recovery-r2.json`, `paged-confirmation-scale-http52-r2-20261016`, its
+`postclose.json`, and the rollback-only `paged-confirmation-cache-trace-20261016`.
+The client SHA-256 remains
+`3764949d86e0766e2a20c6202492607bb8be93040076cb3925891a95675dba67`.
+Older small-save and empty-reference checkpoints below retain their historical
+scope rather than being relabelled as this broader check.
+
 ## Client and native HTTP checkpoint
 
 The [Billing service](../../apps/home/src/components/Billing/billingService.ts)

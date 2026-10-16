@@ -54,6 +54,55 @@ This supplies the Nx target context used by its Webpack plugin. The protected 14
 
 ## Native runtime testing
 
+### Mandatory analytic configuration is part of the test
+
+Do not turn mandatory analytic plans optional to make a current regression run
+pass. An older fixture with no distribution is not a valid positive example in
+that configuration. Query native `get_relevant_plans` with the actual company,
+account/product and business domain, then give synthetic positive fixtures a
+100 percent allocation for each mandatory root plan. Keep those plans enabled.
+Use new synthetic analytic accounts, not an arbitrary department from hospital
+data. Required percentages are per plan, not 100 percent across unrelated plans.
+
+The [bank contract fixtures](../runtime/billing/qorlia_billing_ui/tests/test_native_bank_matching_contract.py)
+share required allocations with the adapter's simulation/API fixtures. Fee rules
+also need their required allocations. Accountant test users need the native
+analytic permission when supplying distributions; retain separate negative cases
+which remove it. Never grant production users extra roles as a test workaround.
+
+Resolve a bank allocation against its actual native journal account. A cash-basis
+invoice may use the customer's property receivable account rather than a custom
+test account. Do not silently omit its mandatory allocation because that account
+was not in a fixture's initial list.
+
+The [charge-order fixtures](../runtime/billing/qorlia_billing_ui/tests/test_drafts.py)
+supply allocations through the normal draft field. Keep a missing-allocation
+case which proves confirmation rejects without creating invoices or transfers,
+then succeeds with complete allocations. Adding a second mandatory plan must not
+erase the first one's allocation. These are test inputs, not a product feature
+which silently chooses departments for a hospital.
+
+Generated discount lines can require their own allocation. Use a synthetic,
+partner/account-scoped native distribution model and assert the posted adjustment
+retains it. Do not guess a hospital's adjustment department by copying one item.
+
+Run against a compatible isolated native database, not ordinary local Python.
+Record source and installed metadata separately. Compare existing stock, ledger,
+bank, analytic-plan, company and configuration rows after rollback, including
+failed runs. A failed full-addon run remains failed even if selected classes
+later pass. Record exact cases, failures, errors and skips before making a new
+acceptance claim. Private launch scripts, credentials and raw records do not
+belong in this public repository.
+
+When a full-row fingerprint changes, inspect every field before relaxing a
+preservation check. Native recomputation may write the same product quantity and
+update only its audit date/user. Prove that distinction by reconstructing the
+exact original row hash with only those audit fields restored. A changed business
+value must remain in the signed review and independently match stored/native
+stock values. Do not drop products or financial rows from the comparison.
+
+### Stock workflow regressions
+
 For return work, start with [the native return contract](../runtime/billing/STOCK_RETURNS.md).
 Run the direct `StockReturnContractTest`, adapter `StockReturnPreviewTest` and
 `StockReturnSaveTest` classes against the operator-provided isolated native copy.

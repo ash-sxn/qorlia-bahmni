@@ -1,5 +1,17 @@
 # Bahmni workflow parity ledger
 
+## 16 October full-addon native mandatory-analytics regression
+
+- Final full addon: 765 cases, zero failures/errors/skips, mandatory analytics enabled throughout and original rows in 25 monitored stock/finance/bank/analytic-configuration/company tables preserved after rollback. Source-52 application models run on the isolated installed-49 copy without HTTP or a persistent upgrade.
+- The earlier 764-case/80-error and 765-case/three-error runs remain failed evidence. Positive bank/charge-order fixtures now provide complete native allocations for actual accounts, including property receivables and generated adjustments. Explicit missing-allocation and permission-rejection cases remain, with one new rejection/success regression. No production model/API/SDK or validation guard changes. See [the exact checkpoint](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#full-addon-mandatory-analytics-regression-16-october-2026).
+- This closes the clean-full-addon test gap in that synthetic configuration, not all Billing parity, an installed-52 upgrade, gateway/browser/human-review, representative performance or public/tester release. Other large actions and the confirmation UI remain unfinished. Earlier Home-809/gateway results are unchanged-source evidence, not freshly rerun UI checks.
+
+## 16 October large confirmation native HTTP and independent recovery
+
+- The actual typed client/native HTTP reviews and saves all 501 moves (six pages, retaining one demand-501 move after merging) and all 2,001 operations (21 pages). A third case reserves seven of ten units across three batches, returns three references and recovers a deliberately withheld accepted response without another receipt. Exact request/status/replay and re-authentication checks pass.
+- Independent post-close SQL verifies receipts/hashes, native move/unit/lot identities, unchanged physical quantities and protected stored financial/configuration rows, and no late writes across 24 monitored tables. The initial product-audit verifier failure is retained. Restoring only its prior audit date/user reproduces the exact original whole-row hash; read-only recovery submits no save. See [the full checkpoint](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#large-native-http-and-recovery-checkpoint-16-october-2026).
+- This uses unchanged source-52 models on an installed-50 synthetic copy. Mandatory analytics/SMS remain enabled and private HTTP/tunnels are closed. It is not installed-52, actual protected-gateway/browser/human-review, representative performance or public/tester acceptance. Other large actions and the paged confirmation UI remain unfinished; review access stays closed.
+
 ## 16 October paged transfer read consumer source
 
 - The source transfer panel now requests 25-summary pages and separate 50-row move/operation pages using one order-wide snapshot. It no longer calls the legacy full-graph reader. Native cursors, units, linked move identities and off-page selections survive navigation/refresh; changed identities discard open write views. Stale/mismatched/failed pages hide old tables and keep actions unavailable until reload.
