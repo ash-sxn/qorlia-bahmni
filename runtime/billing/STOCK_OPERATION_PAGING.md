@@ -85,8 +85,9 @@ receipt instead of creating, editing or removing an operation again.
   table locks. This bounds responses, not CPU/memory work or lock duration. It
   needs realistic performance/concurrency verification before hospital release.
 - Per-transfer JSON receipt storage still needs indexed storage before
-  high-volume fulfillment. Native installed-upgrade, actual client/native HTTP,
-  protected-gateway/browser and broader configuration acceptance remain open.
+  high-volume fulfillment. Native installed-upgrade, protected-gateway/browser
+  and broader configuration acceptance remain open. The scoped native HTTP
+  evidence below is not a general runtime release.
 
 ## Verification record
 
@@ -130,3 +131,65 @@ The temporary native containers are removed and no ports were published. No UI
 build, installed upgrade, actual protected-gateway/native HTTP, browser or
 public/tester deployment is claimed here. Review access stays closed. Bootstrap
 warnings remain in the private native logs.
+
+## Native HTTP operation and recovery checkpoint, 16 October 2026
+
+The actual TypeScript client and source-54 native HTTP passed 11 logical accepted
+save requests over 26 reviewed effect pages on a separate installed-50 synthetic
+copy. The tests cover one reserved transfer, a fresh unmerged 501-move transfer
+and an existing 2,001-operation transfer. They exercise native load/onchange,
+complete review, create/edit/delete, exact status/replay and generated references.
+
+The reserved case changes batch and done quantity, verifies the native five-unit
+reservation moves between batches, then restores the original batch/zero done
+quantity. Its accepted HTTP response is deliberately withheld from the client;
+status and exact replay recover without another action. Each fixture also sends
+two overlapping identical creates from separate sessions of the same author:
+one operation and receipt result. Deletion leaves the original create accepted,
+but its deleted reference becomes unavailable and replay does not recreate it.
+
+Anonymous/logout access and cross-author receipt lookup reject. Re-authentication
+recovers all original accepted statuses. Independent SQL checks the exact
+author/company/purpose/request receipt hashes, stored reviewed business changes,
+unrelated rows across 25 monitored tables and all 116 guard-table changes. Old
+confirmation receipts remain unchanged. Physical stock, total reservations and
+delivered quantities are preserved; test-created operations are removed and all
+original moves/operations retained. Native computed balance changes and receipt/
+audit metadata are accounted for, not described as a byte-identical reset.
+
+After the private HTTP container and Unix-socket connection stop, an independent
+read-only SQL check matches all final hashes with no late writes. It verifies all
+11 receipts and all 87 Python source hashes against candidate 54, plus its actual
+client hash recorded above. Final states are: reserved case one move/one operation,
+physical 20/reserved five; large-move case 501 moves/no operations, physical 20/
+reserved zero; large-operation case one move/2,001 original operations, physical
+ten/reserved zero. All have zero done and delivered quantity.
+
+The seed's initial duplicate synthetic reference failure rolled back and remains
+in the private evidence. A separate initial verifier table-allowlist assertion
+failed before any operation dispatch; it is retained too. The corrected run and
+post-close check exit zero. Logs/requests stay in the private operator pack:
+`operation-http54-acceptance-r2-20261016`, not the public repository.
+
+This is API evidence on one synthetic native configuration. It is separate from
+the full-addon regression below, not an installed-54 upgrade, actual protected
+gateway/browser or representative performance acceptance. Harness phase timings
+include recovery and database verification, not pure endpoint latency. Mandatory
+analytics and native SMS remain enabled. No UI gate reopening or tester/public
+update occurred. The earlier no-HTTP statements retain their historical scope.
+
+## Full native candidate-54 regression, 16 October 2026
+
+The complete addon suite passes **785 cases, zero failures/errors/skips** on the
+isolated installed-49 synthetic database with final source-54 models and
+`--no-http`. After rollback, original rows in all 116 guard tables plus
+`account_analytic_applicability` are preserved: 117 tables total. Mandatory
+analytics and native SMS remain enabled throughout.
+
+All 87 logged Python hashes match commit
+`150409d6eab6839201cc411e41869416ac1bef2c`, including its complete Python file
+set. This is a clean full-addon result for candidate 54, not a full-source-55
+run, persistent module upgrade or browser/gateway/scale acceptance. Its distinct
+private evidence is `full-addon54-r1-native-tests-20261016.log` and
+`full-addon54-r1-source-verification-20261016.json`. No ports were published and
+the one-off native container exited. Review access stays closed.

@@ -343,9 +343,9 @@ class StockConfirmation(models.Model):
 
     def _qorlia_stock_preparation_preview(self, execute, tables):
         self.ensure_one()
-        stamp = self._qorlia_confirmation_stamp(tables)
         cr = self.env.cr
         cr.flush()
+        stamp = self._qorlia_confirmation_stamp(tables)
         hooks = {name: getattr(cr, name) for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
         try:
             for name in hooks:

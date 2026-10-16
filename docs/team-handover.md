@@ -28,6 +28,16 @@ reuse the original request, and which backend/client results still need real
 HTTP and React/browser verification. Do not enable a legacy large-save button
 just because the new native protocol exists in source.
 
+The later [operation HTTP checkpoint](../runtime/billing/STOCK_OPERATION_PAGING.md#native-http-operation-and-recovery-checkpoint-16-october-2026)
+now verifies scoped duplicate/lost-response/create/edit/delete recovery on large
+synthetic transfers. It is not an available tester UI. Source 55 adds
+[paged reservation actions](../runtime/billing/STOCK_RESERVATION_PAGING.md), with
+typed clients and source gateway checks; its first native run has one preview
+guard error. The corrected pending-audit baseline passes two focused tests;
+the broader native rerun is in progress. The existing React dialogs and durable
+recovery still need migration.
+Do not reopen expired access or change your assigned task base to try these APIs.
+
 ## 2. Which version should I open?
 
 | Purpose                                         | Where to look                                                                                                   | Important distinction                                               |

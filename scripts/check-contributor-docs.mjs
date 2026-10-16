@@ -26,6 +26,7 @@ const files = [
   "runtime/billing/STOCK_CONFIRMATION_PAGING.md",
   "runtime/billing/STOCK_OPERATION_FORMS.md",
   "runtime/billing/STOCK_OPERATION_PAGING.md",
+  "runtime/billing/STOCK_RESERVATION_PAGING.md",
   "apps/home/README.md",
   "apps/clinical/README.md",
   "apps/registration/README.md",

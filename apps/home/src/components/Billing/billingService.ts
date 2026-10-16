@@ -4943,7 +4943,7 @@ function checkedStockReferencePage(
   after: number,
   version: string | false,
   limit: number,
-  kind: 'confirmation' | 'operation',
+  kind: 'confirmation' | 'operation' | 'reservation',
 ) {
   if (
     !confirmationKeys(data, [
@@ -5233,6 +5233,244 @@ export async function getPagedStockOperationReferences(
     version,
     limit,
     'operation',
+  );
+}
+
+export interface PagedStockReservationLoad
+  extends Omit<PagedStockConfirmationLoad, 'reason'> {
+  reasons: Record<StockReservationAction, string | false>;
+}
+export interface PagedStockReservationReview extends StockReservationSelection {
+  review_version: string;
+  state_after: string;
+  write_ready: boolean;
+  after: number;
+  total_count: number;
+  next_after: number | false;
+  effects: StockConfirmationEffects;
+  continuation_token: string | false;
+  review_complete_token: string | false;
+}
+export interface PagedStockReservationRequest extends StockReservationRequest {
+  review_complete_token: string;
+}
+export interface PagedStockReservationStatus
+  extends Omit<PagedStockOperationStatus, 'operation_id' | 'action'> {
+  action: StockReservationAction;
+}
+export async function getPagedStockReservation(
+  orderId: number,
+  transferId: number,
+) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  const data = await stockCall<PagedStockReservationLoad>(
+    'qorlia_reservation_paged_load',
+    {
+      order_id: orderId,
+      transfer_id: transferId,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'transfer',
+      'package_count',
+      'reasons',
+      'write_ready',
+    ]) ||
+    data.order_id !== orderId ||
+    data.transfer_id !== transferId ||
+    !stockVersion(data.version) ||
+    !validTransferSummary(data.transfer) ||
+    data.transfer.id !== transferId ||
+    !stockCount(data.package_count) ||
+    typeof data.write_ready !== 'boolean' ||
+    !confirmationKeys(data.reasons, [...stockPreparationActions]) ||
+    !Object.values(data.reasons).every(stockText) ||
+    (!data.write_ready &&
+      Object.values(data.reasons).some((value) => value === false))
+  )
+    throw new Error('Invalid compact reservation state. Reload the transfer.');
+  return data;
+}
+export function checkedPagedStockReservationRequest(
+  request: PagedStockReservationRequest,
+): PagedStockReservationRequest {
+  if (
+    !confirmationKeys(request, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'action',
+      'review_version',
+      'review_complete_token',
+      'request_key',
+    ]) ||
+    !stockVersion(request.review_complete_token)
+  )
+    throw new Error('Use the exact completely reviewed reservation request.');
+  const { review_complete_token, ...legacy } = request;
+  return { ...checkedStockReservationRequest(legacy), review_complete_token };
+}
+export async function getPagedStockReservationReview(
+  selection: StockReservationSelection,
+  after = 0,
+  reviewVersion: string | false = false,
+  continuationToken: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedStockSelection(selection);
+  if (
+    !confirmationKeys(selection, Object.keys(exact)) ||
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    (after === 0
+      ? reviewVersion !== false || continuationToken !== false
+      : !stockVersion(reviewVersion) || !stockVersion(continuationToken))
+  )
+    throw new Error(
+      'Review bounded reservation pages in order with their original tokens.',
+    );
+  const data = await stockCall<PagedStockReservationReview>(
+    'qorlia_reservation_paged_review',
+    {
+      payload: exact,
+      after,
+      review_version: reviewVersion,
+      continuation_token: continuationToken,
+      limit,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      ...Object.keys(exact),
+      'review_version',
+      'state_after',
+      'write_ready',
+      'after',
+      'total_count',
+      'next_after',
+      'effects',
+      'continuation_token',
+      'review_complete_token',
+    ]) ||
+    Object.entries(exact).some(
+      ([key, value]) => data[key as keyof StockReservationSelection] !== value,
+    ) ||
+    !stockVersion(data.review_version) ||
+    (reviewVersion !== false && data.review_version !== reviewVersion) ||
+    !operationPreparationStates.includes(data.state_after) ||
+    data.write_ready !== true ||
+    data.after !== after ||
+    !stockCount(data.total_count) ||
+    after > data.total_count ||
+    !validConfirmationEffects(data.effects)
+  )
+    throw new Error('Invalid paged reservation review. Review it again.');
+  const page = confirmationEffectPageRows(data.effects),
+    end = after + page.count;
+  if (
+    !page.valid ||
+    page.count !== Math.min(limit, data.total_count - after) ||
+    (end < data.total_count
+      ? data.next_after !== end ||
+        !stockVersion(data.continuation_token) ||
+        data.review_complete_token !== false
+      : data.next_after !== false ||
+        data.continuation_token !== false ||
+        !stockVersion(data.review_complete_token))
+  )
+    throw new Error(
+      'Invalid reservation page or completion proof. Review it again.',
+    );
+  return data;
+}
+async function pagedReservationRequest(
+  method: string,
+  request: PagedStockReservationRequest,
+) {
+  const exact = checkedPagedStockReservationRequest(request);
+  const data = await stockCall<PagedStockReservationStatus>(method, {
+    payload: exact,
+  });
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'request_key',
+      'action',
+      'state_after',
+      'reference_count',
+      'current',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    data.action !== exact.action ||
+    !stockCount(data.reference_count) ||
+    (data.accepted
+      ? !operationPreparationStates.includes(String(data.state_after))
+      : data.state_after !== false || data.reference_count !== 0) ||
+    !confirmationKeys(data.current, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'transfer',
+    ]) ||
+    data.current.order_id !== exact.order_id ||
+    data.current.transfer_id !== exact.transfer_id ||
+    !stockVersion(data.current.version) ||
+    !validTransferSummary(data.current.transfer) ||
+    data.current.transfer.id !== exact.transfer_id
+  )
+    throw new Error(
+      'Invalid compact reservation receipt. Keep the exact request for recovery.',
+    );
+  return data;
+}
+export const savePagedStockReservation = (
+  request: PagedStockReservationRequest,
+) => pagedReservationRequest('qorlia_reservation_paged_save', request);
+export const getPagedStockReservationStatus = (
+  request: PagedStockReservationRequest,
+) => pagedReservationRequest('qorlia_reservation_paged_status', request);
+export async function getPagedStockReservationReferences(
+  request: PagedStockReservationRequest,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedPagedStockReservationRequest(request);
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !(version === false || stockVersion(version)) ||
+    (after > 0 && version === false)
+  )
+    throw new Error(
+      'Use a bounded reservation reference page and its original version.',
+    );
+  const data = await stockCall<PagedStockConfirmationReferences>(
+    'qorlia_reservation_paged_references',
+    {
+      payload: exact,
+      after,
+      version,
+      limit,
+    },
+  );
+  return checkedStockReferencePage(
+    data,
+    exact.request_key,
+    after,
+    version,
+    limit,
+    'reservation',
   );
 }
 

@@ -153,6 +153,10 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     .matchAll(/^    def (qorlia_operation_paged_\w+)\(/gm)].map(match => match[1]);
   assert.deepEqual([...pagedOperationMethods].sort(), ['load', 'onchange', 'review', 'save', 'status', 'references'].map(action => `qorlia_operation_paged_${action}`).sort(),
     'Only six named paged operation APIs are covered, without raw native actions or client contexts.');
+  const pagedReservationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_reservation_paged.py'), 'utf8')
+    .matchAll(/^    def (qorlia_reservation_paged_\w+)\(/gm)].map(match => match[1]);
+  assert.deepEqual([...pagedReservationMethods].sort(), ['load', 'review', 'save', 'status', 'references'].map(action => `qorlia_reservation_paged_${action}`).sort(),
+    'Only five named paged reservation APIs are covered, without raw stock actions or client contexts.');
   const validationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_validation.py'), 'utf8')
     .matchAll(/^    def (qorlia_validation_\w+)\(/gm)].map(match => match[1]);
   assert.deepEqual([...validationMethods].sort(), ['load', 'preview', 'save', 'status'].map(action => `qorlia_validation_${action}`).sort(),
@@ -173,6 +177,9 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     ['stock.picking', '_qorlia_confirmation_paged_preview'], ['stock.picking', 'action_confirm'],
     ['stock.picking', 'qorlia_operation_paged_unknown'], ['stock.picking', 'qorlia_operation_paged_preview'],
     ['stock.picking', '_qorlia_operation_paged_preview'], ['stock.move.line', 'create'],
+    ['stock.picking', 'qorlia_reservation_paged_unknown'], ['stock.picking', 'qorlia_reservation_paged_preview'],
+    ['stock.picking', '_qorlia_reservation_paged_preview'], ['stock.picking', 'action_assign'],
+    ['stock.picking', 'do_unreserve'], ['stock.picking', 'action_set_quantities_to_reservation'], ['stock.picking', 'action_clear_quantities_to_zero'],
     ['stock.move.line', 'write'], ['stock.move.line', 'unlink']])
     assert.equal((await rpc(`/web/dataset/call_kw/${model}/${method}`, allCookies, {model, method, args: [], kwargs: {}})).status, 404);
   for (const [model, method] of [
@@ -181,6 +188,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     ...confirmationMethods.map(method => ['stock.picking', method]),
     ...pagedConfirmationMethods.map(method => ['stock.picking', method]),
     ...pagedOperationMethods.map(method => ['stock.picking', method]),
+    ...pagedReservationMethods.map(method => ['stock.picking', method]),
     ...validationMethods.map(method => ['stock.picking', method]),
     ...validationStepMethods.map(method => ['stock.picking', method]),
     ...returnMethods.map(method => ['stock.picking', method]),

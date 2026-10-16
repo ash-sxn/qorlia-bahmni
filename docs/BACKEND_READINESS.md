@@ -1,5 +1,41 @@
 # Qorlia React frontend backend readiness
 
+## Paged reservation backend/client candidate 55 (16 October 2026)
+
+Five named methods and typed clients/source-gateway routes now cover complete
+paged native Check availability, Unreserve, Set quantities and Clear quantities,
+with purpose-bound proof/receipts and compact recovery. Existing native rules,
+financial/physical guards and the 2,000-quant guard remain. Home passes 886 tests
+in 80 suites, including 36 new client cases; types/lint/format and three gateway
+tests pass. The first native run retains one preview-state guard error among 135
+cases. A shared pending-audit baseline correction passes two focused regressions,
+with 117-table preservation; the corrected combined 136-case run is in progress. Read
+[the contract and remaining gates](../runtime/billing/STOCK_RESERVATION_PAGING.md).
+No React dialog/recovery migration, reopened review access, installed upgrade,
+actual source-55 HTTP/browser or public/tester deployment is claimed.
+
+## Native operation HTTP and recovery checkpoint (16 October 2026)
+
+Source 54 and the actual typed client pass 11 accepted operation requests over
+26 effect pages on reserved, 501-move and 2,001-operation synthetic transfers.
+Tests cover exact duplicate and withheld-response recovery, deleted references,
+anonymous/cross-author denial and re-authentication status. Independent post-close
+SQL verifies all receipts/hashes, preserved physical/protected business values,
+unrelated 25-table rows, accounted 116-table changes and no late writes. Read
+[the scoped evidence](../runtime/billing/STOCK_OPERATION_PAGING.md#native-http-operation-and-recovery-checkpoint-16-october-2026).
+This is source-54 on installed-50, not an installed upgrade, full-addon result,
+actual gateway/browser, representative scale or a tester release. Review stays closed.
+
+## Complete candidate-54 native regression (16 October 2026)
+
+The full addon passes 785 cases with zero failures/errors/skips on the isolated
+installed-49 synthetic copy, without HTTP or a persistent upgrade. Original rows
+across all 117 checked tables remain after rollback, with mandatory analytics and
+native SMS enabled. All 87 Python hashes match source commit `150409d6`.
+See [the exact full-run evidence](../runtime/billing/STOCK_OPERATION_PAGING.md#full-native-candidate-54-regression-16-october-2026).
+This does not verify the newer candidate 55, gateway/browser, production scale or
+complete product parity. Review remains closed.
+
 ## Paged operation backend/client candidate 54 (16 October 2026)
 
 The new six-method protocol reuses native create/edit/delete and complete

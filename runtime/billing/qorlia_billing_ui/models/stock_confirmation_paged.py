@@ -49,8 +49,11 @@ class StockConfirmationPaged(models.Model):
     _inherit = 'stock.picking'
 
     def _qorlia_confirmation_context(self):
-        return self.with_context({key: self.env.context[key] for key in ('allowed_company_ids', 'lang', 'tz')
+        scoped = self.with_context({key: self.env.context[key] for key in ('allowed_company_ids', 'lang', 'tz')
             if key in self.env.context})
+        # Drain the caller's earlier native audit work before pinning a review version.
+        scoped.env.cr.flush()
+        return scoped
 
     def _qorlia_confirmation_paged_transfer(self, order_id, transfer_id, lock=False):
         picking, order, version = self.env['sale.order']._qorlia_delivery_transfer_scope(order_id, transfer_id)

@@ -58,6 +58,7 @@ Latest API-consumer source connects [paged transfer summaries and details](runti
 - [Billing adapter](runtime/billing/README.md): native Odoo integration and limits.
 - [Native stock operation forms](runtime/billing/STOCK_OPERATION_FORMS.md): compact single-form backend, complete snapshot checks and remaining save limits.
 - [Paged operation review](runtime/billing/STOCK_OPERATION_PAGING.md): native create/edit/delete effects, terminal proof and compact recovery protocol.
+- [Paged reservation actions](runtime/billing/STOCK_RESERVATION_PAGING.md): complete effects and compact recovery for native availability, unreserve and quantity preparation.
 - [Large-transfer confirmation candidate](runtime/billing/STOCK_CONFIRMATION_PAGING.md): native paged review/save contract, distinct from released UI and tester capabilities.
 - [Large confirmation HTTP verification](runtime/billing/STOCK_CONFIRMATION_PAGING.md#large-native-http-and-recovery-checkpoint-16-october-2026): complete 501-move/2,001-operation saves and generated-reference recovery, with explicit remaining gateway/UI/scale limits.
 - [Full native regression](runtime/billing/STOCK_CONFIRMATION_PAGING.md#full-addon-mandatory-analytics-regression-16-october-2026): 765 addon cases passing with mandatory analytics enabled, retained failed-run history and unchanged production validation.

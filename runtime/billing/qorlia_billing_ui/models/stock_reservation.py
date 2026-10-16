@@ -161,10 +161,20 @@ class StockReservation(models.Model):
         except (AccessError, UserError) as error:
             reason = str(error)
         graph = picking._qorlia_reservation_graph(order_id)
-        available = {'assign': picking.show_check_availability,
-            'unreserve': not picking.immediate_transfer and picking.picking_type_id.code != 'incoming'
-                and (picking.state == 'assigned' if picking.move_type != 'one' else picking.state in ('assigned', 'confirmed')),
-            'set_quantities': picking.show_set_qty_button, 'clear_quantities': picking.show_clear_qty_button}
+        reasons = picking._qorlia_reservation_reasons(reason)
+        return {'order_id': order_id, 'transfer_id': transfer_id, 'graph': graph,
+            'version': _digest({'order_version': order['version'], 'graph': graph, 'configuration': configuration,
+                'author': self.env.uid, 'companies': self.env.companies.ids}),
+            'reasons': reasons}
+
+    def _qorlia_reservation_reasons(self, reason=False):
+        self.ensure_one()
+        self.check_field_access_rights('read', ['show_check_availability', 'immediate_transfer',
+            'picking_type_id', 'state', 'move_type', 'show_set_qty_button', 'show_clear_qty_button'])
+        available = {'assign': self.show_check_availability,
+            'unreserve': not self.immediate_transfer and self.picking_type_id.code != 'incoming'
+                and (self.state == 'assigned' if self.move_type != 'one' else self.state in ('assigned', 'confirmed')),
+            'set_quantities': self.show_set_qty_button, 'clear_quantities': self.show_clear_qty_button}
         labels = {'assign': 'Check availability', 'unreserve': 'Unreserve',
             'set_quantities': 'Set quantities', 'clear_quantities': 'Clear quantities'}
         reasons = {}
@@ -172,15 +182,12 @@ class StockReservation(models.Model):
             denied = reason
             if not denied:
                 try:
-                    picking._qorlia_reservation_write_access(action)
+                    self._qorlia_reservation_write_access(action)
                 except AccessError as error:
                     denied = str(error)
             reasons[action] = denied or (False if available[action]
                 else '%s is not available in the current native transfer state.' % labels[action])
-        return {'order_id': order_id, 'transfer_id': transfer_id, 'graph': graph,
-            'version': _digest({'order_version': order['version'], 'graph': graph, 'configuration': configuration,
-                'author': self.env.uid, 'companies': self.env.companies.ids}),
-            'reasons': reasons}
+        return reasons
 
     def _qorlia_reservation_prepare(self, order_id, transfer_id, version, action):
         if not isinstance(action, str) or action not in _ACTIONS or not isinstance(version, str) or len(version) != 64:

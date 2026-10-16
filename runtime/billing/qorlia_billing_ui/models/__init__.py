@@ -11,6 +11,7 @@ from . import stock_validation
 from . import stock_validation_step
 from . import stock_return
 from . import stock_operation_paged
+from . import stock_reservation_paged
 from . import account_move
 from . import payment_workflow
 from . import credit_workflow

@@ -3,6 +3,25 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Candidate 55: [complete paged reservation actions](STOCK_RESERVATION_PAGING.md).
+Native load/review/save/status/references and typed clients/named gateway routes
+reuse native availability, actions and full effects for all four stock-preparation
+actions. Home passes 886 tests, including 36 new client cases. The first native
+run has one preview-state guard error among 135 cases, with 117-table preservation;
+the corrected callback-baseline ordering passes two focused regressions, with
+117-table preservation. A corrected 136-case native run is in progress.
+React/recovery migration and runtime acceptance remain separate.
+Review stays closed, with no installed upgrade or public/tester deployment.
+
+Candidate 54 now also has [actual native HTTP operation/recovery evidence](STOCK_OPERATION_PAGING.md#native-http-operation-and-recovery-checkpoint-16-october-2026):
+11 logical accepted requests on reserved, 501-move and 2,001-operation fixtures,
+with duplicate/lost-response/deleted-reference recovery. Independent post-close
+SQL verifies receipt hashes, protected rows and no late writes. A separate
+[full candidate-54 native regression](STOCK_OPERATION_PAGING.md#full-native-candidate-54-regression-16-october-2026)
+passes 785 cases with zero failures/errors/skips and 117-table preservation after
+rollback. All 87 Python hashes match its source commit. These distinct runs do
+not claim an installed upgrade, source-55 full addon, gateway/browser or scale acceptance.
+
 Candidate 54: [complete paged operation review/save/recovery](STOCK_OPERATION_PAGING.md).
 Six named native/client/gateway source routes reuse native operation application
 and the complete rollback/effects engine, with purpose-bound sequential proof,

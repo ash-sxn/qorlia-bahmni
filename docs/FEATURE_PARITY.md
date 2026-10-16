@@ -1,6 +1,42 @@
 # Bahmni workflow parity ledger
 
+## 16 October paged reservation backend/client candidate 55
+
+- Native compact load, full paged review, proof-bound save/status and paged
+  generated references cover all four preparation actions with the existing
+  native rules/effects engine. Legacy contracts/caps and inventory guard remain.
+- Home passes 886 tests/80 suites, with 36 new client cases; types/lint/format and
+  three gateway checks pass. The first native run has one preview-state guard
+  error among 135 cases, with 117-table rollback preservation. The shared
+  pending-audit baseline correction passes two focused cases; a corrected
+  136-case combined native run remains in progress, not accepted yet.
+  See [the exact protocol and remaining work](../runtime/billing/STOCK_RESERVATION_PAGING.md).
+- React dialog/durable recovery migration, installed upgrade, actual source-55
+  HTTP, protected gateway/browser, broader configuration and scale remain open.
+  No review gate reopening or tester/public deployment.
+
+## 16 October native paged operation HTTP/recovery acceptance
+
+- Actual client/source-54 HTTP passes 11 logical accepted save requests over 26
+  effect pages on reserved, 501-move and 2,001-operation synthetic fixtures.
+  Overlapping identical creates resolve once. A withheld accepted response
+  recovers exactly; deletion leaves old receipts accepted but references unavailable.
+- Anonymous/logout and cross-author denial and re-authentication status pass.
+  Independent post-close SQL verifies 11 exact receipt hashes, reviewed business
+  changes, unrelated 25-table rows, accounted 116-table changes and no late writes.
+  Original operation/move identities and physical/total reserved/delivered amounts
+  remain; test-created operations are deleted. See [the evidence and retained
+  setup/verifier failures](../runtime/billing/STOCK_OPERATION_PAGING.md#native-http-operation-and-recovery-checkpoint-16-october-2026).
+- This is source-54 on installed-50, not an installed upgrade, full-addon result,
+  actual gateway/browser or representative hospital-scale acceptance. No UI
+  migration, review reopening or tester/public release is claimed.
+
 ## 16 October paged operation backend/client candidate 54
+
+Later full-source evidence: [785 native addon cases pass with 117-table rollback
+preservation and all 87 source hashes matched](../runtime/billing/STOCK_OPERATION_PAGING.md#full-native-candidate-54-regression-16-october-2026).
+This is source-54 on installed-49 with no HTTP, not verification of source 55 or a
+runtime/browser release. The scoped earlier results below retain their history.
 
 - Six named endpoints and typed clients cover native form/onchange, complete
   paged effects, proof-bound create/edit/delete, compact exact-request recovery
