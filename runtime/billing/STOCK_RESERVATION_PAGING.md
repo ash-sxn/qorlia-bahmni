@@ -2,6 +2,11 @@
 
 ## Candidate 55, 16 October 2026
 
+Later source candidate: [candidate 56's complete inventory scope](STOCK_INVENTORY_SCOPE.md)
+replaces the new reservation protocol's quant cap with checked keyset scans.
+Its verification is separate. The candidate-55 evidence below retains its exact
+historical scope, including the then-current quant guard.
+
 This is backend/client integration source, not an available tester UI or a
 release. It removes the legacy full-transfer response dependency for Check
 availability, Unreserve, Set quantities and Clear quantities. It does not replace
@@ -168,9 +173,28 @@ Evidence pack: `reservation-http55-acceptance-r4-20261016`, including
 Earlier failed observer packs are retained separately. These are native
 HTTP/client checks, not gateway/browser, representative clinical configuration
 or hospital-scale acceptance. Timings include independent SQL verification and
-must not be advertised as native request latency. The full candidate-55 addon
-regression is still running separately; the completed 136-case run above covers
-reservation/operation/confirmation, not the whole addon.
+must not be advertised as native request latency. The separate full candidate-55
+addon regression below is now complete; the earlier 136-case run covers only
+reservation/operation/confirmation.
+
+## Full native candidate-55 regression, 16 October 2026
+
+The complete candidate-55 addon suite passes 798 tests with zero failures,
+errors or skips. The post-suite rollback check preserves original rows in all
+117 monitored tables, with mandatory analytics and native SMS still enabled.
+All 88 Python source hashes and the exact file set match source commit
+`62c8e4cdd31dfcbe13c4b9f34e659cb18f9b7d39`, not the newer candidate-56 worktree.
+
+This uses source-55 models on an isolated installed-50 synthetic copy without
+HTTP or a persistent upgrade. It is a separate run from the source-55 HTTP
+checkpoint on installed-49. Neither run proves candidate 56, all clinical
+configurations, actual protected gateway/browser acceptance or hospital-scale
+performance. There was no frontend build, review reopening or deployment.
+
+Private evidence: `full-addon55-native-tests-20261016.log` and
+`full-addon55-source-verification-20261016.json`. The one-off test process exits
+successfully; its container is removed. Earlier failed and focused runs retain
+their own recorded outcomes.
 
 The existing 2,000-quant inventory guard remains. Paged effects do not turn an
 incomplete inventory scope into a safe reservation. Large inventory paging,

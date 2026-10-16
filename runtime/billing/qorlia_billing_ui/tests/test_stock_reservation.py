@@ -587,3 +587,147 @@ class StockReservationTest(TransactionCase):
         self.assertEqual(self.quant.reserved_quantity, 0)
         self.assertFalse(self.picking.move_line_ids)
         self.assertFalse(self.picking.qorlia_reservation_receipts)
+
+    def grow_inventory(self):
+        lots = self.env['stock.lot'].create([{'name': 'QorliaQA Inventory page %s' % index,
+            'product_id': self.product.id, 'company_id': self.env.company.id,
+            'expiration_date': '2027-01-01 00:00:00'} for index in range(2000)])
+        quants = self.env['stock.quant'].create([{'product_id': self.product.id,
+            'location_id': self.picking.location_id.id, 'lot_id': lot.id, 'quantity': 1} for lot in lots])
+        self.env.cr.flush()
+        return quants
+
+    def test_complete_inventory_scope_pages_every_quant_without_changing_legacy_cap(self):
+        quants = self.grow_inventory() | self.quant
+        model = type(self.picking)
+        original = model._qorlia_reservation_read_scope
+        seen, sizes = [], []
+        def bounded(records, values, lock=False):
+            page = values.get('stock.quant', self.env['stock.quant'])
+            seen.extend(page.ids)
+            sizes.append(len(page))
+            return original(records, values, lock)
+        with self.assertRaises(UserError):
+            self.picking.with_user(self.user)._qorlia_reservation_scope()
+        with patch.object(model, '_qorlia_reservation_read_scope', bounded):
+            scope = self.picking.with_user(self.user)._qorlia_reservation_scope(complete=True)
+        self.assertEqual(scope['kind'], 'qorlia.inventory-scope.v1')
+        self.assertEqual(scope['quant_count'], 2001)
+        self.assertEqual(set(seen), set(quants.ids))
+        self.assertEqual(len(seen), 2001)
+        self.assertEqual(sizes, [0, 500, 500, 500, 500, 1])
+        self.assertEqual(scope, self.picking.with_user(self.user)._qorlia_reservation_scope(complete=True))
+        self.assertNotIn('stock.quant', scope)
+        self.assertTrue(self.load()['reasons']['assign'])
+        self.assertFalse(self.api().qorlia_reservation_paged_load(self.order.id, self.picking.id)['reasons']['assign'])
+
+    def test_complete_inventory_scope_binds_tail_quantity_lot_and_removal_configuration(self):
+        quants = self.grow_inventory()
+        picking = self.picking.with_user(self.user)
+        scope = picking._qorlia_reservation_scope(complete=True)
+        data = self.paged_data()
+        quants[-1].quantity = 2
+        self.assertNotEqual(scope, picking._qorlia_reservation_scope(complete=True))
+        with self.assertRaises(UserError):
+            self.paged_pages(data)
+        scope = picking._qorlia_reservation_scope(complete=True)
+        quants[-1].lot_id.expiration_date = '2028-01-01 00:00:00'
+        self.assertNotEqual(scope, picking._qorlia_reservation_scope(complete=True))
+        scope = picking._qorlia_reservation_scope(complete=True)
+        fifo = self.env.ref('stock.removal_fifo')
+        self.product.categ_id.removal_strategy_id = self.env.ref('stock.removal_lifo') if self.product.categ_id.removal_strategy_id == fifo else fifo
+        self.assertNotEqual(scope, picking._qorlia_reservation_scope(complete=True))
+        self.assertFalse(self.picking.qorlia_reservation_receipts)
+
+    def test_complete_inventory_hidden_tail_quant_fails_closed_without_partial_summary(self):
+        quants = self.grow_inventory()
+        self.env['ir.rule'].create({'name': 'QorliaQA Hidden inventory tail',
+            'model_id': self.env['ir.model']._get_id('stock.quant'),
+            'domain_force': "[('id', '!=', %s)]" % quants[-1].id})
+        with self.assertRaises(AccessError):
+            self.picking.with_user(self.user)._qorlia_reservation_scope(complete=True)
+        loaded = self.api().qorlia_reservation_paged_load(self.order.id, self.picking.id)
+        self.assertFalse(loaded['write_ready'])
+        self.assertTrue(all(loaded['reasons'].values()))
+        self.assertNotIn('configuration', loaded)
+        self.assertFalse(self.picking.qorlia_reservation_receipts)
+
+    def test_complete_inventory_hidden_tail_lot_and_owner_are_checked(self):
+        quants = self.grow_inventory()
+        rule = self.env['ir.rule'].create({'name': 'QorliaQA Hidden inventory tail lot',
+            'model_id': self.env['ir.model']._get_id('stock.lot'),
+            'domain_force': "[('id', '!=', %s)]" % quants[-1].lot_id.id})
+        with self.assertRaises(AccessError):
+            self.picking.with_user(self.user)._qorlia_reservation_scope(complete=True)
+        rule.unlink()
+        owner = self.env['res.partner'].create({'name': 'QorliaQA Hidden inventory owner'})
+        quants[-1].owner_id = owner
+        self.env['ir.rule'].create({'name': 'QorliaQA Hidden inventory tail owner',
+            'model_id': self.env['ir.model']._get_id('res.partner'),
+            'domain_force': "[('id', '!=', %s)]" % owner.id})
+        with self.assertRaises(AccessError):
+            self.picking.with_user(self.user)._qorlia_reservation_scope(complete=True)
+
+    def test_complete_inventory_field_access_is_checked_on_every_page(self):
+        self.grow_inventory()
+        model = type(self.env['stock.quant'])
+        original = model.check_field_access_rights
+        checked = []
+        def fields(records, operation, names=None):
+            if operation == 'read' and names and 'reserved_quantity' in names and 'write_date' not in names:
+                checked.append(len(records))
+                if len(checked) == 6:
+                    raise AccessError('QorliaQA Tail stock field is inaccessible.')
+            return original(records, operation, names)
+        with patch.object(model, 'check_field_access_rights', fields):
+            with self.assertRaises(AccessError):
+                self.picking.with_user(self.user)._qorlia_reservation_scope(complete=True)
+        self.assertEqual(checked, [0, 500, 500, 500, 500, 1])
+
+    def test_complete_inventory_keeps_native_product_and_source_subtree(self):
+        child = self.env['stock.location'].create({'name': 'QorliaQA Inventory child',
+            'location_id': self.picking.location_id.id, 'usage': 'internal', 'company_id': self.env.company.id})
+        outside = self.env['stock.location'].create({'name': 'QorliaQA Inventory outside',
+            'usage': 'internal', 'company_id': self.env.company.id})
+        self.env['stock.quant']._update_available_quantity(self.product, child, 2, lot_id=self.lot)
+        self.env['stock.quant']._update_available_quantity(self.product, outside, 3, lot_id=self.lot)
+        other = self.env['product.product'].create({'name': 'QorliaQA Unrelated inventory product',
+            'type': 'product', 'taxes_id': [(6, 0, [])]})
+        self.env['stock.quant']._update_available_quantity(other, self.picking.location_id, 4)
+        picking = self.picking.with_user(self.user)
+        scope = picking._qorlia_reservation_scope(complete=True)
+        self.assertEqual(scope['quant_count'], 2)
+        outside_quant = self.env['stock.quant'].search([('product_id', '=', self.product.id), ('location_id', '=', outside.id)])
+        outside_quant.quantity = 4
+        self.assertEqual(scope, picking._qorlia_reservation_scope(complete=True))
+        self.env['stock.quant']._update_available_quantity(self.product, child, 1, lot_id=self.lot)
+        self.assertNotEqual(scope, picking._qorlia_reservation_scope(complete=True))
+
+    def test_complete_inventory_reservation_review_save_and_recovery_beyond_legacy_cap(self):
+        self.grow_inventory()
+        picking = self.picking.with_user(self.user)
+        before = picking._qorlia_confirmation_stamp(picking._qorlia_operation_paged_tables())
+        request = self.paged_exact()
+        self.assertEqual(before, picking._qorlia_confirmation_stamp(picking._qorlia_operation_paged_tables()))
+        accepted = self.api().qorlia_reservation_paged_save(request)
+        self.assertTrue(accepted['accepted'])
+        self.assertEqual(self.move.reserved_availability, 5)
+        self.assertEqual(sum(self.env['stock.quant'].search([('product_id', '=', self.product.id)]).mapped('quantity')), 2010)
+        self.assertEqual(self.sale_line.qty_delivered, 0)
+        self.assertEqual(accepted, self.api().qorlia_reservation_paged_status(request))
+        self.assertEqual(accepted, self.api().qorlia_reservation_paged_save(request))
+        self.assertEqual(len(self.picking.qorlia_reservation_receipts), 1)
+
+    def test_complete_inventory_preserves_accepted_previous_scope_request_recovery(self):
+        model = type(self.picking)
+        original = model._qorlia_reservation_scope
+        def legacy_scope(records, lock=False, complete=False):
+            return original(records, lock=lock, complete=False)
+        with patch.object(model, '_qorlia_reservation_scope', legacy_scope):
+            request = self.paged_exact()
+            accepted = self.api().qorlia_reservation_paged_save(request)
+        with patch.object(model, '_qorlia_reservation_scope', side_effect=AssertionError('Accepted recovery must not rescan or reserve.')):
+            self.assertEqual(self.api().qorlia_reservation_paged_status(request), accepted)
+            self.assertEqual(self.api().qorlia_reservation_paged_save(request), accepted)
+        self.assertEqual(self.quant.reserved_quantity, 5)
+        self.assertEqual(len(self.picking.qorlia_reservation_receipts), 1)

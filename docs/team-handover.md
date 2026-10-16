@@ -40,8 +40,17 @@ JSON frames with mocked transport. A separate native HTTP run completes ten
 logical actions over 24 effect pages with exact-request recovery and independent
 post-close SQL checks. The contract documents retained observer failures and
 before-image limits; this is not a running tester UI or browser acceptance.
+A separate full candidate-55 regression passes all 798 native cases with
+117-table preservation and 88 Python hashes matched to its source commit, not
+the newer candidate-56 worktree.
 The existing React dialogs and durable
 recovery still need migration.
+Candidate 56 adds an [internal complete inventory reader](../runtime/billing/STOCK_INVENTORY_SCOPE.md)
+for the new reservation protocol. Its corrected scoped run passes all 38 native
+reservation cases, including eight new cases, with 117-table preservation and
+88 matching Python source hashes. It is not ready for tester use and does not
+migrate the operation editor or expose a stock browser. Actual source-56 HTTP,
+gateway/browser and scale acceptance remain separate.
 Do not reopen expired access or change your assigned task base to try these APIs.
 
 ## 2. Which version should I open?

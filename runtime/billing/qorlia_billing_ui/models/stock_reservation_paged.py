@@ -26,7 +26,7 @@ class StockReservationPaged(models.Model):
         configuration = {}
         reason = False
         try:
-            configuration = picking._qorlia_reservation_scope()
+            configuration = picking._qorlia_reservation_scope(complete=True)
         except UserError as error:
             reason = str(error)
         reasons = picking._qorlia_reservation_reasons(reason)
@@ -58,7 +58,7 @@ class StockReservationPaged(models.Model):
         picking, _order, _scope = self._qorlia_confirmation_paged_transfer(
             data['order_id'], data['transfer_id'], lock=True)
         picking._qorlia_reservation_write_access(data['action'])
-        picking._qorlia_reservation_scope(lock=True)
+        picking._qorlia_reservation_scope(lock=True, complete=True)
         current = self.qorlia_reservation_paged_load(data['order_id'], data['transfer_id'])
         if current['version'] != data['version']:
             raise UserError('The transfer, inventory or native configuration changed. Reload and review it.')

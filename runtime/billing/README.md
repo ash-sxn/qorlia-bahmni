@@ -3,6 +3,16 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Candidate 56: [complete inventory scope for paged reservation](STOCK_INVENTORY_SCOPE.md).
+The new reservation protocol scans/checks every relevant quant in batches of
+500 and binds a compact full-scope digest, rather than lifting a truncation cap.
+Legacy callers retain their shape/guard. The corrected scoped run passes all 38
+native reservation cases, including eight new inventory cases, with 117-table
+preservation and all 88 Python hashes matched. Initial fixture failures are
+retained, not counted as passes. Operation-form inventory,
+React/recovery migration, actual HTTP/browser and scale remain separate work.
+Review remains closed, with no installed upgrade or deployment.
+
 Candidate 55: [complete paged reservation actions](STOCK_RESERVATION_PAGING.md).
 Native load/review/save/status/references and typed clients/named gateway routes
 reuse native availability, actions and full effects for all four stock-preparation
@@ -16,8 +26,11 @@ The later [native HTTP reservation/recovery checkpoint](STOCK_RESERVATION_PAGING
 completes ten logical actions over 24 effect pages on small, 501-move and
 2,001-operation fixtures. Post-close SQL verifies exact receipts, original stock
 identities/totals and source hashes; retained observer failures and the first
-recovered action's evidence limitation are documented. A full candidate-55 addon
-regression is still running separately. React/recovery migration and actual
+recovered action's evidence limitation are documented. A separate
+[full candidate-55 addon regression](STOCK_RESERVATION_PAGING.md#full-native-candidate-55-regression-16-october-2026)
+passes 798 cases with zero failures/errors/skips, 117-table preservation and all
+88 Python hashes matched to its source commit. This does not verify candidate 56.
+React/recovery migration and actual
 gateway/browser acceptance remain separate.
 Review stays closed, with no installed upgrade or public/tester deployment.
 

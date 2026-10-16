@@ -71,7 +71,17 @@ class StockReservation(models.Model):
     def _qorlia_reservation_apply(self, action):
         getattr(self, _ACTIONS[action])()
 
-    def _qorlia_reservation_scope(self, lock=False):
+    def _qorlia_reservation_quant_page(self, products, sources, after, limit):
+        # Select before record rules so a hidden tail cannot become a partial inventory.
+        self.env.cr.execute('SELECT quant.id FROM stock_quant quant JOIN stock_location location ON location.id = quant.location_id '
+            'WHERE quant.product_id IN %s AND (quant.company_id IS NULL OR quant.company_id = %s) '
+            'AND (quant.location_id IN %s OR location.parent_path LIKE ANY(%s)) '
+            'AND quant.id > %s ORDER BY quant.id LIMIT %s',
+            [tuple(products.ids) or (0,), self.company_id.id, tuple(sources.ids) or (0,),
+                [location.parent_path + '%' for location in sources if location.parent_path] or ['NO_SOURCE'], after, limit])
+        return self.env['stock.quant'].browse([row[0] for row in self.env.cr.fetchall()])
+
+    def _qorlia_reservation_scope(self, lock=False, complete=False):
         self.ensure_one()
         products = self.move_ids.product_id
         sources = self.move_ids.location_id | self.move_line_ids.location_id
@@ -82,19 +92,30 @@ class StockReservation(models.Model):
                 locations |= parent
                 parent = parent.location_id
         self.env.flush_all()
-        # Match native source sublocations while detecting hidden quants before applying record rules.
-        self.env.cr.execute('SELECT quant.id FROM stock_quant quant JOIN stock_location location ON location.id = quant.location_id '
-            'WHERE quant.product_id IN %s AND (quant.company_id IS NULL OR quant.company_id = %s) '
-            'AND (quant.location_id IN %s OR location.parent_path LIKE ANY(%s)) ORDER BY quant.id LIMIT 2001',
-            [tuple(products.ids) or (0,), self.company_id.id, tuple(sources.ids) or (0,),
-                [location.parent_path + '%' for location in sources if location.parent_path] or ['NO_SOURCE']])
-        quants = self.env['stock.quant'].browse([row[0] for row in self.env.cr.fetchall()])
-        if len(quants) > 2000:
+        quants = self.env['stock.quant'] if complete else self._qorlia_reservation_quant_page(products, sources, 0, 2001)
+        if not complete and len(quants) > 2000:
             raise UserError('These products need full inventory paging before reservation review.')
         records = {'product.product': products, 'uom.uom': products.uom_id | self.move_ids.product_uom,
             'product.category': products.categ_id, 'stock.location': locations | quants.location_id,
             'stock.lot': quants.lot_id | self.move_line_ids.lot_id,
             'stock.quant': quants, 'stock.picking.type': self.picking_type_id}
+        fixed = self._qorlia_reservation_read_scope(records, lock)
+        if not complete:
+            return fixed
+        digest, count, after = _digest(fixed), 0, 0
+        while True:
+            quants = self._qorlia_reservation_quant_page(products, sources, after, 500)
+            if not quants:
+                break
+            page = self._qorlia_reservation_read_scope({'stock.location': quants.location_id,
+                'stock.lot': quants.lot_id, 'stock.quant': quants}, lock)
+            digest = _digest({'previous': digest, 'records': page})
+            count += len(quants)
+            after = quants[-1].id
+        # shortcut: complete scans remain linear and share the full native effects engine.
+        return {'kind': 'qorlia.inventory-scope.v1', 'quant_count': count, 'digest': digest}
+
+    def _qorlia_reservation_read_scope(self, records, lock=False):
         fields_by_model = {
             'product.product': ['type', 'tracking', 'uom_id', 'categ_id', 'active'],
             'uom.uom': ['rounding', 'factor', 'category_id', 'active'],

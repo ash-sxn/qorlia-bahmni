@@ -1,5 +1,18 @@
 # Qorlia React frontend backend readiness
 
+## Complete reservation inventory scope candidate 56 (16 October 2026)
+
+The new paged reservation load/review path now checks every relevant stock quant
+through 500-row keyset batches and a chained full-scope digest. The shared legacy
+reader remains capped by default. Eight native regressions cover tail-row
+visibility/field access, stale scope, source boundaries, large inventory saves
+and prior accepted-request recovery. After a retained test-fixture correction,
+all 38 native reservation cases pass with zero failures/errors/skips, 117-table
+preservation, mandatory analytics/SMS and all 88 Python hashes matched. AST/diff,
+the unchanged 36 client cases and three gateway unit cases pass. This is not a new
+inventory browser, migrated operation form or UI/runtime release. Read
+[the exact scope and remaining gates](../runtime/billing/STOCK_INVENTORY_SCOPE.md).
+
 ## Paged reservation backend/client candidate 55 (16 October 2026)
 
 Five named methods and typed clients/source-gateway routes now cover complete
@@ -18,7 +31,9 @@ over 24 effect pages across small, 501-move and 2,001-operation fixtures, includ
 lost-response/duplicate/deleted-reference recovery. Post-close independent SQL
 verifies exact receipts, original stock identities/totals and source hashes.
 Retained observer failures and the initial recovered action's weaker before-image
-evidence are explicit. The full source-55 addon regression is still running. Read
+evidence are explicit. The separate full source-55 addon regression passes all
+798 cases, zero failures/errors/skips, with 117-table preservation and all 88
+Python hashes matched to commit `62c8e4cd`. This is not candidate-56 acceptance. Read
 [the contract and remaining gates](../runtime/billing/STOCK_RESERVATION_PAGING.md).
 No React dialog/recovery migration, reopened review access, installed upgrade,
 actual gateway/browser or public/tester deployment is claimed.

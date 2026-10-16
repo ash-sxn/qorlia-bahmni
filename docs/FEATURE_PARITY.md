@@ -1,5 +1,21 @@
 # Bahmni workflow parity ledger
 
+## 16 October complete reservation inventory scope candidate 56
+
+- The new reservation protocol explicitly uses a complete, permission-checked
+  inventory reader with 500-row keyset pages and a compact chained digest. The
+  default legacy reader/operation callers keep their existing shape and cap.
+- The first 143-case and first final 38-case runs retain one test-fixture error
+  each, zero assertion failures/skips and 117-table rollback preservation. The
+  unrelated product fixture now uses native create instead of an empty copy.
+  The corrected final run passes all 38 native reservation cases, including
+  all eight new inventory cases, with 117-table preservation, mandatory
+  analytics/SMS and all 88 Python file hashes matched. AST/diff checks, 36 client
+  cases, three gateway unit cases and the 33-document/559-link check pass.
+- No candidate-56 actual HTTP, browser, runtime upgrade or scale acceptance is
+  claimed. Operation editing and React/recovery migration remain. See
+  [the inventory-scope contract](../runtime/billing/STOCK_INVENTORY_SCOPE.md).
+
 ## 16 October paged reservation backend/client candidate 55
 
 - Native compact load, full paged review, proof-bound save/status and paged
@@ -24,8 +40,10 @@
   receipts, original stock identities/totals, accounted 116-table changes,
   per-row checks in 31 tables and all source hashes. Retained observer failures,
   the first recovered action's before-image limitation and exact proof of 2,000
-  metadata-only updates are documented in the linked contract. The full source-55
-  addon run is still in progress. This is not UI migration or scale acceptance.
+  metadata-only updates are documented in the linked contract. A separate full
+  source-55 addon run passes all 798 cases with zero failures/errors/skips,
+  117-table preservation and 88 Python hashes matched to commit `62c8e4cd`.
+  This is not candidate-56 acceptance, UI migration or scale acceptance.
 
 ## 16 October native paged operation HTTP/recovery acceptance
 
