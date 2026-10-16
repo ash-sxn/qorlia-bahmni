@@ -22,6 +22,12 @@ For a small current backend example, read [the native operation-form walkthrough
 It traces a form through scope checks, native onchange and review boundaries,
 and explains why a compact readable form does not make a large save complete.
 
+The next layer is [complete paged operation review](../runtime/billing/STOCK_OPERATION_PAGING.md).
+It explains why every effect page must be reviewed, why a failed connection must
+reuse the original request, and which backend/client results still need real
+HTTP and React/browser verification. Do not enable a legacy large-save button
+just because the new native protocol exists in source.
+
 ## 2. Which version should I open?
 
 | Purpose                                         | Where to look                                                                                                   | Important distinction                                               |

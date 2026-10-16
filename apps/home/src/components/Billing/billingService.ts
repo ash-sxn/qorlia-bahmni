@@ -4927,6 +4927,24 @@ export async function getPagedStockConfirmationReferences(
       limit,
     },
   );
+  return checkedStockReferencePage(
+    data,
+    exact.request_key,
+    after,
+    version,
+    limit,
+    'confirmation',
+  );
+}
+
+function checkedStockReferencePage(
+  data: PagedStockConfirmationReferences,
+  requestKey: string,
+  after: number,
+  version: string | false,
+  limit: number,
+  kind: 'confirmation' | 'operation',
+) {
   if (
     !confirmationKeys(data, [
       'request_key',
@@ -4936,7 +4954,7 @@ export async function getPagedStockConfirmationReferences(
       'next_after',
       'rows',
     ]) ||
-    data.request_key !== exact.request_key ||
+    data.request_key !== requestKey ||
     !stockVersion(data.version) ||
     (version !== false && version !== data.version) ||
     data.after !== after ||
@@ -4956,9 +4974,266 @@ export async function getPagedStockConfirmationReferences(
       : data.next_after !== false)
   )
     throw new Error(
-      'Invalid confirmation reference page. Reload the reference pages.',
+      `Invalid ${kind} reference page. Reload the reference pages.`,
     );
   return data;
+}
+
+export interface PagedStockOperationReview
+  extends StockOperationSelectionRequest {
+  form: StockOperationForm;
+  review_version: string;
+  state_after: string;
+  operation_key: number | string | false;
+  write_ready: boolean;
+  after: number;
+  total_count: number;
+  next_after: number | false;
+  effects: StockConfirmationEffects;
+  continuation_token: string | false;
+  review_complete_token: string | false;
+}
+export interface PagedStockOperationRequest extends StockOperationRequest {
+  review_complete_token: string;
+}
+export interface PagedStockOperationStatus
+  extends Omit<StockOperationStatus, 'current'> {
+  state_after: string | false;
+  reference_count: number;
+  current: {
+    order_id: number;
+    transfer_id: number;
+    version: string;
+    transfer: OrderTransferSummary;
+  };
+}
+const operationPreparationStates = ['draft', ...confirmationStates];
+
+export async function getPagedStockOperationForm(
+  selection: StockOperationSelection,
+) {
+  const exact = checkedOperationSelection(selection);
+  if (!confirmationKeys(selection, Object.keys(exact)))
+    throw new Error('Use only the selected native stock operation.');
+  return checkedOperationForm(
+    await stockCall<StockOperationForm>('qorlia_operation_paged_load', exact),
+    exact,
+  );
+}
+export async function changePagedStockOperationForm(
+  request: StockOperationFormRequest,
+) {
+  const exact = checkedOperationRequest(request);
+  if (!confirmationKeys(request, Object.keys(exact)))
+    throw new Error('Use only the exact native operation form edits.');
+  const form = checkedOperationForm(
+    await stockCall<StockOperationForm>(
+      'qorlia_operation_paged_onchange',
+      exact,
+    ),
+    checkedOperationSelection(exact),
+  );
+  if (form.version !== exact.version)
+    throw new Error('The stock form version changed during onchange.');
+  return form;
+}
+export function checkedPagedStockOperationRequest(
+  request: PagedStockOperationRequest,
+): PagedStockOperationRequest {
+  if (
+    !confirmationKeys(request, [
+      'order_id',
+      'transfer_id',
+      'move_id',
+      'operation_id',
+      'version',
+      'edits',
+      'action',
+      'review_version',
+      'review_complete_token',
+      'request_key',
+    ]) ||
+    !stockVersion(request.review_complete_token)
+  )
+    throw new Error('Use the exact completely reviewed operation request.');
+  const { review_complete_token, ...legacy } = request;
+  return { ...checkedStockOperationRequest(legacy), review_complete_token };
+}
+export async function getPagedStockOperationReview(
+  selection: StockOperationSelectionRequest,
+  after = 0,
+  reviewVersion: string | false = false,
+  continuationToken: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedOperationAction(selection);
+  if (
+    !confirmationKeys(selection, Object.keys(exact)) ||
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    (after === 0
+      ? reviewVersion !== false || continuationToken !== false
+      : !stockVersion(reviewVersion) || !stockVersion(continuationToken))
+  )
+    throw new Error(
+      'Review bounded operation pages in order with their original tokens.',
+    );
+  const data = await stockCall<PagedStockOperationReview>(
+    'qorlia_operation_paged_review',
+    {
+      payload: exact,
+      after,
+      review_version: reviewVersion,
+      continuation_token: continuationToken,
+      limit,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      ...Object.keys(exact),
+      'form',
+      'review_version',
+      'state_after',
+      'operation_key',
+      'write_ready',
+      'after',
+      'total_count',
+      'next_after',
+      'effects',
+      'continuation_token',
+      'review_complete_token',
+    ]) ||
+    Object.entries(exact).some(
+      ([key, value]) =>
+        JSON.stringify(data[key as keyof PagedStockOperationReview]) !==
+        JSON.stringify(value),
+    ) ||
+    !stockVersion(data.review_version) ||
+    (reviewVersion !== false && data.review_version !== reviewVersion) ||
+    !operationPreparationStates.includes(data.state_after) ||
+    data.write_ready !== true ||
+    (exact.action === 'delete'
+      ? data.operation_key !== false
+      : exact.operation_id !== false
+        ? data.operation_key !== exact.operation_id
+        : typeof data.operation_key !== 'string' ||
+          !confirmationKey(data.operation_key, 'stock.move.line')) ||
+    data.after !== after ||
+    !stockCount(data.total_count) ||
+    after > data.total_count ||
+    !validConfirmationEffects(data.effects)
+  )
+    throw new Error('Invalid paged stock operation review. Review it again.');
+  checkedOperationForm(data.form, checkedOperationSelection(exact));
+  if (
+    data.form.version !== exact.version ||
+    (exact.action === 'save' ? !data.form.write_ready : !data.form.can_delete)
+  )
+    throw new Error(
+      'The native stock operation is no longer eligible for this review.',
+    );
+  const page = confirmationEffectPageRows(data.effects),
+    end = after + page.count;
+  if (
+    !page.valid ||
+    page.count !== Math.min(limit, data.total_count - after) ||
+    (end < data.total_count
+      ? data.next_after !== end ||
+        !stockVersion(data.continuation_token) ||
+        data.review_complete_token !== false
+      : data.next_after !== false ||
+        data.continuation_token !== false ||
+        !stockVersion(data.review_complete_token))
+  )
+    throw new Error(
+      'Invalid operation page or completion proof. Review it again.',
+    );
+  return data;
+}
+async function pagedOperationRequest(
+  method: string,
+  request: PagedStockOperationRequest,
+) {
+  const exact = checkedPagedStockOperationRequest(request);
+  const data = await stockCall<PagedStockOperationStatus>(method, {
+    payload: exact,
+  });
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'request_key',
+      'action',
+      'operation_id',
+      'state_after',
+      'reference_count',
+      'current',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    data.action !== exact.action ||
+    !stockCount(data.reference_count) ||
+    (data.accepted
+      ? !operationPreparationStates.includes(String(data.state_after))
+      : data.state_after !== false || data.reference_count !== 0) ||
+    (data.accepted && exact.action === 'save'
+      ? !stockId(data.operation_id) ||
+        (exact.operation_id !== false &&
+          data.operation_id !== exact.operation_id)
+      : data.operation_id !== false) ||
+    !confirmationKeys(data.current, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'transfer',
+    ]) ||
+    data.current.order_id !== exact.order_id ||
+    data.current.transfer_id !== exact.transfer_id ||
+    !stockVersion(data.current.version) ||
+    !validTransferSummary(data.current.transfer) ||
+    data.current.transfer.id !== exact.transfer_id
+  )
+    throw new Error(
+      'Invalid compact operation receipt. Keep the exact request for recovery.',
+    );
+  return data;
+}
+export const savePagedStockOperation = (request: PagedStockOperationRequest) =>
+  pagedOperationRequest('qorlia_operation_paged_save', request);
+export const getPagedStockOperationStatus = (
+  request: PagedStockOperationRequest,
+) => pagedOperationRequest('qorlia_operation_paged_status', request);
+export async function getPagedStockOperationReferences(
+  request: PagedStockOperationRequest,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedPagedStockOperationRequest(request);
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !(version === false || stockVersion(version)) ||
+    (after > 0 && version === false)
+  )
+    throw new Error(
+      'Use a bounded operation reference page and its original version.',
+    );
+  const data = await stockCall<PagedStockConfirmationReferences>(
+    'qorlia_operation_paged_references',
+    { payload: exact, after, version, limit },
+  );
+  return checkedStockReferencePage(
+    data,
+    exact.request_key,
+    after,
+    version,
+    limit,
+    'operation',
+  );
 }
 
 export type StockValidationDecision =

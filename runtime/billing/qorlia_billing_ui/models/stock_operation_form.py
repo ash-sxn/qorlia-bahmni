@@ -203,7 +203,7 @@ class StockOperationForm(models.Model):
         # Native onchange hooks may evolve. Always discard writes and transaction callbacks.
         cr = self.env.cr
         cr.flush()
-        callbacks = {name: getattr(cr, name) for name in ('postcommit', 'prerollback', 'postrollback')}
+        callbacks = {name: getattr(cr, name) for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
         try:
             for name in callbacks:
                 setattr(cr, name, tools.Callbacks())

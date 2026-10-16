@@ -1,5 +1,25 @@
 # Bahmni workflow parity ledger
 
+## 16 October paged operation backend/client candidate 54
+
+- Six named endpoints and typed clients cover native form/onchange, complete
+  paged effects, proof-bound create/edit/delete, compact exact-request recovery
+  and paged generated references. Existing choice domains remain native.
+- The shared native preparation engine is reused, not replaced with another
+  stock ledger. Financial/configuration checks now include relation tables.
+  Legacy caps and existing protocol shapes are not relaxed.
+- Forty new client cases and the prior paged-confirmation client cases pass
+  together (102 cases). The Home suite passes 850 cases/79 suites; three source
+  gateway cases pass. Initial combined native run: 258 cases. Final guard:
+  106 confirmation/operation cases, 116 preserved guarded tables after rollback,
+  mandatory analytics and 87 matching Python source hashes. The actual client
+  accepts 218 recorded native JSON frames; replay transport is mocked. The first
+  failed harness run is retained, and no final full-addon rerun is claimed.
+- Read [the protocol and evidence boundaries](../runtime/billing/STOCK_OPERATION_PAGING.md).
+  The React dialog/durable recovery migration, actual client/native HTTP,
+  gateway/browser, installed upgrade, broader configuration and performance
+  acceptance remain open. Review access stays closed, with no tester deployment.
+
 ## 16 October compact native operation form checkpoint
 
 - Candidate 53 loads one operation without the capped full-transfer graph, using

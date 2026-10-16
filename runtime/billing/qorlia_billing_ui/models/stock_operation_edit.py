@@ -127,15 +127,16 @@ class StockOperationEdit(models.Model):
         return graph
 
     def _qorlia_operation_apply(self, source, view, action):
-        picking, move, line, model, identity, _values, _groups, _version = source
+        picking, move, line, model, identity, _values, groups, _version = source
         if action == 'delete':
             self._qorlia_operation_delete_access(picking, move, line)
             line.unlink()
             return False
-        if view['reason'] or move.state in ('done', 'cancel'):
-            raise AccessError(view['reason'] or 'Completed stock needs its native correction workflow.')
         values = self.env['sale.order']._qorlia_values(model, view['values'], OPERATION_FIELDS)
         form = model.new({**identity, **values}, origin=line if line else None)
+        _rules, reason = self._qorlia_operation_rules(picking, move, line, form, groups, model.env.context)
+        if reason:
+            raise AccessError(reason)
         form._check_positive_qty_done()
         form._check_fields_values()
         values['balance'] = view['balance']

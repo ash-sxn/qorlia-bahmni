@@ -1,5 +1,28 @@
 # Qorlia React frontend backend readiness
 
+## Paged operation backend/client candidate 54 (16 October 2026)
+
+The new six-method protocol reuses native create/edit/delete and complete
+rollback effects, adds sequential terminal proof, actual-save comparison,
+purpose-bound receipts, compact recovery and paged generated references. Typed
+clients and named source-gateway routes are connected; the legacy protocol stays
+capped. Shared financial/configuration guards now cover relation tables too.
+See [the protocol and precise limits](../runtime/billing/STOCK_OPERATION_PAGING.md).
+
+The initial 48-case run retains its one assertion-helper error. The corrected
+combined run passes 258 stock cases. Final relation-guard source passes 106
+confirmation/operation cases, with all 116 guarded tables preserved after
+rollback, mandatory analytics enabled and 87 matching Python source hashes.
+These are separate scoped runs on source-54/installed-49 synthetic data without
+HTTP, not a final full-addon or installed-upgrade result.
+The actual typed client accepts 218 recorded native JSON frames and exact
+argument mappings; transport alone is mocked. This is not real HTTP/session
+acceptance. Home passes 850 tests/79 suites; the typed-client pair passes 102
+cases, three gateway unit cases pass, and types/lint/format/parsing/diff/links pass.
+React dialog/recovery migration, real client/native HTTP, protected-gateway/
+browser, installed-upgrade and performance acceptance remain unfinished.
+Review stays closed, with no UI build or public/tester update.
+
 ## Compact stock operation form candidate 53 (16 October 2026)
 
 The form reader now reuses complete paged-reader stock scope rather than the

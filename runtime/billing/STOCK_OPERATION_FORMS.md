@@ -5,6 +5,12 @@
 This checkpoint changes the backend form reader, not the large-operation save
 protocol or the published tester. The local review gate stays closed.
 
+Later source candidate 54 adds a separate [complete paged operation protocol](STOCK_OPERATION_PAGING.md).
+The legacy form/save limits described below still apply to existing callers.
+The new backend/client does not itself migrate the React dialog or establish
+real HTTP/browser acceptance. This document's source-53 evidence stays scoped
+to the earlier form-reader change.
+
 The existing endpoints keep their request and response shapes:
 
 | Endpoint on `stock.picking` | Purpose |

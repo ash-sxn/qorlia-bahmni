@@ -348,6 +348,301 @@ class StockOperationFormTest(TransactionCase):
     def edit_request(self, reviewed):
         return {key: reviewed[key] for key in ('order_id', 'transfer_id', 'move_id', 'operation_id', 'version', 'edits', 'action', 'review_version')} | {'request_key': str(uuid.uuid4())}
 
+    def paged_data(self, edits=None, action='save', new=False):
+        loaded = self.api().qorlia_operation_paged_load(self.order.id, self.picking.id, self.move.id, False if new else self.line.id)
+        return {key: loaded[key] for key in ('order_id', 'transfer_id', 'move_id', 'operation_id', 'version')} | {
+            'action': action, 'edits': edits if edits is not None else [{'field': 'qty_done', 'value': 2}]}
+
+    def paged_pages(self, data=None, limit=100):
+        data = data or self.paged_data()
+        pages, after, reviewed, token = [], 0, False, False
+        while True:
+            page = self.api().qorlia_operation_paged_review(data, after, reviewed, token, limit)
+            pages.append(page)
+            if page['next_after'] is False:
+                return pages
+            after, reviewed, token = page['next_after'], page['review_version'], page['continuation_token']
+
+    def paged_exact(self, data=None, limit=100):
+        page = self.paged_pages(data, limit)[-1]
+        return {key: page[key] for key in ('order_id', 'transfer_id', 'move_id', 'operation_id', 'version',
+            'edits', 'action', 'review_version', 'review_complete_token')} | {'request_key': str(uuid.uuid4())}
+
+    def test_paged_operation_changes_save_once_without_delivering_or_accounting(self):
+        tables = self.picking._qorlia_operation_paged_tables()
+        before = self.picking._qorlia_confirmation_stamp(tables)
+        request = self.paged_exact(limit=1)
+        self.assertEqual(self.picking._qorlia_confirmation_stamp(tables), before)
+        self.assertFalse(self.api().qorlia_operation_paged_status(request)['accepted'])
+        saved = self.api().qorlia_operation_paged_save(request)
+        self.assertTrue(saved['accepted'])
+        self.assertEqual(saved['operation_id'], self.line.id)
+        self.assertEqual(self.line.qty_done, 2)
+        self.assertEqual(self.line.reserved_uom_qty, 5)
+        self.assertEqual(self.sale_line.qty_delivered, 0)
+        self.assertEqual(self.env['stock.quant'].search([('product_id', '=', self.product.id)]).quantity, 10)
+        self.assertEqual(saved, self.api().qorlia_operation_paged_status(request))
+        self.assertEqual(saved, self.api().qorlia_operation_paged_save(request))
+        self.assertEqual(len(self.picking.qorlia_operation_receipts), 1)
+        self.assertEqual(self.picking.qorlia_operation_receipts[request['request_key']]['kind'], 'qorlia.paged-operation.v1')
+        self.assertNotIn('operations', saved['current']['transfer'])
+
+    def test_paged_new_operation_has_virtual_identity_and_recovers_real_id_and_reference(self):
+        data = self.paged_data([{'field': 'qty_done', 'value': 1}, {'field': 'lot_id', 'value': self.lot.id}], new=True)
+        pages = self.paged_pages(data, 1)
+        self.assertEqual(pages[-1]['operation_key'], 'new:stock.move.line:0')
+        request = self.paged_exact(data, 1)
+        saved = self.api().qorlia_operation_paged_save(request)
+        self.assertNotEqual(saved['operation_id'], self.line.id)
+        self.assertEqual(self.env['stock.move.line'].browse(saved['operation_id']).qty_done, 1)
+        references = self.api().qorlia_operation_paged_references(request, limit=1)
+        self.assertEqual(references['total_count'], saved['reference_count'])
+        self.assertIn({'key': 'new:stock.move.line:0', 'model': 'stock.move.line', 'id': saved['operation_id'],
+            'name': self.env['stock.move.line'].browse(saved['operation_id']).display_name, 'available': True}, references['rows'])
+        self.assertEqual(saved, self.api().qorlia_operation_paged_save(request))
+        self.assertEqual(len(self.picking.move_line_ids), 2)
+
+    def test_paged_delete_recovers_after_original_operation_is_gone(self):
+        request = self.paged_exact(self.paged_data([], 'delete'), 1)
+        self.assertTrue(self.line.exists())
+        saved = self.api().qorlia_operation_paged_save(request)
+        self.assertFalse(saved['operation_id'])
+        self.assertFalse(self.line.exists())
+        self.assertEqual(saved['current']['transfer']['operation_count'], 0)
+        self.assertEqual(self.env['stock.quant'].search([('product_id', '=', self.product.id)]).reserved_quantity, 0)
+        self.assertEqual(saved, self.api().qorlia_operation_paged_save(request))
+        self.assertEqual(saved, self.api().qorlia_operation_paged_status(request))
+
+    def test_paged_review_proof_cannot_skip_pages_complete_early_or_change_intent(self):
+        data = self.paged_data()
+        first = self.api().qorlia_operation_paged_review(data, limit=1)
+        self.assertIsNot(first['next_after'], False)
+        self.assertFalse(first['review_complete_token'])
+        with self.assertRaises(ValidationError):
+            self.api().qorlia_operation_paged_save({**data, 'review_version': first['review_version'],
+                'review_complete_token': False, 'request_key': str(uuid.uuid4())})
+        for offset, review, token in ((first['next_after'] + 1, first['review_version'], first['continuation_token']),
+                (first['next_after'], 'a' * 64, first['continuation_token']),
+                (first['next_after'], first['review_version'], 'b' * 64)):
+            with self.assertRaises(UserError):
+                self.api().qorlia_operation_paged_review(data, offset, review, token, 1)
+        request = self.paged_exact(data)
+        with self.assertRaises(UserError):
+            self.api().qorlia_operation_paged_save({**request, 'edits': [{'field': 'qty_done', 'value': 3}]})
+        self.assertEqual(self.line.qty_done, 0)
+        self.assertFalse(self.picking.qorlia_operation_receipts)
+
+    def test_paged_review_rejects_stale_source_and_unrelated_configuration_changes(self):
+        request = self.paged_exact()
+        self.env['ir.config_parameter'].set_param('qorliaqa.operation.review.config', 'changed')
+        with self.assertRaises(UserError):
+            self.api().qorlia_operation_paged_save(request)
+        request = self.paged_exact()
+        self.env['stock.quant']._update_available_quantity(self.product, self.picking.location_id, 1, lot_id=self.lot)
+        with self.assertRaises(UserError):
+            self.api().qorlia_operation_paged_save(request)
+        self.assertEqual(self.line.qty_done, 0)
+        self.assertFalse(self.picking.qorlia_operation_receipts)
+
+    def test_paged_unreviewed_actual_effect_and_all_callbacks_roll_back(self):
+        request = self.paged_exact()
+        original, calls = type(self.picking)._qorlia_operation_apply, []
+        hooks = {name: (getattr(self.env.cr, name), list(getattr(self.env.cr, name)._funcs))
+            for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
+        def altered(records, *args):
+            result = original(records, *args)
+            calls.append(True)
+            if len(calls) == 2:
+                self.line.qty_done = 3
+                for name in hooks:
+                    getattr(self.env.cr, name).add(lambda: None)
+            return result
+        with patch.object(type(self.picking), '_qorlia_operation_apply', altered), self.assertRaises(UserError):
+            self.api().qorlia_operation_paged_save(request)
+        self.assertEqual(self.line.qty_done, 0)
+        self.assertFalse(self.picking.qorlia_operation_receipts)
+        for name, (hook, functions) in hooks.items():
+            self.assertIs(getattr(self.env.cr, name), hook)
+            self.assertEqual(list(hook._funcs), functions)
+
+    def test_paged_physical_financial_and_configuration_side_effects_are_rejected(self):
+        original = type(self.picking)._qorlia_operation_apply
+        # A zero-rate tax changes the relation without changing stored monetary totals.
+        tax = self.env['account.tax'].create({'name': 'QorliaQA Operation guard tax', 'amount': 0,
+            'type_tax_use': 'sale', 'company_id': self.env.company.id})
+        actions = (lambda: self.env['stock.quant']._update_available_quantity(self.product, self.picking.location_id, 1, lot_id=self.lot),
+            lambda: self.sale_line.write({'price_unit': 99}),
+            lambda: self.sale_line.write({'tax_id': [(6, 0, tax.ids)]}),
+            lambda: self.env['ir.config_parameter'].set_param('qorliaqa.operation.unreviewed', 'write'))
+        for action in actions:
+            data = self.paged_data()
+            before = self.picking._qorlia_confirmation_stamp(self.picking._qorlia_operation_paged_tables())
+            def altered(records, *args):
+                result = original(records, *args)
+                action()
+                return result
+            with patch.object(type(self.picking), '_qorlia_operation_apply', altered), self.assertRaises(UserError):
+                self.paged_pages(data)
+            self.assertEqual(before, self.picking._qorlia_confirmation_stamp(self.picking._qorlia_operation_paged_tables()))
+
+    def test_paged_hidden_unrelated_native_effect_cannot_be_silently_omitted(self):
+        other = self.move.copy({'picking_id': False, 'sale_line_id': False, 'group_id': False})
+        self.env['ir.rule'].create({'name': 'QorliaQA Hidden operation side effect',
+            'model_id': self.env['ir.model']._get_id('stock.move'),
+            'domain_force': "[('id', '!=', %d)]" % other.id})
+        original = type(self.picking)._qorlia_operation_apply
+        def altered(records, *args):
+            result = original(records, *args)
+            other.sudo().product_uom_qty += 1
+            return result
+        with patch.object(type(self.picking), '_qorlia_operation_apply', altered), self.assertRaises(AccessError):
+            self.paged_pages()
+        self.assertEqual(other.product_uom_qty, 5)
+        self.assertEqual(self.line.qty_done, 0)
+
+    def test_paged_receipt_rejects_another_author_role_nonce_intent_or_legacy_protocol(self):
+        request = self.paged_exact()
+        saved = self.api().qorlia_operation_paged_save(request)
+        other = self.user.copy({'login': 'qorliaqa-paged-operation-other'})
+        with self.assertRaises(ValidationError):
+            self.env['stock.picking'].with_user(other).qorlia_operation_paged_status(request)
+        with self.assertRaises(AccessError):
+            self.env['stock.picking'].with_user(self.env.ref('base.public_user')).qorlia_operation_paged_status(request)
+        with self.assertRaises(ValidationError):
+            self.api().qorlia_operation_paged_status({**request, 'edits': [{'field': 'qty_done', 'value': 3}]})
+        legacy = {key: value for key, value in request.items() if key != 'review_complete_token'}
+        with self.assertRaises(ValidationError):
+            self.api().qorlia_operation_status(legacy)
+        self.assertEqual(saved, self.api().qorlia_operation_paged_save(request))
+        self.assertFalse(self.picking.copy().qorlia_operation_receipts)
+
+    def test_paged_bounds_strict_payloads_and_reference_state_are_enforced(self):
+        data = self.paged_data()
+        for options in ({'after': True}, {'after': -1}, {'limit': True}, {'limit': 0}, {'limit': 101},
+                {'after': 1}, {'review_version': 'a' * 64}, {'continuation_token': 'a' * 64}):
+            with self.assertRaises(ValidationError):
+                self.api().qorlia_operation_paged_review(data, **options)
+        for change in ({'context': {}}, {'edits': [None]}, {'action': []}, {'move_id': True}):
+            with self.assertRaises(ValidationError):
+                self.api().qorlia_operation_paged_review({**data, **change})
+        request = self.paged_exact(data)
+        with self.assertRaises(UserError):
+            self.api().qorlia_operation_paged_references(request)
+        for change in ({'context': {}}, {'request_key': 'bad'}, {'review_complete_token': 'bad'}):
+            with self.assertRaises(ValidationError):
+                self.api().qorlia_operation_paged_save({**request, **change})
+        self.assertEqual(self.line.qty_done, 0)
+
+    def test_paged_private_audit_is_hidden_but_bound_to_the_actual_save(self):
+        message = self.env['mail.message'].create({'body': 'QorliaQA audit before',
+            'model': 'stock.picking', 'res_id': self.picking.id, 'message_type': 'comment'})
+        self.env['ir.rule'].create({'name': 'QorliaQA Private operation audit',
+            'model_id': self.env['ir.model']._get_id('mail.message'),
+            'domain_force': "[('id', '!=', %d)]" % message.id})
+        original, calls = type(self.picking)._qorlia_operation_apply, []
+        def altered(records, *args):
+            result = original(records, *args)
+            calls.append(True)
+            message.sudo().body = 'QorliaQA hidden native audit %d' % len(calls)
+            return result
+        with patch.object(type(self.picking), '_qorlia_operation_apply', altered):
+            pages = self.paged_pages()
+            self.assertEqual(pages[-1]['effects']['private_audit_counts']['mail.message']['updated'], 1)
+            self.assertNotIn('QorliaQA hidden native audit', str(pages))
+            calls.clear()
+            request = self.paged_exact()
+            calls.clear()
+            with self.assertRaises(UserError):
+                self.api().qorlia_operation_paged_save(request)
+        self.assertIn('QorliaQA audit before', message.body)
+        self.assertEqual(self.line.qty_done, 0)
+        self.assertFalse(self.picking.qorlia_operation_receipts)
+
+    def test_paged_incoming_operation_keeps_native_receiving_prices_expiry_and_no_delivery(self):
+        self.incoming()
+        data = self.paged_data([{'field': 'lot_name', 'value': 'QorliaQA Paged receiving batch'},
+            {'field': 'cost_price', 'value': 100}, {'field': 'mrp', 'value': 160},
+            {'field': 'sale_price', 'value': 123}, {'field': 'expiration_date', 'value': '2030-01-01 00:00:00'},
+            {'field': 'qty_done', 'value': 1}], new=True)
+        saved = self.api().qorlia_operation_paged_save(self.paged_exact(data))
+        operation = self.env['stock.move.line'].browse(saved['operation_id'])
+        self.assertEqual((operation.cost_price, operation.mrp, operation.sale_price), (100, 160, 123))
+        self.assertEqual(str(operation.expiration_date), '2030-01-01 00:00:00')
+        self.assertEqual(operation.lot_name, 'QorliaQA Paged receiving batch')
+        self.assertNotEqual(self.picking.state, 'done')
+        self.assertEqual(self.sale_line.qty_delivered, 0)
+
+    def test_paged_large_move_scope_saves_without_legacy_graph_or_lost_sibling_rows(self):
+        self.env['stock.move'].create([dict(self.move.copy_data()[0], picking_id=self.picking.id) for _index in range(500)])
+        before = {move.id: move.product_uom_qty for move in self.picking.move_ids}
+        with patch.object(type(self.env['sale.order']), '_qorlia_delivery_data', side_effect=AssertionError('No legacy full graph.')):
+            data = self.paged_data()
+            form = self.api().qorlia_operation_paged_onchange(self.order.id, self.picking.id, self.move.id,
+                data['version'], data['edits'], self.line.id)
+            self.assertTrue(form['write_ready'])
+            saved = self.api().qorlia_operation_paged_save(self.paged_exact(data, 1))
+            self.assertEqual(saved['current']['transfer']['move_count'], 501)
+            self.assertNotIn('moves', saved['current']['transfer'])
+        self.assertEqual({move.id: move.product_uom_qty for move in self.picking.move_ids}, before)
+        self.assertEqual(self.line.qty_done, 2)
+        with self.assertRaises(UserError):
+            self.edit_review([{'field': 'qty_done', 'value': 3}])
+
+    def test_paged_large_operation_scope_creates_edits_deletes_and_recovers_beyond_legacy_limit(self):
+        extra = self.env['stock.move.line'].create([{'picking_id': self.picking.id, 'move_id': self.move.id,
+            'product_id': self.product.id, 'product_uom_id': self.product.uom_id.id,
+            'location_id': self.move.location_id.id, 'location_dest_id': self.move.location_dest_id.id,
+            'lot_id': self.lot.id} for _index in range(2000)])
+        original = set(self.picking.move_line_ids.ids)
+        with patch.object(type(self.env['sale.order']), '_qorlia_delivery_data', side_effect=AssertionError('No legacy full graph.')):
+            request = self.paged_exact(self.paged_data([{'field': 'qty_done', 'value': 1}, {'field': 'lot_id', 'value': self.lot.id}], new=True))
+            created = self.api().qorlia_operation_paged_save(request)
+            self.assertEqual(created['current']['transfer']['operation_count'], 2002)
+            self.assertEqual(created, self.api().qorlia_operation_paged_save(request))
+            self.line = extra[-1]
+            edited = self.api().qorlia_operation_paged_save(self.paged_exact())
+            self.assertEqual(edited['operation_id'], extra[-1].id)
+            self.assertEqual(extra[-1].qty_done, 2)
+            self.line = self.env['stock.move.line'].browse(created['operation_id'])
+            removal = self.paged_exact(self.paged_data([], 'delete'))
+            deleted = self.api().qorlia_operation_paged_save(removal)
+            self.assertEqual(deleted['current']['transfer']['operation_count'], 2001)
+            self.assertEqual(deleted, self.api().qorlia_operation_paged_status(removal))
+            self.assertEqual(deleted, self.api().qorlia_operation_paged_save(removal))
+        self.assertEqual(set(self.picking.move_line_ids.ids), original)
+        self.assertEqual(self.sale_line.qty_delivered, 0)
+        self.assertEqual(self.env['stock.quant'].search([('product_id', '=', self.product.id)]).quantity, 10)
+
+    def test_paged_generated_effects_and_reference_pages_are_complete_and_snapshot_bound(self):
+        original = type(self.picking)._qorlia_operation_apply
+        def expanded(records, *args):
+            result = original(records, *args)
+            self.env['stock.move.line'].with_user(self.user).create([{'picking_id': self.picking.id,
+                'move_id': self.move.id, 'product_id': self.product.id, 'product_uom_id': self.product.uom_id.id,
+                'location_id': self.move.location_id.id, 'location_dest_id': self.move.location_dest_id.id,
+                'lot_id': self.lot.id} for _index in range(3)])
+            return result
+        with patch.object(type(self.picking), '_qorlia_operation_apply', expanded):
+            data = self.paged_data()
+            pages = self.paged_pages(data, 1)
+            keys = [row['key'] for page in pages for row in page['effects']['created'].get('stock.move.line', [])]
+            self.assertEqual(len(keys), 3)
+            self.assertEqual(len(set(keys)), 3)
+            request = self.paged_exact(data, 1)
+            saved = self.api().qorlia_operation_paged_save(request)
+        self.assertEqual(saved['reference_count'], 3)
+        page = self.api().qorlia_operation_paged_references(request, limit=1)
+        first = page
+        rows = list(page['rows'])
+        while page['next_after'] is not False:
+            page = self.api().qorlia_operation_paged_references(request, page['next_after'], page['version'], 1)
+            rows.extend(page['rows'])
+        self.assertEqual({row['key'] for row in rows}, set(keys))
+        self.assertTrue(all(row['available'] for row in rows))
+        self.line.qty_done = 3
+        with self.assertRaises(UserError):
+            self.api().qorlia_operation_paged_references(request, first['next_after'], first['version'], 1)
+
     def test_edit_preview_rolls_back_quantities_inventory_and_callbacks(self):
         before = self.load()
         counts = {name: self.env[name].search_count([]) for name in ('stock.move.line', 'account.move', 'stock.valuation.layer')}

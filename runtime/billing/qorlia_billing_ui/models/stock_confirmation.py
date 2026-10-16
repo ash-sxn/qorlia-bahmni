@@ -284,14 +284,22 @@ class StockConfirmation(models.Model):
         return hmac.new(secret.encode(), reviewed.encode(), hashlib.sha256).hexdigest()
 
     def _qorlia_confirmation_native(self):
+        return self._qorlia_stock_preparation_native(self.action_confirm, FINANCIAL_MODELS, CONFIG_MODELS)[:4]
+
+    def _qorlia_stock_preparation_native(self, action, financial_models, config_models):
         # Register the caller's tracking before sudo-computed state can choose a different audit author.
         self._track_prepare(self._fields)
-        finance_tables = [self.env[name]._table for name in FINANCIAL_MODELS]
-        config_tables = sorted({self.env[name]._table for name in CONFIG_MODELS if name not in GRAPH_MODELS})
+        def guard_tables(names):
+            models = [self.env[name] for name in names]
+            return sorted({model._table for model in models} | {field.relation
+                for model in models for field in model._fields.values()
+                if field.type == 'many2many' and field.store and field.relation})
+        finance_tables = guard_tables(financial_models)
+        config_tables = guard_tables(name for name in config_models if name not in GRAPH_MODELS)
         money_before = self._qorlia_confirmation_stamp(finance_tables, semantic=True)
         config_before = self._qorlia_confirmation_stamp(config_tables, semantic=True)
         before = self._qorlia_confirmation_capture()
-        self.action_confirm()
+        value = action()
         # Cursor flush chooses an arbitrary live environment; drain computed tracking under the caller first.
         self.env.flush_all()
         self.env.cr.flush()
@@ -299,18 +307,18 @@ class StockConfirmation(models.Model):
         money_after = self._qorlia_confirmation_stamp(finance_tables, semantic=True)
         config_after = self._qorlia_confirmation_stamp(config_tables, semantic=True)
         if money_after != money_before or self.state in ('done', 'cancel'):
-            raise UserError('Confirmation changed financial records or completed stock. Nothing was saved.')
+            raise UserError('Stock preparation changed financial records or completed stock. Nothing was saved.')
         if config_after != config_before:
-            raise UserError('Confirmation changed unreviewed native configuration. Nothing was saved.')
+            raise UserError('Stock preparation changed unreviewed native configuration. Nothing was saved.')
         physical = lambda snapshot: {identifier: (row['product_id'], row['location_id'], row['lot_id'], row['package_id'], row['owner_id'], row['quantity'])
             for identifier, row in snapshot[0]['stock.quant'].items() if row['quantity']}
         if physical(before) != physical(after):
-            raise UserError('Confirmation changed physical stock. Nothing was saved.')
+            raise UserError('Stock preparation changed physical stock. Nothing was saved.')
         effects, private_audit = self._qorlia_confirmation_effects(before, after)
         references = {('new:%s:%s' % (name, index)): {'model': name, 'id': identifier}
             for name in GRAPH_MODELS if name not in AUDIT_MODELS
             for index, identifier in enumerate(sorted(set(after[0][name]) - set(before[0][name])))}
-        return effects, private_audit, self.state, references
+        return effects, private_audit, self.state, references, value
 
     @api.model
     def qorlia_confirmation_preview(self, order_id, transfer_id, version):
@@ -331,8 +339,10 @@ class StockConfirmation(models.Model):
             'review_version': picking._qorlia_confirmation_signature(version, effects, private_audit, state)}
 
     def _qorlia_confirmation_preview_effects(self):
+        return self._qorlia_stock_preparation_preview(self._qorlia_confirmation_native, self._qorlia_confirmation_tables())[:3]
+
+    def _qorlia_stock_preparation_preview(self, execute, tables):
         self.ensure_one()
-        tables = self._qorlia_confirmation_tables()
         stamp = self._qorlia_confirmation_stamp(tables)
         cr = self.env.cr
         cr.flush()
@@ -341,14 +351,14 @@ class StockConfirmation(models.Model):
             for name in hooks:
                 setattr(cr, name, tools.Callbacks())
             with closing(cr.savepoint()):
-                effects, private_audit, state, _references = self._qorlia_confirmation_native()
+                result = execute()
         finally:
             for name, callbacks in hooks.items():
                 setattr(cr, name, callbacks)
             self.env.invalidate_all()
         if self._qorlia_confirmation_stamp(tables) != stamp:
-            raise UserError('Native state changed during confirmation preview. Reload and review it again.')
-        return effects, private_audit, state
+            raise UserError('Native state changed during stock preview. Reload and review it again.')
+        return result
 
     def _qorlia_confirmation_request(self, payload):
         if not isinstance(payload, dict) or set(payload) != {'order_id', 'transfer_id', 'version', 'review_version', 'request_key'}:

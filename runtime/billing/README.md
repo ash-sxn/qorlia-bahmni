@@ -3,6 +3,17 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Candidate 54: [complete paged operation review/save/recovery](STOCK_OPERATION_PAGING.md).
+Six named native/client/gateway source routes reuse native operation application
+and the complete rollback/effects engine, with purpose-bound sequential proof,
+compact recovery and paged generated references. Financial/configuration guards
+now include relation tables. The initial combined run passes 258 cases; the
+final relation-guard source passes 106 confirmation/operation cases, with 116
+guarded tables preserved after rollback and 87 matching source hashes. Native
+JSON/client replay passes 218 frames, with mocked transport, and Home passes
+850 tests. The React dialog/recovery slot and real HTTP/browser acceptance remain
+pending. No review reopening, installed upgrade or tester deployment.
+
 Candidate 53: [single-operation forms without the full-transfer graph](STOCK_OPERATION_FORMS.md).
 Load, rollback-only onchange and choices reuse complete stock-scope checks.
 Oversized forms are explicitly inspection-only; complete paged operation
