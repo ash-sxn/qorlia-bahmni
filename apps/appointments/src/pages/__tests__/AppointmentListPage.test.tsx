@@ -3,7 +3,12 @@ import { useUserPrivilege } from '@bahmni/widgets';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { getAllowedTransitions } from '../appointmentActions';
+import {
+  canResetAppointmentStatus,
+  getAllowedTransitions,
+  type TransitionConfig,
+} from '../appointmentActions';
+
 import {
   AppointmentListPage,
   filterAppointments,
@@ -261,11 +266,91 @@ it('offers the configured reset for checked-in appointments only with the reset 
       <AppointmentListPage />
     </MemoryRouter>,
   );
-  const confirmation = jest.spyOn(window, 'confirm').mockReturnValue(true);
+  const confirmation = jest.spyOn(window, 'confirm').mockReturnValue(false);
   fireEvent.click(screen.getByRole('button', { name: 'Reset: Demo Patient' }));
+  expect(mutate).not.toHaveBeenCalled();
+
+  confirmation.mockReturnValue(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Reset: Demo Patient' }));
+
   expect(mutate).toHaveBeenCalledWith({
     uuid: 'appointment-1',
     status: 'Scheduled',
   });
   confirmation.mockRestore();
+});
+
+const resetConfigCases: Array<{
+  name: string;
+  statuses: unknown;
+  status: string;
+  expected: boolean;
+}> = [
+  {
+    name: 'configured status',
+    statuses: ['CheckedIn'],
+    status: 'CheckedIn',
+    expected: true,
+  },
+  {
+    name: 'unconfigured status',
+    statuses: ['CheckedIn'],
+    status: 'Missed',
+    expected: false,
+  },
+  {
+    name: 'Scheduled even if configured',
+    statuses: ['Scheduled', 'CheckedIn'],
+    status: 'Scheduled',
+    expected: false,
+  },
+  {
+    name: 'missing configuration',
+    statuses: undefined,
+    status: 'CheckedIn',
+    expected: false,
+  },
+  {
+    name: 'empty configuration',
+    statuses: [],
+    status: 'CheckedIn',
+    expected: false,
+  },
+  {
+    name: 'string configuration',
+    statuses: 'CheckedIn',
+    status: 'CheckedIn',
+    expected: false,
+  },
+  {
+    name: 'number configuration',
+    statuses: 42,
+    status: 'CheckedIn',
+    expected: false,
+  },
+  {
+    name: 'object configuration',
+    statuses: {},
+    status: 'CheckedIn',
+    expected: false,
+  },
+];
+
+it.each(resetConfigCases)(
+  'decides reset availability for $name without throwing',
+  ({ statuses, status, expected }) => {
+    const config = {
+      config: {
+        allowedActions: [],
+        allowedActionsByStatus: {},
+        enableResetAppointmentStatuses: statuses,
+      },
+    } as unknown as TransitionConfig;
+    expect(() => canResetAppointmentStatus(config, status)).not.toThrow();
+    expect(canResetAppointmentStatus(config, status)).toBe(expected);
+  },
+);
+
+it('does not offer reset when the appointment configuration is unavailable', () => {
+  expect(canResetAppointmentStatus(undefined, 'CheckedIn')).toBe(false);
 });

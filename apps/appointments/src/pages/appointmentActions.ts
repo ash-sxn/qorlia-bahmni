@@ -25,6 +25,11 @@ export const hasAppointmentConflicts = (conflicts: unknown): boolean =>
 export const canResetAppointmentStatus = (
   config: TransitionConfig | undefined,
   status: string,
-) =>
-  status !== 'Scheduled' &&
-  (config?.config.enableResetAppointmentStatuses?.includes(status) ?? false);
+) => {
+  const statuses = config?.config.enableResetAppointmentStatuses;
+  return (
+    status !== 'Scheduled' &&
+    Array.isArray(statuses) &&
+    statuses.includes(status)
+  );
+};
