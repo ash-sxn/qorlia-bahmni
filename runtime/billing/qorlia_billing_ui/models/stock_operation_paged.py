@@ -150,10 +150,19 @@ class StockOperationPaged(models.Model):
             'author': self.env.uid, 'companies': self.env.companies.ids})
 
     def _qorlia_operation_paged_receipt(self, request, digest):
+        self._qorlia_paged_request_not_stopped(request, digest, _PURPOSE, 'qorlia_operation_receipts')
         receipt = self._qorlia_operation_receipt(request['request_key'], digest)
         if receipt and receipt.get('kind') != _PURPOSE:
             raise ValidationError('This identifier belongs to another stock operation request.')
         return receipt
+
+    @api.model
+    def qorlia_operation_paged_stop(self, payload):
+        self = self._qorlia_operation_paged_context()
+        request, digest = self._qorlia_operation_paged_request(payload)
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        return picking._qorlia_paged_stop(request, digest, _PURPOSE, 'qorlia_operation_receipts',
+            'qorlia_operation_receipt_token', _RECEIPT_TOKEN)
 
     @api.model
     def qorlia_operation_paged_status(self, payload):

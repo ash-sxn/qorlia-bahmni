@@ -4,7 +4,7 @@ import copy
 import hmac
 
 from psycopg2 import sql
-from odoo import api, models
+from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 from .invoice_draft import _digest
@@ -143,10 +143,100 @@ class StockConfirmationPaged(models.Model):
             'author': self.env.uid, 'companies': self.env.companies.ids})
 
     def _qorlia_confirmation_paged_receipt(self, request, digest):
+        self._qorlia_paged_request_not_stopped(request, digest, _PURPOSE, 'qorlia_confirmation_receipts')
         receipt = self._qorlia_confirmation_receipt(request, digest)
         if receipt and receipt.get('kind') != _PURPOSE:
             raise ValidationError('This identifier belongs to another confirmation request.')
         return receipt
+
+    def _qorlia_paged_stop_marker(self, request, digest, purpose, receipt_field):
+        self.ensure_one()
+        # A different author's guessed nonce cannot stop this author's request.
+        key = 'stop:%s:%s' % (self.env.uid, request['request_key'])
+        marker = (self[receipt_field] or {}).get(key)
+        if marker and (marker.get('kind') != purpose + '.stopped'
+                or marker.get('hash') != digest or marker.get('author') != self.env.uid):
+            raise ValidationError('This stopped request key belongs to a different exact request.')
+        return key, marker
+
+    def _qorlia_paged_request_not_stopped(self, request, digest, purpose, receipt_field):
+        if self._qorlia_paged_stop_marker(request, digest, purpose, receipt_field)[1]:
+            raise UserError('This exact request was stopped. It will not be applied. Recover its stop result before starting another request.')
+
+    def _qorlia_paged_stop_stamp(self, tables, receipt_field):
+        result = self._qorlia_confirmation_stamp([name for name in tables if name != 'stock_picking'])
+        # Ignore only this transfer's targeted receipt field and normal write metadata.
+        self.env.cr.execute("SELECT encode(sha256(convert_to(COALESCE(string_agg(value, ',' ORDER BY value), ''), 'UTF8')), 'hex') "
+            "FROM (SELECT (CASE WHEN record.id = %s THEN to_jsonb(record) - ARRAY[%s,'write_uid','write_date'] "
+            "ELSE to_jsonb(record) END)::text value FROM stock_picking record) fingerprint", [self.id, receipt_field])
+        result['stock_picking'] = self.env.cr.fetchone()[0]
+        return result
+
+    def _qorlia_paged_stop(self, request, digest, purpose, receipt_field, token_name, token):
+        self.ensure_one()
+        if not self.env.user.has_group('stock.group_stock_user'):
+            raise AccessError('Stopping stock requests requires the native Stock User role.')
+        self.check_access_rights('write')
+        self.check_access_rule('write')
+        key, marker = self._qorlia_paged_stop_marker(request, digest, purpose, receipt_field)
+        result = lambda stopped: {'request_key': request['request_key'], 'stopped': stopped, 'accepted': not stopped}
+        if marker:
+            return result(True)
+        receipt = (self[receipt_field] or {}).get(request['request_key'])
+        if receipt:
+            if receipt.get('hash') != digest or receipt.get('author') != self.env.uid or receipt.get('kind') != purpose:
+                raise ValidationError('This identifier belongs to another stock request.')
+            return result(False)
+        tables = sorted(set(self._qorlia_operation_paged_tables()) | {'account_analytic_applicability'})
+        cr = self.env.cr
+        cr.flush()
+        # Same ordered stock/finance locks as save, before any company/transfer row lock.
+        for table in tables:
+            cr.execute(sql.SQL('LOCK TABLE {} IN SHARE ROW EXCLUSIVE MODE').format(sql.Identifier(table)))
+        self.env.invalidate_all()
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking.check_access_rights('write')
+        picking.check_access_rule('write')
+        key, marker = picking._qorlia_paged_stop_marker(request, digest, purpose, receipt_field)
+        receipts = dict(picking[receipt_field] or {})
+        if marker:
+            return result(True)
+        receipt = receipts.get(request['request_key'])
+        if receipt:
+            if receipt.get('hash') != digest or receipt.get('author') != self.env.uid or receipt.get('kind') != purpose:
+                raise ValidationError('This identifier belongs to another stock request.')
+            return result(False)
+        before = picking._qorlia_paged_stop_stamp(tables, receipt_field)
+        receipts[key] = {'kind': purpose + '.stopped', 'hash': digest, 'author': self.env.uid,
+            'stopped_at': fields.Datetime.to_string(fields.Datetime.now())}
+        hooks = {name: (getattr(cr, name), list(getattr(cr, name)._funcs), copy.deepcopy(getattr(cr, name).data))
+            for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
+        try:
+            with cr.savepoint():
+                picking.with_context(**{token_name: token}).write({receipt_field: receipts})
+                cr.flush()
+                self.env.invalidate_all()
+                if (picking[receipt_field] != receipts or picking._qorlia_paged_stop_stamp(tables, receipt_field) != before
+                        or any(list(getattr(cr, name)._funcs) != functions or getattr(cr, name).data != data
+                            for name, (_callbacks, functions, data) in hooks.items() if name != 'precommit')):
+                    raise UserError('Stopping this request changed unreviewed state or deferred work. Nothing was stopped.')
+            return result(True)
+        except Exception:
+            for name, (callbacks, functions, data) in hooks.items():
+                setattr(cr, name, callbacks)
+                callbacks.clear()
+                for function in functions:
+                    callbacks.add(function)
+                callbacks.data.update(data)
+            raise
+
+    @api.model
+    def qorlia_confirmation_paged_stop(self, payload):
+        self = self._qorlia_confirmation_context()
+        request, digest = self._qorlia_confirmation_paged_request(payload)
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        return picking._qorlia_paged_stop(request, digest, _PURPOSE, 'qorlia_confirmation_receipts',
+            'qorlia_confirmation_receipt_token', _RECEIPT_TOKEN)
 
     @api.model
     def qorlia_confirmation_paged_status(self, payload):

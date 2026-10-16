@@ -1,5 +1,19 @@
 # Qorlia React frontend backend readiness
 
+## Exact pending stock-request stop candidate 58 (16 October 2026)
+
+Three named native/client/source-gateway methods stop an author's exact
+unaccepted paged stock request without reversing an accepted action. Confirmation
+source connects explicit stop acknowledgment to exact storage clear and retains
+recovery after response loss, expiry or storage failure. All 16 scoped native cases
+pass with 117-table preservation, mandatory analytics/SMS and 89 matched Python
+hashes. The client accepts 15 captured native JSON frames with mocked transport.
+Home passes 944 cases/82 suites, with 25 confirmation component cases. Types,
+scoped lint/format/diff, three gateway unit cases and contributor links pass.
+Full candidate regression, real HTTP save/stop races, matching-writer rollout and
+actual browser/storage acceptance remain gates. No build/server, review reopening,
+upgrade or deployment. Read [the contract](../runtime/billing/STOCK_REQUEST_STOP.md).
+
 ## Complete confirmation consumer source (16 October 2026)
 
 New confirmation requests use compact native state, sequential effect pages,

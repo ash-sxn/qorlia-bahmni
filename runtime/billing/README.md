@@ -3,13 +3,23 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Candidate 58 adds [exact pending stock-request stop](STOCK_REQUEST_STOP.md) to
+three fixed native/client/source-gateway APIs and the paged confirmation dialog.
+It never reverses an accepted action. Exact server acknowledgment precedes
+storage clearing; lost responses retain recoverable requests. All 16 scoped native
+cases pass with 117-table preservation and 89 matching Python hashes; the client
+accepts 15 native JSON frames with mocked transport. Home passes 944 cases in
+82 suites, including 25 confirmation-dialog cases. Actual HTTP save/stop races,
+full candidate regression, matching-worker rollout and browser/storage acceptance
+remain. No review reopening, upgrade or deployment.
+
 Latest consumer source: [complete confirmation review](STOCK_CONFIRMATION_PAGING.md#react-confirmation-consumer-source-16-october-2026)
 is connected from transfer details to the five typed paged APIs and schema-5
 recovery. Legacy pending confirmations keep their original route. Effect and
 reference tables remain bounded; all pages/proof are required before save/finish.
 Home passes 920 tests/81 suites. This is JSDOM/source evidence, not browser/native
-gateway acceptance, a built UI or deployment. Rejected requests stay pending;
-nonce-safe cancellation remains a release gate.
+gateway acceptance, a built UI or deployment. The later candidate-58 stop contract
+above remains subject to its separate rollout and acceptance gates.
 
 Client integration source: [complete-review recovery storage](STOCK_RECOVERY.md)
 preserves exact terminal requests for all three paged stock protocols in the

@@ -5510,6 +5510,58 @@ export async function getPagedStockReservationReferences(
   );
 }
 
+export interface StockRequestStopResult {
+  request_key: string;
+  stopped: boolean;
+  accepted: boolean;
+}
+async function stopPagedStockRequest(
+  method:
+    | 'qorlia_confirmation_paged_stop'
+    | 'qorlia_operation_paged_stop'
+    | 'qorlia_reservation_paged_stop',
+  exact:
+    | PagedStockConfirmationRequest
+    | PagedStockOperationRequest
+    | PagedStockReservationRequest,
+) {
+  const result = await stockCall<StockRequestStopResult>(method, {
+    payload: exact,
+  });
+  if (
+    !confirmationKeys(result, ['request_key', 'stopped', 'accepted']) ||
+    result.request_key !== exact.request_key ||
+    typeof result.stopped !== 'boolean' ||
+    typeof result.accepted !== 'boolean' ||
+    result.stopped === result.accepted
+  )
+    throw new Error(
+      'Invalid stop result. Keep the exact request and check it again before starting another stock action.',
+    );
+  return result;
+}
+export const stopPagedStockConfirmation = async (
+  request: PagedStockConfirmationRequest,
+) =>
+  stopPagedStockRequest(
+    'qorlia_confirmation_paged_stop',
+    checkedPagedStockConfirmationRequest(request),
+  );
+export const stopPagedStockOperation = async (
+  request: PagedStockOperationRequest,
+) =>
+  stopPagedStockRequest(
+    'qorlia_operation_paged_stop',
+    checkedPagedStockOperationRequest(request),
+  );
+export const stopPagedStockReservation = async (
+  request: PagedStockReservationRequest,
+) =>
+  stopPagedStockRequest(
+    'qorlia_reservation_paged_stop',
+    checkedPagedStockReservationRequest(request),
+  );
+
 export type StockValidationDecision =
   | { kind: 'receipt'; confirm: true }
   | { kind: 'immediate' | 'backorder'; selected: boolean }

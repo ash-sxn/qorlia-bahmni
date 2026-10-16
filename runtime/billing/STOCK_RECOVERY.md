@@ -67,8 +67,9 @@ status/identical retry. An unaccepted status alone does not prove that an earlie
 in-flight dispatch was cancelled. Never generate a new request or clear storage
 merely to re-enable an action button.
 
-Clear only after a proven accepted outcome or definitive rejection under the
-matching native recovery contract. Failed receipt/reference/clear requests must
+Clear only after a proven accepted outcome or a matching acknowledged
+[native request stop](STOCK_REQUEST_STOP.md). An ordinary rejection is not a stop.
+Failed receipt/reference/clear requests must
 not appear as a clean new-action state. Reload authoritative transfer data after
 resolution and retain exact requests across navigation and re-authentication.
 

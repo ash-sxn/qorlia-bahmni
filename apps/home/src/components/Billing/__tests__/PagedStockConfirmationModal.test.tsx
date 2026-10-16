@@ -15,6 +15,7 @@ import {
   getPagedStockConfirmationStatus,
   getPagedStockConfirmationReferences,
   savePagedStockConfirmation,
+  stopPagedStockConfirmation,
   type PagedStockConfirmationReferences,
 } from '../billingService';
 import { PagedStockConfirmationModal } from '../PagedStockConfirmationModal';
@@ -34,6 +35,7 @@ jest.mock('../billingService', () => ({
   getPagedStockConfirmationStatus: jest.fn(),
   getPagedStockConfirmationReferences: jest.fn(),
   savePagedStockConfirmation: jest.fn(),
+  stopPagedStockConfirmation: jest.fn(),
 }));
 jest.mock('../stockReservationRecovery', () => ({
   ...jest.requireActual('../stockReservationRecovery'),
@@ -44,6 +46,7 @@ jest.mock('../stockReservationRecovery', () => ({
 const get = jest.mocked(getPagedStockConfirmation),
   preview = jest.mocked(getPagedStockConfirmationReview),
   save = jest.mocked(savePagedStockConfirmation),
+  stopRequest = jest.mocked(stopPagedStockConfirmation),
   check = jest.mocked(getPagedStockConfirmationStatus),
   refs = jest.mocked(getPagedStockConfirmationReferences),
   restore = jest.mocked(loadPagedStockWriteRecovery),
@@ -153,6 +156,11 @@ describe('Complete paged confirmation consumer', () => {
     );
     save.mockImplementation(async () => accepted());
     check.mockImplementation(async () => accepted());
+    stopRequest.mockResolvedValue({
+      request_key: request().request_key,
+      stopped: true,
+      accepted: false,
+    });
     refs.mockImplementation(async (_request, after = 0) =>
       referencePage(after),
     );
@@ -597,5 +605,241 @@ describe('Complete paged confirmation consumer', () => {
     expect(save).not.toHaveBeenCalled();
     expect(persist).not.toHaveBeenCalled();
     expect(disk.get(3)).toEqual(old);
+  });
+  it('requires an explicit stop confirmation, commits the server outcome before exact clear and prevents duplicate dispatch', async () => {
+    disk.set(3, request());
+    check.mockResolvedValue(accepted(false));
+    const stopped =
+      deferred<Awaited<ReturnType<typeof stopPagedStockConfirmation>>>();
+    stopRequest.mockReturnValueOnce(stopped.promise);
+    const { client } = show();
+    const invalidated = jest.spyOn(client, 'invalidateQueries');
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Stop pending confirmation request',
+      }),
+    );
+    expect(screen.getByText('Stop this exact request?')).toHaveFocus();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Keep pending request' }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Stop pending confirmation request' }),
+    ).toHaveFocus();
+    expect(stopRequest).not.toHaveBeenCalled();
+    expect(clear).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Stop pending confirmation request' }),
+    );
+    const confirm = screen.getByRole('button', {
+      name: /Confirm stop pending request/,
+    });
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+    await waitFor(() => expect(stopRequest).toHaveBeenCalledTimes(1));
+    expect(stopRequest).toHaveBeenCalledWith(request());
+    expect(clear).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(close).not.toHaveBeenCalled();
+    await act(async () =>
+      stopped.resolve({
+        request_key: request().request_key,
+        stopped: true,
+        accepted: false,
+      }),
+    );
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(clear).toHaveBeenCalledWith(3, request());
+    expect(disk.has(3)).toBe(false);
+    expect(invalidated).toHaveBeenCalledWith({
+      queryKey: ['billing', 'reservation-recovery', 3],
+    });
+    expect(save).not.toHaveBeenCalled();
+  });
+  it('keeps an already accepted action and recovers its receipt when save wins before stop', async () => {
+    disk.set(3, request());
+    check.mockResolvedValueOnce(accepted(false));
+    stopRequest.mockResolvedValueOnce({
+      request_key: request().request_key,
+      stopped: false,
+      accepted: true,
+    });
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Stop pending confirmation request',
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Confirm stop pending request/ }),
+    );
+    await screen.findByRole('heading', {
+      name: 'Accepted confirmation: waiting',
+    });
+    expect(clear).not.toHaveBeenCalled();
+    expect(disk.get(3)).toEqual(request());
+    expect(
+      screen.queryByRole('button', {
+        name: 'Stop pending confirmation request',
+      }),
+    ).not.toBeInTheDocument();
+    expect(save).not.toHaveBeenCalled();
+  });
+  it('recovers a lost stop response after remount even when the stopped request status is rejected', async () => {
+    disk.set(3, request());
+    check.mockResolvedValueOnce(accepted(false));
+    stopRequest.mockRejectedValueOnce(new Error('Stop response lost'));
+    const first = show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Stop pending confirmation request',
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Confirm stop pending request/ }),
+    );
+    await screen.findByText('Stop response lost');
+    expect(clear).not.toHaveBeenCalled();
+    first.unmount();
+    check.mockRejectedValue(
+      new BillingActionRejected('This exact request was stopped.'),
+    );
+    show();
+    await screen.findByText('This exact request was stopped.');
+    expect(get).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Stop pending confirmation request' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Confirm stop pending request/ }),
+    );
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(stopRequest.mock.calls).toEqual([[request()], [request()]]);
+    expect(disk.has(3)).toBe(false);
+    expect(save).not.toHaveBeenCalled();
+  });
+  it('retains recovery if an accepted stop outcome cannot be followed by a matching accepted status', async () => {
+    disk.set(3, request());
+    check.mockResolvedValue(accepted(false));
+    stopRequest.mockResolvedValueOnce({
+      request_key: request().request_key,
+      stopped: false,
+      accepted: true,
+    });
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Stop pending confirmation request',
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Confirm stop pending request/ }),
+    );
+    await screen.findByText(/The accepted receipt is unavailable/);
+    expect(clear).not.toHaveBeenCalled();
+    expect(disk.get(3)).toEqual(request());
+    expect(close).not.toHaveBeenCalled();
+  });
+  it('does not clear or close another account when a stop response arrives after identity changes', async () => {
+    disk.set(3, request());
+    check.mockResolvedValue(accepted(false));
+    const stopped =
+      deferred<Awaited<ReturnType<typeof stopPagedStockConfirmation>>>();
+    stopRequest.mockReturnValueOnce(stopped.promise);
+    const view = show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Stop pending confirmation request',
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Confirm stop pending request/ }),
+    );
+    await waitFor(() => expect(stopRequest).toHaveBeenCalledTimes(1));
+    view.changeIdentity(4);
+    await waitFor(() => expect(restore).toHaveBeenLastCalledWith(4));
+    await act(async () =>
+      stopped.resolve({
+        request_key: request().request_key,
+        stopped: true,
+        accepted: false,
+      }),
+    );
+    expect(clear).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+    expect(disk.get(3)).toEqual(request());
+    expect(
+      screen.queryByText(/The server stopped this exact request/),
+    ).not.toBeInTheDocument();
+  });
+  it('keeps a server-stopped request after storage failure, disables save and replays only stop to finish', async () => {
+    disk.set(3, request());
+    check.mockResolvedValue(accepted(false));
+    clear.mockRejectedValueOnce(new Error('Stop recovery clear failed'));
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Stop pending confirmation request',
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Confirm stop pending request/ }),
+    );
+    await screen.findByText('Stop recovery clear failed');
+    expect(
+      screen.getByRole('button', {
+        name: /Retry identical confirmation request/,
+      }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Check confirmation request' }),
+    ).toBeDisabled();
+    expect(disk.get(3)).toEqual(request());
+    expect(close).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole('button', { name: /Confirm stop pending request/ }),
+    );
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(stopRequest).toHaveBeenCalledTimes(2);
+    expect(save).not.toHaveBeenCalled();
+  });
+  it.each([
+    new BillingActionRejected('Stop permission denied'),
+    new BillingSessionExpired(),
+  ])('preserves recovery on stop error %s', async (error) => {
+    disk.set(3, request());
+    check.mockResolvedValue(accepted(false));
+    stopRequest.mockRejectedValueOnce(error);
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Stop pending confirmation request',
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Confirm stop pending request/ }),
+    );
+    await screen.findByText(error.message);
+    expect(clear).not.toHaveBeenCalled();
+    expect(disk.get(3)).toEqual(request());
+    expect(
+      screen.getByRole('button', { name: /Confirm stop pending request/ }),
+    ).toHaveProperty('disabled', error instanceof BillingSessionExpired);
+    expect(
+      screen.queryAllByRole('button', { name: 'Reconnect Billing' }),
+    ).toHaveLength(Number(error instanceof BillingSessionExpired));
+  });
+  it('keeps recovery and reconnect available when initial status expires, without dispatching stop or save', async () => {
+    disk.set(3, request());
+    check.mockRejectedValueOnce(new BillingSessionExpired());
+    show();
+    await screen.findByRole('button', { name: 'Reconnect Billing' });
+    expect(
+      screen.getByRole('button', { name: 'Stop pending confirmation request' }),
+    ).toBeDisabled();
+    expect(get).not.toHaveBeenCalled();
+    expect(stopRequest).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+    expect(clear).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,23 @@
 # Bahmni workflow parity ledger
 
+## 16 October exact pending stock-request stop candidate 58
+
+- Three fixed native/client/source-gateway methods retire an author's exact
+  unaccepted paged request; accepted receipts remain accepted. Own-author markers,
+  strict shape, native permissions, ordered locks, rollback guards and exact retry
+  prevent a failed response from silently becoming a fresh action.
+- The confirmation dialog adds explicit stop confirmation, exact acknowledgment
+  before clear, accepted-race receipt recovery and stopped-response-loss remount
+  recovery. Operation/preparation consumers still need migration.
+- All 16 scoped native cases pass with 117-table preservation, mandatory
+  analytics/SMS and 89 matched Python hashes. The client accepts 15 native JSON
+  frames with mocked transport. A retained test-exception mismatch was corrected,
+  not a permission guard. Home passes 944 cases/82 suites, including 25 confirmation
+  dialog cases; types, scoped lint/format/diff, three gateway unit cases and
+  contributor links pass. Actual HTTP race/full-addon/runtime/browser gates remain.
+  No build, review reopening, upgrade or deployment. Read
+  [the exact stop contract](../runtime/billing/STOCK_REQUEST_STOP.md).
+
 ## 16 October complete confirmation consumer source
 
 - New confirmations route to complete paged load/review/save/status/references

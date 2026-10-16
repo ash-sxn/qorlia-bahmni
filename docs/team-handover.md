@@ -1,5 +1,11 @@
 # New-team handover: Qorlia engineering
 
+Latest recovery candidate: [stop an exact pending stock request](../runtime/billing/STOCK_REQUEST_STOP.md)
+adds three fixed native/client methods and confirmation-screen handling. It does
+not cancel transfers or undo accepted actions. Read the author-bound marker,
+matching-writer deployment requirement and separate HTTP/browser release gates
+before changing recovery. The expired review gate stays closed.
+
 Newest API-consumer source: [complete confirmation review](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#react-confirmation-consumer-source-16-october-2026)
 connects the five paged APIs with exact recovery, while preserving the older
 pending-request dialog. Tests are source/JSDOM evidence, not permission to open

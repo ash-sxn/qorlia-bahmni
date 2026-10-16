@@ -10,6 +10,7 @@ import {
   getPagedStockConfirmationReview,
   getPagedStockConfirmationStatus,
   savePagedStockConfirmation,
+  stopPagedStockConfirmation,
   type PagedStockConfirmationLoad,
   type PagedStockConfirmationReferences,
   type PagedStockConfirmationRequest,
@@ -66,6 +67,8 @@ function ConfirmationReview({
     busyRef = useRef(false);
   const reviewHeading = useRef<HTMLHeadingElement | null>(null);
   const referenceHeading = useRef<HTMLHeadingElement | null>(null);
+  const stopHeading = useRef<HTMLLegendElement | null>(null);
+  const stopTrigger = useRef<HTMLButtonElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<
     PagedStockConfirmationRequest | null | undefined
@@ -80,6 +83,8 @@ function ConfirmationReview({
   const [references, setReferences] = useState<References | null>(null);
   const [failure, setFailure] = useState<Error | null>(null);
   const [notice, setNotice] = useState('');
+  const [confirmStop, setConfirmStop] = useState(false);
+  const [stopped, setStopped] = useState(false);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -93,6 +98,10 @@ function ConfirmationReview({
   useEffect(() => {
     if (references && !busy) referenceHeading.current?.focus();
   }, [references, busy]);
+  useEffect(() => {
+    if (confirmStop) stopHeading.current?.focus();
+    else stopTrigger.current?.focus();
+  }, [confirmStop]);
   const loaded = useQuery({
     queryKey: ['billing', 'stock-confirmation-paged', uid, orderId, transferId],
     queryFn: async () => {
@@ -101,15 +110,30 @@ function ConfirmationReview({
         throw new Error(
           'Another stock request is pending. Resume its original workflow before confirming a transfer.',
         );
-      const status = request
-        ? await getPagedStockConfirmationStatus(request)
-        : null;
+      let status: PagedStockConfirmationStatus | null = null;
+      if (request) {
+        try {
+          status = await getPagedStockConfirmationStatus(request);
+        } catch (error) {
+          // A lost stop response must not hide the exact request needed to recover it.
+          return {
+            request,
+            status: null,
+            state: null,
+            recoveryError:
+              error instanceof Error
+                ? error
+                : new Error('Request status is unavailable.'),
+          };
+        }
+      }
       return {
         request,
         status,
         state:
           status?.current ??
           (await getPagedStockConfirmation(orderId, transferId)),
+        recoveryError: null,
       };
     },
     retry: false,
@@ -121,8 +145,10 @@ function ConfirmationReview({
     pending === undefined ? (loaded.data?.request ?? null) : pending;
   const state = current ?? loaded.data?.state;
   const accepted = receipt ?? loaded.data?.status;
+  const recoveryError = receipt || stopped ? null : loaded.data?.recoveryError;
   const expired =
     failure instanceof BillingSessionExpired ||
+    recoveryError instanceof BillingSessionExpired ||
     loaded.error instanceof BillingSessionExpired;
   const locked = busy || loaded.isFetching || loaded.isError || expired;
   const run = async (action: () => Promise<void>) => {
@@ -154,6 +180,7 @@ function ConfirmationReview({
     setReceipt(value);
     setReview(null);
     setReferences(null);
+    setConfirmStop(false);
     setNotice(
       value.accepted
         ? 'This exact confirmation was accepted. Review saved references before finishing.'
@@ -207,6 +234,7 @@ function ConfirmationReview({
   const save = () =>
     run(async () => {
       if (
+        stopped ||
         accepted?.accepted ||
         (!request &&
           (!review ||
@@ -230,7 +258,6 @@ function ConfirmationReview({
       await persistPagedStockWriteRecovery(uid, exact);
       if (!mounted.current) return;
       setPending(exact);
-      // shortcut: Keep rejected requests pending until nonce-safe native cancellation is integrated.
       showStatus(await savePagedStockConfirmation(exact));
     });
   const referencePage = (previous = false) =>
@@ -263,6 +290,29 @@ function ConfirmationReview({
   const allReferencesRead =
     accepted?.accepted &&
     (accepted.reference_count === 0 || references?.page.next_after === false);
+  const clearAndReload = async (exact: PagedStockConfirmationRequest) => {
+    await clearPagedStockWriteRecovery(uid, exact);
+    await Promise.all([
+      client.invalidateQueries({
+        queryKey: ['billing', 'order-deliveries', uid],
+      }),
+      client.invalidateQueries({
+        queryKey: ['billing', 'reservation-recovery', uid],
+      }),
+      ...[
+        'stock-confirmation-paged',
+        'stock-confirmation',
+        'stock-reservation',
+        'stock-operation',
+      ].map((key) =>
+        client.invalidateQueries({
+          queryKey: ['billing', key, uid],
+          refetchType: 'none',
+        }),
+      ),
+    ]);
+    if (mounted.current) close();
+  };
   const finish = () =>
     run(async () => {
       if (!request || !allReferencesRead) return;
@@ -274,27 +324,27 @@ function ConfirmationReview({
         throw new Error(
           'Accepted confirmation receipt changed or is unavailable. Keep this recovery request.',
         );
-      await clearPagedStockWriteRecovery(uid, request);
-      await Promise.all([
-        client.invalidateQueries({
-          queryKey: ['billing', 'order-deliveries', uid],
-        }),
-        client.invalidateQueries({
-          queryKey: ['billing', 'reservation-recovery', uid],
-        }),
-        ...[
-          'stock-confirmation-paged',
-          'stock-confirmation',
-          'stock-reservation',
-          'stock-operation',
-        ].map((key) =>
-          client.invalidateQueries({
-            queryKey: ['billing', key, uid],
-            refetchType: 'none',
-          }),
-        ),
-      ]);
-      if (mounted.current) close();
+      await clearAndReload(request);
+    });
+  const stop = () =>
+    run(async () => {
+      if (!request || !confirmStop || accepted?.accepted) return;
+      const result = await stopPagedStockConfirmation(request);
+      if (!mounted.current) return;
+      if (result.accepted) {
+        const fresh = await getPagedStockConfirmationStatus(request);
+        if (!fresh.accepted)
+          throw new Error(
+            'The accepted receipt is unavailable. Keep this recovery request and check it again.',
+          );
+        showStatus(fresh);
+        return;
+      }
+      setStopped(true);
+      setNotice(
+        'The server stopped this exact request. Its stock action will not be applied.',
+      );
+      await clearAndReload(request);
     });
   return (
     <Modal
@@ -422,6 +472,7 @@ function ConfirmationReview({
         {request ? (
           <>
             <p>
+              Order #{request.order_id} · Transfer #{request.transfer_id} ·{' '}
               Request: {request.request_key}.{' '}
               {accepted?.accepted
                 ? 'The exact receipt is available.'
@@ -429,7 +480,7 @@ function ConfirmationReview({
             </p>
             <Button
               kind="tertiary"
-              disabled={locked}
+              disabled={locked || stopped}
               onClick={() =>
                 void run(async () =>
                   showStatus(await getPagedStockConfirmationStatus(request)),
@@ -439,13 +490,52 @@ function ConfirmationReview({
               Check confirmation request
             </Button>
             {!accepted?.accepted ? (
-              <Button
-                kind="danger"
-                disabled={locked}
-                onClick={() => void save()}
-              >
-                Retry identical confirmation request
-              </Button>
+              <>
+                <Button
+                  kind="danger"
+                  disabled={locked || stopped}
+                  onClick={() => void save()}
+                >
+                  Retry identical confirmation request
+                </Button>
+                {!confirmStop ? (
+                  <Button
+                    ref={stopTrigger}
+                    kind="tertiary"
+                    disabled={locked}
+                    onClick={() => setConfirmStop(true)}
+                  >
+                    Stop pending confirmation request
+                  </Button>
+                ) : (
+                  <fieldset disabled={locked}>
+                    <legend ref={stopHeading} tabIndex={-1}>
+                      Stop this exact request?
+                    </legend>
+                    <p>
+                      This stops only a request the server has not accepted. It
+                      does not cancel the transfer, undo reservations or reverse
+                      an accepted action. If it was already accepted, its
+                      receipt will be recovered instead. Keep the recovery
+                      request until the server confirms the outcome.
+                    </p>
+                    <Button
+                      kind="danger"
+                      disabled={locked}
+                      onClick={() => void stop()}
+                    >
+                      Confirm stop pending request
+                    </Button>
+                    <Button
+                      kind="tertiary"
+                      disabled={locked || stopped}
+                      onClick={() => setConfirmStop(false)}
+                    >
+                      Keep pending request
+                    </Button>
+                  </fieldset>
+                )}
+              </>
             ) : (
               <>
                 <h3>Accepted confirmation: {accepted.state_after}</h3>
@@ -513,9 +603,9 @@ function ConfirmationReview({
             )}
             <p>
               Keep this request after any failed response. An unaccepted status
-              is not proof of cancellation. If it remains rejected, ask your
-              Billing administrator to resolve it before starting another
-              action.
+              is not proof of cancellation. Only a matching server stop result
+              allows this pending request to be cleared without an accepted
+              receipt.
             </p>
           </>
         ) : (
@@ -547,6 +637,7 @@ function ConfirmationReview({
           </Button>
         ) : null}
         {failure ? <p role="alert">{failure.message}</p> : null}
+        {recoveryError ? <p role="alert">{recoveryError.message}</p> : null}
         {notice ? <p role="status">{notice}</p> : null}
         {expired ? (
           <Button kind="tertiary" disabled={busy} onClick={reconnect}>

@@ -147,16 +147,16 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     'Only the four named native confirmation APIs are covered.');
   const pagedConfirmationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_confirmation_paged.py'), 'utf8')
     .matchAll(/^    def (qorlia_confirmation_paged_\w+)\(/gm)].map(match => match[1]);
-  assert.deepEqual([...pagedConfirmationMethods].sort(), ['load', 'review', 'save', 'status', 'references'].map(action => `qorlia_confirmation_paged_${action}`).sort(),
-    'Only five named paged confirmation APIs are covered, without raw native actions or client contexts.');
+  assert.deepEqual([...pagedConfirmationMethods].sort(), ['load', 'review', 'save', 'status', 'references', 'stop'].map(action => `qorlia_confirmation_paged_${action}`).sort(),
+    'Only six named paged confirmation APIs are covered, without raw native actions or client contexts.');
   const pagedOperationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_operation_paged.py'), 'utf8')
     .matchAll(/^    def (qorlia_operation_paged_\w+)\(/gm)].map(match => match[1]);
-  assert.deepEqual([...pagedOperationMethods].sort(), ['load', 'onchange', 'choices', 'review', 'save', 'status', 'references'].map(action => `qorlia_operation_paged_${action}`).sort(),
-    'Only seven named paged operation APIs are covered, without raw native actions or client contexts.');
+  assert.deepEqual([...pagedOperationMethods].sort(), ['load', 'onchange', 'choices', 'review', 'save', 'status', 'references', 'stop'].map(action => `qorlia_operation_paged_${action}`).sort(),
+    'Only eight named paged operation APIs are covered, without raw native actions or client contexts.');
   const pagedReservationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_reservation_paged.py'), 'utf8')
     .matchAll(/^    def (qorlia_reservation_paged_\w+)\(/gm)].map(match => match[1]);
-  assert.deepEqual([...pagedReservationMethods].sort(), ['load', 'review', 'save', 'status', 'references'].map(action => `qorlia_reservation_paged_${action}`).sort(),
-    'Only five named paged reservation APIs are covered, without raw stock actions or client contexts.');
+  assert.deepEqual([...pagedReservationMethods].sort(), ['load', 'review', 'save', 'status', 'references', 'stop'].map(action => `qorlia_reservation_paged_${action}`).sort(),
+    'Only six named paged reservation APIs are covered, without raw stock actions or client contexts.');
   const validationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_validation.py'), 'utf8')
     .matchAll(/^    def (qorlia_validation_\w+)\(/gm)].map(match => match[1]);
   assert.deepEqual([...validationMethods].sort(), ['load', 'preview', 'save', 'status'].map(action => `qorlia_validation_${action}`).sort(),

@@ -58,9 +58,10 @@ reopening, persistent addon upgrade or tester/public/production deployment.
 
 Remaining release gates include actual protected-gateway/browser/IndexedDB,
 keyboard/narrow-layout and multi-tab fault acceptance. Rejected unaccepted
-requests currently remain pending for operator resolution: a nonce-safe native
-cancellation/reset contract is needed before general release. An unaccepted
-status is not cancellation, and manually clearing storage is not that contract.
+requests now have a later [exact-request stop candidate](STOCK_REQUEST_STOP.md)
+in native/client/dialog source. Real HTTP race, matching-worker rollout and
+browser/storage acceptance remain release gates. An unaccepted status is not
+cancellation, and manually clearing storage is not that contract.
 Operation/preparation consumers, large validation/return flows, realistic backend
 performance and broader Billing/whole-product parity remain unfinished.
 
