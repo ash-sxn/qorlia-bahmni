@@ -1,5 +1,10 @@
 # New-team handover: Qorlia engineering
 
+Latest client integration source: [stock recovery storage](../runtime/billing/STOCK_RECOVERY.md)
+accepts the three complete-review stock protocols without losing older pending
+requests. This is not a migrated dialog or tester update. Read its exact storage
+contract before changing a stock save/recovery consumer.
+
 [Project README](../README.md) · [Learning path](developer-start-here.md) · [Architecture](architecture.md) · [Team workflow](team-workflow.md)
 
 This is the entry brief for Aniket, Gautam and future contributors. It assumes no prior hospital-software or professional development experience. Read the linked guides progressively, not all source files at once. Updated 16 October 2026. Task owners must confirm current versions and access before implementation.

@@ -15,6 +15,11 @@ import {
   clearStockValidationRecovery,
   replaceStockValidationRecovery,
   isStockValidationStepRequest,
+  isPagedStockWriteRequest,
+  loadPagedStockWriteRecovery,
+  persistPagedStockWriteRecovery,
+  clearPagedStockWriteRecovery,
+  PagedStockWriteRequest,
 } from '../stockReservationRecovery';
 import { confirmationRequest } from './stockConfirmationFixture';
 import { operationRequest } from './stockOperationFixture';
@@ -23,6 +28,20 @@ import { validationRequest } from './stockValidationFixture';
 
 const request = (): StockReservationRequest => stockRequest();
 const billingDatabase = process.env.BAHMNI_BILLING_DATABASE ?? 'odoo';
+const pagedRequests = [
+  [
+    'paged_reservation',
+    { ...stockRequest(), review_complete_token: 'c'.repeat(64) },
+  ],
+  [
+    'paged_operation',
+    { ...operationRequest(), review_complete_token: 'c'.repeat(64) },
+  ],
+  [
+    'paged_confirmation',
+    { ...confirmationRequest(), review_complete_token: 'c'.repeat(64) },
+  ],
+] as const;
 
 function database() {
   const records = new Map<number, unknown>();
@@ -110,6 +129,243 @@ function database() {
 }
 
 describe('Stock reservation IndexedDB recovery', () => {
+  it.each(pagedRequests)(
+    'keeps %s exact, database-bound and isolated in the existing slot',
+    async (kind, exact) => {
+      const fake = database();
+      await persistPagedStockWriteRecovery(3, exact);
+      expect(fake.records.get(3)).toEqual({
+        schema: 5,
+        kind,
+        database: billingDatabase,
+        uid: 3,
+        request: exact,
+      });
+      expect(await loadPagedStockWriteRecovery(3)).toEqual(exact);
+      expect(await loadStockWriteRecovery(3)).toEqual(exact);
+      expect(isPagedStockWriteRequest((await loadStockWriteRecovery(3))!)).toBe(
+        true,
+      );
+      await persistPagedStockWriteRecovery(3, exact);
+      for (const load of [
+        loadStockReservationRecovery,
+        loadStockOperationRecovery,
+        loadStockConfirmationRecovery,
+        loadStockValidationRecovery,
+      ])
+        await expect(load(3)).rejects.toThrow(/older stock dialog/);
+      for (const save of [
+        () => persistStockReservationRecovery(3, stockRequest()),
+        () => persistStockOperationRecovery(3, operationRequest()),
+        () => persistStockConfirmationRecovery(3, confirmationRequest()),
+        () => persistStockValidationRecovery(3, validationRequest()),
+      ])
+        await expect(save()).rejects.toThrow(/Another stock request/);
+      const changed = { ...exact, review_complete_token: 'd'.repeat(64) };
+      await expect(persistPagedStockWriteRecovery(3, changed)).rejects.toThrow(
+        /Another stock request/,
+      );
+      expect(await clearPagedStockWriteRecovery(3, changed)).toEqual(exact);
+      for (const [, other] of pagedRequests) {
+        if (other === exact) continue;
+        await expect(persistPagedStockWriteRecovery(3, other)).rejects.toThrow(
+          /Another stock request/,
+        );
+        expect(await clearPagedStockWriteRecovery(3, other)).toEqual(exact);
+      }
+      await persistPagedStockWriteRecovery(4, exact);
+      await clearPagedStockWriteRecovery(3, exact);
+      expect(await loadPagedStockWriteRecovery(3)).toBeNull();
+      expect(await loadPagedStockWriteRecovery(4)).toEqual(exact);
+      expect(fake.db.transaction).toHaveBeenCalledWith('pending', 'readwrite', {
+        durability: 'strict',
+      });
+    },
+  );
+  it('never converts or replaces any older recovery kind to start paged stock work', async () => {
+    const fake = database(),
+      exact = pagedRequests[0][1];
+    const older = [
+      { schema: 1, uid: 3, request: stockRequest() },
+      { schema: 1, uid: 3, request: operationRequest() },
+      {
+        schema: 2,
+        kind: 'confirmation',
+        uid: 3,
+        request: confirmationRequest(),
+      },
+      {
+        schema: 3,
+        kind: 'validation',
+        database: billingDatabase,
+        uid: 3,
+        request: validationRequest(),
+      },
+      {
+        schema: 4,
+        kind: 'validation_step',
+        database: billingDatabase,
+        uid: 3,
+        request: { ...validationRequest(), continuation_key: false },
+      },
+    ];
+    for (const stored of older) {
+      fake.records.set(3, stored);
+      expect(await loadStockWriteRecovery(3)).toEqual(stored.request);
+      await expect(loadPagedStockWriteRecovery(3)).rejects.toThrow(
+        /older stock request/,
+      );
+      await expect(persistPagedStockWriteRecovery(3, exact)).rejects.toThrow(
+        /Another stock request/,
+      );
+      expect(await clearPagedStockWriteRecovery(3, exact)).toEqual(
+        stored.request,
+      );
+      expect(fake.records.get(3)).toEqual(stored);
+    }
+  });
+  it('rejects wrong schemas, kinds, identities, databases and malformed completion proofs without changing recovery', async () => {
+    const fake = database(),
+      exact = pagedRequests[0][1];
+    const stored = {
+      schema: 5,
+      kind: 'paged_reservation',
+      uid: 3,
+      database: billingDatabase,
+      request: exact,
+    };
+    for (const changed of [
+      { ...stored, schema: 6 },
+      { ...stored, uid: 4 },
+      { ...stored, database: `${billingDatabase}_other` },
+      { ...stored, database: undefined },
+      { ...stored, kind: 'reservation' },
+      { ...stored, kind: 'paged_operation' },
+      { ...stored, extra: true },
+      { ...stored, request: stockRequest() },
+      { ...stored, request: { ...exact, review_complete_token: false } },
+      {
+        ...stored,
+        request: {
+          ...exact,
+          review_complete_token: 'continuation-not-completion',
+        },
+      },
+      { ...stored, request: { ...exact, context: {} } },
+      { schema: 1, uid: 3, request: exact },
+      { schema: 1, uid: 3, request: pagedRequests[1][1] },
+      { schema: 2, kind: 'confirmation', uid: 3, request: pagedRequests[2][1] },
+      {
+        schema: 3,
+        kind: 'validation',
+        uid: 3,
+        database: billingDatabase,
+        request: exact,
+      },
+      {
+        schema: 4,
+        kind: 'validation_step',
+        uid: 3,
+        database: billingDatabase,
+        request: exact,
+      },
+    ]) {
+      fake.records.set(3, changed);
+      await expect(loadStockWriteRecovery(3)).rejects.toThrow();
+      await expect(persistPagedStockWriteRecovery(3, exact)).rejects.toThrow();
+      await expect(clearPagedStockWriteRecovery(3, exact)).rejects.toThrow();
+      expect(fake.records.get(3)).toEqual(changed);
+    }
+  });
+  it('rejects using a legacy writer for a paged proof before opening storage', async () => {
+    const fake = database();
+    await expect(
+      persistStockReservationRecovery(3, pagedRequests[0][1]),
+    ).rejects.toThrow();
+    await expect(
+      clearStockReservationRecovery(3, pagedRequests[0][1]),
+    ).rejects.toThrow();
+    await expect(
+      persistStockOperationRecovery(3, pagedRequests[1][1]),
+    ).rejects.toThrow();
+    await expect(
+      clearStockOperationRecovery(3, pagedRequests[1][1]),
+    ).rejects.toThrow();
+    await expect(
+      persistStockConfirmationRecovery(3, pagedRequests[2][1]),
+    ).rejects.toThrow();
+    await expect(
+      clearStockConfirmationRecovery(3, pagedRequests[2][1]),
+    ).rejects.toThrow();
+    const invalid = {
+      ...validationRequest(),
+      review_complete_token: 'c'.repeat(64),
+    };
+    await expect(persistStockValidationRecovery(3, invalid)).rejects.toThrow();
+    await expect(clearStockValidationRecovery(3, invalid)).rejects.toThrow();
+    expect(fake.factory.open).not.toHaveBeenCalled();
+  });
+  it('waits for durable paged save and clear commits and retains exact data after aborted writes', async () => {
+    const fake = database(),
+      exact = pagedRequests[1][1];
+    fake.hold();
+    let saved = false;
+    const saving = persistPagedStockWriteRecovery(3, exact).then(() => {
+      saved = true;
+    });
+    for (let i = 0; i < 4; i++) await Promise.resolve();
+    expect(saved).toBe(false);
+    expect(fake.records.size).toBe(0);
+    fake.commit();
+    await saving;
+    let cleared = false;
+    const clearing = clearPagedStockWriteRecovery(3, exact).then(() => {
+      cleared = true;
+    });
+    for (let i = 0; i < 4; i++) await Promise.resolve();
+    expect(cleared).toBe(false);
+    expect(fake.records.get(3)).toMatchObject({ request: exact });
+    fake.commit();
+    await clearing;
+    expect(fake.records.size).toBe(0);
+    fake.fail();
+    const failed = persistPagedStockWriteRecovery(3, exact);
+    await expect(failed).rejects.toThrow(/could not be committed/);
+    expect(fake.records.size).toBe(0);
+    fake.records.set(3, {
+      schema: 5,
+      kind: 'paged_operation',
+      uid: 3,
+      database: billingDatabase,
+      request: exact,
+    });
+    await expect(clearPagedStockWriteRecovery(3, exact)).rejects.toThrow(
+      /could not be committed/,
+    );
+    expect(fake.records.get(3)).toMatchObject({ request: exact });
+  });
+  it('rejects invalid paged requests before storage and fails closed when storage is unavailable', async () => {
+    const fake = database(),
+      exact = pagedRequests[0][1];
+    for (const invalid of [
+      stockRequest(),
+      { ...exact, review_complete_token: false },
+      { ...exact, request_key: 'bad' },
+      { ...exact, complete_inventory: true },
+    ])
+      await expect(
+        persistPagedStockWriteRecovery(3, invalid as PagedStockWriteRequest),
+      ).rejects.toThrow();
+    await expect(persistPagedStockWriteRecovery(0, exact)).rejects.toThrow();
+    expect(fake.factory.open).not.toHaveBeenCalled();
+    Object.defineProperty(window, 'indexedDB', {
+      configurable: true,
+      value: undefined,
+    });
+    await expect(persistPagedStockWriteRecovery(3, exact)).rejects.toThrow(
+      /unavailable/,
+    );
+  });
   const stepRequest = () => ({
     ...validationRequest(),
     continuation_key: false as const,

@@ -9,14 +9,25 @@ import {
   StockValidationRequest,
   checkedStockValidationStepRequest,
   StockValidationStepRequest,
+  checkedPagedStockConfirmationRequest,
+  PagedStockConfirmationRequest,
+  checkedPagedStockOperationRequest,
+  PagedStockOperationRequest,
+  checkedPagedStockReservationRequest,
+  PagedStockReservationRequest,
 } from './billingService';
 
+export type PagedStockWriteRequest =
+  | PagedStockConfirmationRequest
+  | PagedStockOperationRequest
+  | PagedStockReservationRequest;
 export type StockWriteRequest =
   | StockReservationRequest
   | StockOperationRequest
   | StockConfirmationRequest
   | StockValidationRequest
-  | StockValidationStepRequest;
+  | StockValidationStepRequest
+  | PagedStockWriteRequest;
 export type StockValidationRecoveryRequest =
   | StockValidationRequest
   | StockValidationStepRequest;
@@ -37,16 +48,38 @@ export const isStockOperationRequest = (
 ): request is StockOperationRequest =>
   'action' in request &&
   (request.action === 'save' || request.action === 'delete');
+export const isPagedStockWriteRequest = (
+  request: StockWriteRequest,
+): request is PagedStockWriteRequest =>
+  Object.hasOwn(request, 'review_complete_token');
+const pagedKind = (request: PagedStockWriteRequest) =>
+  isStockOperationRequest(request)
+    ? 'paged_operation'
+    : isStockConfirmationRequest(request)
+      ? 'paged_confirmation'
+      : 'paged_reservation';
+const checkedPagedWriteRequest = (value: PagedStockWriteRequest) =>
+  isStockOperationRequest(value)
+    ? checkedPagedStockOperationRequest(value as PagedStockOperationRequest)
+    : isStockConfirmationRequest(value)
+      ? checkedPagedStockConfirmationRequest(
+          value as PagedStockConfirmationRequest,
+        )
+      : checkedPagedStockReservationRequest(
+          value as PagedStockReservationRequest,
+        );
 const checkedWriteRequest = (value: StockWriteRequest) =>
-  value && isStockValidationStepRequest(value)
-    ? checkedStockValidationStepRequest(value)
-    : value && isStockValidationRequest(value)
-      ? checkedStockValidationRequest(value)
-      : value && isStockConfirmationRequest(value)
-        ? checkedStockConfirmationRequest(value)
-        : value && isStockOperationRequest(value)
-          ? checkedStockOperationRequest(value)
-          : checkedStockReservationRequest(value as StockReservationRequest);
+  value && isPagedStockWriteRequest(value)
+    ? checkedPagedWriteRequest(value)
+    : value && isStockValidationStepRequest(value)
+      ? checkedStockValidationStepRequest(value)
+      : value && isStockValidationRequest(value)
+        ? checkedStockValidationRequest(value)
+        : value && isStockConfirmationRequest(value)
+          ? checkedStockConfirmationRequest(value)
+          : value && isStockOperationRequest(value)
+            ? checkedStockOperationRequest(value)
+            : checkedStockReservationRequest(value as StockReservationRequest);
 
 const DATABASE = 'qorlia.billing.stock-reservation-recovery';
 const STORE = 'pending';
@@ -124,44 +157,55 @@ async function recovery(
           if (value !== undefined) {
             if (
               ((value?.schema === 3 && value.kind === 'validation') ||
-                (value?.schema === 4 && value.kind === 'validation_step')) &&
+                (value?.schema === 4 && value.kind === 'validation_step') ||
+                value?.schema === 5) &&
               value.database !== BILLING_DATABASE
             )
               throw new Error(
-                'This validation request belongs to another Billing database. Return to its original environment before starting another stock action.',
+                'This stock request belongs to another Billing database. Return to its original environment before starting another stock action.',
               );
             if (
               !value ||
               typeof value !== 'object' ||
               Array.isArray(value) ||
               value.uid !== uid ||
-              (value.schema === 4
-                ? value.kind !== 'validation_step' ||
-                  value.database !== BILLING_DATABASE ||
+              (value.schema !== 5 &&
+                value.request &&
+                isPagedStockWriteRequest(value.request)) ||
+              (value.schema === 5
+                ? value.database !== BILLING_DATABASE ||
                   Object.keys(value).sort().join(',') !==
                     'database,kind,request,schema,uid' ||
                   !value.request ||
-                  !isStockValidationStepRequest(value.request)
-                : value.schema === 3
-                  ? value.kind !== 'validation' ||
+                  !isPagedStockWriteRequest(value.request) ||
+                  value.kind !== pagedKind(value.request)
+                : value.schema === 4
+                  ? value.kind !== 'validation_step' ||
                     value.database !== BILLING_DATABASE ||
                     Object.keys(value).sort().join(',') !==
                       'database,kind,request,schema,uid' ||
                     !value.request ||
-                    !isStockValidationRequest(value.request) ||
-                    isStockValidationStepRequest(value.request)
-                  : value.schema === 2
-                    ? value.kind !== 'confirmation' ||
+                    !isStockValidationStepRequest(value.request)
+                  : value.schema === 3
+                    ? value.kind !== 'validation' ||
+                      value.database !== BILLING_DATABASE ||
                       Object.keys(value).sort().join(',') !==
-                        'kind,request,schema,uid' ||
+                        'database,kind,request,schema,uid' ||
                       !value.request ||
-                      !isStockConfirmationRequest(value.request)
-                    : value.schema !== 1 ||
-                      Object.keys(value).sort().join(',') !==
-                        'request,schema,uid' ||
-                      !value.request ||
-                      isStockConfirmationRequest(value.request) ||
-                      isStockValidationRequest(value.request))
+                      !isStockValidationRequest(value.request) ||
+                      isStockValidationStepRequest(value.request)
+                    : value.schema === 2
+                      ? value.kind !== 'confirmation' ||
+                        Object.keys(value).sort().join(',') !==
+                          'kind,request,schema,uid' ||
+                        !value.request ||
+                        !isStockConfirmationRequest(value.request)
+                      : value.schema !== 1 ||
+                        Object.keys(value).sort().join(',') !==
+                          'request,schema,uid' ||
+                        !value.request ||
+                        isStockConfirmationRequest(value.request) ||
+                        isStockValidationRequest(value.request))
             )
               throw new Error(
                 'Stored reservation recovery is invalid. Ask your Billing administrator to check the previous request.',
@@ -185,25 +229,38 @@ async function recovery(
             }
             if (operation === 'save') {
               store.put(
-                exact && isStockValidationStepRequest(exact)
+                exact && isPagedStockWriteRequest(exact)
                   ? {
-                      schema: 4,
-                      kind: 'validation_step',
+                      schema: 5,
+                      kind: pagedKind(exact),
                       database: BILLING_DATABASE,
                       uid,
                       request: exact,
                     }
-                  : exact && isStockValidationRequest(exact)
+                  : exact && isStockValidationStepRequest(exact)
                     ? {
-                        schema: 3,
-                        kind: 'validation',
+                        schema: 4,
+                        kind: 'validation_step',
                         database: BILLING_DATABASE,
                         uid,
                         request: exact,
                       }
-                    : exact && isStockConfirmationRequest(exact)
-                      ? { schema: 2, kind: 'confirmation', uid, request: exact }
-                      : { schema: 1, uid, request: exact },
+                    : exact && isStockValidationRequest(exact)
+                      ? {
+                          schema: 3,
+                          kind: 'validation',
+                          database: BILLING_DATABASE,
+                          uid,
+                          request: exact,
+                        }
+                      : exact && isStockConfirmationRequest(exact)
+                        ? {
+                            schema: 2,
+                            kind: 'confirmation',
+                            uid,
+                            request: exact,
+                          }
+                        : { schema: 1, uid, request: exact },
                 uid,
               );
               result = exact;
@@ -226,8 +283,32 @@ async function recovery(
   }
 }
 export const loadStockWriteRecovery = (uid: number) => recovery(uid, 'read');
-export async function loadStockReservationRecovery(uid: number) {
+async function loadLegacyStockWriteRecovery(uid: number) {
   const pending = await loadStockWriteRecovery(uid);
+  if (pending && isPagedStockWriteRequest(pending))
+    throw new Error(
+      'A complete-review stock request is pending. Keep it intact and ask your Billing administrator to resume it. This older stock dialog cannot recover it.',
+    );
+  return pending;
+}
+export async function loadPagedStockWriteRecovery(uid: number) {
+  const pending = await loadStockWriteRecovery(uid);
+  if (pending && !isPagedStockWriteRequest(pending))
+    throw new Error(
+      'An older stock request is pending. Resume its original workflow before a complete-review stock action.',
+    );
+  return pending;
+}
+export const persistPagedStockWriteRecovery = async (
+  uid: number,
+  request: PagedStockWriteRequest,
+) => recovery(uid, 'save', checkedPagedWriteRequest(request));
+export const clearPagedStockWriteRecovery = async (
+  uid: number,
+  request: PagedStockWriteRequest,
+) => recovery(uid, 'clear', checkedPagedWriteRequest(request));
+export async function loadStockReservationRecovery(uid: number) {
+  const pending = await loadLegacyStockWriteRecovery(uid);
   if (pending && isStockValidationRequest(pending))
     throw new Error(
       'A validation request is pending. Resume it from stock transfers before another reservation.',
@@ -243,7 +324,7 @@ export async function loadStockReservationRecovery(uid: number) {
   return pending;
 }
 export async function loadStockOperationRecovery(uid: number) {
-  const pending = await loadStockWriteRecovery(uid);
+  const pending = await loadLegacyStockWriteRecovery(uid);
   if (pending && isStockValidationRequest(pending))
     throw new Error(
       'A validation request is pending. Resume it from stock transfers before editing operations.',
@@ -258,54 +339,68 @@ export async function loadStockOperationRecovery(uid: number) {
     );
   return pending;
 }
-export const persistStockReservationRecovery = (
+export const persistStockReservationRecovery = async (
   uid: number,
   request: StockReservationRequest,
-) => recovery(uid, 'save', request);
-export const clearStockReservationRecovery = (
+) => recovery(uid, 'save', checkedStockReservationRequest(request));
+export const clearStockReservationRecovery = async (
   uid: number,
   request: StockReservationRequest,
-) => recovery(uid, 'clear', request);
-export const persistStockOperationRecovery = (
+) => recovery(uid, 'clear', checkedStockReservationRequest(request));
+export const persistStockOperationRecovery = async (
   uid: number,
   request: StockOperationRequest,
-) => recovery(uid, 'save', request);
-export const clearStockOperationRecovery = (
+) => recovery(uid, 'save', checkedStockOperationRequest(request));
+export const clearStockOperationRecovery = async (
   uid: number,
   request: StockOperationRequest,
-) => recovery(uid, 'clear', request);
+) => recovery(uid, 'clear', checkedStockOperationRequest(request));
 export async function loadStockConfirmationRecovery(uid: number) {
-  const pending = await loadStockWriteRecovery(uid);
+  const pending = await loadLegacyStockWriteRecovery(uid);
   if (pending && !isStockConfirmationRequest(pending))
     throw new Error(
       'Another stock request is pending. Resume it from stock transfers before confirming a transfer.',
     );
   return pending;
 }
-export const persistStockConfirmationRecovery = (
+export const persistStockConfirmationRecovery = async (
   uid: number,
   request: StockConfirmationRequest,
-) => recovery(uid, 'save', request);
-export const clearStockConfirmationRecovery = (
+) => recovery(uid, 'save', checkedStockConfirmationRequest(request));
+export const clearStockConfirmationRecovery = async (
   uid: number,
   request: StockConfirmationRequest,
-) => recovery(uid, 'clear', request);
+) => recovery(uid, 'clear', checkedStockConfirmationRequest(request));
 export async function loadStockValidationRecovery(uid: number) {
-  const pending = await loadStockWriteRecovery(uid);
+  const pending = await loadLegacyStockWriteRecovery(uid);
   if (pending && !isStockValidationRequest(pending))
     throw new Error(
       'Another stock request is pending. Resume it from stock transfers before validating a transfer.',
     );
   return pending;
 }
-export const persistStockValidationRecovery = (
+export const persistStockValidationRecovery = async (
   uid: number,
   request: StockValidationRecoveryRequest,
-) => recovery(uid, 'save', request);
-export const clearStockValidationRecovery = (
+) =>
+  recovery(
+    uid,
+    'save',
+    isStockValidationStepRequest(request)
+      ? checkedStockValidationStepRequest(request)
+      : checkedStockValidationRequest(request),
+  );
+export const clearStockValidationRecovery = async (
   uid: number,
   request: StockValidationRecoveryRequest,
-) => recovery(uid, 'clear', request);
+) =>
+  recovery(
+    uid,
+    'clear',
+    isStockValidationStepRequest(request)
+      ? checkedStockValidationStepRequest(request)
+      : checkedStockValidationRequest(request),
+  );
 export const replaceStockValidationRecovery = (
   uid: number,
   previous: StockValidationStepRequest,

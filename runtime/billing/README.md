@@ -3,6 +3,13 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Client integration source: [complete-review recovery storage](STOCK_RECOVERY.md)
+preserves exact terminal requests for all three paged stock protocols in the
+existing per-account slot, with database-bound schema 5. Older requests are not
+converted or overwritten; old dialogs reject new proof kinds. Home passes 903
+tests, including 27 storage cases. This uses a storage test double, not a migrated
+dialog or actual browser durability/concurrency acceptance.
+
 Candidate 57: [complete operation inventory](STOCK_OPERATION_PAGING.md#candidate-57-complete-operation-inventory-16-october-2026).
 New operation load/onchange/readiness/review/save use complete checked inventory.
 A seventh named API/client handles native choice search with the matching form

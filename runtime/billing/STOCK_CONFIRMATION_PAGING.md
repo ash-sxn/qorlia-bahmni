@@ -16,6 +16,10 @@ the old modal with the compact response or represent it as a complete stock grap
 The owner-closed review gate stays closed; it must not be bypassed to test this
 candidate. Source route coverage is not a deployed gateway or tester upgrade.
 
+Later client integration source adds [completed-request storage](STOCK_RECOVERY.md)
+in the existing per-account slot. Its schema 5 is distinct from earlier pending
+requests. The modal/routing consumer and actual browser durability checks remain.
+
 ## Full-addon mandatory-analytics regression, 16 October 2026
 
 The final native full-addon run passes **765 cases**, with zero failures, errors
@@ -64,11 +68,11 @@ and nonempty reference traversal against the private installed-50 synthetic copy
 with unchanged source-52 models. There is no mock business response or published
 port. Only the diagnostic URL-prefix/cookie transport is adapted.
 
-| Synthetic case | Visible effect rows reviewed | Accepted native result |
-| --- | --- | --- |
-| 501 moves | 505 records over six pages | 500 merge rows removed, one move retaining demand 501, no reservation or delivery |
-| 2,001 detailed operations | 2,005 records over 21 pages | All 2,001 operations retained, confirmation only, no reservation or delivery |
-| Three batches | 13 records in one review page, then three one-row reference pages | Seven units reserved across three new operations, ten physical units retained and zero delivered |
+| Synthetic case            | Visible effect rows reviewed                                      | Accepted native result                                                                           |
+| ------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 501 moves                 | 505 records over six pages                                        | 500 merge rows removed, one move retaining demand 501, no reservation or delivery                |
+| 2,001 detailed operations | 2,005 records over 21 pages                                       | All 2,001 operations retained, confirmation only, no reservation or delivery                     |
+| Three batches             | 13 records in one review page, then three one-row reference pages | Seven units reserved across three new operations, ten physical units retained and zero delivered |
 
 Skipped-page and premature-save proofs reject. The 2,001-operation and three-batch
 cases pass exact status/save replay, request/actor/company-bound receipt hashing,

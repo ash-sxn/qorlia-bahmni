@@ -1,5 +1,16 @@
 # Qorlia React frontend backend readiness
 
+## Complete-review client recovery storage (16 October 2026)
+
+The existing per-account slot accepts all three complete paged stock request
+kinds under database-bound schema 5, preserving terminal proofs, exact requests,
+older schemas and strict commit/abort behavior. Legacy dialog loaders reject new
+kinds rather than dispatching them through old APIs. Home passes 903 tests,
+including 27 storage cases. Native code and module version are unchanged.
+This is storage-source integration with an IndexedDB double, not migrated React
+dialogs/routing, real browser durability/concurrency or a runtime upgrade. Read
+[the consumer contract and acceptance gates](../runtime/billing/STOCK_RECOVERY.md).
+
 ## Complete operation inventory candidate 57 (16 October 2026)
 
 The new operation form path now uses complete checked inventory for load,

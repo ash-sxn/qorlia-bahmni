@@ -1,5 +1,19 @@
 # Bahmni workflow parity ledger
 
+## 16 October complete-review recovery storage source
+
+- Schema 5 stores exact completed paged confirmation/reservation/operation
+  requests in the existing per-account stock slot, bound to the build's Billing
+  database. Earlier envelopes and validation-step replacement stay distinct.
+- Strict save/clear commit, abort preservation, same-slot exclusion, wrong-kind/
+  database/account/schema failures and legacy-reader/writer rejection are checked.
+  Home passes 903 tests/80 suites, including 27 storage cases and eight new cases.
+  Types, scoped lint/format and diff checks pass. Test-only type/lint corrections
+  are not relabelled as product fixes.
+- Tests use the existing IndexedDB double. React dialogs/routing and real
+  storage/multi-tab/expiry/browser acceptance remain. No native change, build,
+  review reopening or deployment. Read [the recovery contract](../runtime/billing/STOCK_RECOVERY.md).
+
 ## 16 October complete operation inventory candidate 57
 
 - New operation load/onchange/readiness/review/save use the complete checked

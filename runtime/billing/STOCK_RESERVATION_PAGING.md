@@ -117,8 +117,9 @@ of quantities already entered; a client must not manually zero rows instead.
   load, review, save, status and references. This replay mocks transport; it is
   not HTTP, gateway or browser acceptance.
 
-The React reservation dialog and durable recovery slot still use the older
-protocol and are not migrated by adding these clients. The operator review gate
+The React reservation dialog and recovery consumers still use the older
+protocol. The shared [storage slot supports completed requests](STOCK_RECOVERY.md),
+but adding storage/SDK support does not migrate a consumer. The operator review gate
 stays closed. The native HTTP evidence below does not claim a frontend build,
 browser test, protected-gateway acceptance, tester/public deployment or source-55
 installed upgrade.

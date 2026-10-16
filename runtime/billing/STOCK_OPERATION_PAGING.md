@@ -26,7 +26,9 @@ its source version changes, not be silently converted to another request.
 The prefix/offset choice-search limit remains. Complete inventory validation is
 not a new unbounded catalog search or proof of bounded total ORM/effects memory,
 preview CPU or acceptable hospital-scale locking. The React dialog, choice
-component and durable recovery slot have not yet migrated to this protocol.
+component and recovery consumers have not yet migrated. The shared
+[storage slot now accepts the completed protocol](STOCK_RECOVERY.md); that is not
+consumer or browser acceptance.
 
 Current source checks: Home passes 895 tests/80 suites, including nine new client
 cases; library and focused actual-source/test type checks, scoped lint/format,
@@ -176,8 +178,9 @@ receipt instead of creating, editing or removing an operation again.
   authorization: the apply path rechecks native rules itself.
 - Legacy forms remain inspection-only above 500 moves/2,000 operations. New
   clients must use the complete protocol, not enable an old save button.
-- The React operation dialog and durable browser recovery slot have not yet
-  migrated to this protocol. Component/client tests do not prove browser parity.
+- The React operation dialog and recovery consumers have not yet migrated.
+  [Storage supports the completed request](STOCK_RECOVERY.md), but component/client
+  tests do not prove browser parity.
 - The existing 2,000-quant inventory guard and choice prefix/offset search limit
   remain. No inventory or catalog cap is silently relaxed.
 - Each page still computes the full native preview, and saves use coarse ordered
