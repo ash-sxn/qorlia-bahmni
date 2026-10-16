@@ -12,8 +12,15 @@
   all eight new inventory cases, with 117-table preservation, mandatory
   analytics/SMS and all 88 Python file hashes matched. AST/diff checks, 36 client
   cases, three gateway unit cases and the 33-document/559-link check pass.
-- No candidate-56 actual HTTP, browser, runtime upgrade or scale acceptance is
-  claimed. Operation editing and React/recovery migration remain. See
+- Separate actual client/native HTTP checks pass four logical accepted actions
+  over ten effect pages against 2,001 quants. Stale-tail rejection, exact
+  duplicate/lost-response recovery, unavailable deleted references, logout/
+  re-authentication and cross-author denial pass. Post-close SQL verifies four
+  exact receipt digests, all original IDs, restored physical/reserved/done/
+  delivered totals, 116 accounted guard tables, 31-table per-row checks and
+  source hashes, without late writes. The fixture edit is explicitly restored.
+- Actual protected gateway/browser, runtime upgrade and scale acceptance are
+  not claimed. Operation editing and React/recovery migration remain. See
   [the inventory-scope contract](../runtime/billing/STOCK_INVENTORY_SCOPE.md).
 
 ## 16 October paged reservation backend/client candidate 55

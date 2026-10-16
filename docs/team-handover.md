@@ -49,8 +49,10 @@ Candidate 56 adds an [internal complete inventory reader](../runtime/billing/STO
 for the new reservation protocol. Its corrected scoped run passes all 38 native
 reservation cases, including eight new cases, with 117-table preservation and
 88 matching Python source hashes. It is not ready for tester use and does not
-migrate the operation editor or expose a stock browser. Actual source-56 HTTP,
-gateway/browser and scale acceptance remain separate.
+migrate the operation editor or expose a stock browser. Its separate actual
+native HTTP check passes all four preparation actions on 2,001 quants with
+independent post-close SQL, restored stock totals and exact-request recovery.
+Actual gateway/browser and scale acceptance remain separate.
 Do not reopen expired access or change your assigned task base to try these APIs.
 
 ## 2. Which version should I open?

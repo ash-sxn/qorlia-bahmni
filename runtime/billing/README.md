@@ -9,8 +9,12 @@ The new reservation protocol scans/checks every relevant quant in batches of
 Legacy callers retain their shape/guard. The corrected scoped run passes all 38
 native reservation cases, including eight new inventory cases, with 117-table
 preservation and all 88 Python hashes matched. Initial fixture failures are
-retained, not counted as passes. Operation-form inventory,
-React/recovery migration, actual HTTP/browser and scale remain separate work.
+retained, not counted as passes. A separate
+[actual native HTTP checkpoint](STOCK_INVENTORY_SCOPE.md#native-http-checkpoint-16-october-2026)
+passes all four preparation actions over ten effect pages on 2,001 quants, with
+stale-tail rejection, exact recovery/replay and independent post-close SQL/source
+checks. Operation-form inventory, React/recovery migration, actual gateway/browser
+and scale remain separate work.
 Review remains closed, with no installed upgrade or deployment.
 
 Candidate 55: [complete paged reservation actions](STOCK_RESERVATION_PAGING.md).

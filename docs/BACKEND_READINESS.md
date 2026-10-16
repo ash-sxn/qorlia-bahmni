@@ -9,8 +9,13 @@ visibility/field access, stale scope, source boundaries, large inventory saves
 and prior accepted-request recovery. After a retained test-fixture correction,
 all 38 native reservation cases pass with zero failures/errors/skips, 117-table
 preservation, mandatory analytics/SMS and all 88 Python hashes matched. AST/diff,
-the unchanged 36 client cases and three gateway unit cases pass. This is not a new
-inventory browser, migrated operation form or UI/runtime release. Read
+the unchanged 36 client cases and three gateway unit cases pass. Separate actual
+client/native HTTP checks pass four logical accepted actions over ten effect
+pages on 2,001 quants, including stale-tail rejection and exact duplicate/lost-
+response/re-authentication/deleted-reference recovery. Independent post-close SQL
+verifies all receipts, source hashes, original identities, restored stock totals
+and no late writes. This is not an inventory browser, migrated operation form,
+actual protected gateway/browser or UI/runtime release. Read
 [the exact scope and remaining gates](../runtime/billing/STOCK_INVENTORY_SCOPE.md).
 
 ## Paged reservation backend/client candidate 55 (16 October 2026)
