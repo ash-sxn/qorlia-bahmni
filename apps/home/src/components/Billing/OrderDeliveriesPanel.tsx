@@ -12,6 +12,7 @@ import {
   StockOperationSelection,
 } from './billingService';
 import { OrderTransferDetails } from './OrderTransferDetails';
+import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
 import { StockConfirmationModal } from './StockConfirmationModal';
 import { StockOperationEditor } from './StockOperationEditor';
 import { StockReservationModal } from './StockReservationModal';
@@ -19,6 +20,7 @@ import {
   isStockOperationRequest,
   isStockConfirmationRequest,
   isStockValidationRequest,
+  isPagedStockWriteRequest,
   loadStockWriteRecovery,
 } from './stockReservationRecovery';
 import {
@@ -63,6 +65,7 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
   const [confirmation, setConfirmation] = useState<{
     orderId: number;
     transferId: number;
+    paged: boolean;
   } | null>(null);
   const [validation, setValidation] = useState<{
     orderId: number;
@@ -169,6 +172,7 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
                 setConfirmation({
                   orderId: pending.order_id,
                   transferId: pending.transfer_id,
+                  paged: isPagedStockWriteRequest(pending),
                 });
               } else if (isStockOperationRequest(pending))
                 setOperation({
@@ -330,7 +334,7 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
               }}
               confirmation={(event) => {
                 confirmationOpener.current = event.currentTarget;
-                setConfirmation({ orderId, transferId });
+                setConfirmation({ orderId, transferId, paged: true });
               }}
               reservation={() => setReservation({ orderId, transferId })}
               operation={setOperation}
@@ -350,7 +354,16 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
           reconnect={reconnect}
         />
       ) : null}
-      {confirmation ? (
+      {confirmation?.paged ? (
+        <PagedStockConfirmationModal
+          uid={uid}
+          orderId={confirmation.orderId}
+          transferId={confirmation.transferId}
+          close={reloadTransfers}
+          reconnect={reconnect}
+          returnFocus={restoreConfirmationFocus}
+        />
+      ) : confirmation ? (
         <StockConfirmationModal
           uid={uid}
           orderId={confirmation.orderId}

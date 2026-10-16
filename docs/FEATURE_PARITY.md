@@ -1,5 +1,23 @@
 # Bahmni workflow parity ledger
 
+## 16 October complete confirmation consumer source
+
+- New confirmations route to complete paged load/review/save/status/references
+  and schema-5 storage; old pending confirmations keep the legacy dialog. Only
+  confirmation's legacy transfer-size UI lock is removed. Native readiness,
+  permissions, snapshot/pending locks and other action caps remain.
+- Home passes 920 tests/81 suites. Five focused SDK/consumer/legacy/transfer
+  suites pass 126 cases, with 16 new-dialog cases and one new routing case.
+  Tests cover page completion, bounded rendering, pins, focus, exact durable
+  request dispatch, unknown outcomes, rejection/expiry and identity changes.
+  Types, scoped lint/format/diff and three gateway unit cases pass. Test-only
+  selectors/imports were corrected, not native guards.
+- This is source/JSDOM evidence with SDK/storage doubles. Actual gateway/browser/
+  IndexedDB, layout/keyboard/multi-tab and nonce-safe rejected-request
+  cancellation remain release gates. Other consumers and whole-product parity
+  remain. No build, gate reopening, upgrade or deployment. Read
+  [the source flow](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#react-confirmation-consumer-source-16-october-2026).
+
 ## 16 October complete-review recovery storage source
 
 - Schema 5 stores exact completed paged confirmation/reservation/operation

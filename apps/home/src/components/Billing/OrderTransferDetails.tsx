@@ -183,7 +183,7 @@ function TransferDetails({
       </p>
     );
   const transfer = movePage.transfer;
-  // shortcut: Legacy write dialogs stay capped until paged review/recovery is connected.
+  // shortcut: Validation/preparation/editing stay capped until their paged consumers are connected.
   const legacyLimit =
     transfer.move_count > 500 || transfer.operation_count > 2000;
   const locked = stockLocked || legacyLimit || fetching;
@@ -195,7 +195,11 @@ function TransferDetails({
       <Button kind="tertiary" disabled={locked} onClick={validation}>
         Review transfer validation
       </Button>
-      <Button kind="tertiary" disabled={locked} onClick={confirmation}>
+      <Button
+        kind="tertiary"
+        disabled={stockLocked || fetching}
+        onClick={confirmation}
+      >
         Review transfer confirmation
       </Button>
       <Button kind="tertiary" disabled={locked} onClick={reservation}>
@@ -203,8 +207,9 @@ function TransferDetails({
       </Button>
       {legacyLimit ? (
         <p>
-          All details can be read in pages. Stock actions for this larger
-          transfer are not connected to this review screen yet.
+          All details can be read in pages. Confirmation uses complete paged
+          review. Validation, preparation and operation editing for this larger
+          transfer are not connected to this screen yet.
         </p>
       ) : null}
       <p>

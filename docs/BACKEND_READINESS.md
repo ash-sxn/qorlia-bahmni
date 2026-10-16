@@ -1,5 +1,18 @@
 # Qorlia React frontend backend readiness
 
+## Complete confirmation consumer source (16 October 2026)
+
+New confirmation requests use compact native state, sequential effect pages,
+terminal-proof save, exact status/retry and pinned references through the five
+existing typed APIs and schema-5 recovery. Older pending requests retain the old
+dialog. Only confirmation's legacy UI size lock is removed; native permissions,
+snapshot checks and shared pending locks remain. Home passes 920 tests/81 suites;
+five focused suites pass 126 cases, types/lint/format/diff and three gateway unit
+cases pass. These are SDK/storage-double component tests, not actual browser/
+gateway/IndexedDB acceptance. No build, review reopening or deployment. Rejected
+request cancellation and other stock consumers remain. Read
+[the exact flow and release gates](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#react-confirmation-consumer-source-16-october-2026).
+
 ## Complete-review client recovery storage (16 October 2026)
 
 The existing per-account slot accepts all three complete paged stock request

@@ -3,6 +3,14 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest consumer source: [complete confirmation review](STOCK_CONFIRMATION_PAGING.md#react-confirmation-consumer-source-16-october-2026)
+is connected from transfer details to the five typed paged APIs and schema-5
+recovery. Legacy pending confirmations keep their original route. Effect and
+reference tables remain bounded; all pages/proof are required before save/finish.
+Home passes 920 tests/81 suites. This is JSDOM/source evidence, not browser/native
+gateway acceptance, a built UI or deployment. Rejected requests stay pending;
+nonce-safe cancellation remains a release gate.
+
 Client integration source: [complete-review recovery storage](STOCK_RECOVERY.md)
 preserves exact terminal requests for all three paged stock protocols in the
 existing per-account slot, with database-bound schema 5. Older requests are not

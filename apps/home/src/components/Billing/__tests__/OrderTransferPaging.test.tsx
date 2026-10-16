@@ -301,17 +301,17 @@ describe('Native transfer summary and detail paging consumers', () => {
       ...Array.from({ length: 40 }, (_, index) => 40050 + index * 50),
     ]);
     expect(
-      screen.getByText(
-        /Stock actions for this larger transfer are not connected/,
-      ),
+      screen.getByText(/Confirmation uses complete paged review/),
     ).toBeInTheDocument();
     for (const name of [
       'Review transfer validation',
-      'Review transfer confirmation',
       'Review stock preparation',
       'Edit operation #42001',
     ])
       expect(screen.getByRole('button', { name })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Review transfer confirmation' }),
+    ).toBeEnabled();
     expect(mockOperation).not.toHaveBeenCalled();
   }, 30000);
 

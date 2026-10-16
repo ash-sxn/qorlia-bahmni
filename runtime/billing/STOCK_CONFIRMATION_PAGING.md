@@ -2,6 +2,68 @@
 
 [Billing guide](README.md) · [Existing confirmation](STOCK_CONFIRMATION.md) · [Detail reads](STOCK_TRANSFER_DETAILS.md)
 
+## React confirmation consumer source, 16 October 2026
+
+New confirmations from the order-transfer panel now open
+[the complete-review dialog](../../apps/home/src/components/Billing/PagedStockConfirmationModal.tsx).
+Its compact load, sequential effect review, exact save/status and pinned saved
+reference pages call the five existing typed paged APIs. The original
+[legacy dialog](../../apps/home/src/components/Billing/StockConfirmationModal.tsx)
+remains for older pending confirmation requests; they are never converted to a
+new protocol or nonce. Completed paged recovery routes to the new dialog even
+when the original order/transfer is not on the current list page.
+
+Confirmation alone no longer inherits the legacy 500-move/2,000-operation UI
+lock. Native readiness, role/state restrictions, transfer-page coherence and the
+shared pending-request lock remain. Validation, preparation and operation-editor
+limits are unchanged until their consumers are migrated. The current transfer
+details remain available in the existing paged panel behind the modal; the new
+dialog shows compact saved transfer identity, route and record counts, not a
+truncated table represented as the full transfer.
+
+Effect pages render at most 50 records at once. Only cursor/proof metadata is
+retained for backward navigation, not the accumulated effect graph. A changed
+review version, total or outcome rejects the continuation and hides the previous
+effects. Save remains unavailable until the terminal completion proof is reached.
+Private audit counts apply to the complete review, not each page's row count.
+
+The exact completed request is committed through
+[schema-5 storage](STOCK_RECOVERY.md) before HTTP. Unknown responses, expiry and
+rejection retain it; no write is automatically retried and no new nonce silently
+replaces it. The dialog can explicitly check status or retry the identical
+request. Accepted references are paged separately, with their own pinned version,
+escaped labels and hidden-reference privacy. Finish requires the reference pages
+to be read (or a zero reference count), a fresh accepted status and exact clear,
+then authoritative transfer/recovery refresh. Failed reads or clearing keep the
+recovery state. Account/order/transfer changes remount local state and discard
+late display results; an unmount before storage commit does not start HTTP.
+
+Verification: Home passes 920 tests/81 suites. The five focused consumer/legacy/
+SDK/transfer suites pass 126 cases, including 16 new-dialog cases and one new
+paged routing case. Checks cover 101 effects/references, bounded rendering,
+backward pins/focus, premature-save blocking, durable dispatch order, double-click,
+lost-response/remount recovery, rejected retry retention, stale pages, expiry,
+unavailable storage, failed finish/clear, native readonly and identity changes.
+Initial selector failures were corrected for Carbon's accessible danger label
+and appended reference IDs. Test fixture helpers were extracted unchanged for
+reuse by SDK/component tests. Library and focused actual-source/test types,
+scoped lint/format/diff and all three gateway unit cases pass. The React checklist
+was applied to identity keys, async results, stable references and focus, using
+the existing design-system controls without new dependencies.
+
+These are source/JSDOM tests with SDK/storage doubles, not a real native browser
+save or storage durability test. Earlier native JSON/HTTP evidence retains its
+own source/runtime scope. No frontend build/server, visual review, expired-gate
+reopening, persistent addon upgrade or tester/public/production deployment.
+
+Remaining release gates include actual protected-gateway/browser/IndexedDB,
+keyboard/narrow-layout and multi-tab fault acceptance. Rejected unaccepted
+requests currently remain pending for operator resolution: a nonce-safe native
+cancellation/reset contract is needed before general release. An unaccepted
+status is not cancellation, and manually clearing storage is not that contract.
+Operation/preparation consumers, large validation/return flows, realistic backend
+performance and broader Billing/whole-product parity remain unfinished.
+
 ## Candidate 52, 16 October 2026
 
 This is a **native backend candidate**, not a released UI or a deployed tester
@@ -11,7 +73,8 @@ contracts and limits. Other stock actions do not gain large-transfer support fro
 this change.
 
 The source now has a typed client and five named protected-gateway routes, with
-the scoped native HTTP checks below. There is no React consumer yet. Do not call
+the scoped native HTTP checks below. At this backend checkpoint there was no
+React consumer. The later source integration is recorded above. Do not call
 the old modal with the compact response or represent it as a complete stock graph.
 The owner-closed review gate stays closed; it must not be bypassed to test this
 candidate. Source route coverage is not a deployed gateway or tester upgrade.

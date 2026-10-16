@@ -28,6 +28,15 @@ jest.mock('../stockReservationRecovery', () => ({
 }));
 const mockEditor = jest.fn();
 const mockConfirmation = jest.fn();
+const mockPagedConfirmation = jest.fn();
+jest.mock('../PagedStockConfirmationModal', () => ({
+  PagedStockConfirmationModal: (props: { close: () => void }) => {
+    mockPagedConfirmation(props);
+    return (
+      <button onClick={props.close}>Return from complete confirmation</button>
+    );
+  },
+}));
 const mockValidation = jest.fn();
 jest.mock('../StockValidationModal', () => ({
   StockValidationModal: (props: { close: () => void }) => {
@@ -139,18 +148,20 @@ describe('Order stock transfer review', () => {
         expect(screen.getByRole('button', { name })).toBeDisabled();
     },
   );
-  it('opens the native confirmation review from transfer details and reloads on close', async () => {
+  it('opens complete confirmation review for a new request and reloads on close', async () => {
     show();
     await openTransfer();
     fireEvent.click(
       screen.getByRole('button', { name: 'Review transfer confirmation' }),
     );
-    expect(mockConfirmation.mock.calls.at(-1)?.[0]).toMatchObject({
+    expect(mockPagedConfirmation.mock.calls.at(-1)?.[0]).toMatchObject({
       uid: 3,
       orderId: 9,
       transferId: 11,
     });
-    const returnFocus = mockConfirmation.mock.calls.at(-1)?.[0].returnFocus;
+    expect(mockConfirmation).not.toHaveBeenCalled();
+    const returnFocus =
+      mockPagedConfirmation.mock.calls.at(-1)?.[0].returnFocus;
     const opener = screen.getByRole('button', {
       name: 'Review transfer confirmation',
     });
@@ -162,7 +173,7 @@ describe('Order stock transfer review', () => {
       screen.getByRole('button', { name: 'Back to order details' }),
     ).toHaveFocus();
     fireEvent.click(
-      screen.getByRole('button', { name: 'Return from confirmation' }),
+      screen.getByRole('button', { name: 'Return from complete confirmation' }),
     );
     await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
   });
@@ -186,6 +197,27 @@ describe('Order stock transfer review', () => {
       orderId: 10,
       transferId: 12,
     });
+  });
+  it('routes a completed paged confirmation to its own recovery dialog, even for an off-page order', async () => {
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue({
+      ...confirmationRequest(),
+      order_id: 10,
+      transfer_id: 12,
+      review_complete_token: 'c'.repeat(64),
+    });
+    fixture.rows = [];
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Resume confirmation request',
+      }),
+    );
+    expect(mockPagedConfirmation.mock.calls.at(-1)?.[0]).toMatchObject({
+      uid: 3,
+      orderId: 10,
+      transferId: 12,
+    });
+    expect(mockConfirmation).not.toHaveBeenCalled();
   });
   beforeEach(() => {
     jest.clearAllMocks();

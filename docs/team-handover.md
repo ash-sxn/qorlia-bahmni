@@ -1,5 +1,10 @@
 # New-team handover: Qorlia engineering
 
+Newest API-consumer source: [complete confirmation review](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#react-confirmation-consumer-source-16-october-2026)
+connects the five paged APIs with exact recovery, while preserving the older
+pending-request dialog. Tests are source/JSDOM evidence, not permission to open
+the expired gate, build/publish the UI or mark the whole module accepted.
+
 Latest client integration source: [stock recovery storage](../runtime/billing/STOCK_RECOVERY.md)
 accepts the three complete-review stock protocols without losing older pending
 requests. This is not a migrated dialog or tester update. Read its exact storage

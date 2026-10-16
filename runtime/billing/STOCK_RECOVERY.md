@@ -78,6 +78,10 @@ receipts. Do not store passwords/session cookies or publish raw recovery proofs.
 
 ## Verification and remaining work
 
+Later source connects [the complete confirmation dialog](STOCK_CONFIRMATION_PAGING.md#react-confirmation-consumer-source-16-october-2026)
+to this storage, with explicit legacy/paged routing and exact completion proof.
+Other dialog consumers and actual browser acceptance remain separate.
+
 The 27 storage unit cases include eight new cases (three are workflow variants).
 They cover exact proof retention, five older envelope kinds, same-slot exclusion,
 database/account/kind/schema failures, legacy API rejection, strict save/clear
@@ -89,7 +93,7 @@ scoped lint/format and diff checks pass. Tests use the existing IndexedDB double
 not a real browser or multi-tab fault test. Earlier native HTTP and JSON replay
 evidence keeps its separate scope.
 
-React dialogs, pending-request routing and effect/reference pagination still
+The remaining operation/preparation dialogs, pending routing and pagination still
 need integration with these exports. No frontend build, browser review, expired
 gate reopening, protected-host upgrade or public/tester/production deployment is
 included. Real IndexedDB durability/concurrency and save/reload/expiry/storage-
