@@ -1,107 +1,134 @@
-# Bahmni Apps Frontend Architecture
+# Qorlia architecture
 
-This document provides a comprehensive overview of the Bahmni Apps Frontend architecture, explaining the project structure, key concepts, and design patterns used throughout the application.
+[README](../README.md) · [Previous: setup](setup-guide.md) · [Next: repository map](project-structure.md)
 
-## Table of Contents
+## Central idea
 
-- [Overview](#overview)
-- [Directory Structure](#directory-structure)
-- [Core Concepts](#core-concepts)
-- [State Management](#state-management)
-- [Component Organization](#component-organization)
-- [Service Layer](#service-layer)
-- [Testing Strategy](#testing-strategy)
-- [Internationalization](#internationalization)
-- [Development Guidelines](#development-guidelines)
+We change how people interact with the hospital system while retaining native clinical and accounting behaviour. One consistent interface does not mean one database, one backend or automatic single sign-on.
 
-## Overview
+```text
+Browser: /bahmni-v2/
+  |
+  +-- distro: startup, branding, login and top-level routes
+  |     +-- apps: Home/Billing, Clinical, Registration, Appointments,
+  |     |        Patient Documents, Admin, Reports
+  |     +-- shared design-system, widgets and services
+  |
+  +-- same-origin development or protected-review gateway
+        +-- /openmrs/ws/rest/v1/... -> native OpenMRS/Bahmni REST
+        +-- /openmrs/ws/fhir2/R4/... -> FHIR resources/bundles
+        +-- /bahmni_config/... -> installation configuration
+        +-- /openmrs/qorlia-billing-api/... -> scoped Odoo JSON-RPC
+        |      +-- Qorlia addon -> native models -> ERP database
+        +-- configured Reports/documents routes -> native adapters
 
-The Bahmni Apps Frontend is a React TypeScript monorepo application built to provide a modern, responsive user interface for Bahmni's applications (Clinical, Registration, and extensible custom apps). The application follows a component-based architecture with clear separation of concerns between UI components, business logic, and data access.
+Separate OpenELIS/PACS/analytics/outreach need their own integration.
+```
 
-### Key Design Patterns
+This is a responsibility diagram, not an exact deployment topology. Clinical and ERP databases remain separate. Synchronization needs explicit implementation and acceptance; a shared navbar does not establish it.
 
-- **Component-Based Architecture**: UI is composed of reusable, composable components
-- **Context API for State Management**: Global state is managed using React Context
-- **Custom Hooks**: Business logic is encapsulated in custom hooks
-- **Service Layer**: API communication is abstracted in service modules
-- **Display Controls**: Clinical data visualization is handled by specialized components
-- **Provider Pattern**: Context providers wrap the application to provide global state
+## Choose the correct change boundary
 
-### Technology Stack
+Before implementation, identify the layer responsible for the behaviour. A browser is a client of the native system, not an alternative authority for hospital records.
 
-- **React**: UI library
-- **TypeScript**: Type-safe JavaScript
-- **Carbon Design System**: UI component library
-- **Webpack**: Module bundler
-- **Jest & Testing Library**: Testing framework
-- **i18next**: Internationalization framework
+| Concern                                                       | Responsible layer                                        | Example and change rule                                                                                  |
+| ------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Screen layout, focus, loading/error state                     | App component plus shared design controls                | Change the page and adjacent tests; use existing tokens, not a second UI kit                             |
+| Label, concept, programme field, location or available action | Translation/installation configuration and its consumers | Check the installed rule before loosening a generic input for every programme                            |
+| Request/response mapping                                      | Existing app or shared service                           | Preserve native identifiers, units, dates and error semantics; inspect all callers                       |
+| Clinical record and privileges                                | Native OpenMRS/Bahmni service                            | This repo does not contain its complete backend; a required server change is a separate coordinated task |
+| Inventory/accounting action                                   | Native Odoo models and the scoped Qorlia addon           | Use native methods, ACLs, company rules and transactions; do not simulate posting in React               |
+| Gateway access and session isolation                          | Development proxy or protected review gateway            | Named endpoints and separate sessions, never a generic arbitrary-model proxy                             |
+| Cross-system synchronization                                  | Explicit integration with both native systems            | Define mapping, retries, duplicate prevention and failure reconciliation before enabling it              |
 
-## Directory Structure
+A displayed patient identifier, an OpenMRS UUID and a numeric ERP customer ID are not interchangeable. A test order in one service does not prove that the other service received it. Document the integration's actual source of truth and matching rules.
 
-You can find the project structure [here](./project-structure.md)
+For a change, write one short sequence: user action, page handler, service function, gateway/native endpoint, authorized native method, saved records, response and reload. For a write also describe rejection, unknown outcome and recovery. Use the [task brief](task-brief-template.md) to keep that sequence reviewable before coding. The [first contribution exercise](first-contribution.md) demonstrates a real read; the Billing example below demonstrates a more demanding write contract.
 
-## Core Concepts
+## Application shell
 
-### Component Organization
+[distro/src/main.tsx](../distro/src/main.tsx) loads validated branding, initializes shared assets and mounts React. [Root app](../distro/src/app/app.tsx) provides top-level routes, shared application context, lazy module loading and a loading boundary.
 
-Components are organized into several categories:
+Each app owns its module routes and UI. Visible workflows do not correspond one-to-one with folders: programmes, beds, inpatient, theatre and orders live inside Clinical; Billing lives inside Home. The development-only design preview uses sample data, not native workflows.
 
-1. **Common Components**: Reusable UI components that are not specific to any particular feature
-2. **Display Controls**: Components for displaying clinical data in a structured format
-3. **Layout Components**: Components that define the overall layout of the application
-4. **Page Components**: Top-level components that are rendered by the router
+## UI and state
 
-### State Management
+- [Design system](../packages/bahmni-design-system/src/): Carbon-based controls, tokens, typography and branding.
+- [Widgets](../packages/bahmni-widgets/src/): healthcare widgets, application/configuration context and hooks.
+- [Services](../packages/bahmni-services/src/): clinical APIs, types, authentication, privileges and domain helpers.
+- [Apps](../apps/): screens, module-specific services, routes, styles, state and adjacent tests.
 
-The application uses React Context API for global state management. Each context is responsible for a specific domain of the application state.
+React state handles local interaction. TanStack Query handles fetched data/cache. Some clinical drafts and encounter decisions use Zustand stores. Context shares application/configuration information. Follow the existing surrounding pattern; do not replace the entire state architecture for one feature.
 
-Each context is implemented with a corresponding provider component that wraps the application and provides the context values to all child components.
+Cached data is not current permission or financial authority. Recheck sensitive writes on the server and reload authoritative data afterward.
 
-Custom hooks are used to access and update the context values, providing a clean API for components to interact with the global state.
+## Clinical flow
 
-## Service Layer
+An Appointments page calls [appointmentService](../packages/bahmni-services/src/appointmentService/appointmentService.ts). [Endpoint constants](../packages/bahmni-services/src/appointmentService/constants.ts) distinguish native REST saves/searches/status changes from FHIR reads. Those payloads are not interchangeable.
 
-The service layer abstracts API communication and other external services. Each service module is responsible for a specific domain of the application.
+The [HTTP client](../packages/bahmni-services/src/api/client.ts) handles response/error conventions. Native OpenMRS/Bahmni validates access and data. The page displays results and reloads saved state.
 
-The service layer follows a consistent pattern:
+Consultation is more complex. [encounterBundleService](../apps/clinical/src/services/encounterBundleService.ts) assembles native resources. Patient, visit, encounter and practitioner are different identities. [Encounter session matching](../packages/bahmni-services/src/encounterSessionService/index.ts) must not attach a consultation to another user's encounter. Coordinate changes with its owner.
 
-1. Each service exports functions that handle specific API requests
-2. Services use the base `api.ts` module for making HTTP requests
-3. Services handle error cases and data transformation
+## Billing flow
 
-## Testing Strategy
+[Billing service](../apps/home/src/components/Billing/billingService.ts) uses Odoo JSON-RPC through a separate same-origin gateway prefix. [The Python addon](../runtime/billing/qorlia_billing_ui/models/) extends native Odoo models, not a second accounting ledger.
 
-The application follows a comprehensive testing strategy:
+A reviewed stock operation follows:
 
-1. **Unit Tests**: Test individual components and functions in isolation
-2. **Integration Tests**: Test the interaction between components
-3. **Snapshot Tests**: Ensure UI components render consistently
+1. Load a saved order, transfer, move and optional operation.
+2. Replay ordered field edits through native onchange logic.
+3. Preview native effects in a rolled-back savepoint.
+4. Show quantities in their own units and native batch/location/package/pricing metadata.
+5. Commit the exact reviewed request to browser recovery storage before HTTP.
+6. Recheck permissions, company, identities, version and effects while locking relevant native records.
+7. Apply once and record a protected author/company-bound receipt.
+8. Recover an uncertain response by checking status or retrying the identical request. Reload native state.
 
-Tests are organized alongside the code they test, with test files in `__tests__` directories.
+Read [editor](../apps/home/src/components/Billing/StockOperationEditor.tsx), [recovery storage](../apps/home/src/components/Billing/stockReservationRecovery.ts), [native form](../runtime/billing/qorlia_billing_ui/models/stock_operation_form.py) and [native action](../runtime/billing/qorlia_billing_ui/models/stock_operation_edit.py). Recording preparation is not validating delivery. Validation/wizards/backorders/returns remain separate unfinished workflows.
 
-## Internationalization
+The next [delivery-validation contract](../runtime/billing/STOCK_VALIDATION.md) has native load, ordered wizard replay inside rollback preview, signed terminal review and atomic save/status recovery. It includes stock valuation/accounting/analytics effects. Immediate/backorder/expiry choices follow the native returned action. Financial record visibility is preserved, and external notification dispatch is blocked during review and save. Adapter 47's TypeScript service and gateway have separate-copy actual HTTP evidence. Its React wizard and shared recovery controls now have component tests, but actual browser save/reload, visual review and publication remain pending. This is not a released delivery control.
 
-The application uses i18next for internationalization. Translation files are stored in the `public/locales` directory, with one file per language.
+Invoices, payments, journals and banks have different contracts and native rules. Do not generalize stock logic into financial posting.
 
-The `i18n.ts` file configures i18next and loads the translation files. The `translationService.ts` provides utility functions for working with translations.
+The next [stock-return integration](../runtime/billing/STOCK_RETURNS.md) uses the native reverse-transfer form and creation action. Creating a linked return is not receiving stock or issuing a refund. Candidate source 49 adds signed create/status, five named gateway routes and typed client contracts. Distinct action/author/company-bound receipts share the existing protected stock metadata field, without sharing validation continuations. Execution-assigned new return dates are separate from existing schedules. Durable browser recovery and the interactive return control are not implemented yet. The created return must subsequently use native operation preparation and validation, with separate acceptance and recovery.
 
-## Development Guidelines
+The subsequent [native persistence audit and step contract](../runtime/billing/STOCK_VALIDATION.md#native-intermediate-persistence-audit-and-adapter-48-step-contract) confirms preparation can persist between prompts. Adapter 48 adds individually reviewed native RPC steps with private server-held continuations and one-time consumption. A consumed/expired prompt does not erase its receipt. React now follows those steps and atomically replaces only the exact accepted recovery request before sending its continuation. Old atomic pending requests retain their original API. The [receipt browser checkpoint](../runtime/billing/STOCK_VALIDATION.md#react-per-step-migration-and-receipt-browser-checkpoint-15-october-2026) verifies isolated save/reopen/close, not all wizard/failure cases or protected publication. Replaying an already committed decision sequence is not an acceptable substitute.
 
-### Code Organization
+The later [expiry and response-loss browser checkpoint](../runtime/billing/STOCK_VALIDATION.md#browser-expiry-decline-and-lost-response-checkpoint-15-october-2026) verifies immediate preparation survives declined expiry, and a truly lost accepted Fetch response survives full reload and explicit status recovery without another save. Independent read-back binds the original request digest, author and companies. Accepted preparation remains distinct from delivery. Its narrow/keyboard prompt check does not accept every screen or authorize release.
 
-1. **Component Structure**: Each component should be in its own directory with associated test files
-2. **Custom Hooks**: Business logic should be encapsulated in custom hooks
-3. **Service Layer**: API communication should be abstracted in service modules
-4. **Type Definitions**: All data structures should have TypeScript type definitions
+The subsequent [completed-stock browser checkpoint](../runtime/billing/STOCK_VALIDATION.md#browser-completed-delivery-and-order-refresh-checkpoint-15-october-2026) verifies full/immediate delivery and partial delivery with one backorder on isolated manual-valuation fixtures. Closing a stock workflow also invalidates order-line queries: refreshing transfer state alone left delivered quantities stale in the still-mounted order parent. Receipt completion, automatic journal browser acceptance and matching protected release remain separate gates.
 
-### Testing Requirements
+The later [completed-receipt checkpoint](../runtime/billing/STOCK_VALIDATION.md#browser-completed-receipt-and-native-automatic-valuation-regression-15-october-2026) adds actual incoming receipt completion through the React/gateway path. Native batch prices/expiry and standard-cost valuation remain separate concepts. Stock rises by five without claiming a customer delivery. New native step regressions verify duplicate-safe full receipts and balanced automatic journals with analytics; automatic-journal browser acceptance remains open. The temporary loopback gate has expired without renewal, and no hosted tester upgrade is implied.
 
-1. **Unit Tests**: All components and functions should have unit tests
-2. **Integration Tests**: Key user flows should have integration tests
-3. **Test Coverage**: Aim for high test coverage, especially for critical paths
+## Authentication and configuration
 
-### Error Handling
+Clinical login establishes an OpenMRS session. Billing needs a separate ERP session. The [development proxy](../distro/webpack.config.js) and [review gateway](../scripts/review-host/server.cjs) isolate cookies and verify clinical access before forwarding allowed ERP requests.
 
-1. **Service Layer**: Services should handle API errors and provide meaningful error messages
-2. **UI Components**: Components should handle error states gracefully
-3. **Notifications**: Use the notification system to display errors to users
+For a non-default ERP database, the operator sets the same `BAHMNI_BILLING_DATABASE` in the frontend build and review gateway. The gateway permits only that exact login database, default `odoo`; it does not trust a client's database selection. Native database filters and permissions remain independent safeguards. See [setup](setup-guide.md).
+
+Buttons are not security boundaries. Native ACLs (model permissions), record rules, company scope and field permissions still apply. Do not add arbitrary model/method forwarding, `sudo`, privilege bypasses or frontend credentials.
+
+Installation configuration determines concepts, forms, programme attributes, locations, menus and appointment transitions. Backend modules determine endpoint availability. A mismatched frontend/config/backend can render while saving incorrectly.
+
+[Hospital branding](HOSPITAL_BRANDING.md) changes a limited validated presentation format, not clinical semantics or scripts.
+
+## Reports and separate products
+
+[Reports](../runtime/reports/README.md) involves queues, schedules, downloads and templates. Correct MIME types, complete rows, filenames and native template semantics matter as much as styling.
+
+[Patient Documents](../apps/patient-documents/src/App.tsx) uses [document write services](../packages/bahmni-services/src/documentReferenceService/documentWriteService.ts). Binary uploads and clinical references are not ordinary JSON forms.
+
+OpenELIS, PACS, analytics and outreach are separate systems with their own sessions, licences and workflow acceptance. Reskinning a header does not complete them.
+
+## Limits
+
+This architecture does not establish production readiness, complete offline operation, automatic clinical/ERP synchronization, autonomous clinical AI or regulatory compliance. PWA-related source exists, but offline caching/synchronization and privacy require explicit acceptance. See [readiness](BACKEND_READINESS.md) and [parity](FEATURE_PARITY.md).
+
+## How to read work in progress
+
+Record four versions separately: your source commit, frontend build, backend adapter/modules and installation configuration. Also record the target environment. They do not advance together automatically.
+
+At the 15 October 2026 checkpoint, the protected Billing tester remains on adapter 43. Adapter 45 source adds native confirmation save/status and frontend service contracts to adapter 44's load/rollback preview. Its React review/save/recovery path now has separate-copy native HTTP and local browser evidence, including full-reload recovery. It is not the hosted tester version or full fulfillment/production acceptance. Neither a local manifest nor this document is release evidence. See the [confirmation contract](../runtime/billing/STOCK_CONFIRMATION.md) for the dated evidence and remaining gates.
+
+When learning a feature, ask: does it exist only as source, pass mocked tests, pass native model tests, pass actual HTTP checks, or pass independent browser acceptance? Report the level you observed. New team members should not deploy unaccepted source or change the running tester to make their local work match.

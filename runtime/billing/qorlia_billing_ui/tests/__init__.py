@@ -28,3 +28,16 @@ from . import test_bank_matching_api
 from . import test_bank_checkpoints
 from . import test_bank_checkpoint_editor
 from . import test_bank_checkpoint_attachments
+from . import test_order_deliveries
+from . import test_stock_reservation
+from . import test_stock_operation_form
+from . import test_stock_confirmation_contract
+from . import test_stock_confirmation_preview
+from . import test_stock_validation_contract
+from . import test_stock_validation_preview
+from . import test_stock_validation_save
+from . import test_stock_validation_step
+from . import test_stock_return_contract
+from . import test_stock_return_preview
+from . import test_stock_return_save
+from . import test_stock_request_stop

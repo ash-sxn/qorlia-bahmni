@@ -56,6 +56,8 @@ test('review gate protects UI, clinical API and named Billing actions with isola
   assert.equal(seenClinical, 'JSESSIONID=valid');
   assert.equal(seenBilling, 'session_id=erp-current');
   assert.equal(seenBillingAuth, undefined);
+  assert.equal((await rpc('/web/session/authenticate', allCookies, { db: 'odoo', login: 'synthetic', password: 'synthetic' })).status, 200);
+  assert.equal((await rpc('/web/session/authenticate', allCookies, { db: 'unapproved-copy', login: 'synthetic', password: 'synthetic' })).status, 400);
   assert.match(session.headers.get('set-cookie'), /Path=\/openmrs\/qorlia-billing-api/);
   assert.doesNotMatch(session.headers.get('set-cookie'), /Domain=/);
   assert.equal((await rpc('/web/database/list', allCookies)).status, 404);
@@ -71,7 +73,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
       assert.equal((await rpc(`/web/dataset/call_kw/${model}/${method}`, allCookies, { model, method })).status, 404);
   }
   for (const method of ['load', 'preview', 'save', 'choices'].map((action) => `qorlia_draft_${action}`)
-    .concat(['qorlia_order_workflow_load', 'qorlia_order_workflow_run', 'qorlia_order_report_list', 'qorlia_order_report_download'])
+    .concat(['qorlia_order_workflow_load', 'qorlia_order_workflow_run', 'qorlia_order_report_list', 'qorlia_order_report_download', 'qorlia_order_deliveries', 'qorlia_order_delivery_page', 'qorlia_order_transfer_detail_page'])
     .concat(['load', 'choices', 'preview', 'save', 'status'].map((action) => `qorlia_advance_${action}`))) {
     const path = `/web/dataset/call_kw/sale.order/${method}`;
     const params = { model: 'sale.order', method, args: [], kwargs: {} };
@@ -139,7 +141,57 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models', name), 'utf8')
       .matchAll(/^    def (qorlia_checkpoint_\w+)\(/gm)].map(match => match[1]));
   assert.equal(checkpointMethods.length, 12, 'All native checkpoint read, analysis/export, attachment and reviewed editor APIs must be covered.');
+  const confirmationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_confirmation.py'), 'utf8')
+    .matchAll(/^    def (qorlia_confirmation_\w+)\(/gm)].map(match => match[1]);
+  assert.deepEqual([...confirmationMethods].sort(), ['load', 'preview', 'save', 'status'].map(action => `qorlia_confirmation_${action}`).sort(),
+    'Only the four named native confirmation APIs are covered.');
+  const pagedConfirmationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_confirmation_paged.py'), 'utf8')
+    .matchAll(/^    def (qorlia_confirmation_paged_\w+)\(/gm)].map(match => match[1]);
+  assert.deepEqual([...pagedConfirmationMethods].sort(), ['load', 'review', 'save', 'status', 'references', 'stop'].map(action => `qorlia_confirmation_paged_${action}`).sort(),
+    'Only six named paged confirmation APIs are covered, without raw native actions or client contexts.');
+  const pagedOperationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_operation_paged.py'), 'utf8')
+    .matchAll(/^    def (qorlia_operation_paged_\w+)\(/gm)].map(match => match[1]);
+  assert.deepEqual([...pagedOperationMethods].sort(), ['load', 'onchange', 'choices', 'review', 'save', 'status', 'references', 'stop'].map(action => `qorlia_operation_paged_${action}`).sort(),
+    'Only eight named paged operation APIs are covered, without raw native actions or client contexts.');
+  const pagedReservationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_reservation_paged.py'), 'utf8')
+    .matchAll(/^    def (qorlia_reservation_paged_\w+)\(/gm)].map(match => match[1]);
+  assert.deepEqual([...pagedReservationMethods].sort(), ['load', 'review', 'save', 'status', 'references', 'stop'].map(action => `qorlia_reservation_paged_${action}`).sort(),
+    'Only six named paged reservation APIs are covered, without raw stock actions or client contexts.');
+  const validationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_validation.py'), 'utf8')
+    .matchAll(/^    def (qorlia_validation_\w+)\(/gm)].map(match => match[1]);
+  assert.deepEqual([...validationMethods].sort(), ['load', 'preview', 'save', 'status'].map(action => `qorlia_validation_${action}`).sort(),
+    'Only the four named native validation APIs are covered.');
+  const validationStepMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_validation_step.py'), 'utf8')
+    .matchAll(/^    def (qorlia_validation_step_\w+)\(/gm)].map(match => match[1]);
+  assert.deepEqual([...validationStepMethods].sort(), ['preview', 'save', 'status'].map(action => `qorlia_validation_step_${action}`).sort(),
+    'Only three named native step APIs are covered, without raw wizard methods.');
+  const returnMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_return.py'), 'utf8')
+    .matchAll(/^    def (qorlia_return_\w+)\(/gm)].map(match => match[1]);
+  assert.deepEqual([...returnMethods].sort(), ['load', 'locations', 'preview', 'save', 'status'].map(action => `qorlia_return_${action}`).sort(),
+    'Only five named return APIs are covered, without raw wizard creation or client contexts.');
+  for (const [model, method] of [['stock.picking', 'button_validate'], ['stock.immediate.transfer', 'process'],
+    ['stock.picking.validate.wizard', 'btn_confirm'], ['stock.backorder.confirmation', 'process'], ['expiry.picking.confirmation', 'process'],
+    ['stock.return.picking', 'create_returns'], ['stock.return.picking', 'create'], ['stock.return.picking.line', 'write'],
+    ['stock.picking', 'qorlia_return_unknown'], ['stock.return.picking', '_create_returns'],
+    ['stock.picking', 'qorlia_confirmation_paged_unknown'], ['stock.picking', 'qorlia_confirmation_paged_preview'],
+    ['stock.picking', '_qorlia_confirmation_paged_preview'], ['stock.picking', 'action_confirm'],
+    ['stock.picking', 'qorlia_operation_paged_unknown'], ['stock.picking', 'qorlia_operation_paged_preview'],
+    ['stock.picking', '_qorlia_operation_paged_preview'], ['stock.move.line', 'create'],
+    ['stock.picking', 'qorlia_reservation_paged_unknown'], ['stock.picking', 'qorlia_reservation_paged_preview'],
+    ['stock.picking', '_qorlia_reservation_paged_preview'], ['stock.picking', 'action_assign'],
+    ['stock.picking', 'do_unreserve'], ['stock.picking', 'action_set_quantities_to_reservation'], ['stock.picking', 'action_clear_quantities_to_zero'],
+    ['stock.move.line', 'write'], ['stock.move.line', 'unlink']])
+    assert.equal((await rpc(`/web/dataset/call_kw/${model}/${method}`, allCookies, {model, method, args: [], kwargs: {}})).status, 404);
   for (const [model, method] of [
+    ...['load', 'preview', 'run', 'status'].map(action => ['stock.picking', `qorlia_transfer_${action}`]),
+    ...['load', 'onchange', 'choices', 'preview', 'save', 'status'].map(action => ['stock.picking', `qorlia_operation_${action}`]),
+    ...confirmationMethods.map(method => ['stock.picking', method]),
+    ...pagedConfirmationMethods.map(method => ['stock.picking', method]),
+    ...pagedOperationMethods.map(method => ['stock.picking', method]),
+    ...pagedReservationMethods.map(method => ['stock.picking', method]),
+    ...validationMethods.map(method => ['stock.picking', method]),
+    ...validationStepMethods.map(method => ['stock.picking', method]),
+    ...returnMethods.map(method => ['stock.picking', method]),
     ...bankMethods.map(method => ['account.bank.statement.line', method]),
     ...checkpointMethods.map(method => ['account.bank.statement', method]),
   ]) {
@@ -187,6 +239,56 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     method: 'POST', headers: { Origin: base, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'code=wrong',
   })).status, 401);
   assert.equal((await request('/review-access', { method: 'POST', headers: { Origin: base }, body: 'code=wrong' })).status, 429);
+});
+
+test('configured Billing database remains exact and behind both review and clinical gates', async (t) => {
+  let forwarded = 0;
+  let forwardedDatabase;
+  const backend = http.createServer((req, res) => {
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ authenticated: req.headers.cookie === 'JSESSIONID=valid' }));
+  }).listen(0, '127.0.0.1');
+  const billing = http.createServer(async (req, res) => {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    forwarded++;
+    forwardedDatabase = JSON.parse(body).params.db;
+    assert.equal(req.headers.cookie, undefined);
+    assert.equal(req.headers.authorization, undefined);
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ result: { uid: 2, db: forwardedDatabase } }));
+  }).listen(0, '127.0.0.1');
+  await Promise.all([backend, billing].map((server) => new Promise((resolve) => server.once('listening', resolve))));
+  const originOf = (server) => `http://127.0.0.1:${server.address().port}`;
+  const options = { code: 'temporary-test-code-123456789', signingKey: 'test-signing-key-12345678901234567890',
+    expiresAt: Date.now() + 60000, backend: originOf(backend), billing: originOf(billing),
+    billingDatabase: 'qorlia_synthetic_copy', staticDir: resolve(__dirname, '../../distro/dist') };
+  for (const invalid of ['', ' ', null, 3, 'x'.repeat(64)])
+    assert.throws(() => createReviewApp({ ...options, billingDatabase: invalid }), /configured Billing database/);
+  const server = createReviewApp(options).listen(0, '127.0.0.1');
+  await new Promise((resolve) => server.once('listening', resolve));
+  t.after(() => { for (const instance of [server, backend, billing]) { instance.closeAllConnections(); instance.close(); } });
+  const base = originOf(server);
+  const gate = await fetch(`${base}/review-access`, { method: 'POST', redirect: 'manual',
+    headers: { Origin: base, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'code=temporary-test-code-123456789' });
+  assert.equal(gate.status, 303);
+  const cookie = gate.headers.get('set-cookie').split(';')[0];
+  const login = (db, cookies = `${cookie}; JSESSIONID=valid`, origin = base) => fetch(`${base}/openmrs/qorlia-billing-api/web/session/authenticate`, {
+    method: 'POST', headers: { Origin: origin, Cookie: cookies, Authorization: 'Basic never-forward', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params: { db, login: 'synthetic', password: 'synthetic' }, id: 1 }),
+  });
+  for (const wrong of ['odoo', 'qorlia_synthetic_copy ', null, ['qorlia_synthetic_copy'], { name: 'qorlia_synthetic_copy' }])
+    assert.equal((await login(wrong)).status, 400);
+  assert.equal((await login(options.billingDatabase, cookie)).status, 401);
+  assert.equal((await login(options.billingDatabase, `${cookie}; JSESSIONID=invalid`)).status, 401);
+  assert.equal((await login(options.billingDatabase, 'JSESSIONID=valid')).status, 401);
+  assert.equal((await login(options.billingDatabase, undefined, 'https://evil.example')).status, 403);
+  assert.equal(forwarded, 0);
+  const accepted = await login(options.billingDatabase);
+  assert.equal(accepted.status, 200);
+  assert.equal((await accepted.json()).result.db, options.billingDatabase);
+  assert.equal(forwardedDatabase, options.billingDatabase);
+  assert.equal(forwarded, 1);
 });
 
 test('expired review link fails closed', async (t) => {

@@ -2895,7 +2895,7 @@ export const getBillingSession = () =>
 
 export const signInToBilling = (login: string, password: string) =>
   rpc<BillingSession>('/web/session/authenticate', {
-    db: 'odoo',
+    db: process.env.BAHMNI_BILLING_DATABASE ?? 'odoo',
     login,
     password,
   });
@@ -3125,6 +3125,3391 @@ export const saveBillingDraft = async (
       request_key: requestKey,
     }),
   );
+
+export interface OrderTransfer {
+  id: number;
+  name: string;
+  state: 'draft' | 'waiting' | 'confirmed' | 'assigned' | 'done' | 'cancel';
+  operation_type: Relation;
+  company: Relation;
+  customer: Relation;
+  source: Relation;
+  destination: Relation;
+  scheduled_date: string | false;
+  date_done: string | false;
+  origin: string | false;
+  backorder: Relation;
+  moves: {
+    id: number;
+    state: string;
+    product: Relation;
+    unit: Relation;
+    demand: number;
+    reserved: number;
+    done: number;
+    order_line: Relation;
+  }[];
+  operations: {
+    id: number;
+    move_id: number | false;
+    product: Relation;
+    unit: Relation;
+    reserved: number;
+    done: number;
+    lot: Relation;
+    lot_name: string | false;
+    expiry_date: string | false;
+    source: Relation;
+    destination: Relation;
+    source_package: Relation;
+    destination_package: Relation;
+    owner: Relation;
+  }[];
+}
+export interface OrderDeliveries {
+  order_id: number;
+  order_name: string;
+  order_state: ChargeOrder['state'];
+  version: string;
+  read_only: true;
+  rows: OrderTransfer[];
+}
+
+export type OrderTransferSummary = Omit<
+  OrderTransfer,
+  'moves' | 'operations'
+> & {
+  move_count: number;
+  operation_count: number;
+};
+export interface OrderDeliveryPage extends Omit<OrderDeliveries, 'rows'> {
+  after: number;
+  position: number;
+  total_count: number;
+  next_after: number | false;
+  rows: OrderTransferSummary[];
+}
+export type OrderTransferDetailSection = 'moves' | 'operations';
+export type OrderTransferDetailPage = Omit<OrderDeliveryPage, 'rows'> & {
+  transfer: OrderTransferSummary;
+} & (
+    | { section: 'moves'; rows: OrderTransfer['moves'] }
+    | { section: 'operations'; rows: OrderTransfer['operations'] }
+  );
+
+type TransferReviewRow = Omit<OrderTransfer, 'operations'> & {
+  operations: (Omit<OrderTransfer['operations'][number], 'id'> & {
+    id: number | false;
+  })[];
+};
+const stockId = (value: unknown) =>
+  Number.isSafeInteger(value) && Number(value) > 0;
+const stockCount = (value: unknown) =>
+  Number.isSafeInteger(value) && Number(value) >= 0;
+const stockVersion = (value: unknown) =>
+  typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+const stockText = (value: unknown) =>
+  value === false || typeof value === 'string';
+const stockDate = (value: unknown) =>
+  value === false ||
+  (typeof value === 'string' &&
+    /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value));
+
+function validTransferHeader(row: Omit<OrderTransfer, 'moves' | 'operations'>) {
+  return (
+    !!row &&
+    stockId(row.id) &&
+    typeof row.name === 'string' &&
+    ['draft', 'waiting', 'confirmed', 'assigned', 'done', 'cancel'].includes(
+      row.state,
+    ) &&
+    [
+      row.operation_type,
+      row.company,
+      row.customer,
+      row.source,
+      row.destination,
+      row.backorder,
+    ].every(validRelation) &&
+    row.company !== false &&
+    stockDate(row.scheduled_date) &&
+    stockDate(row.date_done) &&
+    stockText(row.origin)
+  );
+}
+function validTransferSummary(row: OrderTransferSummary) {
+  return (
+    row &&
+    Object.keys(row).sort().join(',') ===
+      'backorder,company,customer,date_done,destination,id,move_count,name,operation_count,operation_type,origin,scheduled_date,source,state' &&
+    validTransferHeader(row) &&
+    stockCount(row.move_count) &&
+    stockCount(row.operation_count)
+  );
+}
+function validTransferMove(move: OrderTransfer['moves'][number]) {
+  return (
+    move &&
+    stockId(move.id) &&
+    typeof move.state === 'string' &&
+    [move.product, move.unit, move.order_line].every(validRelation) &&
+    [move.demand, move.reserved, move.done].every(Number.isFinite)
+  );
+}
+function validTransferOperation(
+  line: TransferReviewRow['operations'][number],
+  preview = false,
+) {
+  return (
+    line &&
+    (stockId(line.id) || (preview && line.id === false)) &&
+    (line.move_id === false || stockId(line.move_id)) &&
+    [
+      line.product,
+      line.unit,
+      line.lot,
+      line.source,
+      line.destination,
+      line.source_package,
+      line.destination_package,
+      line.owner,
+    ].every(validRelation) &&
+    [line.reserved, line.done].every(Number.isFinite) &&
+    stockText(line.lot_name) &&
+    stockDate(line.expiry_date)
+  );
+}
+function validTransfer(row: TransferReviewRow, preview = false) {
+  const unique = (rows: { id: number | false }[]) => {
+    const saved = rows.filter((item) => item.id !== false);
+    return new Set(saved.map((item) => item.id)).size === saved.length;
+  };
+  return (
+    validTransferHeader(row) &&
+    Array.isArray(row.moves) &&
+    row.moves.length <= 500 &&
+    row.moves.every(validTransferMove) &&
+    unique(row.moves) &&
+    Array.isArray(row.operations) &&
+    row.operations.length <= 2000 &&
+    row.operations.every(
+      (line) =>
+        validTransferOperation(line, preview) &&
+        (line.move_id === false ||
+          row.moves.some((move) => move.id === line.move_id)),
+    ) &&
+    unique(row.operations)
+  );
+}
+
+export async function getOrderDeliveries(
+  orderId: number,
+): Promise<OrderDeliveries> {
+  if (!stockId(orderId)) throw new Error('Select a saved charge order.');
+  const data = await draftCall<OrderDeliveries>('qorlia_order_deliveries', {
+    order_id: orderId,
+  });
+  if (
+    data?.order_id !== orderId ||
+    typeof data.order_name !== 'string' ||
+    !['draft', 'sent', 'sale', 'done', 'cancel'].includes(data.order_state) ||
+    typeof data.version !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(data.version) ||
+    data.read_only !== true ||
+    !Array.isArray(data.rows) ||
+    data.rows.length > 100 ||
+    !data.rows.every((row) => validTransfer(row)) ||
+    new Set(data.rows.map((row) => row.id)).size !== data.rows.length ||
+    data.rows.reduce((count, row) => count + row.moves.length, 0) > 500 ||
+    data.rows.reduce((count, row) => count + row.operations.length, 0) > 2000
+  )
+    throw new Error(
+      'Invalid stock transfer response. Reload the order transfers.',
+    );
+  return data;
+}
+
+export async function getOrderDeliveryPage(
+  orderId: number,
+  after = 0,
+  version: string | false = false,
+  limit = 25,
+): Promise<OrderDeliveryPage> {
+  if (
+    !stockId(orderId) ||
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !(version === false || stockVersion(version)) ||
+    (after > 0 && version === false)
+  )
+    throw new Error('Use a bounded transfer page and its original version.');
+  const data = await draftCall<OrderDeliveryPage>(
+    'qorlia_order_delivery_page',
+    { order_id: orderId, after, version, limit },
+  );
+  if (
+    !data ||
+    Object.keys(data).sort().join(',') !==
+      'after,next_after,order_id,order_name,order_state,position,read_only,rows,total_count,version' ||
+    data.order_id !== orderId ||
+    typeof data.order_name !== 'string' ||
+    !['draft', 'sent', 'sale', 'done', 'cancel'].includes(data.order_state) ||
+    data.read_only !== true ||
+    !stockVersion(data.version) ||
+    (version !== false && data.version !== version) ||
+    data.after !== after ||
+    !stockCount(data.position) ||
+    !stockCount(data.total_count) ||
+    data.position > data.total_count ||
+    data.position > after ||
+    (after === 0 ? data.position !== 0 : data.position === 0) ||
+    !Array.isArray(data.rows) ||
+    data.rows.length !== Math.min(limit, data.total_count - data.position) ||
+    !data.rows.every(
+      (row, index) =>
+        validTransferSummary(row) &&
+        row.id > (index ? data.rows[index - 1].id : after),
+    ) ||
+    (data.position + data.rows.length < data.total_count
+      ? data.next_after !== data.rows.at(-1)?.id
+      : data.next_after !== false)
+  )
+    throw new Error(
+      'Invalid native transfer page. Reload the order transfers.',
+    );
+  return data;
+}
+
+export async function getOrderTransferDetailPage(
+  orderId: number,
+  transferId: number,
+  section: OrderTransferDetailSection,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+): Promise<OrderTransferDetailPage> {
+  if (
+    !stockId(orderId) ||
+    !stockId(transferId) ||
+    !['moves', 'operations'].includes(section) ||
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !(version === false || stockVersion(version)) ||
+    (after > 0 && version === false)
+  )
+    throw new Error(
+      'Use a bounded move or operation page and its original version.',
+    );
+  const data = await draftCall<OrderTransferDetailPage>(
+    'qorlia_order_transfer_detail_page',
+    {
+      order_id: orderId,
+      transfer_id: transferId,
+      section,
+      after,
+      version,
+      limit,
+    },
+  );
+  if (
+    !data ||
+    Object.keys(data).sort().join(',') !==
+      'after,next_after,order_id,order_name,order_state,position,read_only,rows,section,total_count,transfer,version' ||
+    data.order_id !== orderId ||
+    typeof data.order_name !== 'string' ||
+    !['draft', 'sent', 'sale', 'done', 'cancel'].includes(data.order_state) ||
+    data.read_only !== true ||
+    !stockVersion(data.version) ||
+    (version !== false && data.version !== version) ||
+    !validTransferSummary(data.transfer) ||
+    data.transfer.id !== transferId ||
+    data.section !== section ||
+    data.after !== after ||
+    !stockCount(data.position) ||
+    !stockCount(data.total_count) ||
+    data.total_count !==
+      (section === 'moves'
+        ? data.transfer.move_count
+        : data.transfer.operation_count) ||
+    data.position > data.total_count ||
+    data.position > after ||
+    (after === 0 ? data.position !== 0 : data.position === 0) ||
+    !Array.isArray(data.rows) ||
+    data.rows.length !== Math.min(limit, data.total_count - data.position) ||
+    !data.rows.every(
+      (row, index) =>
+        row &&
+        stockId(row.id) &&
+        row.id > (index ? data.rows[index - 1].id : after),
+    ) ||
+    !(data.section === 'moves'
+      ? data.rows.every(
+          (row) =>
+            validTransferMove(row) &&
+            Object.keys(row).sort().join(',') ===
+              'demand,done,id,order_line,product,reserved,state,unit',
+        )
+      : data.rows.every(
+          (row) =>
+            validTransferOperation(row) &&
+            Object.keys(row).sort().join(',') ===
+              'destination,destination_package,done,expiry_date,id,lot,lot_name,move_id,owner,product,reserved,source,source_package,unit',
+        )) ||
+    (data.position + data.rows.length < data.total_count
+      ? data.next_after !== data.rows.at(-1)?.id
+      : data.next_after !== false)
+  )
+    throw new Error(
+      'Invalid native transfer detail page. Reload the transfer details.',
+    );
+  return data;
+}
+
+export const stockPreparationActions = [
+  'assign',
+  'unreserve',
+  'set_quantities',
+  'clear_quantities',
+] as const;
+export type StockReservationAction = (typeof stockPreparationActions)[number];
+export interface StockTransferGraph {
+  transfer: TransferReviewRow;
+  packages: {
+    id: number | false;
+    package_id: Relation;
+    location_id: Relation;
+    location_dest_id: Relation;
+    state: string;
+    company_id: Relation;
+  }[];
+}
+export interface StockReservationLoad {
+  order_id: number;
+  transfer_id: number;
+  graph: StockTransferGraph;
+  version: string;
+  reasons: Record<StockReservationAction, string | false>;
+}
+export interface StockReservationSelection {
+  order_id: number;
+  transfer_id: number;
+  version: string;
+  action: StockReservationAction;
+}
+export interface StockReservationRequest extends StockReservationSelection {
+  review_version: string;
+  request_key: string;
+}
+export interface StockReservationQuant {
+  id: number;
+  unit: Relation;
+  product_id: Relation;
+  location_id: Relation;
+  lot_id: Relation;
+  package_id: Relation;
+  owner_id: Relation;
+  quantity: number;
+  reserved_quantity: number;
+  in_date: string | false;
+  company_id: Relation;
+}
+export interface StockReservationReview extends StockReservationSelection {
+  review_version: string;
+  before: StockTransferGraph;
+  after: StockTransferGraph;
+  quant_before: StockReservationQuant[];
+  quant_after: StockReservationQuant[];
+}
+export interface StockReservationStatus {
+  accepted: boolean;
+  request_key: string;
+  action: StockReservationAction;
+  current: StockReservationLoad;
+}
+function checkedStockSelection(value: StockReservationSelection) {
+  if (
+    !value ||
+    !stockId(value.order_id) ||
+    !stockId(value.transfer_id) ||
+    !stockVersion(value.version) ||
+    !stockPreparationActions.includes(value.action)
+  )
+    throw new Error(
+      'Select a saved transfer and review its reservation action.',
+    );
+  return {
+    order_id: value.order_id,
+    transfer_id: value.transfer_id,
+    version: value.version,
+    action: value.action,
+  };
+}
+export function checkedStockReservationRequest(
+  value: StockReservationRequest,
+): StockReservationRequest {
+  const selected = checkedStockSelection(value);
+  if (
+    !stockVersion(value.review_version) ||
+    typeof value.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      value.request_key,
+    ) ||
+    Object.keys(value).sort().join(',') !==
+      'action,order_id,request_key,review_version,transfer_id,version'
+  )
+    throw new Error('Use the exact reviewed reservation request.');
+  return {
+    ...selected,
+    review_version: value.review_version,
+    request_key: value.request_key,
+  };
+}
+function validStockGraph(
+  graph: StockTransferGraph,
+  id: number,
+  preview = false,
+) {
+  return (
+    graph?.transfer?.id === id &&
+    validTransfer(graph.transfer, preview) &&
+    Array.isArray(graph.packages) &&
+    graph.packages.length <= 2000 &&
+    graph.packages.every(
+      (row) =>
+        row &&
+        (stockId(row.id) || (preview && row.id === false)) &&
+        typeof row.state === 'string' &&
+        [
+          row.package_id,
+          row.location_id,
+          row.location_dest_id,
+          row.company_id,
+        ].every(validRelation) &&
+        row.company_id !== false &&
+        graph.transfer.company !== false &&
+        row.company_id[0] === graph.transfer.company[0],
+    ) &&
+    new Set(
+      graph.packages.filter((row) => row.id !== false).map((row) => row.id),
+    ).size === graph.packages.filter((row) => row.id !== false).length
+  );
+}
+function checkedStockLoad(
+  data: StockReservationLoad,
+  orderId: number,
+  transferId: number,
+) {
+  if (
+    data?.order_id !== orderId ||
+    data.transfer_id !== transferId ||
+    !stockVersion(data.version) ||
+    !validStockGraph(data.graph, transferId) ||
+    !data.reasons ||
+    !stockPreparationActions.every((action) =>
+      stockText(data.reasons[action as StockReservationAction]),
+    )
+  )
+    throw new Error('Invalid reservation state. Reload the transfer.');
+  return data;
+}
+async function stockCall<T>(method: string, kwargs: object): Promise<T> {
+  return rpc<T>(`/web/dataset/call_kw/stock.picking/${method}`, {
+    model: 'stock.picking',
+    method,
+    args: [],
+    kwargs,
+  });
+}
+export async function getStockReservation(orderId: number, transferId: number) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  return checkedStockLoad(
+    await stockCall<StockReservationLoad>('qorlia_transfer_load', {
+      order_id: orderId,
+      transfer_id: transferId,
+    }),
+    orderId,
+    transferId,
+  );
+}
+function validStockQuants(rows: StockReservationQuant[]) {
+  return (
+    Array.isArray(rows) &&
+    rows.length <= 2000 &&
+    new Set(rows.map((row) => row?.id)).size === rows.length &&
+    rows.every(
+      (row) =>
+        row &&
+        stockId(row.id) &&
+        row.unit !== false &&
+        [
+          row.unit,
+          row.product_id,
+          row.location_id,
+          row.lot_id,
+          row.package_id,
+          row.owner_id,
+          row.company_id,
+        ].every(validRelation) &&
+        [row.quantity, row.reserved_quantity].every(Number.isFinite) &&
+        stockDate(row.in_date),
+    )
+  );
+}
+function unchangedPhysicalStock(
+  before: StockReservationQuant[],
+  after: StockReservationQuant[],
+) {
+  return (
+    validStockQuants(before) &&
+    validStockQuants(after) &&
+    before.length === after.length &&
+    before.every(
+      (row, index) =>
+        row.id === after[index].id &&
+        row.quantity === after[index].quantity &&
+        [
+          'product_id',
+          'location_id',
+          'lot_id',
+          'package_id',
+          'owner_id',
+          'company_id',
+          'in_date',
+          'unit',
+        ].every(
+          (key) =>
+            JSON.stringify(row[key as keyof StockReservationQuant]) ===
+            JSON.stringify(after[index][key as keyof StockReservationQuant]),
+        ),
+    )
+  );
+}
+export async function previewStockReservation(
+  selection: StockReservationSelection,
+) {
+  const exact = checkedStockSelection(selection);
+  const data = await stockCall<StockReservationReview>(
+    'qorlia_transfer_preview',
+    exact,
+  );
+  if (
+    !data ||
+    Object.entries(exact).some(
+      ([key, value]) => data[key as keyof StockReservationSelection] !== value,
+    ) ||
+    !stockVersion(data.review_version) ||
+    !validStockGraph(data.before, exact.transfer_id, true) ||
+    !validStockGraph(data.after, exact.transfer_id, true) ||
+    ['done', 'cancel'].includes(data.after.transfer.state) ||
+    !unchangedPhysicalStock(data.quant_before, data.quant_after)
+  )
+    throw new Error(
+      'Invalid reservation preview. Nothing can be saved until it is reviewed again.',
+    );
+  return data;
+}
+async function stockRequest(method: string, request: StockReservationRequest) {
+  const exact = checkedStockReservationRequest(request);
+  const data = await stockCall<StockReservationStatus>(method, exact);
+  if (
+    !data ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    data.action !== exact.action
+  )
+    throw new Error(
+      'Invalid reservation receipt. Check the exact request before retrying.',
+    );
+  checkedStockLoad(data.current, exact.order_id, exact.transfer_id);
+  return data;
+}
+export const saveStockReservation = (request: StockReservationRequest) =>
+  stockRequest('qorlia_transfer_run', request);
+export const getStockReservationStatus = (request: StockReservationRequest) =>
+  stockRequest('qorlia_transfer_status', request);
+
+export const stockOperationNumberFields = [
+  'qty_done',
+  'cost_price',
+  'sale_price',
+  'mrp',
+] as const;
+export const stockOperationRelationFields = [
+  'product_uom_id',
+  'lot_id',
+  'existing_lot_id',
+  'location_id',
+  'location_dest_id',
+  'package_id',
+  'result_package_id',
+  'owner_id',
+] as const;
+export const stockOperationTextFields = [
+  'lot_name',
+  'expiration_date',
+] as const;
+export const stockOperationFields = [
+  ...stockOperationNumberFields,
+  ...stockOperationRelationFields,
+  ...stockOperationTextFields,
+] as const;
+export type StockOperationField = (typeof stockOperationFields)[number];
+export type StockOperationValues = Record<
+  (typeof stockOperationNumberFields)[number],
+  number
+> &
+  Record<(typeof stockOperationRelationFields)[number], number | false> &
+  Record<(typeof stockOperationTextFields)[number], string | false>;
+export interface StockOperationSelection {
+  order_id: number;
+  transfer_id: number;
+  move_id: number;
+  operation_id: number | false;
+}
+export interface StockOperationEdit {
+  field: StockOperationField;
+  value: number | string | false;
+}
+export interface StockOperationFormRequest extends StockOperationSelection {
+  version: string;
+  edits: StockOperationEdit[];
+}
+export interface StockOperationForm extends StockOperationSelection {
+  version: string;
+  product: Relation;
+  state: string;
+  tracking: 'none' | 'lot' | 'serial';
+  values: StockOperationValues;
+  rules: Record<StockOperationField, { visible: boolean; readonly: boolean }>;
+  labels: Partial<
+    Record<(typeof stockOperationRelationFields)[number], Relation>
+  >;
+  reserved: number;
+  balance: number;
+  expiry_warning: boolean;
+  warning: string | false;
+  reason: string | false;
+  write_ready: boolean;
+  can_delete: boolean;
+}
+function checkedOperationSelection(value: StockOperationSelection) {
+  if (
+    !value ||
+    !stockId(value.order_id) ||
+    !stockId(value.transfer_id) ||
+    !stockId(value.move_id) ||
+    (value.operation_id !== false && !stockId(value.operation_id))
+  )
+    throw new Error('Select a saved order transfer, move and stock operation.');
+  return {
+    order_id: value.order_id,
+    transfer_id: value.transfer_id,
+    move_id: value.move_id,
+    operation_id: value.operation_id,
+  };
+}
+function validOperationValue(field: StockOperationField, value: unknown) {
+  if ((stockOperationNumberFields as readonly string[]).includes(field))
+    return typeof value === 'number' && Number.isFinite(value);
+  if ((stockOperationRelationFields as readonly string[]).includes(field))
+    return value === false || stockId(value);
+  return (
+    value === false ||
+    (typeof value === 'string' &&
+      value.length <= 10000 &&
+      (field !== 'expiration_date' ||
+        /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)))
+  );
+}
+function checkedOperationRequest(value: StockOperationFormRequest) {
+  const selection = checkedOperationSelection(value);
+  if (
+    !stockVersion(value.version) ||
+    !Array.isArray(value.edits) ||
+    value.edits.length > 100 ||
+    value.edits.some(
+      (edit) =>
+        !edit ||
+        Object.keys(edit).sort().join(',') !== 'field,value' ||
+        !stockOperationFields.includes(edit.field) ||
+        !validOperationValue(edit.field, edit.value),
+    )
+  )
+    throw new Error(
+      'Use the exact native stock form version and supported field edits.',
+    );
+  return {
+    ...selection,
+    version: value.version,
+    edits: value.edits.map((edit) => ({
+      field: edit.field,
+      value: edit.value,
+    })),
+  };
+}
+function checkedOperationForm(
+  data: StockOperationForm,
+  selection: StockOperationSelection,
+) {
+  if (
+    !data ||
+    Object.entries(selection).some(
+      ([key, value]) => data[key as keyof StockOperationSelection] !== value,
+    ) ||
+    !stockVersion(data.version) ||
+    !validRelation(data.product) ||
+    data.product === false ||
+    ![
+      'draft',
+      'waiting',
+      'confirmed',
+      'partially_available',
+      'assigned',
+      'done',
+      'cancel',
+    ].includes(data.state) ||
+    !['none', 'lot', 'serial'].includes(data.tracking) ||
+    typeof data.write_ready !== 'boolean' ||
+    typeof data.can_delete !== 'boolean' ||
+    !data.values ||
+    !data.rules ||
+    !data.labels ||
+    Object.keys(data.values).sort().join(',') !==
+      [...stockOperationFields].sort().join(',') ||
+    Object.keys(data.rules).sort().join(',') !==
+      [...stockOperationFields].sort().join(',') ||
+    !stockOperationFields.every(
+      (field) =>
+        validOperationValue(field, data.values[field]) &&
+        typeof data.rules[field]?.visible === 'boolean' &&
+        typeof data.rules[field]?.readonly === 'boolean' &&
+        (data.rules[field].visible || data.rules[field].readonly),
+    ) ||
+    !stockOperationRelationFields.every((field) =>
+      data.values[field] === false
+        ? data.labels[field] === undefined
+        : validRelation(data.labels[field]) &&
+          data.labels[field] !== false &&
+          data.labels[field]?.[0] === data.values[field],
+    ) ||
+    Object.keys(data.labels).some(
+      (field) =>
+        !(stockOperationRelationFields as readonly string[]).includes(field),
+    ) ||
+    ![data.reserved, data.balance].every(
+      (value) => typeof value === 'number' && Number.isFinite(value),
+    ) ||
+    typeof data.expiry_warning !== 'boolean' ||
+    !stockText(data.warning) ||
+    !stockText(data.reason)
+  )
+    throw new Error(
+      'Invalid native stock operation form. Reload the transfer.',
+    );
+  return data;
+}
+export async function getStockOperationForm(
+  selection: StockOperationSelection,
+) {
+  const exact = checkedOperationSelection(selection);
+  return checkedOperationForm(
+    await stockCall<StockOperationForm>('qorlia_operation_load', exact),
+    exact,
+  );
+}
+export async function changeStockOperationForm(
+  request: StockOperationFormRequest,
+) {
+  const exact = checkedOperationRequest(request);
+  const result = checkedOperationForm(
+    await stockCall<StockOperationForm>('qorlia_operation_onchange', exact),
+    checkedOperationSelection(exact),
+  );
+  if (result.version !== exact.version)
+    throw new Error(
+      'The native stock form version changed. Reload the transfer.',
+    );
+  return result;
+}
+async function stockOperationChoices(
+  method: 'qorlia_operation_choices' | 'qorlia_operation_paged_choices',
+  request: StockOperationFormRequest,
+  field: (typeof stockOperationRelationFields)[number],
+  search = '',
+  offset = 0,
+) {
+  const exact = checkedOperationRequest(request);
+  if (
+    method === 'qorlia_operation_paged_choices' &&
+    !confirmationKeys(request, Object.keys(exact))
+  )
+    throw new Error('Use only the exact native operation form edits.');
+  if (
+    !stockOperationRelationFields.includes(field) ||
+    typeof search !== 'string' ||
+    search.length > 200 ||
+    !Number.isSafeInteger(offset) ||
+    offset < 0 ||
+    offset > 100000
+  )
+    throw new Error('Select a supported stock field and search page.');
+  const result = await stockCall<{
+    rows: [number, string][];
+    has_more: boolean;
+    offset: number;
+  }>(method, { ...exact, field, search, offset });
+  if (
+    !result ||
+    !Array.isArray(result.rows) ||
+    result.rows.length > 25 ||
+    result.offset !== offset ||
+    typeof result.has_more !== 'boolean' ||
+    (result.has_more && result.rows.length !== 25) ||
+    !result.rows.every((row) => Array.isArray(row) && validRelation(row)) ||
+    new Set(result.rows.map((row) => row[0])).size !== result.rows.length
+  )
+    throw new Error('Invalid native stock field choices. Reload the search.');
+  return result;
+}
+
+export async function getStockOperationChoices(
+  request: StockOperationFormRequest,
+  field: (typeof stockOperationRelationFields)[number],
+  search = '',
+  offset = 0,
+) {
+  return stockOperationChoices(
+    'qorlia_operation_choices',
+    request,
+    field,
+    search,
+    offset,
+  );
+}
+
+export async function getPagedStockOperationChoices(
+  request: StockOperationFormRequest,
+  field: (typeof stockOperationRelationFields)[number],
+  search = '',
+  offset = 0,
+) {
+  return stockOperationChoices(
+    'qorlia_operation_paged_choices',
+    request,
+    field,
+    search,
+    offset,
+  );
+}
+
+export interface StockOperationSelectionRequest
+  extends StockOperationFormRequest {
+  action: 'save' | 'delete';
+}
+export interface StockOperationRequest extends StockOperationSelectionRequest {
+  review_version: string;
+  request_key: string;
+}
+export interface StockOperationGraph extends StockTransferGraph {
+  form_rows: {
+    id: number | false;
+    move_id: number | false;
+    values: StockOperationValues & { balance: number };
+  }[];
+}
+export interface StockOperationReview extends StockOperationSelectionRequest {
+  form: StockOperationForm;
+  before: StockOperationGraph;
+  after: StockOperationGraph;
+  quant_before: StockReservationQuant[];
+  quant_after: StockReservationQuant[];
+  review_version: string;
+}
+export interface StockOperationStatus {
+  accepted: boolean;
+  request_key: string;
+  action: 'save' | 'delete';
+  operation_id: number | false;
+  current: StockReservationLoad;
+}
+function checkedOperationAction(value: StockOperationSelectionRequest) {
+  const exact = checkedOperationRequest(value);
+  if (
+    !['save', 'delete'].includes(value.action) ||
+    (value.action === 'delete' && (!value.operation_id || value.edits.length))
+  )
+    throw new Error(
+      'Select a saved operation for deletion, or review its field changes.',
+    );
+  return { ...exact, action: value.action };
+}
+export function checkedStockOperationRequest(
+  value: StockOperationRequest,
+): StockOperationRequest {
+  const exact = checkedOperationAction(value);
+  if (
+    !stockVersion(value.review_version) ||
+    typeof value.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      value.request_key,
+    ) ||
+    Object.keys(value).sort().join(',') !==
+      'action,edits,move_id,operation_id,order_id,request_key,review_version,transfer_id,version'
+  )
+    throw new Error('Use the exact reviewed stock operation request.');
+  return {
+    ...exact,
+    review_version: value.review_version,
+    request_key: value.request_key,
+  };
+}
+function validOperationGraph(graph: StockOperationGraph, transferId: number) {
+  return (
+    validStockGraph(graph, transferId, true) &&
+    Array.isArray(graph.form_rows) &&
+    graph.form_rows.length === graph.transfer.operations.length &&
+    new Set(
+      graph.form_rows.filter((row) => row.id !== false).map((row) => row.id),
+    ).size === graph.form_rows.filter((row) => row.id !== false).length &&
+    graph.form_rows.every(
+      (row) =>
+        row &&
+        (stockId(row.id) || row.id === false) &&
+        (stockId(row.move_id) || row.move_id === false) &&
+        row.values &&
+        Object.keys(row.values).sort().join(',') ===
+          ['balance', ...stockOperationFields].sort().join(',') &&
+        Number.isFinite(row.values.balance) &&
+        stockOperationFields.every((field) =>
+          validOperationValue(field, row.values[field]),
+        ) &&
+        graph.transfer.operations.some(
+          (operation) =>
+            operation.id === row.id &&
+            operation.move_id === row.move_id &&
+            operation.done === row.values.qty_done &&
+            operation.unit !== false &&
+            operation.unit[0] === row.values.product_uom_id &&
+            (operation.lot ? operation.lot[0] : false) === row.values.lot_id &&
+            operation.lot_name === (row.values.lot_name || false) &&
+            operation.expiry_date === row.values.expiration_date &&
+            (operation.source ? operation.source[0] : false) ===
+              row.values.location_id &&
+            (operation.destination ? operation.destination[0] : false) ===
+              row.values.location_dest_id &&
+            (operation.source_package ? operation.source_package[0] : false) ===
+              row.values.package_id &&
+            (operation.destination_package
+              ? operation.destination_package[0]
+              : false) === row.values.result_package_id &&
+            (operation.owner ? operation.owner[0] : false) ===
+              row.values.owner_id,
+        ),
+    )
+  );
+}
+export async function previewStockOperation(
+  selection: StockOperationSelectionRequest,
+) {
+  const exact = checkedOperationAction(selection);
+  const data = await stockCall<StockOperationReview>(
+    'qorlia_operation_preview',
+    { payload: exact },
+  );
+  if (
+    !data ||
+    Object.entries(checkedOperationSelection(exact)).some(
+      ([key, value]) => data[key as keyof StockOperationSelection] !== value,
+    ) ||
+    data.action !== exact.action ||
+    data.version !== exact.version ||
+    JSON.stringify(data.edits) !== JSON.stringify(exact.edits) ||
+    !stockVersion(data.review_version) ||
+    !validOperationGraph(data.before, exact.transfer_id) ||
+    !validOperationGraph(data.after, exact.transfer_id) ||
+    ['done', 'cancel'].includes(data.after.transfer.state) ||
+    !unchangedPhysicalStock(data.quant_before, data.quant_after)
+  )
+    throw new Error(
+      'Invalid stock operation preview. Reload and review it again.',
+    );
+  checkedOperationForm(data.form, checkedOperationSelection(exact));
+  if (data.form.version !== exact.version)
+    throw new Error('The stock form version changed during review.');
+  return data;
+}
+async function operationRequest(
+  method: string,
+  request: StockOperationRequest,
+) {
+  const exact = checkedStockOperationRequest(request);
+  const data = await stockCall<StockOperationStatus>(method, {
+    payload: exact,
+  });
+  if (
+    !data ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    data.action !== exact.action ||
+    (data.accepted && data.action === 'save'
+      ? !stockId(data.operation_id)
+      : data.operation_id !== false) ||
+    (data.accepted &&
+      data.action === 'save' &&
+      exact.operation_id !== false &&
+      data.operation_id !== exact.operation_id)
+  )
+    throw new Error(
+      'Invalid stock operation receipt. Check the exact request before retrying.',
+    );
+  checkedStockLoad(data.current, exact.order_id, exact.transfer_id);
+  return data;
+}
+export const saveStockOperation = (request: StockOperationRequest) =>
+  operationRequest('qorlia_operation_save', request);
+export const getStockOperationStatus = (request: StockOperationRequest) =>
+  operationRequest('qorlia_operation_status', request);
+
+export interface StockConfirmationSelection {
+  order_id: number;
+  transfer_id: number;
+  version: string;
+}
+export interface StockConfirmationRequest extends StockConfirmationSelection {
+  action?: never;
+  review_version: string;
+  request_key: string;
+}
+export interface StockConfirmationLoad extends StockConfirmationSelection {
+  graph: StockTransferGraph;
+  reason: string | false;
+  write_ready: boolean;
+}
+export type ConfirmationValue =
+  | null
+  | string
+  | boolean
+  | number
+  | ConfirmationValue[]
+  | { [field: string]: ConfirmationValue };
+export interface StockConfirmationEffects {
+  created: Record<
+    string,
+    {
+      key: string;
+      values: Record<string, ConfirmationValue>;
+      assigned_on_save: string[];
+    }[]
+  >;
+  updated: Record<
+    string,
+    {
+      id: number;
+      before: Record<string, ConfirmationValue>;
+      after: Record<string, ConfirmationValue>;
+      assigned_on_save?: string[];
+    }[]
+  >;
+  deleted: Record<
+    string,
+    { id: number; values: Record<string, ConfirmationValue> }[]
+  >;
+  labels: Record<string, string>;
+  schema: Record<
+    string,
+    Record<string, { label: string; type: string; relation: string | false }>
+  >;
+  private_audit_counts: Record<
+    string,
+    { created: number; updated: number; deleted: number }
+  >;
+}
+export interface StockConfirmationReview extends StockConfirmationSelection {
+  review_version: string;
+  state_after: 'waiting' | 'confirmed' | 'assigned';
+  effects: StockConfirmationEffects;
+  write_ready: boolean;
+}
+export interface StockConfirmationStatus {
+  accepted: boolean;
+  request_key: string;
+  state_after: StockConfirmationReview['state_after'] | false;
+  references: Record<
+    string,
+    {
+      model: string;
+      id: number | false;
+      name: string | false;
+      available: boolean;
+    }
+  >;
+  current: StockConfirmationLoad;
+}
+const confirmationModels = [
+  'product.product',
+  'stock.picking',
+  'stock.move',
+  'stock.move.line',
+  'stock.package_level',
+  'stock.quant',
+  'stock.lot',
+  'stock.quant.package',
+  'procurement.group',
+  'purchase.order',
+  'purchase.order.line',
+  'stock.warehouse.orderpoint',
+  'mail.message',
+  'mail.mail',
+  'mail.activity',
+  'mail.notification',
+  'mail.tracking.value',
+  'ir.attachment',
+];
+const confirmationStates = ['waiting', 'confirmed', 'assigned'];
+const confirmationObject = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+const confirmationKeys = (value: unknown, keys: string[]) =>
+  confirmationObject(value) &&
+  Object.keys(value).sort().join(',') === [...keys].sort().join(',');
+const confirmationKey = (key: string, model: string) =>
+  key.startsWith(`new:${model}:`) &&
+  /^(0|[1-9][0-9]*)$/.test(key.slice(`new:${model}:`.length));
+function validConfirmationValue(value: unknown, depth = 0): boolean {
+  if (depth > 50) return false;
+  if (value === null || typeof value === 'string' || typeof value === 'boolean')
+    return true;
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (Array.isArray(value))
+    return value.every((item) => validConfirmationValue(item, depth + 1));
+  return (
+    confirmationObject(value) &&
+    Object.values(value).every((item) =>
+      validConfirmationValue(item, depth + 1),
+    )
+  );
+}
+function validConfirmationField(
+  value: ConfirmationValue,
+  field: { type: string; relation: string | false },
+  models = confirmationModels,
+) {
+  if (!validConfirmationValue(value)) return false;
+  if (['integer', 'float', 'monetary'].includes(field.type))
+    return value === null || typeof value === 'number';
+  if (field.type === 'boolean')
+    return value === null || typeof value === 'boolean';
+  if (field.type === 'many2one_reference')
+    return (
+      value === false ||
+      (typeof value === 'number' &&
+        Number.isSafeInteger(value) &&
+        value >= 0) ||
+      (typeof value === 'string' &&
+        models.some((model) => confirmationKey(value, model)))
+    );
+  const reference = (item: ConfirmationValue) =>
+    item === false ||
+    stockId(item) ||
+    (typeof item === 'string' &&
+      typeof field.relation === 'string' &&
+      confirmationKey(item, field.relation));
+  if (field.type === 'many2one') return reference(value);
+  if (field.type === 'many2many')
+    return (
+      Array.isArray(value) &&
+      value.every(reference) &&
+      new Set(value).size === value.length
+    );
+  if (
+    [
+      'char',
+      'text',
+      'html',
+      'selection',
+      'reference',
+      'date',
+      'datetime',
+    ].includes(field.type)
+  )
+    return (
+      stockText(value) ||
+      value === null ||
+      (confirmationObject(value) &&
+        Object.values(value).every((item) => typeof item === 'string'))
+    );
+  return ['json', 'properties', 'properties_definition'].includes(field.type);
+}
+function checkedConfirmationSelection(value: StockConfirmationSelection) {
+  if (
+    !value ||
+    !stockId(value.order_id) ||
+    !stockId(value.transfer_id) ||
+    !stockVersion(value.version)
+  )
+    throw new Error(
+      'Select a saved transfer and review its native confirmation.',
+    );
+  return {
+    order_id: value.order_id,
+    transfer_id: value.transfer_id,
+    version: value.version,
+  };
+}
+export function checkedStockConfirmationRequest(
+  value: StockConfirmationRequest,
+): StockConfirmationRequest {
+  const selection = checkedConfirmationSelection(value);
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'review_version',
+      'request_key',
+    ]) ||
+    !stockVersion(value.review_version) ||
+    typeof value.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      value.request_key,
+    )
+  )
+    throw new Error('Use the exact reviewed confirmation request.');
+  return {
+    ...selection,
+    review_version: value.review_version,
+    request_key: value.request_key,
+  };
+}
+function checkedConfirmationLoad(
+  data: StockConfirmationLoad,
+  orderId: number,
+  transferId: number,
+) {
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'graph',
+      'reason',
+      'write_ready',
+    ]) ||
+    data.order_id !== orderId ||
+    data.transfer_id !== transferId ||
+    !stockVersion(data.version) ||
+    !validStockGraph(data.graph, transferId) ||
+    !stockText(data.reason) ||
+    typeof data.write_ready !== 'boolean'
+  )
+    throw new Error('Invalid confirmation state. Reload the transfer.');
+  return data;
+}
+function validConfirmationEffects(
+  data: StockConfirmationEffects,
+  validation = false,
+  returnCreation = false,
+): boolean {
+  const allowedModels = validation ? validationModels : confirmationModels;
+  if (
+    !confirmationKeys(data, [
+      'created',
+      'updated',
+      'deleted',
+      'labels',
+      'schema',
+      'private_audit_counts',
+    ]) ||
+    ![
+      data.created,
+      data.updated,
+      data.deleted,
+      data.labels,
+      data.schema,
+      data.private_audit_counts,
+    ].every(confirmationObject) ||
+    !Object.values(data.labels).every((label) => typeof label === 'string')
+  )
+    return false;
+  const models = Object.keys(data.schema);
+  if (
+    !models.every((model) => allowedModels.includes(model)) ||
+    ![data.created, data.updated, data.deleted].every(
+      (rows) =>
+        Object.keys(rows).sort().join(',') === [...models].sort().join(','),
+    )
+  )
+    return false;
+  const newKeys = new Set<string>();
+  for (const model of models) {
+    const schema = data.schema[model];
+    if (
+      !confirmationObject(schema) ||
+      !Object.values(schema).every(
+        (field) =>
+          confirmationKeys(field, ['label', 'type', 'relation']) &&
+          typeof field.label === 'string' &&
+          typeof field.type === 'string' &&
+          field.type.length > 0 &&
+          stockText(field.relation),
+      )
+    )
+      return false;
+    const values = (row: unknown) =>
+      confirmationObject(row) &&
+      Object.entries(row).every(
+        ([key, value]) =>
+          Object.hasOwn(schema, key) &&
+          validConfirmationField(
+            value as ConfirmationValue,
+            schema[key],
+            allowedModels,
+          ),
+      );
+    const created = data.created[model],
+      updated = data.updated[model],
+      deleted = data.deleted[model];
+    if (![created, updated, deleted].every(Array.isArray)) return false;
+    for (const row of created) {
+      if (
+        !confirmationKeys(row, ['key', 'values', 'assigned_on_save']) ||
+        typeof row.key !== 'string' ||
+        !confirmationKey(row.key, model) ||
+        newKeys.has(row.key) ||
+        !values(row.values) ||
+        !Array.isArray(row.assigned_on_save) ||
+        new Set(row.assigned_on_save).size !== row.assigned_on_save.length ||
+        !row.assigned_on_save.every(
+          (field) =>
+            typeof field === 'string' &&
+            Object.hasOwn(row.values, field) &&
+            row.values[field] === false &&
+            (!validation ||
+              (validationCreatedAssignments[model] || []).includes(field) ||
+              (returnCreation &&
+                model === 'stock.picking' &&
+                field === 'scheduled_date')),
+        )
+      )
+        return false;
+      newKeys.add(row.key);
+    }
+    if (
+      !updated.every(
+        (row) =>
+          confirmationKeys(row, [
+            'id',
+            'before',
+            'after',
+            ...(validation && Object.hasOwn(row, 'assigned_on_save')
+              ? ['assigned_on_save']
+              : []),
+          ]) &&
+          stockId(row.id) &&
+          values(row.before) &&
+          values(row.after) &&
+          (!Object.hasOwn(row, 'assigned_on_save') ||
+            (validation &&
+              Array.isArray(row.assigned_on_save) &&
+              new Set(row.assigned_on_save).size ===
+                row.assigned_on_save.length &&
+              row.assigned_on_save.every(
+                (field) =>
+                  typeof field === 'string' &&
+                  Object.hasOwn(row.after, field) &&
+                  row.after[field] === false &&
+                  (validationUpdatedAssignments[model] || []).includes(field),
+              ))),
+      ) ||
+      !deleted.every(
+        (row) =>
+          confirmationKeys(row, ['id', 'values']) &&
+          stockId(row.id) &&
+          values(row.values),
+      ) ||
+      new Set([...updated, ...deleted].map((row) => row.id)).size !==
+        updated.length + deleted.length
+    )
+      return false;
+  }
+  return Object.entries(data.private_audit_counts).every(
+    ([model, counts]) =>
+      (validation
+        ? validationPrivateModels
+        : [
+            'mail.message',
+            'mail.mail',
+            'mail.activity',
+            'mail.notification',
+            'mail.tracking.value',
+            'ir.attachment',
+          ]
+      ).includes(model) &&
+      confirmationKeys(counts, ['created', 'updated', 'deleted']) &&
+      Object.values(counts).every(
+        (count) => Number.isSafeInteger(count) && count >= 0,
+      ),
+  );
+}
+export async function getStockConfirmation(
+  orderId: number,
+  transferId: number,
+) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  return checkedConfirmationLoad(
+    await stockCall<StockConfirmationLoad>('qorlia_confirmation_load', {
+      order_id: orderId,
+      transfer_id: transferId,
+    }),
+    orderId,
+    transferId,
+  );
+}
+export async function previewStockConfirmation(
+  selection: StockConfirmationSelection,
+) {
+  const exact = checkedConfirmationSelection(selection);
+  const data = await stockCall<StockConfirmationReview>(
+    'qorlia_confirmation_preview',
+    exact,
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'review_version',
+      'state_after',
+      'effects',
+      'write_ready',
+    ]) ||
+    Object.entries(exact).some(
+      ([key, value]) => data[key as keyof StockConfirmationSelection] !== value,
+    ) ||
+    !stockVersion(data.review_version) ||
+    !confirmationStates.includes(data.state_after) ||
+    typeof data.write_ready !== 'boolean' ||
+    !validConfirmationEffects(data.effects)
+  )
+    throw new Error(
+      'Invalid confirmation review. Nothing can be saved until it is reviewed again.',
+    );
+  return data;
+}
+async function confirmationRequest(
+  method: string,
+  request: StockConfirmationRequest,
+) {
+  const exact = checkedStockConfirmationRequest(request);
+  const data = await stockCall<StockConfirmationStatus>(method, {
+    payload: exact,
+  });
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'request_key',
+      'state_after',
+      'references',
+      'current',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    (data.accepted
+      ? !confirmationStates.includes(String(data.state_after))
+      : data.state_after !== false) ||
+    !confirmationObject(data.references) ||
+    (!data.accepted && Object.keys(data.references).length > 0) ||
+    !Object.entries(data.references).every(
+      ([key, row]) =>
+        confirmationKeys(row, ['model', 'id', 'name', 'available']) &&
+        validConfirmationReference(key, row),
+    )
+  )
+    throw new Error(
+      'Invalid confirmation receipt. Check the exact request before retrying.',
+    );
+  checkedConfirmationLoad(data.current, exact.order_id, exact.transfer_id);
+  return data;
+}
+export const saveStockConfirmation = (request: StockConfirmationRequest) =>
+  confirmationRequest('qorlia_confirmation_save', request);
+export const getStockConfirmationStatus = (request: StockConfirmationRequest) =>
+  confirmationRequest('qorlia_confirmation_status', request);
+
+function validConfirmationReference(
+  key: string,
+  row: StockConfirmationStatus['references'][string],
+) {
+  return (
+    typeof row.model === 'string' &&
+    confirmationModels.includes(row.model) &&
+    ![
+      'mail.message',
+      'mail.mail',
+      'mail.activity',
+      'mail.notification',
+      'mail.tracking.value',
+      'ir.attachment',
+    ].includes(row.model) &&
+    confirmationKey(key, row.model) &&
+    typeof row.available === 'boolean' &&
+    (row.available
+      ? stockId(row.id) && typeof row.name === 'string'
+      : row.id === false && row.name === false)
+  );
+}
+
+export interface PagedStockConfirmationLoad extends StockConfirmationSelection {
+  transfer: OrderTransferSummary;
+  package_count: number;
+  reason: string | false;
+  write_ready: boolean;
+}
+export interface PagedStockConfirmationReview extends StockConfirmationReview {
+  after: number;
+  total_count: number;
+  next_after: number | false;
+  continuation_token: string | false;
+  review_complete_token: string | false;
+}
+export interface PagedStockConfirmationRequest
+  extends StockConfirmationRequest {
+  review_complete_token: string;
+}
+export interface PagedStockConfirmationStatus
+  extends Omit<StockConfirmationStatus, 'references' | 'current'> {
+  reference_count: number;
+  current: PagedStockConfirmationLoad;
+}
+export interface PagedStockConfirmationReferences {
+  request_key: string;
+  version: string;
+  after: number;
+  total_count: number;
+  next_after: number | false;
+  rows: (StockConfirmationStatus['references'][string] & { key: string })[];
+}
+
+function checkedPagedConfirmationLoad(
+  data: PagedStockConfirmationLoad,
+  orderId: number,
+  transferId: number,
+) {
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'transfer',
+      'package_count',
+      'reason',
+      'write_ready',
+    ]) ||
+    data.order_id !== orderId ||
+    data.transfer_id !== transferId ||
+    !stockVersion(data.version) ||
+    !validTransferSummary(data.transfer) ||
+    data.transfer.id !== transferId ||
+    !stockCount(data.package_count) ||
+    !stockText(data.reason) ||
+    typeof data.write_ready !== 'boolean'
+  )
+    throw new Error('Invalid compact confirmation state. Reload the transfer.');
+  return data;
+}
+
+export function checkedPagedStockConfirmationRequest(
+  value: PagedStockConfirmationRequest,
+): PagedStockConfirmationRequest {
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'review_version',
+      'review_complete_token',
+      'request_key',
+    ]) ||
+    !stockVersion(value.review_complete_token)
+  )
+    throw new Error('Use the exact completely reviewed confirmation request.');
+  const { review_complete_token, ...request } = value;
+  return { ...checkedStockConfirmationRequest(request), review_complete_token };
+}
+
+export async function getPagedStockConfirmation(
+  orderId: number,
+  transferId: number,
+) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  return checkedPagedConfirmationLoad(
+    await stockCall<PagedStockConfirmationLoad>(
+      'qorlia_confirmation_paged_load',
+      {
+        order_id: orderId,
+        transfer_id: transferId,
+      },
+    ),
+    orderId,
+    transferId,
+  );
+}
+
+function confirmationEffectPageRows(effects: StockConfirmationEffects) {
+  const rows: { model: string; kind: number; position: number }[] = [];
+  const labels = new Set<string>();
+  for (const model of Object.keys(effects.schema).sort()) {
+    const groups = [
+      effects.created[model].map((row) => ({
+        position: Number(row.key.slice(`new:${model}:`.length)),
+        values: [row.values],
+      })),
+      effects.updated[model].map((row) => ({
+        position: row.id,
+        values: [row.before, row.after],
+      })),
+      effects.deleted[model].map((row) => ({
+        position: row.id,
+        values: [row.values],
+      })),
+    ];
+    for (const [kind, group] of groups.entries()) {
+      for (const row of group) {
+        rows.push({ model, kind, position: row.position });
+        for (const values of row.values) {
+          for (const [field, value] of Object.entries(values)) {
+            const schema = effects.schema[model][field];
+            const references =
+              schema.type === 'many2many' && Array.isArray(value)
+                ? value
+                : schema.type === 'many2one'
+                  ? [value]
+                  : [];
+            for (const identifier of references)
+              labels.add(`${schema.relation}:${identifier}`);
+          }
+        }
+      }
+    }
+  }
+  const ordered = rows.every(
+    (row, index) =>
+      Number.isSafeInteger(row.position) &&
+      row.position >= 0 &&
+      (!index ||
+        row.model > rows[index - 1].model ||
+        (row.model === rows[index - 1].model &&
+          (row.kind > rows[index - 1].kind ||
+            (row.kind === rows[index - 1].kind &&
+              row.position > rows[index - 1].position)))),
+  );
+  return {
+    count: rows.length,
+    valid:
+      ordered &&
+      Object.keys(effects.labels).every((key) => labels.has(key)) &&
+      Object.keys(effects.schema).every((model) =>
+        rows.some((row) => row.model === model),
+      ),
+  };
+}
+
+export async function getPagedStockConfirmationReview(
+  selection: StockConfirmationSelection,
+  after = 0,
+  reviewVersion: string | false = false,
+  continuationToken: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedConfirmationSelection(selection);
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    (after === 0
+      ? reviewVersion !== false || continuationToken !== false
+      : !stockVersion(reviewVersion) || !stockVersion(continuationToken))
+  )
+    throw new Error(
+      'Review bounded confirmation pages in order with their original tokens.',
+    );
+  const data = await stockCall<PagedStockConfirmationReview>(
+    'qorlia_confirmation_paged_review',
+    {
+      ...exact,
+      after,
+      review_version: reviewVersion,
+      continuation_token: continuationToken,
+      limit,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'review_version',
+      'state_after',
+      'write_ready',
+      'after',
+      'total_count',
+      'next_after',
+      'effects',
+      'continuation_token',
+      'review_complete_token',
+    ]) ||
+    data.order_id !== exact.order_id ||
+    data.transfer_id !== exact.transfer_id ||
+    data.version !== exact.version ||
+    !stockVersion(data.review_version) ||
+    (reviewVersion !== false && data.review_version !== reviewVersion) ||
+    !confirmationStates.includes(data.state_after) ||
+    typeof data.write_ready !== 'boolean' ||
+    data.after !== after ||
+    !stockCount(data.total_count) ||
+    after > data.total_count ||
+    !validConfirmationEffects(data.effects)
+  )
+    throw new Error(
+      'Invalid paged confirmation review. Review the transfer again.',
+    );
+  const page = confirmationEffectPageRows(data.effects);
+  const end = after + page.count;
+  if (
+    !page.valid ||
+    page.count !== Math.min(limit, data.total_count - after) ||
+    (end < data.total_count
+      ? data.next_after !== end ||
+        !stockVersion(data.continuation_token) ||
+        data.review_complete_token !== false
+      : data.next_after !== false ||
+        data.continuation_token !== false ||
+        !stockVersion(data.review_complete_token))
+  )
+    throw new Error(
+      'Invalid confirmation page or completion proof. Review the transfer again.',
+    );
+  return data;
+}
+
+async function pagedConfirmationRequest(
+  method: string,
+  request: PagedStockConfirmationRequest,
+) {
+  const exact = checkedPagedStockConfirmationRequest(request);
+  const data = await stockCall<PagedStockConfirmationStatus>(method, {
+    payload: exact,
+  });
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'request_key',
+      'state_after',
+      'reference_count',
+      'current',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    !stockCount(data.reference_count) ||
+    (data.accepted
+      ? !confirmationStates.includes(String(data.state_after))
+      : data.state_after !== false || data.reference_count !== 0)
+  )
+    throw new Error(
+      'Invalid compact confirmation receipt. Check the exact request before retrying.',
+    );
+  checkedPagedConfirmationLoad(data.current, exact.order_id, exact.transfer_id);
+  return data;
+}
+
+export const savePagedStockConfirmation = (
+  request: PagedStockConfirmationRequest,
+) => pagedConfirmationRequest('qorlia_confirmation_paged_save', request);
+export const getPagedStockConfirmationStatus = (
+  request: PagedStockConfirmationRequest,
+) => pagedConfirmationRequest('qorlia_confirmation_paged_status', request);
+
+export async function getPagedStockConfirmationReferences(
+  request: PagedStockConfirmationRequest,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedPagedStockConfirmationRequest(request);
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !(version === false || stockVersion(version)) ||
+    (after > 0 && version === false)
+  )
+    throw new Error(
+      'Use a bounded confirmation reference page and its original version.',
+    );
+  const data = await stockCall<PagedStockConfirmationReferences>(
+    'qorlia_confirmation_paged_references',
+    {
+      payload: exact,
+      after,
+      version,
+      limit,
+    },
+  );
+  return checkedStockReferencePage(
+    data,
+    exact.request_key,
+    after,
+    version,
+    limit,
+    'confirmation',
+  );
+}
+
+function checkedStockReferencePage(
+  data: PagedStockConfirmationReferences,
+  requestKey: string,
+  after: number,
+  version: string | false,
+  limit: number,
+  kind: 'confirmation' | 'operation' | 'reservation',
+) {
+  if (
+    !confirmationKeys(data, [
+      'request_key',
+      'version',
+      'after',
+      'total_count',
+      'next_after',
+      'rows',
+    ]) ||
+    data.request_key !== requestKey ||
+    !stockVersion(data.version) ||
+    (version !== false && version !== data.version) ||
+    data.after !== after ||
+    !stockCount(data.total_count) ||
+    after > data.total_count ||
+    !Array.isArray(data.rows) ||
+    data.rows.length !== Math.min(limit, data.total_count - after) ||
+    !data.rows.every(
+      (row, index) =>
+        confirmationKeys(row, ['key', 'model', 'id', 'name', 'available']) &&
+        typeof row.key === 'string' &&
+        validConfirmationReference(row.key, row) &&
+        (!index || row.key > data.rows[index - 1].key),
+    ) ||
+    (after + data.rows.length < data.total_count
+      ? data.next_after !== after + data.rows.length
+      : data.next_after !== false)
+  )
+    throw new Error(
+      `Invalid ${kind} reference page. Reload the reference pages.`,
+    );
+  return data;
+}
+
+export interface PagedStockOperationReview
+  extends StockOperationSelectionRequest {
+  form: StockOperationForm;
+  review_version: string;
+  state_after: string;
+  operation_key: number | string | false;
+  write_ready: boolean;
+  after: number;
+  total_count: number;
+  next_after: number | false;
+  effects: StockConfirmationEffects;
+  continuation_token: string | false;
+  review_complete_token: string | false;
+}
+export interface PagedStockOperationRequest extends StockOperationRequest {
+  review_complete_token: string;
+}
+export interface PagedStockOperationStatus
+  extends Omit<StockOperationStatus, 'current'> {
+  state_after: string | false;
+  reference_count: number;
+  current: {
+    order_id: number;
+    transfer_id: number;
+    version: string;
+    transfer: OrderTransferSummary;
+  };
+}
+const operationPreparationStates = ['draft', ...confirmationStates];
+
+export async function getPagedStockOperationForm(
+  selection: StockOperationSelection,
+) {
+  const exact = checkedOperationSelection(selection);
+  if (!confirmationKeys(selection, Object.keys(exact)))
+    throw new Error('Use only the selected native stock operation.');
+  return checkedOperationForm(
+    await stockCall<StockOperationForm>('qorlia_operation_paged_load', exact),
+    exact,
+  );
+}
+export async function changePagedStockOperationForm(
+  request: StockOperationFormRequest,
+) {
+  const exact = checkedOperationRequest(request);
+  if (!confirmationKeys(request, Object.keys(exact)))
+    throw new Error('Use only the exact native operation form edits.');
+  const form = checkedOperationForm(
+    await stockCall<StockOperationForm>(
+      'qorlia_operation_paged_onchange',
+      exact,
+    ),
+    checkedOperationSelection(exact),
+  );
+  if (form.version !== exact.version)
+    throw new Error('The stock form version changed during onchange.');
+  return form;
+}
+export function checkedPagedStockOperationRequest(
+  request: PagedStockOperationRequest,
+): PagedStockOperationRequest {
+  if (
+    !confirmationKeys(request, [
+      'order_id',
+      'transfer_id',
+      'move_id',
+      'operation_id',
+      'version',
+      'edits',
+      'action',
+      'review_version',
+      'review_complete_token',
+      'request_key',
+    ]) ||
+    !stockVersion(request.review_complete_token)
+  )
+    throw new Error('Use the exact completely reviewed operation request.');
+  const { review_complete_token, ...legacy } = request;
+  return { ...checkedStockOperationRequest(legacy), review_complete_token };
+}
+export async function getPagedStockOperationReview(
+  selection: StockOperationSelectionRequest,
+  after = 0,
+  reviewVersion: string | false = false,
+  continuationToken: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedOperationAction(selection);
+  if (
+    !confirmationKeys(selection, Object.keys(exact)) ||
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    (after === 0
+      ? reviewVersion !== false || continuationToken !== false
+      : !stockVersion(reviewVersion) || !stockVersion(continuationToken))
+  )
+    throw new Error(
+      'Review bounded operation pages in order with their original tokens.',
+    );
+  const data = await stockCall<PagedStockOperationReview>(
+    'qorlia_operation_paged_review',
+    {
+      payload: exact,
+      after,
+      review_version: reviewVersion,
+      continuation_token: continuationToken,
+      limit,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      ...Object.keys(exact),
+      'form',
+      'review_version',
+      'state_after',
+      'operation_key',
+      'write_ready',
+      'after',
+      'total_count',
+      'next_after',
+      'effects',
+      'continuation_token',
+      'review_complete_token',
+    ]) ||
+    Object.entries(exact).some(
+      ([key, value]) =>
+        JSON.stringify(data[key as keyof PagedStockOperationReview]) !==
+        JSON.stringify(value),
+    ) ||
+    !stockVersion(data.review_version) ||
+    (reviewVersion !== false && data.review_version !== reviewVersion) ||
+    !operationPreparationStates.includes(data.state_after) ||
+    data.write_ready !== true ||
+    (exact.action === 'delete'
+      ? data.operation_key !== false
+      : exact.operation_id !== false
+        ? data.operation_key !== exact.operation_id
+        : typeof data.operation_key !== 'string' ||
+          !confirmationKey(data.operation_key, 'stock.move.line')) ||
+    data.after !== after ||
+    !stockCount(data.total_count) ||
+    after > data.total_count ||
+    !validConfirmationEffects(data.effects)
+  )
+    throw new Error('Invalid paged stock operation review. Review it again.');
+  checkedOperationForm(data.form, checkedOperationSelection(exact));
+  if (
+    data.form.version !== exact.version ||
+    (exact.action === 'save' ? !data.form.write_ready : !data.form.can_delete)
+  )
+    throw new Error(
+      'The native stock operation is no longer eligible for this review.',
+    );
+  const page = confirmationEffectPageRows(data.effects),
+    end = after + page.count;
+  if (
+    !page.valid ||
+    page.count !== Math.min(limit, data.total_count - after) ||
+    (end < data.total_count
+      ? data.next_after !== end ||
+        !stockVersion(data.continuation_token) ||
+        data.review_complete_token !== false
+      : data.next_after !== false ||
+        data.continuation_token !== false ||
+        !stockVersion(data.review_complete_token))
+  )
+    throw new Error(
+      'Invalid operation page or completion proof. Review it again.',
+    );
+  return data;
+}
+async function pagedOperationRequest(
+  method: string,
+  request: PagedStockOperationRequest,
+) {
+  const exact = checkedPagedStockOperationRequest(request);
+  const data = await stockCall<PagedStockOperationStatus>(method, {
+    payload: exact,
+  });
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'request_key',
+      'action',
+      'operation_id',
+      'state_after',
+      'reference_count',
+      'current',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    data.action !== exact.action ||
+    !stockCount(data.reference_count) ||
+    (data.accepted
+      ? !operationPreparationStates.includes(String(data.state_after))
+      : data.state_after !== false || data.reference_count !== 0) ||
+    (data.accepted && exact.action === 'save'
+      ? !stockId(data.operation_id) ||
+        (exact.operation_id !== false &&
+          data.operation_id !== exact.operation_id)
+      : data.operation_id !== false) ||
+    !confirmationKeys(data.current, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'transfer',
+    ]) ||
+    data.current.order_id !== exact.order_id ||
+    data.current.transfer_id !== exact.transfer_id ||
+    !stockVersion(data.current.version) ||
+    !validTransferSummary(data.current.transfer) ||
+    data.current.transfer.id !== exact.transfer_id
+  )
+    throw new Error(
+      'Invalid compact operation receipt. Keep the exact request for recovery.',
+    );
+  return data;
+}
+export const savePagedStockOperation = (request: PagedStockOperationRequest) =>
+  pagedOperationRequest('qorlia_operation_paged_save', request);
+export const getPagedStockOperationStatus = (
+  request: PagedStockOperationRequest,
+) => pagedOperationRequest('qorlia_operation_paged_status', request);
+export async function getPagedStockOperationReferences(
+  request: PagedStockOperationRequest,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedPagedStockOperationRequest(request);
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !(version === false || stockVersion(version)) ||
+    (after > 0 && version === false)
+  )
+    throw new Error(
+      'Use a bounded operation reference page and its original version.',
+    );
+  const data = await stockCall<PagedStockConfirmationReferences>(
+    'qorlia_operation_paged_references',
+    { payload: exact, after, version, limit },
+  );
+  return checkedStockReferencePage(
+    data,
+    exact.request_key,
+    after,
+    version,
+    limit,
+    'operation',
+  );
+}
+
+export interface PagedStockReservationLoad
+  extends Omit<PagedStockConfirmationLoad, 'reason'> {
+  reasons: Record<StockReservationAction, string | false>;
+}
+export interface PagedStockReservationReview extends StockReservationSelection {
+  review_version: string;
+  state_after: string;
+  write_ready: boolean;
+  after: number;
+  total_count: number;
+  next_after: number | false;
+  effects: StockConfirmationEffects;
+  continuation_token: string | false;
+  review_complete_token: string | false;
+}
+export interface PagedStockReservationRequest extends StockReservationRequest {
+  review_complete_token: string;
+}
+export interface PagedStockReservationStatus
+  extends Omit<PagedStockOperationStatus, 'operation_id' | 'action'> {
+  action: StockReservationAction;
+}
+export async function getPagedStockReservation(
+  orderId: number,
+  transferId: number,
+) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  const data = await stockCall<PagedStockReservationLoad>(
+    'qorlia_reservation_paged_load',
+    {
+      order_id: orderId,
+      transfer_id: transferId,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'transfer',
+      'package_count',
+      'reasons',
+      'write_ready',
+    ]) ||
+    data.order_id !== orderId ||
+    data.transfer_id !== transferId ||
+    !stockVersion(data.version) ||
+    !validTransferSummary(data.transfer) ||
+    data.transfer.id !== transferId ||
+    !stockCount(data.package_count) ||
+    typeof data.write_ready !== 'boolean' ||
+    !confirmationKeys(data.reasons, [...stockPreparationActions]) ||
+    !Object.values(data.reasons).every(stockText) ||
+    (!data.write_ready &&
+      Object.values(data.reasons).some((value) => value === false))
+  )
+    throw new Error('Invalid compact reservation state. Reload the transfer.');
+  return data;
+}
+export function checkedPagedStockReservationRequest(
+  request: PagedStockReservationRequest,
+): PagedStockReservationRequest {
+  if (
+    !confirmationKeys(request, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'action',
+      'review_version',
+      'review_complete_token',
+      'request_key',
+    ]) ||
+    !stockVersion(request.review_complete_token)
+  )
+    throw new Error('Use the exact completely reviewed reservation request.');
+  const { review_complete_token, ...legacy } = request;
+  return { ...checkedStockReservationRequest(legacy), review_complete_token };
+}
+export async function getPagedStockReservationReview(
+  selection: StockReservationSelection,
+  after = 0,
+  reviewVersion: string | false = false,
+  continuationToken: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedStockSelection(selection);
+  if (
+    !confirmationKeys(selection, Object.keys(exact)) ||
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    (after === 0
+      ? reviewVersion !== false || continuationToken !== false
+      : !stockVersion(reviewVersion) || !stockVersion(continuationToken))
+  )
+    throw new Error(
+      'Review bounded reservation pages in order with their original tokens.',
+    );
+  const data = await stockCall<PagedStockReservationReview>(
+    'qorlia_reservation_paged_review',
+    {
+      payload: exact,
+      after,
+      review_version: reviewVersion,
+      continuation_token: continuationToken,
+      limit,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      ...Object.keys(exact),
+      'review_version',
+      'state_after',
+      'write_ready',
+      'after',
+      'total_count',
+      'next_after',
+      'effects',
+      'continuation_token',
+      'review_complete_token',
+    ]) ||
+    Object.entries(exact).some(
+      ([key, value]) => data[key as keyof StockReservationSelection] !== value,
+    ) ||
+    !stockVersion(data.review_version) ||
+    (reviewVersion !== false && data.review_version !== reviewVersion) ||
+    !operationPreparationStates.includes(data.state_after) ||
+    data.write_ready !== true ||
+    data.after !== after ||
+    !stockCount(data.total_count) ||
+    after > data.total_count ||
+    !validConfirmationEffects(data.effects)
+  )
+    throw new Error('Invalid paged reservation review. Review it again.');
+  const page = confirmationEffectPageRows(data.effects),
+    end = after + page.count;
+  if (
+    !page.valid ||
+    page.count !== Math.min(limit, data.total_count - after) ||
+    (end < data.total_count
+      ? data.next_after !== end ||
+        !stockVersion(data.continuation_token) ||
+        data.review_complete_token !== false
+      : data.next_after !== false ||
+        data.continuation_token !== false ||
+        !stockVersion(data.review_complete_token))
+  )
+    throw new Error(
+      'Invalid reservation page or completion proof. Review it again.',
+    );
+  return data;
+}
+async function pagedReservationRequest(
+  method: string,
+  request: PagedStockReservationRequest,
+) {
+  const exact = checkedPagedStockReservationRequest(request);
+  const data = await stockCall<PagedStockReservationStatus>(method, {
+    payload: exact,
+  });
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'request_key',
+      'action',
+      'state_after',
+      'reference_count',
+      'current',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    data.action !== exact.action ||
+    !stockCount(data.reference_count) ||
+    (data.accepted
+      ? !operationPreparationStates.includes(String(data.state_after))
+      : data.state_after !== false || data.reference_count !== 0) ||
+    !confirmationKeys(data.current, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'transfer',
+    ]) ||
+    data.current.order_id !== exact.order_id ||
+    data.current.transfer_id !== exact.transfer_id ||
+    !stockVersion(data.current.version) ||
+    !validTransferSummary(data.current.transfer) ||
+    data.current.transfer.id !== exact.transfer_id
+  )
+    throw new Error(
+      'Invalid compact reservation receipt. Keep the exact request for recovery.',
+    );
+  return data;
+}
+export const savePagedStockReservation = (
+  request: PagedStockReservationRequest,
+) => pagedReservationRequest('qorlia_reservation_paged_save', request);
+export const getPagedStockReservationStatus = (
+  request: PagedStockReservationRequest,
+) => pagedReservationRequest('qorlia_reservation_paged_status', request);
+export async function getPagedStockReservationReferences(
+  request: PagedStockReservationRequest,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedPagedStockReservationRequest(request);
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !(version === false || stockVersion(version)) ||
+    (after > 0 && version === false)
+  )
+    throw new Error(
+      'Use a bounded reservation reference page and its original version.',
+    );
+  const data = await stockCall<PagedStockConfirmationReferences>(
+    'qorlia_reservation_paged_references',
+    {
+      payload: exact,
+      after,
+      version,
+      limit,
+    },
+  );
+  return checkedStockReferencePage(
+    data,
+    exact.request_key,
+    after,
+    version,
+    limit,
+    'reservation',
+  );
+}
+
+export interface StockRequestStopResult {
+  request_key: string;
+  stopped: boolean;
+  accepted: boolean;
+}
+async function stopPagedStockRequest(
+  method:
+    | 'qorlia_confirmation_paged_stop'
+    | 'qorlia_operation_paged_stop'
+    | 'qorlia_reservation_paged_stop',
+  exact:
+    | PagedStockConfirmationRequest
+    | PagedStockOperationRequest
+    | PagedStockReservationRequest,
+) {
+  const result = await stockCall<StockRequestStopResult>(method, {
+    payload: exact,
+  });
+  if (
+    !confirmationKeys(result, ['request_key', 'stopped', 'accepted']) ||
+    result.request_key !== exact.request_key ||
+    typeof result.stopped !== 'boolean' ||
+    typeof result.accepted !== 'boolean' ||
+    result.stopped === result.accepted
+  )
+    throw new Error(
+      'Invalid stop result. Keep the exact request and check it again before starting another stock action.',
+    );
+  return result;
+}
+export const stopPagedStockConfirmation = async (
+  request: PagedStockConfirmationRequest,
+) =>
+  stopPagedStockRequest(
+    'qorlia_confirmation_paged_stop',
+    checkedPagedStockConfirmationRequest(request),
+  );
+export const stopPagedStockOperation = async (
+  request: PagedStockOperationRequest,
+) =>
+  stopPagedStockRequest(
+    'qorlia_operation_paged_stop',
+    checkedPagedStockOperationRequest(request),
+  );
+export const stopPagedStockReservation = async (
+  request: PagedStockReservationRequest,
+) =>
+  stopPagedStockRequest(
+    'qorlia_reservation_paged_stop',
+    checkedPagedStockReservationRequest(request),
+  );
+
+export type StockValidationDecision =
+  | { kind: 'receipt'; confirm: true }
+  | { kind: 'immediate' | 'backorder'; selected: boolean }
+  | { kind: 'expiry'; proceed: boolean };
+export type StockValidationLoad = StockConfirmationLoad;
+export interface StockValidationSelection extends StockConfirmationSelection {
+  decisions: StockValidationDecision[];
+}
+export interface StockValidationRequest extends StockValidationSelection {
+  review_version: string;
+  request_key: string;
+}
+export interface StockValidationEffects
+  extends Omit<StockConfirmationEffects, 'private_audit_counts'> {
+  private_effect_counts: StockConfirmationEffects['private_audit_counts'];
+}
+export interface StockValidationOperation {
+  id: number;
+  product_id: Exclude<Relation, false>;
+  product_uom_id: Exclude<Relation, false>;
+  qty_done: number;
+  lot_id: Relation;
+  lot_name: string | false;
+  expiration_date: string | false;
+  cost_price: number;
+  sale_price: number;
+  mrp: number;
+  balance: number;
+  is_move_line_lot_expiring_soon: boolean;
+  expiry_warning: false | { title: string; type: 'warning'; message: string };
+}
+export interface StockValidationStep {
+  kind: 'receipt' | 'immediate' | 'backorder' | 'expiry' | 'sms';
+  title: string;
+  transfers: { transfer: Exclude<Relation, false>; selected: boolean }[];
+  lots: Exclude<Relation, false>[];
+  operations: StockValidationOperation[];
+  blocked_reason: string | false;
+  source?: Relation;
+  destination?: Relation;
+  picking_code?: 'incoming' | 'internal';
+  description?: string;
+}
+export interface StockValidationReview extends StockValidationSelection {
+  review_version: string | false;
+  state_after: OrderTransfer['state'];
+  effects: StockValidationEffects;
+  write_ready: boolean;
+  terminal: boolean;
+  next_step: StockValidationStep | false;
+}
+export interface StockValidationStatus
+  extends Omit<StockConfirmationStatus, 'state_after'> {
+  state_after: OrderTransfer['state'] | false;
+}
+const validationModels = [
+  ...confirmationModels,
+  'product.template',
+  'ir.property',
+  'account.move',
+  'account.move.line',
+  'account.payment',
+  'account.partial.reconcile',
+  'stock.valuation.layer',
+  'sale.order',
+  'sale.order.line',
+  'account.full.reconcile',
+  'account.analytic.line',
+];
+const validationPrivateModels = [
+  'mail.message',
+  'mail.mail',
+  'mail.activity',
+  'mail.notification',
+  'mail.tracking.value',
+  'ir.attachment',
+  'account.move',
+  'account.move.line',
+  'account.payment',
+  'account.partial.reconcile',
+  'stock.valuation.layer',
+  'sale.order',
+  'sale.order.line',
+  'account.full.reconcile',
+  'account.analytic.line',
+];
+const validationStates = [
+  'draft',
+  'waiting',
+  'confirmed',
+  'assigned',
+  'done',
+  'cancel',
+];
+const validationUpdatedAssignments: Record<string, string[]> = {
+  'stock.picking': ['date_done'],
+  'stock.move': ['date'],
+  'stock.move.line': ['date'],
+  'stock.quant': ['in_date'],
+  'sale.order': ['effective_date'],
+};
+const validationCreatedAssignments: Record<string, string[]> = {
+  ...validationUpdatedAssignments,
+  'stock.picking': ['name', 'date', 'date_done'],
+  'purchase.order': ['name'],
+  'account.move': ['name'],
+  'mail.message': ['date', 'message_id'],
+  'mail.mail': ['message_id'],
+};
+const validationRelation = (value: unknown): value is [number, string] =>
+  Array.isArray(value) && validRelation(value) && stockId(value[0]);
+export function checkedStockValidationDecisions(
+  value: unknown,
+): StockValidationDecision[] {
+  if (!Array.isArray(value) || value.length > 16)
+    throw new Error('Use the ordered native validation decisions.');
+  return value.map((decision) => {
+    const field =
+      decision?.kind === 'receipt'
+        ? 'confirm'
+        : decision?.kind === 'expiry'
+          ? 'proceed'
+          : ['immediate', 'backorder'].includes(decision?.kind)
+            ? 'selected'
+            : false;
+    if (
+      !field ||
+      !confirmationKeys(decision, ['kind', field]) ||
+      typeof decision[field] !== 'boolean' ||
+      (decision.kind === 'receipt' && decision[field] !== true)
+    )
+      throw new Error('Use the exact next native validation decision.');
+    if (decision.kind === 'receipt') return { kind: 'receipt', confirm: true };
+    if (decision.kind === 'expiry')
+      return { kind: 'expiry', proceed: decision.proceed };
+    return { kind: decision.kind, selected: decision.selected };
+  });
+}
+export function checkedStockValidationRequest(
+  value: StockValidationRequest,
+): StockValidationRequest {
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'decisions',
+      'review_version',
+      'request_key',
+    ])
+  )
+    throw new Error('Use the exact reviewed validation request.');
+  const selection = checkedConfirmationSelection(value);
+  if (
+    !stockVersion(value.review_version) ||
+    typeof value.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      value.request_key,
+    )
+  )
+    throw new Error('Use the exact reviewed validation request.');
+  return {
+    ...selection,
+    decisions: checkedStockValidationDecisions(value.decisions),
+    review_version: value.review_version,
+    request_key: value.request_key,
+  };
+}
+function validValidationEffects(
+  data: StockValidationEffects,
+  returnCreation = false,
+): boolean {
+  return (
+    confirmationKeys(data, [
+      'created',
+      'updated',
+      'deleted',
+      'labels',
+      'schema',
+      'private_effect_counts',
+    ]) &&
+    validConfirmationEffects(
+      {
+        created: data.created,
+        updated: data.updated,
+        deleted: data.deleted,
+        labels: data.labels,
+        schema: data.schema,
+        private_audit_counts: data.private_effect_counts,
+      },
+      true,
+      returnCreation,
+    )
+  );
+}
+
+export interface StockReturnForm {
+  location: Exclude<Relation, false>;
+  location_editable: boolean;
+  show_units: boolean;
+  chained_move_warning: boolean;
+  lines: {
+    move_id: number;
+    product: Exclude<Relation, false>;
+    quantity: number;
+    unit: Exclude<Relation, false>;
+    updates_order_quantities: boolean;
+  }[];
+}
+export interface StockReturnLoad extends StockConfirmationLoad {
+  form: StockReturnForm | false;
+}
+export interface StockReturnSelection extends StockConfirmationSelection {
+  location_id: number;
+  lines: { move_id: number; quantity: number }[];
+}
+export interface StockReturnReview extends StockReturnSelection {
+  form: StockReturnForm;
+  return_state: Exclude<OrderTransfer['state'], 'done' | 'cancel'>;
+  effects: StockValidationEffects;
+  write_ready: true;
+  review_version: string;
+}
+export interface StockReturnRequest extends StockReturnSelection {
+  review_version: string;
+  request_key: string;
+}
+export interface StockReturnStatus
+  extends Omit<StockConfirmationStatus, 'current' | 'state_after'> {
+  current: StockReturnLoad;
+  state_after: StockReturnReview['return_state'] | false;
+  return_transfer: StockConfirmationStatus['references'][string] | false;
+}
+function validReturnForm(data: StockReturnForm): boolean {
+  return (
+    confirmationKeys(data, [
+      'location',
+      'location_editable',
+      'show_units',
+      'chained_move_warning',
+      'lines',
+    ]) &&
+    Array.isArray(data.location) &&
+    validRelation(data.location) &&
+    stockId(data.location[0]) &&
+    [data.location_editable, data.show_units, data.chained_move_warning].every(
+      (flag) => typeof flag === 'boolean',
+    ) &&
+    Array.isArray(data.lines) &&
+    data.lines.length <= 500 &&
+    data.lines.every(
+      (row) =>
+        confirmationKeys(row, [
+          'move_id',
+          'product',
+          'quantity',
+          'unit',
+          'updates_order_quantities',
+        ]) &&
+        stockId(row.move_id) &&
+        Number.isFinite(row.quantity) &&
+        [row.product, row.unit].every(
+          (value) =>
+            Array.isArray(value) && validRelation(value) && stockId(value[0]),
+        ) &&
+        typeof row.updates_order_quantities === 'boolean',
+    ) &&
+    new Set(data.lines.map((row) => row.move_id)).size === data.lines.length
+  );
+}
+function checkedReturnSelection(
+  value: StockReturnSelection,
+): StockReturnSelection {
+  const base = checkedConfirmationSelection(value);
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'location_id',
+      'lines',
+    ]) ||
+    !stockId(value.location_id) ||
+    !Array.isArray(value.lines) ||
+    value.lines.length > 500 ||
+    !value.lines.every(
+      (row) =>
+        confirmationKeys(row, ['move_id', 'quantity']) &&
+        stockId(row.move_id) &&
+        Number.isFinite(row.quantity),
+    ) ||
+    new Set(value.lines.map((row) => row.move_id)).size !== value.lines.length
+  )
+    throw new Error(
+      'Review original native return moves, location and finite quantities.',
+    );
+  return {
+    ...base,
+    location_id: value.location_id,
+    lines: value.lines.map((row) => ({ ...row })),
+  };
+}
+function checkedReturnLoad(
+  data: StockReturnLoad,
+  orderId: number,
+  transferId: number,
+) {
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'graph',
+      'reason',
+      'write_ready',
+      'form',
+    ]) ||
+    data.order_id !== orderId ||
+    data.transfer_id !== transferId ||
+    !stockVersion(data.version) ||
+    !validStockGraph(data.graph, transferId) ||
+    data.write_ready !== (data.form !== false) ||
+    !(data.form === false
+      ? typeof data.reason === 'string' && data.reason.length > 0
+      : data.reason === false &&
+        data.graph.transfer.state === 'done' &&
+        validReturnForm(data.form) &&
+        data.form.lines.every((row) =>
+          data.graph.transfer.moves.some(
+            (move) =>
+              move.id === row.move_id &&
+              move.product !== false &&
+              move.product[0] === row.product[0],
+          ),
+        ))
+  )
+    throw new Error('Invalid native return form. Reload the transfer.');
+  return data;
+}
+export async function getStockReturn(orderId: number, transferId: number) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  return checkedReturnLoad(
+    await stockCall<StockReturnLoad>('qorlia_return_load', {
+      order_id: orderId,
+      transfer_id: transferId,
+    }),
+    orderId,
+    transferId,
+  );
+}
+export async function getStockReturnLocations(
+  selection: StockConfirmationSelection,
+  query = '',
+  after = 0,
+  limit = 25,
+) {
+  const exact = checkedConfirmationSelection(selection);
+  if (
+    !confirmationKeys(selection, ['order_id', 'transfer_id', 'version']) ||
+    typeof query !== 'string' ||
+    query.length > 200 ||
+    !Number.isSafeInteger(after) ||
+    after < 0 ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100
+  )
+    throw new Error('Use a bounded native return-location search.');
+  const data = await stockCall<{
+    rows: Exclude<Relation, false>[];
+    next_after: number | false;
+  }>('qorlia_return_locations', { ...exact, query, after, limit });
+  if (
+    !confirmationKeys(data, ['rows', 'next_after']) ||
+    !Array.isArray(data.rows) ||
+    data.rows.length > limit ||
+    !data.rows.every(
+      (row, index) =>
+        Array.isArray(row) &&
+        validRelation(row) &&
+        stockId(row[0]) &&
+        row[0] > (index ? data.rows[index - 1][0] : after),
+    ) ||
+    !(
+      data.next_after === false ||
+      (data.rows.length === limit &&
+        stockId(data.next_after) &&
+        data.next_after === data.rows[data.rows.length - 1][0])
+    )
+  )
+    throw new Error('Invalid native return locations. Reload the form.');
+  return data;
+}
+export async function previewStockReturn(selection: StockReturnSelection) {
+  const exact = checkedReturnSelection(selection);
+  const data = await stockCall<StockReturnReview>(
+    'qorlia_return_preview',
+    exact,
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'location_id',
+      'lines',
+      'form',
+      'return_state',
+      'effects',
+      'write_ready',
+      'review_version',
+    ]) ||
+    data.order_id !== exact.order_id ||
+    data.transfer_id !== exact.transfer_id ||
+    data.version !== exact.version ||
+    data.location_id !== exact.location_id ||
+    JSON.stringify(data.lines) !== JSON.stringify(exact.lines) ||
+    !validReturnForm(data.form) ||
+    data.form.location[0] !== exact.location_id ||
+    data.form.lines.length !== exact.lines.length ||
+    !data.form.lines.every((row) =>
+      exact.lines.some(
+        (line) =>
+          line.move_id === row.move_id && line.quantity === row.quantity,
+      ),
+    ) ||
+    !['draft', 'waiting', 'confirmed', 'assigned'].includes(
+      data.return_state,
+    ) ||
+    !validValidationEffects(data.effects, true) ||
+    data.write_ready !== true ||
+    !stockVersion(data.review_version)
+  )
+    throw new Error(
+      'Invalid native return review. Reload and review it again.',
+    );
+  return data;
+}
+export function checkedStockReturnRequest(
+  value: StockReturnRequest,
+): StockReturnRequest {
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'location_id',
+      'lines',
+      'review_version',
+      'request_key',
+    ])
+  )
+    throw new Error('Use the exact reviewed return creation request.');
+  const common = checkedStockConfirmationRequest({
+    order_id: value.order_id,
+    transfer_id: value.transfer_id,
+    version: value.version,
+    review_version: value.review_version,
+    request_key: value.request_key,
+  });
+  return {
+    ...checkedReturnSelection({
+      order_id: common.order_id,
+      transfer_id: common.transfer_id,
+      version: common.version,
+      location_id: value.location_id,
+      lines: value.lines,
+    }),
+    review_version: common.review_version,
+    request_key: common.request_key,
+  };
+}
+async function returnRequest(method: string, value: StockReturnRequest) {
+  const exact = checkedStockReturnRequest(value);
+  const data = await stockCall<StockReturnStatus>(method, { payload: exact });
+  const reference = (row: StockConfirmationStatus['references'][string]) =>
+    confirmationKeys(row, ['model', 'id', 'name', 'available']) &&
+    typeof row.model === 'string' &&
+    validationModels.includes(row.model) &&
+    !validationPrivateModels.includes(row.model) &&
+    typeof row.available === 'boolean' &&
+    (row.available
+      ? stockId(row.id) && typeof row.name === 'string'
+      : row.id === false && row.name === false);
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'request_key',
+      'state_after',
+      'return_transfer',
+      'references',
+      'current',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    !confirmationObject(data.references) ||
+    !Object.entries(data.references).every(
+      ([key, row]) => reference(row) && confirmationKey(key, row.model),
+    ) ||
+    !(data.accepted
+      ? ['draft', 'waiting', 'confirmed', 'assigned'].includes(
+          String(data.state_after),
+        ) &&
+        data.return_transfer !== false &&
+        reference(data.return_transfer) &&
+        data.return_transfer.model === 'stock.picking' &&
+        Object.values(data.references).some(
+          (row) =>
+            row.model === 'stock.picking' &&
+            row.id === (data.return_transfer && data.return_transfer.id) &&
+            row.name === (data.return_transfer && data.return_transfer.name) &&
+            row.available ===
+              (data.return_transfer && data.return_transfer.available),
+        )
+      : data.state_after === false &&
+        data.return_transfer === false &&
+        Object.keys(data.references).length === 0)
+  )
+    throw new Error(
+      'Invalid return creation receipt. Check the exact request before retrying.',
+    );
+  checkedReturnLoad(data.current, exact.order_id, exact.transfer_id);
+  return data;
+}
+export const saveStockReturn = (request: StockReturnRequest) =>
+  returnRequest('qorlia_return_save', request);
+export const getStockReturnStatus = (request: StockReturnRequest) =>
+  returnRequest('qorlia_return_status', request);
+function validValidationStep(
+  data: StockValidationStep,
+  transferId: number,
+): boolean {
+  const keys = [
+    'kind',
+    'title',
+    'transfers',
+    'lots',
+    'operations',
+    'blocked_reason',
+  ];
+  if (
+    !data ||
+    !['receipt', 'immediate', 'backorder', 'expiry', 'sms'].includes(
+      data.kind,
+    ) ||
+    !confirmationKeys(data, [
+      ...keys,
+      ...(data.kind === 'receipt'
+        ? ['source', 'destination', 'picking_code']
+        : data.kind === 'expiry'
+          ? ['description']
+          : []),
+    ]) ||
+    typeof data.title !== 'string' ||
+    !Array.isArray(data.transfers) ||
+    !Array.isArray(data.lots) ||
+    !Array.isArray(data.operations)
+  )
+    return false;
+  if (data.kind === 'sms')
+    return (
+      data.transfers.length === 0 &&
+      data.lots.length === 0 &&
+      data.operations.length === 0 &&
+      typeof data.blocked_reason === 'string' &&
+      data.blocked_reason.length > 0
+    );
+  if (data.blocked_reason !== false) return false;
+  if (data.kind === 'immediate' || data.kind === 'backorder')
+    return (
+      data.lots.length === 0 &&
+      data.operations.length === 0 &&
+      data.transfers.length === 1 &&
+      data.transfers.every(
+        (row) =>
+          confirmationKeys(row, ['transfer', 'selected']) &&
+          validationRelation(row.transfer) &&
+          row.transfer[0] === transferId &&
+          typeof row.selected === 'boolean',
+      )
+    );
+  if (data.transfers.length > 0) return false;
+  if (data.kind === 'expiry')
+    return (
+      data.operations.length === 0 &&
+      typeof data.description === 'string' &&
+      data.lots.length > 0 &&
+      data.lots.every(validationRelation) &&
+      new Set(data.lots.map((lot) => lot[0])).size === data.lots.length
+    );
+  return (
+    data.lots.length === 0 &&
+    ['incoming', 'internal'].includes(String(data.picking_code)) &&
+    validationRelation(data.source) &&
+    validationRelation(data.destination) &&
+    new Set(data.operations.map((row) => row?.id)).size ===
+      data.operations.length &&
+    data.operations.every(
+      (row) =>
+        confirmationKeys(row, [
+          'id',
+          'product_id',
+          'product_uom_id',
+          'qty_done',
+          'lot_id',
+          'lot_name',
+          'expiration_date',
+          'cost_price',
+          'sale_price',
+          'mrp',
+          'balance',
+          'is_move_line_lot_expiring_soon',
+          'expiry_warning',
+        ]) &&
+        stockId(row.id) &&
+        validationRelation(row.product_id) &&
+        validationRelation(row.product_uom_id) &&
+        (row.lot_id === false || validationRelation(row.lot_id)) &&
+        stockText(row.lot_name) &&
+        (row.expiration_date === false ||
+          (typeof row.expiration_date === 'string' &&
+            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?$/.test(
+              row.expiration_date,
+            ) &&
+            Number.isFinite(Date.parse(row.expiration_date)))) &&
+        ['qty_done', 'cost_price', 'sale_price', 'mrp', 'balance'].every(
+          (field) =>
+            typeof row[field as keyof StockValidationOperation] === 'number' &&
+            Number.isFinite(row[field as keyof StockValidationOperation]),
+        ) &&
+        row.qty_done > 0 &&
+        typeof row.is_move_line_lot_expiring_soon === 'boolean' &&
+        (row.is_move_line_lot_expiring_soon
+          ? confirmationKeys(row.expiry_warning, [
+              'title',
+              'type',
+              'message',
+            ]) &&
+            row.expiry_warning !== false &&
+            row.expiry_warning.type === 'warning' &&
+            typeof row.expiry_warning.title === 'string' &&
+            typeof row.expiry_warning.message === 'string'
+          : row.expiry_warning === false),
+    )
+  );
+}
+export async function getStockValidation(orderId: number, transferId: number) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  return checkedConfirmationLoad(
+    await stockCall<StockValidationLoad>('qorlia_validation_load', {
+      order_id: orderId,
+      transfer_id: transferId,
+    }),
+    orderId,
+    transferId,
+  );
+}
+export async function previewStockValidation(
+  selection: StockValidationSelection,
+) {
+  if (
+    !confirmationKeys(selection, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'decisions',
+    ])
+  )
+    throw new Error('Use the exact native validation selection.');
+  const exact = {
+    ...checkedConfirmationSelection(selection),
+    decisions: checkedStockValidationDecisions(selection.decisions),
+  };
+  const data = await stockCall<StockValidationReview>(
+    'qorlia_validation_preview',
+    exact,
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'decisions',
+      'review_version',
+      'next_step',
+      'terminal',
+      'state_after',
+      'effects',
+      'write_ready',
+    ]) ||
+    data.order_id !== exact.order_id ||
+    data.transfer_id !== exact.transfer_id ||
+    data.version !== exact.version ||
+    JSON.stringify(checkedStockValidationDecisions(data.decisions)) !==
+      JSON.stringify(exact.decisions) ||
+    !validationStates.includes(data.state_after) ||
+    typeof data.terminal !== 'boolean' ||
+    (data.terminal
+      ? data.next_step !== false ||
+        !stockVersion(data.review_version) ||
+        data.write_ready !== true
+      : data.next_step === false ||
+        !validValidationStep(data.next_step, exact.transfer_id) ||
+        data.review_version !== false ||
+        data.write_ready !== false) ||
+    !validValidationEffects(data.effects)
+  )
+    throw new Error(
+      'Invalid validation review. Reload and review the native transfer again.',
+    );
+  return data;
+}
+async function validationRequest(
+  method: string,
+  request: StockValidationRequest,
+) {
+  const exact = checkedStockValidationRequest(request);
+  const data = await stockCall<StockValidationStatus>(method, {
+    payload: exact,
+  });
+  return checkedValidationStatus(
+    data,
+    exact,
+    method === 'qorlia_validation_save',
+  );
+}
+function checkedValidationStatus(
+  data: StockValidationStatus,
+  exact: StockValidationRequest,
+  requireAccepted: boolean,
+) {
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'request_key',
+      'references',
+      'state_after',
+      'current',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    (requireAccepted && !data.accepted) ||
+    (data.accepted
+      ? !validationStates.includes(String(data.state_after))
+      : data.state_after !== false) ||
+    !confirmationObject(data.references) ||
+    (!data.accepted && Object.keys(data.references).length > 0) ||
+    !Object.entries(data.references).every(
+      ([key, row]) =>
+        confirmationKeys(row, ['model', 'id', 'name', 'available']) &&
+        typeof row.model === 'string' &&
+        validationModels.includes(row.model) &&
+        !row.model.startsWith('mail.') &&
+        row.model !== 'ir.attachment' &&
+        confirmationKey(key, row.model) &&
+        typeof row.available === 'boolean' &&
+        (row.available
+          ? stockId(row.id) && typeof row.name === 'string'
+          : row.id === false && row.name === false),
+    )
+  )
+    throw new Error(
+      'Invalid validation receipt. Check the exact request before retrying.',
+    );
+  checkedConfirmationLoad(data.current, exact.order_id, exact.transfer_id);
+  return data;
+}
+export const saveStockValidation = (request: StockValidationRequest) =>
+  validationRequest('qorlia_validation_save', request);
+export const getStockValidationStatus = (request: StockValidationRequest) =>
+  validationRequest('qorlia_validation_status', request);
+
+export interface StockValidationStepSelection extends StockValidationSelection {
+  continuation_key: string | false;
+}
+export interface StockValidationStepRequest extends StockValidationRequest {
+  continuation_key: string | false;
+}
+export interface StockValidationStepReview
+  extends Omit<StockValidationReview, 'review_version'> {
+  continuation_key: string | false;
+  review_version: string;
+}
+export interface StockValidationStepStatus extends StockValidationStatus {
+  next_step: StockValidationStep | false;
+  continuation_key: string | false;
+  continuation_reason: string | false;
+  terminal: boolean;
+}
+const validationRequestKey = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value);
+function checkedValidationStepSelection(value: StockValidationStepSelection) {
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'decisions',
+      'continuation_key',
+    ]) ||
+    (value.continuation_key !== false &&
+      !validationRequestKey(value.continuation_key))
+  )
+    throw new Error('Use the exact native validation step and continuation.');
+  const decisions = checkedStockValidationDecisions(value.decisions);
+  if (decisions.length !== (value.continuation_key ? 1 : 0))
+    throw new Error('Review exactly one native validation step.');
+  return {
+    ...checkedConfirmationSelection(value),
+    decisions,
+    continuation_key: value.continuation_key,
+  };
+}
+export function checkedStockValidationStepRequest(
+  value: StockValidationStepRequest,
+): StockValidationStepRequest {
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'decisions',
+      'review_version',
+      'request_key',
+      'continuation_key',
+    ])
+  )
+    throw new Error('Use the exact reviewed native validation step.');
+  const { continuation_key, ...base } = value;
+  const request = checkedStockValidationRequest(base);
+  checkedValidationStepSelection({
+    ...checkedConfirmationSelection(value),
+    decisions: value.decisions,
+    continuation_key,
+  });
+  if (continuation_key === request.request_key)
+    throw new Error('A step cannot continue its own request.');
+  return { ...request, continuation_key };
+}
+export async function previewStockValidationStep(
+  selection: StockValidationStepSelection,
+) {
+  const exact = checkedValidationStepSelection(selection);
+  const data = await stockCall<StockValidationStepReview>(
+    'qorlia_validation_step_preview',
+    exact,
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'decisions',
+      'continuation_key',
+      'review_version',
+      'next_step',
+      'terminal',
+      'state_after',
+      'effects',
+      'write_ready',
+    ]) ||
+    data.order_id !== exact.order_id ||
+    data.transfer_id !== exact.transfer_id ||
+    data.version !== exact.version ||
+    data.continuation_key !== exact.continuation_key ||
+    JSON.stringify(checkedStockValidationDecisions(data.decisions)) !==
+      JSON.stringify(exact.decisions) ||
+    !stockVersion(data.review_version) ||
+    data.write_ready !== true ||
+    !validationStates.includes(data.state_after) ||
+    typeof data.terminal !== 'boolean' ||
+    (data.terminal
+      ? data.next_step !== false
+      : data.next_step === false ||
+        !validValidationStep(data.next_step, exact.transfer_id) ||
+        data.next_step.kind === 'sms') ||
+    !validValidationEffects(data.effects)
+  )
+    throw new Error(
+      'Invalid native step review. Reload and review the transfer again.',
+    );
+  return data;
+}
+async function validationStepRequest(
+  method: string,
+  value: StockValidationStepRequest,
+) {
+  const exact = checkedStockValidationStepRequest(value);
+  const data = await stockCall<StockValidationStepStatus>(method, {
+    payload: exact,
+  });
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'request_key',
+      'references',
+      'state_after',
+      'current',
+      'next_step',
+      'continuation_key',
+      'continuation_reason',
+      'terminal',
+    ])
+  )
+    throw new Error('Invalid native step receipt. Recover the exact request.');
+  const {
+    next_step,
+    continuation_key,
+    continuation_reason,
+    terminal,
+    ...base
+  } = data;
+  checkedValidationStatus(
+    base,
+    exact,
+    method === 'qorlia_validation_step_save',
+  );
+  if (
+    typeof terminal !== 'boolean' ||
+    (!data.accepted
+      ? terminal !== false ||
+        next_step !== false ||
+        continuation_key !== false ||
+        continuation_reason !== false
+      : terminal
+        ? next_step !== false ||
+          continuation_key !== false ||
+          continuation_reason !== false
+        : next_step === false
+          ? continuation_key !== false ||
+            typeof continuation_reason !== 'string' ||
+            !continuation_reason
+          : !validValidationStep(next_step, exact.transfer_id) ||
+            next_step.kind === 'sms' ||
+            continuation_key !== exact.request_key ||
+            continuation_reason !== false)
+  )
+    throw new Error('Invalid native continuation. Recover the exact request.');
+  return data;
+}
+export const saveStockValidationStep = (request: StockValidationStepRequest) =>
+  validationStepRequest('qorlia_validation_step_save', request);
+export const getStockValidationStepStatus = (
+  request: StockValidationStepRequest,
+) => validationStepRequest('qorlia_validation_step_status', request);
 
 export interface OrderWorkflow {
   id: number;

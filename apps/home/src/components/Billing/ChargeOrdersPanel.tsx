@@ -13,6 +13,7 @@ import {
 } from './billingService';
 import { DraftOrderEditor } from './DraftOrderEditor';
 import { BillingReportsModal } from './InvoiceReportsModal';
+import { OrderDeliveriesPanel } from './OrderDeliveriesPanel';
 import { OrderWorkflowModal } from './OrderWorkflowModal';
 
 const orderState = {
@@ -47,6 +48,7 @@ export function ChargeOrdersPanel({
   const [notice, setNotice] = useState('');
   const [workflow, setWorkflow] = useState<number | null>(null);
   const [reportOrder, setReportOrder] = useState<number | null>(null);
+  const [deliveryOrder, setDeliveryOrder] = useState<number | null>(null);
   const queryClient = useQueryClient();
   const orders = useQuery({
     queryKey: [
@@ -92,6 +94,16 @@ export function ChargeOrdersPanel({
           Reconnect Billing
         </Button>
       </section>
+    );
+  if (deliveryOrder !== null)
+    return (
+      <OrderDeliveriesPanel
+        key={`${uid}:${deliveryOrder}`}
+        uid={uid}
+        orderId={deliveryOrder}
+        close={() => setDeliveryOrder(null)}
+        reconnect={reconnect}
+      />
     );
   if (reportOrder !== null)
     return (
@@ -382,6 +394,9 @@ export function ChargeOrdersPanel({
           </Button>
           <Button kind="tertiary" onClick={() => setReportOrder(selected.id)}>
             Quotation and order PDF reports
+          </Button>
+          <Button kind="tertiary" onClick={() => setDeliveryOrder(selected.id)}>
+            View stock transfers
           </Button>
           {['draft', 'sent'].includes(selected.state) &&
           !selected.invoice_ids.length ? (
