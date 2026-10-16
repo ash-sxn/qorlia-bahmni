@@ -10,7 +10,10 @@ pass with 117-table preservation, mandatory analytics/SMS and 89 matched Python
 hashes. The client accepts 15 captured native JSON frames with mocked transport.
 Home passes 944 cases/82 suites, with 25 confirmation component cases. Types,
 scoped lint/format/diff, three gateway unit cases and contributor links pass.
-Full candidate regression, real HTTP save/stop races, matching-writer rollout and
+The separate full native run passes 830 cases, zero failures/errors/skips, with
+117-table preservation, mandatory analytics/SMS and 89 Python hashes matched to
+commit `b0862d6a`. It uses source 58 on installed-49 synthetic data with no HTTP,
+not a runtime upgrade. Real HTTP save/stop races, matching-writer rollout and
 actual browser/storage acceptance remain gates. No build/server, review reopening,
 upgrade or deployment. Read [the contract](../runtime/billing/STOCK_REQUEST_STOP.md).
 

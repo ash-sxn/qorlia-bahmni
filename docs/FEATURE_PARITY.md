@@ -14,7 +14,10 @@
   frames with mocked transport. A retained test-exception mismatch was corrected,
   not a permission guard. Home passes 944 cases/82 suites, including 25 confirmation
   dialog cases; types, scoped lint/format/diff, three gateway unit cases and
-  contributor links pass. Actual HTTP race/full-addon/runtime/browser gates remain.
+  contributor links pass. The separate full native run passes 830 cases, zero
+  failures/errors/skips, with 117-table preservation, mandatory analytics/SMS
+  and all 89 Python hashes matched to `b0862d6a`. This is source 58 on installed-49
+  synthetic data without HTTP, not an upgrade. Actual HTTP race/runtime/browser gates remain.
   No build, review reopening, upgrade or deployment. Read
   [the exact stop contract](../runtime/billing/STOCK_REQUEST_STOP.md).
 

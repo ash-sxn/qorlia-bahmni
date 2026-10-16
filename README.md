@@ -59,6 +59,9 @@ in source. Older pending confirmations retain their original dialog. Home passes
 adds native/client/dialog recovery without reversing accepted actions. Actual
 HTTP save/stop races, matching-worker rollout, browser/gateway/IndexedDB and other
 stock-action consumer gates remain. This is not a built or published UI update.
+The separate source-58 native regression passes 830 cases with 117-table
+preservation and all 89 Python hashes matched to its committed source, not an
+installed upgrade or actual concurrent HTTP/browser acceptance.
 
 - [Feature parity ledger](docs/FEATURE_PARITY.md): dated evidence, accepted increments and remaining work.
 - [Backend readiness](docs/BACKEND_READINESS.md): backend compatibility, tested environments and integration gaps.

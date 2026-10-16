@@ -9,8 +9,10 @@ It never reverses an accepted action. Exact server acknowledgment precedes
 storage clearing; lost responses retain recoverable requests. All 16 scoped native
 cases pass with 117-table preservation and 89 matching Python hashes; the client
 accepts 15 native JSON frames with mocked transport. Home passes 944 cases in
-82 suites, including 25 confirmation-dialog cases. Actual HTTP save/stop races,
-full candidate regression, matching-worker rollout and browser/storage acceptance
+82 suites, including 25 confirmation-dialog cases. The separate full native run
+passes 830 cases, zero failures/errors/skips, with 117-table preservation,
+mandatory analytics/SMS and all 89 Python hashes matched to `b0862d6a`.
+Actual HTTP save/stop races, matching-worker rollout and browser/storage acceptance
 remain. No review reopening, upgrade or deployment.
 
 Latest consumer source: [complete confirmation review](STOCK_CONFIRMATION_PAGING.md#react-confirmation-consumer-source-16-october-2026)

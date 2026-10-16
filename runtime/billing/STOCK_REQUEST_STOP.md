@@ -119,9 +119,20 @@ tests use SDK/storage doubles, not a real browser or IndexedDB durability test.
 The React checklist preserves existing controls, identity boundaries, bounded
 rendering and focus on entering or declining the stop prompt.
 
+The separate full-addon candidate-58 run passes **830 cases**, zero failures,
+errors or skips, preserving all 117 table fingerprints after rollback with
+mandatory analytics/SMS enabled. All 89 Python files and hashes exactly match
+commit `b0862d6a`. The disposable native container is removed. This read-only
+source-58 mount on installed-49 synthetic data uses `--no-http`; it does not
+establish fresh-install, installed-upgrade, dependency, HTTP, gateway or browser
+acceptance. Existing bootstrap/DNS/pandas and custom-module warnings are retained
+in the log, not described as a clean dependency install.
+
 Private evidence: `request-stop58-native-tests-20261016.log`,
 `request-stop58-r2-native-tests-20261016.log` and
-`request-stop58-r2-source-wire-verification-20261016.json`. Raw proofs, database
+`request-stop58-r2-source-wire-verification-20261016.json`,
+`full-addon58-native-tests-20261016.log` and
+`full-addon58-source-verification-20261016.json`. Raw proofs, database
 rows, credentials and launch configuration remain outside the public repository.
 
 Remaining release gates:
@@ -131,8 +142,8 @@ Remaining release gates:
   guarantee retirement. No runtime rollout is included here.
 - Independently verify save-versus-stop concurrency and lost stop responses over
   real native HTTP. Serial native cases and SDK replay do not prove that race.
-- Complete full-addon candidate-58 regression. Earlier source-57's 814-case result
-  does not verify these new receipt checks.
+- Complete installed-upgrade and representative configuration acceptance. The
+  source-58 830-case full regression does not establish those runtime states.
 - Actual protected-gateway/browser/IndexedDB durability, keyboard/narrow layout,
   multi-tab and reconnect fault acceptance remain open behind owner approval.
 - Remaining paged operation/preparation consumers, large validation/return flows,
