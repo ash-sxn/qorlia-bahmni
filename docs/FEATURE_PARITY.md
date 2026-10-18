@@ -1,5 +1,21 @@
 # Bahmni workflow parity ledger
 
+## 18 October native HTTP save-stop race verification
+
+- The actual typed client passes both competing orderings for confirmation,
+  reservation and operation requests. Lock queues prove both requests were
+  waiting before release. Save-first preserves acceptance; stop-first prevents
+  application. Lost stop response, expiry and re-authentication are recovered.
+- Independent post-close SQL verifies all eight requests (five accepted receipts,
+  three stopped markers), original identities and restored stock in six synthetic
+  fixtures, 117 final table fingerprints and 89 mounted/committed Python hashes.
+  Source 58 runs read-only on installed-50 data. The diagnostic is stopped with
+  no published ports; prior observer failures are retained, not counted as passes.
+- This is scoped native correctness, not browser, actual protected gateway,
+  IndexedDB, large-transfer race performance, installed upgrade or full Billing
+  parity. No frontend build/review reopening or deployment. Read
+  [the exact evidence and remaining gates](../runtime/billing/STOCK_REQUEST_STOP.md#native-http-race-and-recovery-checkpoint-18-october-2026).
+
 ## 16 October exact pending stock-request stop candidate 58
 
 - Three fixed native/client/source-gateway methods retire an author's exact

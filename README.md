@@ -56,8 +56,10 @@ Latest API-consumer source connects [paged transfer summaries and details](runti
 New confirmation requests now use [complete paged confirmation review](runtime/billing/STOCK_CONFIRMATION_PAGING.md#react-confirmation-consumer-source-16-october-2026)
 in source. Older pending confirmations retain their original dialog. Home passes
 920 tests at that checkpoint. A later [exact-request stop candidate](runtime/billing/STOCK_REQUEST_STOP.md)
-adds native/client/dialog recovery without reversing accepted actions. Actual
-HTTP save/stop races, matching-worker rollout, browser/gateway/IndexedDB and other
+adds native/client/dialog recovery without reversing accepted actions. Its later
+[six real HTTP races](runtime/billing/STOCK_REQUEST_STOP.md#native-http-race-and-recovery-checkpoint-18-october-2026)
+pass both orderings with independent receipt/source/stock checks. Matching-worker
+rollout, broader configuration/scale, browser/gateway/IndexedDB and other
 stock-action consumer gates remain. This is not a built or published UI update.
 The separate source-58 native regression passes 830 cases with 117-table
 preservation and all 89 Python hashes matched to its committed source, not an

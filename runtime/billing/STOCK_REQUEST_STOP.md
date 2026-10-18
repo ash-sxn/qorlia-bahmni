@@ -135,13 +135,80 @@ Private evidence: `request-stop58-native-tests-20261016.log`,
 `full-addon58-source-verification-20261016.json`. Raw proofs, database
 rows, credentials and launch configuration remain outside the public repository.
 
-Remaining release gates:
+## Native HTTP race and recovery checkpoint, 18 October 2026
+
+The actual repository TypeScript client now passes six controlled native HTTP
+race cases on fresh, labelled synthetic transfers: save-first and stop-first for
+confirmation, reservation and operation requests. Both independent sessions use
+the same native author. PostgreSQL lock queues record both requests waiting
+before the observer releases the workflow's first save-lock table. This is
+observed concurrency, not a sequence of mocked responses or an arbitrary delay.
+
+In each save-first case, the action is accepted once and stop reports that it
+was already accepted. In each stop-first case, the marker is committed and the
+competing save rejects without applying its stock action. Accepted replay does
+not apply the action again, and matching stop replay writes nothing. One
+committed stop response is deliberately withheld; the original request recovers
+after logout, an expired-session rejection and re-authentication. Accepted
+receipts remain unavailable to a different author.
+
+The six cases use small, one-move transfers. They do not establish large-transfer
+race latency or representative hospital capacity. Two separately reviewed native
+cleanup requests restore the accepted reservation and operation fixtures. No
+accepted action is rerun merely because an observer loses its connection.
+
+Independent post-close SQL verifies all eight requests: five accepted receipts
+and three stopped markers, with exact purpose/author/company/request hashes.
+All six original move and quant identities remain; each fixture has ten physical
+units, zero reserved/recorded/delivered units and no detailed operations left.
+All 117 guarded table fingerprints match the recorded final state after shutdown,
+with 25 tables also checked per row during action accounting. Existing unrelated
+rows remain unchanged outside the reviewed effects. Mandatory analytics and SMS
+stay enabled. This is synthetic correctness evidence, not a financial audit.
+A separate full-product inventory query confirms exactly the six original quant
+rows, sixty physical units in total and no extra/missing quants or reservations.
+
+All 89 mounted Python files and hashes match committed source `b0862d6a`. The
+actual client source hash also matches. Source 58 is mounted read-only on the
+installed-50 synthetic copy, without an installed module upgrade. The private
+HTTP diagnostic is stopped, has no published port and uses no frontend/review
+gate. The trusted private observer uses existing administrative SQL access for
+locks and comparisons; that access is not part of the product or tester API.
+
+The first seed attempt rolled back because the verifier incorrectly assumed
+all three workflows had the same first lock table. Later failed observations
+are retained: SSH timeouts, a stopped tunnel, incomplete runner upload/file
+ownership, and audit-row identity/receipt-history assumptions. The first
+accepted save and later accepted cleanup were recovered without redispatch.
+The completed run accounts for those original actions, not six newly repeated
+actions. Read-only verification permits a changed date-bound current snapshot
+version after midnight, but not changed accepted receipt fields or stored state.
+
+Native review includes visible audit messages, while saved business-reference
+pages intentionally omit audit identities. The private verifier resolves those
+rows from reviewed values and the complete original table fingerprint, including
+when an older row has identical displayed content. It does not expose audit
+identities through the API or guess the newest row. No product guard or API
+privacy filter changed to make the verifier pass.
+
+The initial client ran through private SSH transport; the completed observer runs
+on the VPS's private network with the same compiled TypeScript source and its
+verified hash. There is no mocked business response. Raw proofs, credentials,
+logs and observer launch files remain private. Evidence is retained in
+`request-stop-http58-acceptance-20261017`, the failed revision folders,
+`request-stop-http58-local-acceptance-20261018` and the completed
+`request-stop-http58-local-r3-acceptance-20261018` with `acceptance.json` and
+independent `postclose.json` and `stock-identity-supplement.json`.
+Earlier unit and JSON-replay evidence keeps its
+separate scope.
+
+## Remaining release gates
 
 - Every writer must run the matching candidate before enabling stop. Older
   workers ignore author-namespaced markers. Mixed-version deployment cannot
   guarantee retirement. No runtime rollout is included here.
-- Independently verify save-versus-stop concurrency and lost stop responses over
-  real native HTTP. Serial native cases and SDK replay do not prove that race.
+- Complete broader configuration, scale and failure acceptance. The six scoped
+  HTTP races above do not establish every deployment or large-transfer race.
 - Complete installed-upgrade and representative configuration acceptance. The
   source-58 830-case full regression does not establish those runtime states.
 - Actual protected-gateway/browser/IndexedDB durability, keyboard/narrow layout,

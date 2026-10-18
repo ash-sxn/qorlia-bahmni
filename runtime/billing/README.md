@@ -12,8 +12,13 @@ accepts 15 native JSON frames with mocked transport. Home passes 944 cases in
 82 suites, including 25 confirmation-dialog cases. The separate full native run
 passes 830 cases, zero failures/errors/skips, with 117-table preservation,
 mandatory analytics/SMS and all 89 Python hashes matched to `b0862d6a`.
-Actual HTTP save/stop races, matching-worker rollout and browser/storage acceptance
-remain. No review reopening, upgrade or deployment.
+The later [native HTTP checkpoint](STOCK_REQUEST_STOP.md#native-http-race-and-recovery-checkpoint-18-october-2026)
+passes save-first/stop-first for all three protocols, with lost-stop/reauthentication
+recovery and independent post-close SQL. Eight exact requests account for five
+accepted receipts and three stopped markers; all six fixtures are restored.
+All 117 final table fingerprints and 89 mounted/committed Python hashes match.
+Matching-worker rollout, broader configuration/scale and actual gateway/browser/
+storage acceptance remain. No review reopening, upgrade or deployment.
 
 Latest consumer source: [complete confirmation review](STOCK_CONFIRMATION_PAGING.md#react-confirmation-consumer-source-16-october-2026)
 is connected from transfer details to the five typed paged APIs and schema-5

@@ -1,5 +1,19 @@
 # Qorlia React frontend backend readiness
 
+## Native stock save-stop HTTP races (18 October 2026)
+
+Actual client/native HTTP passes save-first and stop-first for confirmation,
+reservation and operation requests, with both requests observed in database lock
+queues. Lost-stop-response, expired-session and re-authentication recovery pass.
+Independent post-close SQL verifies eight exact requests, five accepted receipts,
+three stop markers, restored stock in all six fixtures, 117 final table hashes
+and all 89 Python files/hashes matched to `b0862d6a`. This uses source 58 on the
+installed-50 synthetic copy, not an upgrade. Earlier observer failures and
+read-only recovery are retained. The private diagnostic is stopped without
+published ports. Matching-writer rollout, broader configuration/scale and actual
+protected-gateway/browser/IndexedDB acceptance remain. No build/server for frontend
+review, expired-gate reopening or deployment. Read [the scoped evidence](../runtime/billing/STOCK_REQUEST_STOP.md#native-http-race-and-recovery-checkpoint-18-october-2026).
+
 ## Exact pending stock-request stop candidate 58 (16 October 2026)
 
 Three named native/client/source-gateway methods stop an author's exact

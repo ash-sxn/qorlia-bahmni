@@ -5,6 +5,9 @@ adds three fixed native/client methods and confirmation-screen handling. It does
 not cancel transfers or undo accepted actions. Read the author-bound marker,
 matching-writer deployment requirement and separate HTTP/browser release gates
 before changing recovery. The expired review gate stays closed.
+The later [six native HTTP races](../runtime/billing/STOCK_REQUEST_STOP.md#native-http-race-and-recovery-checkpoint-18-october-2026)
+now pass with independent post-close checks. This does not deploy the feature or
+complete the remaining operation/preparation consumers or browser acceptance.
 
 Newest API-consumer source: [complete confirmation review](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#react-confirmation-consumer-source-16-october-2026)
 connects the five paged APIs with exact recovery, while preserving the older
