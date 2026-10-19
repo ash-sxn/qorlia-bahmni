@@ -1,8 +1,17 @@
 # New-team handover: Qorlia engineering
 
+Latest storage source: [complete validation history](../runtime/billing/STOCK_RECOVERY.md#complete-validation-history-source-19-october-2026)
+keeps current and prior exact native requests in one strict-commit account slot.
+Fresh native reads gate parent continuation, accepted terminal clear and stopped
+child restoration. Do not strip proofs or clear unknown requests. Older readers
+reject this schema until the new React consumer/resume route is connected.
+This is not permission to switch your starter-task base or reopen review access.
+Home passes 1,155 cases/89 suites, including 47 recovery-storage cases.
+
 Latest backend/client source: [complete native validation write/recovery](../runtime/billing/VALIDATION_PAGED_WRITE.md)
 adds full-review save, accepted/stopped recovery and prior-prompt-safe stop. New
-storage and React write consumers are not connected yet; do not strip proofs or
+React write consumers are not connected yet; the later storage source is linked
+above. Do not strip proofs or
 fit new requests into older envelopes. Home passes 1,135 cases/89 suites. The
 corrected scoped native run passes 50 cases, preserves 130 guarded tables and
 matches 95 Python files. Actual-client replay accepts 238 native responses with

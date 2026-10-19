@@ -1,5 +1,86 @@
 # Stock write recovery storage
 
+## Complete validation history source, 19 October 2026
+
+The [candidate-61 validation writer](VALIDATION_PAGED_WRITE.md) now has a matching
+typed durable-storage path in the existing account slot. This is storage and
+native-status client integration, not the new React validation dialog, real
+IndexedDB acceptance or a deployed update. The native addon and database version
+are unchanged. No frontend build/server, live browser or review reopening.
+
+Schema 6 contains exactly `schema`, `kind`, `database`, `uid`, `request` and
+`history`; its kind is `paged_validation`. The request retains all eight native
+fields, including the terminal review-completion proof. History holds the exact
+preceding native validation requests in order. Every step is validated, shares
+the order/transfer, has a unique nonce and links to the immediately preceding
+request key. A new complete initial request has no parent. A legacy seven-key
+step can be the first parent only through an explicit continuation; it is not
+converted into an eight-key request.
+
+An immediate parent alone is insufficient: after stopping a third step, the
+restored second step still needs its own preceding history if a later child is
+stopped again. Keeping that chain also avoids a blank new-transfer state that
+would hide earlier accepted preparation, receipt prices or native prompts.
+The chain stores requests, not passwords, cookies, native financial bodies or
+patient records. It has no separate slot that could bypass another stock write.
+
+### Matching consumer API
+
+- `loadPagedStockValidationRecovery(uid)` returns `{ request, history }` or
+  `null`. Any older pending kind rejects unchanged, rather than being migrated.
+- `persistPagedStockValidationRecovery(uid, request, previous?)` awaits a strict
+  commit before a caller can dispatch save. Starting a child requires a fresh
+  accepted native parent with an available prompt and the exact stored previous
+  request. The single readwrite transaction appends that parent and replaces the
+  current request together. An identical retry preserves the whole history.
+- `restoreStoppedPagedStockValidationRecovery(uid, request)` freshly checks the
+  exact native stopped outcome. In one strict transaction it replaces only the
+  exact stopped child with its prior request and remaining history. The returned
+  native receipt key must match the stored prior action. A stopped initial
+  request has no prior accepted action and can instead be retired. A restored
+  legacy parent returns to its unchanged schema-4 format and original protocol.
+- `clearPagedStockValidationRecovery(uid, request)` freshly requires an accepted
+  terminal native receipt. A declined native choice can be terminal without
+  delivery. An unknown result, ordinary rejection, partial prompt or a stopped
+  child is not a terminal accepted action. Clearing another valid request leaves
+  that request intact; an aborted transaction preserves the committed history.
+
+No helper dispatches, retries or stops a native write. A lost acknowledgement
+read preserves the exact request. Native status reads happen before, not inside,
+the IndexedDB write transaction; an exact slot comparison still guards commit
+against a changed pending request while the read was in flight. This is unit
+fault coverage, not a real multi-tab race claim.
+
+All older readers fail closed on schema 6. Older save/replacement APIs reject its
+proof before opening storage. The current generic transfer-resume route therefore
+does not consume schema 6 yet; it must be routed explicitly to the forthcoming
+complete-validation dialog. Existing initial-write and pending routes remain
+unchanged until that integration. Do not strip the proof or return only part of
+the history to force an older dialog to accept it.
+
+The forthcoming consumer must still read every pinned input-prompt, native-effect
+and accepted-reference page, match page `receipt_key` to fresh status, recheck
+outcomes before clearing, require explicit stop acknowledgement and reload native
+transfer state after resolution. Storage is not a substitute for those checks or
+for native authorization.
+
+### Source verification
+
+The recovery suite passes 47 cases, including 20 new complete-validation cases.
+Coverage includes nested history/stop restoration, explicit legacy continuation,
+unknown/terminal/unavailable parents, no automatic writes, exact proof/database/
+schema/identity checks, shared-slot exclusion, held strict commits, transaction
+aborts, lost native reads and a changed slot during an acknowledgement read.
+The initial two fixture failures used unavailable `structuredClone` in JSDOM;
+the fixtures now take ordinary JSON snapshots, without a product workaround.
+Tests use the existing IndexedDB double and actual SDK parsers with mocked
+transport. Real browser durability, quota, crash and multi-tab behavior remain
+acceptance gates. Native candidate-61 evidence keeps its separate scope.
+
+Full Home passes 1,155 cases in 89 suites. Library and focused actual-source/test
+types, scoped ESLint/format, diff checks and contributor-document links pass.
+No dependency or native Python source is changed in this storage milestone.
+
 ## Saved validation reader source, 19 October 2026
 
 The [saved validation reader](VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026)
@@ -55,6 +136,7 @@ Record schemas are distinct from the IndexedDB database version:
 | 3             | Atomic validation                                            | Fixed build database              |
 | 4             | Validation step / continuation                               | Fixed build database              |
 | 5             | `paged_confirmation`, `paged_operation`, `paged_reservation` | Fixed build database              |
+| 6             | `paged_validation`, exact native-step history              | Fixed build database              |
 
 Schema 5 contains exactly `schema`, `kind`, `database`, `uid` and `request`.
 The database is the build's `BAHMNI_BILLING_DATABASE` (default `odoo`), not caller
@@ -70,8 +152,10 @@ establish their missing historical origin.
 
 ## Consumer contract
 
-- `loadStockWriteRecovery(uid)` returns any validated pending kind, or `null`.
-  Dispatch code must check `isPagedStockWriteRequest` before selecting APIs.
+- At this schema-5 checkpoint, `loadStockWriteRecovery(uid)` returned any then
+  supported pending kind, or `null`. The newer schema-6 path above rejects this
+  older loader until the new validation resume consumer is integrated.
+  Schema-5 dispatch code checks `isPagedStockWriteRequest` before selecting APIs.
 - `loadPagedStockWriteRecovery(uid)` returns a completed paged request, or `null`.
   An older pending request rejects instead of being upgraded.
 - `persistPagedStockWriteRecovery(uid, request)` validates and stores schema 5,

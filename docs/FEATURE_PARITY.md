@@ -1,5 +1,20 @@
 # Bahmni workflow parity ledger
 
+## 19 October complete validation history storage source
+
+- The same account slot stores exact eight-key requests and ordered prior native
+  requests, with validated links, proof retention and strict atomic handoff.
+- Fresh accepted native parents gate continuation. Fresh terminal or stopped
+  acknowledgements gate retirement/restoration. Unknown/lost reads and aborted
+  commits do not discard history; old protocols and pending kinds are preserved.
+- The 47 recovery cases include 20 new validation-history cases, using the
+  existing IndexedDB double and actual SDK parsers with mocked transport.
+  Full Home: 1,155 cases/89 suites. Types and scoped lint/format pass.
+  [Contract and remaining gates](../runtime/billing/STOCK_RECOVERY.md#complete-validation-history-source-19-october-2026).
+- React complete-write/recovery/stop consumer and generic resume routing,
+  real browser/IndexedDB/multi-tab/native concurrency, scale, remaining Billing
+  workflows and whole-product parity remain. No UI-limit removal or deployment.
+
 ## 19 October complete validation write/recovery candidate 61
 
 - Matching native eight-key full-review save, accepted/stopped status, paged

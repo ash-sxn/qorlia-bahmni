@@ -1,4 +1,8 @@
-import { StockReservationRequest } from '../billingService';
+import {
+  StockReservationRequest,
+  PagedStockValidationRequest,
+  PagedStockValidationStatus,
+} from '../billingService';
 import {
   clearStockReservationRecovery,
   loadStockReservationRecovery,
@@ -20,7 +24,13 @@ import {
   persistPagedStockWriteRecovery,
   clearPagedStockWriteRecovery,
   PagedStockWriteRequest,
+  loadPagedStockValidationRecovery,
+  persistPagedStockValidationRecovery,
+  restoreStoppedPagedStockValidationRecovery,
+  clearPagedStockValidationRecovery,
+  isPagedStockValidationRequest,
 } from '../stockReservationRecovery';
+import { orderDeliveryPageFixture } from './orderDeliveryFixture';
 import { confirmationRequest } from './stockConfirmationFixture';
 import { operationRequest } from './stockOperationFixture';
 import { stockRequest } from './stockReservationFixture';
@@ -127,6 +137,482 @@ function database() {
     },
   };
 }
+
+const completeValidation = (): PagedStockValidationRequest => ({
+  ...validationRequest(),
+  continuation_key: false,
+  review_complete_token: 'c'.repeat(64),
+});
+const validationEnvelope = (
+  request = completeValidation(),
+  history: unknown[] = [],
+) => ({
+  schema: 6,
+  kind: 'paged_validation',
+  uid: 3,
+  database: billingDatabase,
+  request,
+  history,
+});
+function validationOutcome(
+  request: PagedStockValidationRequest,
+  outcome: 'open' | 'unknown' | 'stopped' | 'terminal' = 'open',
+): PagedStockValidationStatus {
+  const source =
+    outcome === 'stopped' ? request.continuation_key : request.request_key;
+  const terminal = outcome === 'terminal';
+  return {
+    accepted: outcome === 'open' || terminal,
+    stopped: outcome === 'stopped',
+    request_key: request.request_key,
+    current: {
+      order_id: request.order_id,
+      transfer_id: request.transfer_id,
+      version: 'd'.repeat(64),
+      transfer: {
+        ...orderDeliveryPageFixture().rows[0],
+        move_count: 501,
+        operation_count: 2001,
+      },
+    },
+    receipt:
+      outcome === 'unknown' || !source
+        ? false
+        : {
+            request_key: source,
+            state_after: 'assigned',
+            reference_count: 1,
+            next_step: terminal
+              ? false
+              : {
+                  kind: 'immediate',
+                  title: 'Native prompt',
+                  blocked_reason: false,
+                  counts: { transfers: 1, operations: 0, lots: 0 },
+                },
+            prompt_count: terminal ? 0 : 1,
+            prompt_version: terminal ? false : 'e'.repeat(64),
+            continuation_key: terminal ? false : source,
+            continuation_reason: false,
+            terminal,
+          },
+  };
+}
+function nativeOutcome(value: unknown) {
+  (fetch as jest.Mock).mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ result: value }),
+  });
+}
+
+describe('Complete validation durable recovery and prior-action handoff', () => {
+  beforeEach(() => {
+    global.fetch = jest.fn();
+  });
+  const child = (
+    parent = completeValidation(),
+    first = '22222222',
+  ): PagedStockValidationRequest => ({
+    ...parent,
+    request_key: `${first}-2222-4333-8444-555555555555`,
+    continuation_key: parent.request_key,
+    decisions: [{ kind: 'immediate', selected: true }],
+  });
+  it('stores every exact proof in database-bound schema 6 and blocks all older readers and writers', async () => {
+    const fake = database(),
+      exact = completeValidation();
+    await persistPagedStockValidationRecovery(3, exact);
+    expect(fake.records.get(3)).toEqual(validationEnvelope());
+    expect(await loadPagedStockValidationRecovery(3)).toEqual({
+      request: exact,
+      history: [],
+    });
+    expect(isPagedStockValidationRequest(exact)).toBe(true);
+    expect(isPagedStockWriteRequest(exact)).toBe(false);
+    await persistPagedStockValidationRecovery(3, exact);
+    for (const other of [
+      { ...exact, request_key: '99999999-2222-4333-8444-555555555555' },
+      { ...exact, version: 'f'.repeat(64) },
+      { ...exact, review_version: 'f'.repeat(64) },
+      { ...exact, review_complete_token: 'f'.repeat(64) },
+    ]) {
+      await expect(
+        persistPagedStockValidationRecovery(3, other),
+      ).rejects.toThrow(/Another stock request/);
+      expect(fake.records.get(3)).toEqual(validationEnvelope());
+    }
+    for (const load of [
+      loadStockWriteRecovery,
+      loadPagedStockWriteRecovery,
+      loadStockValidationRecovery,
+      loadStockReservationRecovery,
+      loadStockOperationRecovery,
+      loadStockConfirmationRecovery,
+    ])
+      await expect(load(3)).rejects.toThrow(
+        /complete validation request is pending/,
+      );
+    for (const [, other] of pagedRequests) {
+      await expect(persistPagedStockWriteRecovery(3, other)).rejects.toThrow(
+        /Another stock request/,
+      );
+      await expect(clearPagedStockWriteRecovery(3, other)).rejects.toThrow(
+        /older stock dialog/,
+      );
+      expect(fake.records.get(3)).toEqual(validationEnvelope());
+    }
+    await expect(
+      persistStockValidationRecovery(3, validationRequest()),
+    ).rejects.toThrow(/Another stock request/);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(fake.db.transaction).toHaveBeenCalledWith('pending', 'readwrite', {
+      durability: 'strict',
+    });
+  });
+  it('retains all ancestors through repeated stopped-child recovery and exact retry', async () => {
+    const fake = database(),
+      root = completeValidation(),
+      next = child(root),
+      later = child(next, '33333333');
+    await persistPagedStockValidationRecovery(3, root);
+    nativeOutcome(validationOutcome(root));
+    await persistPagedStockValidationRecovery(3, next, root);
+    nativeOutcome(validationOutcome(next));
+    await persistPagedStockValidationRecovery(3, later, next);
+    expect(fake.records.get(3)).toEqual(
+      validationEnvelope(later, [root, next]),
+    );
+    await persistPagedStockValidationRecovery(3, later);
+    expect((await loadPagedStockValidationRecovery(3))?.history).toEqual([
+      root,
+      next,
+    ]);
+    nativeOutcome(validationOutcome(later, 'stopped'));
+    expect(await restoreStoppedPagedStockValidationRecovery(3, later)).toEqual(
+      next,
+    );
+    expect(fake.records.get(3)).toEqual(validationEnvelope(next, [root]));
+    const replacement = child(next, '44444444');
+    nativeOutcome(validationOutcome(next));
+    await persistPagedStockValidationRecovery(3, replacement, next);
+    nativeOutcome(validationOutcome(replacement, 'stopped'));
+    await restoreStoppedPagedStockValidationRecovery(3, replacement);
+    expect(await loadPagedStockValidationRecovery(3)).toEqual({
+      request: next,
+      history: [root],
+    });
+    expect(
+      (fetch as jest.Mock).mock.calls.every(
+        (call) =>
+          JSON.parse(call[1].body).params.method ===
+          'qorlia_validation_paged_status',
+      ),
+    ).toBe(true);
+  });
+  it('explicitly continues an accepted legacy step and restores its unchanged schema on stop', async () => {
+    const fake = database();
+    const parent = { ...validationRequest(), continuation_key: false as const };
+    await persistStockValidationRecovery(3, parent);
+    const saved = JSON.parse(JSON.stringify(fake.records.get(3)));
+    const next = child(completeValidation());
+    const status = validationOutcome(completeValidation());
+    nativeOutcome({
+      accepted: true,
+      ...status.receipt,
+      current: status.current,
+    });
+    await persistPagedStockValidationRecovery(3, next, parent);
+    expect(fake.records.get(3)).toEqual(validationEnvelope(next, [parent]));
+    nativeOutcome(validationOutcome(next, 'stopped'));
+    expect(await restoreStoppedPagedStockValidationRecovery(3, next)).toEqual(
+      parent,
+    );
+    expect(fake.records.get(3)).toEqual(saved);
+    expect(await loadStockValidationRecovery(3)).toEqual(parent);
+  });
+  it.each(['unknown', 'terminal', 'stopped'] as const)(
+    'does not replace a parent with %s outcome',
+    async (outcome) => {
+      const fake = database(),
+        root = completeValidation();
+      await persistPagedStockValidationRecovery(3, root);
+      nativeOutcome(validationOutcome(root, outcome));
+      await expect(
+        persistPagedStockValidationRecovery(3, child(root), root),
+      ).rejects.toThrow(/not acknowledged/);
+      expect(fake.records.get(3)).toEqual(validationEnvelope());
+    },
+  );
+  it('keeps consumed or unavailable parent prompts and lost status reads intact', async () => {
+    const fake = database(),
+      root = completeValidation(),
+      status = validationOutcome(root);
+    await persistPagedStockValidationRecovery(3, root);
+    if (!status.receipt) throw new Error('Missing fixture receipt');
+    nativeOutcome({
+      ...status,
+      receipt: {
+        ...status.receipt,
+        next_step: false,
+        prompt_count: 0,
+        prompt_version: false,
+        continuation_key: false,
+        continuation_reason: 'Native prompt unavailable',
+      },
+    });
+    await expect(
+      persistPagedStockValidationRecovery(3, child(root), root),
+    ).rejects.toThrow(/not acknowledged/);
+    (fetch as jest.Mock).mockRejectedValue(new Error('Response lost'));
+    await expect(
+      persistPagedStockValidationRecovery(3, child(root), root),
+    ).rejects.toThrow();
+    expect(fake.records.get(3)).toEqual(validationEnvelope());
+  });
+  it.each(['open', 'unknown'] as const)(
+    'does not restore or clear a request with %s outcome',
+    async (outcome) => {
+      const fake = database(),
+        exact = completeValidation();
+      await persistPagedStockValidationRecovery(3, exact);
+      nativeOutcome(validationOutcome(exact, outcome));
+      await expect(
+        restoreStoppedPagedStockValidationRecovery(3, exact),
+      ).rejects.toThrow(/not acknowledged as stopped/);
+      await expect(clearPagedStockValidationRecovery(3, exact)).rejects.toThrow(
+        /not terminal/,
+      );
+      expect(fake.records.get(3)).toEqual(validationEnvelope());
+    },
+  );
+  it('retires a stopped initial request only after a fresh exact native stop acknowledgement', async () => {
+    const fake = database(),
+      exact = completeValidation();
+    await persistPagedStockValidationRecovery(3, exact);
+    nativeOutcome(validationOutcome(exact, 'stopped'));
+    await expect(clearPagedStockValidationRecovery(3, exact)).rejects.toThrow(
+      /not terminal/,
+    );
+    expect(fake.records.get(3)).toEqual(validationEnvelope());
+    expect(
+      await restoreStoppedPagedStockValidationRecovery(3, exact),
+    ).toBeNull();
+    expect(fake.records.size).toBe(0);
+  });
+  it('clears an accepted terminal decline without claiming physical delivery', async () => {
+    const fake = database(),
+      exact = completeValidation();
+    await persistPagedStockValidationRecovery(3, exact);
+    nativeOutcome(validationOutcome(exact, 'terminal'));
+    expect(await clearPagedStockValidationRecovery(3, exact)).toBeNull();
+    expect(fake.records.size).toBe(0);
+  });
+  it('waits for strict child and restore commits and preserves exact history on transaction abort', async () => {
+    const fake = database(),
+      root = completeValidation(),
+      next = child(root);
+    await persistPagedStockValidationRecovery(3, root);
+    nativeOutcome(validationOutcome(root));
+    fake.hold();
+    let saved = false;
+    const saving = persistPagedStockValidationRecovery(3, next, root).then(
+      () => {
+        saved = true;
+      },
+    );
+    for (let i = 0; i < 16; i++) await Promise.resolve();
+    expect(saved).toBe(false);
+    expect(fake.records.get(3)).toEqual(validationEnvelope());
+    fake.commit();
+    await saving;
+    nativeOutcome(validationOutcome(next, 'stopped'));
+    let restored = false;
+    const restoring = restoreStoppedPagedStockValidationRecovery(3, next).then(
+      () => {
+        restored = true;
+      },
+    );
+    for (let i = 0; i < 16; i++) await Promise.resolve();
+    expect(restored).toBe(false);
+    expect(fake.records.get(3)).toEqual(validationEnvelope(next, [root]));
+    fake.commit();
+    await restoring;
+    expect(fake.records.get(3)).toEqual(validationEnvelope());
+    fake.fail();
+    nativeOutcome(validationOutcome(root));
+    await expect(
+      persistPagedStockValidationRecovery(3, next, root),
+    ).rejects.toThrow(/could not be committed/);
+    expect(fake.records.get(3)).toEqual(validationEnvelope());
+  });
+  it('retains a stopped child or terminal receipt when restore or clear aborts', async () => {
+    const fake = database(),
+      root = completeValidation(),
+      next = child(root);
+    await persistPagedStockValidationRecovery(3, root);
+    nativeOutcome(validationOutcome(root));
+    await persistPagedStockValidationRecovery(3, next, root);
+    fake.fail();
+    nativeOutcome(validationOutcome(next, 'stopped'));
+    await expect(
+      restoreStoppedPagedStockValidationRecovery(3, next),
+    ).rejects.toThrow(/could not be committed/);
+    nativeOutcome(validationOutcome(next, 'terminal'));
+    await expect(clearPagedStockValidationRecovery(3, next)).rejects.toThrow(
+      /could not be committed/,
+    );
+    expect(fake.records.get(3)).toEqual(validationEnvelope(next, [root]));
+  });
+  it('keeps the full child history when a stop or terminal acknowledgement read is lost', async () => {
+    const fake = database(),
+      root = completeValidation(),
+      next = child(root);
+    await persistPagedStockValidationRecovery(3, root);
+    nativeOutcome(validationOutcome(root));
+    await persistPagedStockValidationRecovery(3, next, root);
+    (fetch as jest.Mock).mockRejectedValue(new Error('Native response lost'));
+    await expect(
+      restoreStoppedPagedStockValidationRecovery(3, next),
+    ).rejects.toThrow();
+    await expect(clearPagedStockValidationRecovery(3, next)).rejects.toThrow();
+    expect(fake.records.get(3)).toEqual(validationEnvelope(next, [root]));
+  });
+  it('retains the original parent if another tab changes the slot during its native read', async () => {
+    const fake = database(),
+      root = completeValidation(),
+      next = child(root);
+    await persistPagedStockValidationRecovery(3, root);
+    const other = validationEnvelope({
+      ...root,
+      request_key: '99999999-2222-4333-8444-555555555555',
+    });
+    (fetch as jest.Mock).mockImplementation(async () => {
+      fake.records.set(3, other);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ result: validationOutcome(root) }),
+      };
+    });
+    await expect(
+      persistPagedStockValidationRecovery(3, next, root),
+    ).rejects.toThrow(/preceding recovery request changed/);
+    expect(fake.records.get(3)).toEqual(other);
+  });
+  it('does not overwrite another tab changing recovery during an acknowledgement read', async () => {
+    const fake = database(),
+      exact = completeValidation(),
+      other = {
+        ...stockRequest(),
+        request_key: '99999999-2222-4333-8444-555555555555',
+      };
+    const stored = { schema: 1, uid: 3, request: other };
+    await persistPagedStockValidationRecovery(3, exact);
+    (fetch as jest.Mock).mockImplementation(async () => {
+      fake.records.set(3, stored);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ result: validationOutcome(exact, 'stopped') }),
+      };
+    });
+    await expect(
+      restoreStoppedPagedStockValidationRecovery(3, exact),
+    ).rejects.toThrow(/recovery request changed/);
+    expect(fake.records.get(3)).toEqual(stored);
+    nativeOutcome(validationOutcome(exact, 'terminal'));
+    expect(await clearPagedStockValidationRecovery(3, exact)).toEqual(other);
+    expect(fake.records.get(3)).toEqual(stored);
+  });
+  it('rejects malformed histories and database/schema confusion without changing the stored entry', async () => {
+    const fake = database(),
+      root = completeValidation(),
+      next = child(root);
+    const stored = validationEnvelope(next, [root]);
+    for (const invalid of [
+      { ...stored, history: undefined },
+      { ...stored, history: {} },
+      { ...stored, history: [] },
+      { ...stored, history: [next] },
+      { ...stored, history: [root, root] },
+      { ...stored, history: [{ ...root, order_id: 99 }] },
+      { ...stored, history: [{ ...root, transfer_id: 99 }] },
+      { ...stored, history: [{ ...root, review_complete_token: false }] },
+      { ...stored, history: [{ ...root, context: {} }] },
+      { ...stored, history: [validationRequest()] },
+      { ...stored, schema: 5 },
+      { ...stored, kind: 'validation_step' },
+      { ...stored, uid: 4 },
+      { ...stored, database: 'different' },
+      { ...stored, extra: true },
+      { ...stored, request: { ...next, context: {} } },
+      {
+        ...stored,
+        history: [root],
+        request: { ...next, continuation_key: false },
+      },
+    ]) {
+      fake.records.set(3, invalid);
+      await expect(loadPagedStockValidationRecovery(3)).rejects.toThrow();
+      await expect(
+        persistPagedStockValidationRecovery(3, next),
+      ).rejects.toThrow();
+      expect(fake.records.get(3)).toEqual(invalid);
+    }
+  });
+  it('does not smuggle a complete request through legacy save or replacement APIs', async () => {
+    const fake = database(),
+      exact = completeValidation();
+    await expect(persistStockValidationRecovery(3, exact)).rejects.toThrow();
+    await expect(clearStockValidationRecovery(3, exact)).rejects.toThrow();
+    await expect(
+      replaceStockValidationRecovery(
+        3,
+        { ...validationRequest(), continuation_key: false },
+        child(exact),
+      ),
+    ).rejects.toThrow(/complete validation recovery protocol/);
+    expect(fake.factory.open).not.toHaveBeenCalled();
+  });
+  it('rejects invalid identity or proof before storage or native reads', async () => {
+    const fake = database(),
+      exact = completeValidation();
+    await expect(
+      persistPagedStockValidationRecovery(0, exact),
+    ).rejects.toThrow();
+    await expect(
+      restoreStoppedPagedStockValidationRecovery(0, exact),
+    ).rejects.toThrow();
+    await expect(clearPagedStockValidationRecovery(0, exact)).rejects.toThrow();
+    await expect(
+      persistPagedStockValidationRecovery(3, {
+        ...exact,
+        review_complete_token: '',
+      }),
+    ).rejects.toThrow();
+    expect(fake.factory.open).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('rejects a child without its exact stored parent and never starts a second pending stock action', async () => {
+    const fake = database(),
+      root = completeValidation(),
+      next = child(root);
+    await expect(persistPagedStockValidationRecovery(3, next)).rejects.toThrow(
+      /history does not match/,
+    );
+    expect(fake.records.size).toBe(0);
+    await persistStockReservationRecovery(3, stockRequest());
+    const stored = JSON.parse(JSON.stringify(fake.records.get(3)));
+    await expect(persistPagedStockValidationRecovery(3, root)).rejects.toThrow(
+      /Another stock request/,
+    );
+    await expect(loadPagedStockValidationRecovery(3)).rejects.toThrow(
+      /original workflow/,
+    );
+    expect(fake.records.get(3)).toEqual(stored);
+  });
+});
 
 describe('Stock reservation IndexedDB recovery', () => {
   it.each(pagedRequests)(

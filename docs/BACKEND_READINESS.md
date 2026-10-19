@@ -1,5 +1,18 @@
 # Qorlia React frontend backend readiness
 
+## Complete validation history storage source (19 October 2026)
+
+The existing account slot now stores the exact paged validation request plus its
+ordered prior native requests. A stopped child restores its exact parent/history
+atomically; it cannot erase earlier accepted preparation. Fresh native reads gate
+parent handoff, terminal clear and stopped restoration. Unknown/lost reads,
+transaction aborts and changed slots retain recovery. Older protocols are not
+converted. [Storage contract and evidence](../runtime/billing/STOCK_RECOVERY.md#complete-validation-history-source-19-october-2026).
+The complete React consumer and generic resume routing remain unfinished, with
+existing limits retained. No native addon changes, runtime/browser acceptance,
+review reopening, frontend build/server or deployment is included.
+Home passes 1,155 cases/89 suites; 47 storage cases, types and scoped lint pass.
+
 ## Complete validation write/recovery candidate 61 (19 October 2026)
 
 Exact complete-review save, accepted/stopped status, prompt/reference pages and

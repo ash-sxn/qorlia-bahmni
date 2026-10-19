@@ -3,6 +3,13 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest client source: [complete validation history storage](STOCK_RECOVERY.md#complete-validation-history-source-19-october-2026)
+keeps exact current/prior requests in the existing account slot. Fresh native
+status gates continuation, terminal clear and stopped-child restoration. Older
+protocols are not converted; the new React consumer/resume route is not connected
+yet. Storage-double tests are not browser, IndexedDB or multi-tab acceptance.
+Home passes 1,155 cases/89 suites, including 47 recovery-storage cases.
+
 Candidate 61: [complete native validation write/recovery](VALIDATION_PAGED_WRITE.md)
 adds exact save, accepted/stopped status, prompt/reference paging and stop while
 preserving prior preparation. Typed clients and fixed source routes are included.

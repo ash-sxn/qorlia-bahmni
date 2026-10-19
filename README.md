@@ -51,6 +51,14 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
+Latest storage source: [complete validation history](runtime/billing/STOCK_RECOVERY.md#complete-validation-history-source-19-october-2026)
+keeps the exact eight-key request and prior native actions together in the existing
+account slot. Fresh native acknowledgements gate continuation, terminal clear
+and stopped-child restoration; aborted commits retain the history. The new React
+consumer/resume route is not connected yet and older dialogs reject this schema.
+Existing UI limits remain; no installed, hosted or browser update is claimed.
+Home passes 1,155 cases in 89 suites, including 47 recovery-storage cases.
+
 Current backend/client source: [complete native validation write/recovery](runtime/billing/VALIDATION_PAGED_WRITE.md)
 adds exact full-review save, accepted/stopped status, saved prompt/reference pages
 and a native stop that retains prior accepted preparation. Home passes 1,135

@@ -195,3 +195,14 @@ tunnel, installed upgrade, public/tester/production update or purchase is includ
 Native checks use existing private synthetic data, readonly source mounts and
 no HTTP or published ports. No dependency-install or clean-install acceptance is
 claimed from the upstream bootstrap.
+
+## Later durable-storage integration, 19 October 2026
+
+[Complete validation history storage](STOCK_RECOVERY.md#complete-validation-history-source-19-october-2026)
+now preserves exact parent/child requests in the existing account slot, with
+fresh native-status gates for continuation, terminal clear and stopped-child
+restoration. It does not strip completion proofs or reinterpret older envelopes.
+The React complete-write/recovery/stop consumer and generic resume routing are
+still unconnected; existing UI limits stay unchanged. The 47 storage cases use
+an IndexedDB double, not browser or multi-tab acceptance. This supersedes only
+the storage-source item in the earlier remaining-gates list, not runtime parity.
