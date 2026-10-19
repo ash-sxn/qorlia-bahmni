@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
   BillingSessionExpired,
+  getPagedStockOperationChoices,
   getStockOperationChoices,
 } from '../billingService';
 import { StockOperationChoice } from '../StockOperationChoice';
@@ -10,11 +11,12 @@ import { operationRequest } from './stockOperationFixture';
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
   getStockOperationChoices: jest.fn(),
+  getPagedStockOperationChoices: jest.fn(),
 }));
 const get = jest.mocked(getStockOperationChoices),
   change = jest.fn(),
   reconnect = jest.fn();
-const show = (disabled = false) =>
+const show = (disabled = false, protocol: 'legacy' | 'complete' = 'legacy') =>
   render(
     <QueryClientProvider
       client={
@@ -31,6 +33,7 @@ const show = (disabled = false) =>
         disabled={disabled}
         change={change}
         reconnect={reconnect}
+        protocol={protocol}
       />
     </QueryClientProvider>,
   );
@@ -48,6 +51,72 @@ describe('Native operation relation choices with house ComboBox', () => {
       has_more: true,
       offset: 0,
     });
+    jest.mocked(getPagedStockOperationChoices).mockResolvedValue({
+      rows: [[8, 'Complete native batch']],
+      has_more: true,
+      offset: 0,
+    });
+  });
+  it('uses complete form choice search and pagination without calling the legacy endpoint', async () => {
+    show(false, 'complete');
+    const complete = jest.mocked(getPagedStockOperationChoices);
+    await waitFor(() =>
+      expect(complete).toHaveBeenCalledWith(
+        operationRequest(),
+        'lot_id',
+        '',
+        0,
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'More batch choices' }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'More batch choices' }));
+    await waitFor(() =>
+      expect(complete).toHaveBeenLastCalledWith(
+        operationRequest(),
+        'lot_id',
+        '',
+        25,
+      ),
+    );
+    expect(get).not.toHaveBeenCalled();
+  });
+  it('separates complete and legacy choice caches for the same account/form', async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const panel = (protocol: 'legacy' | 'complete') => (
+      <QueryClientProvider client={client}>
+        <StockOperationChoice
+          uid={3}
+          request={operationRequest()}
+          field="lot_id"
+          label="Batch"
+          value={false}
+          disabled={false}
+          protocol={protocol}
+          change={change}
+          reconnect={reconnect}
+        />
+      </QueryClientProvider>
+    );
+    const view = render(panel('legacy'));
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(1));
+    view.rerender(panel('complete'));
+    await waitFor(() =>
+      expect(getPagedStockOperationChoices).toHaveBeenCalledTimes(1),
+    );
+    expect(get).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Batch' }), {
+      key: 'ArrowDown',
+    });
+    await screen.findByRole('option', { name: 'Complete native batch' });
+    expect(
+      screen.queryByRole('option', { name: 'QA-BATCH' }),
+    ).not.toBeInTheDocument();
   });
   it('loads native pages, preserves identity and chooses a record with the keyboard', async () => {
     show();

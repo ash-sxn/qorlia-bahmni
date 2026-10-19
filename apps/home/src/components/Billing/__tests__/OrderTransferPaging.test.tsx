@@ -35,8 +35,8 @@ jest.mock('../stockReservationRecovery', () => ({
   loadStockWriteRecovery: jest.fn(),
 }));
 const mockOperation = jest.fn();
-jest.mock('../StockOperationEditor', () => ({
-  StockOperationEditor: (props: { close: () => void }) => {
+jest.mock('../PagedStockOperationEditor', () => ({
+  PagedStockOperationEditor: (props: { close: () => void }) => {
     mockOperation(props);
     return <button onClick={props.close}>Return from operation</button>;
   },
@@ -305,8 +305,12 @@ describe('Native transfer summary and detail paging consumers', () => {
         /Confirmation and preparation use complete paged review/,
       ),
     ).toBeInTheDocument();
-    for (const name of ['Review transfer validation', 'Edit operation #42001'])
-      expect(screen.getByRole('button', { name })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Review transfer validation' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Edit operation #42001' }),
+    ).toBeEnabled();
     expect(
       screen.getByRole('button', { name: 'Review transfer confirmation' }),
     ).toBeEnabled();

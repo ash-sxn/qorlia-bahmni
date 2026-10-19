@@ -26,7 +26,10 @@ type Props = {
   validation: MouseEventHandler<HTMLButtonElement>;
   confirmation: MouseEventHandler<HTMLButtonElement>;
   reservation: MouseEventHandler<HTMLButtonElement>;
-  operation: (selection: StockOperationSelection) => void;
+  operation: (
+    selection: StockOperationSelection,
+    opener: HTMLButtonElement,
+  ) => void;
   reload: () => void;
   reconnect: () => void;
 };
@@ -183,7 +186,7 @@ function TransferDetails({
       </p>
     );
   const transfer = movePage.transfer;
-  // shortcut: Validation/editing stay capped until their paged consumers are connected.
+  // shortcut: Validation stays capped until its paged consumer is connected.
   const legacyLimit =
     transfer.move_count > 500 || transfer.operation_count > 2000;
   const locked = stockLocked || legacyLimit || fetching;
@@ -212,8 +215,9 @@ function TransferDetails({
       {legacyLimit ? (
         <p>
           All details can be read in pages. Confirmation and preparation use
-          complete paged review. Validation and operation editing for this
-          larger transfer are not connected to this screen yet.
+          complete paged review. Operation editing uses complete native form and
+          effect pages. Validation for this larger transfer is not connected to
+          this screen yet.
         </p>
       ) : null}
       <p>
@@ -317,17 +321,21 @@ function TransferDetails({
                     <Button
                       kind="ghost"
                       disabled={
-                        locked ||
+                        stockLocked ||
+                        fetching ||
                         ['done', 'cancel'].includes(move.state) ||
                         ['done', 'cancel'].includes(transfer.state)
                       }
-                      onClick={() =>
-                        operation({
-                          order_id: snapshot.order_id,
-                          transfer_id: transferId,
-                          move_id: move.id,
-                          operation_id: false,
-                        })
+                      onClick={(event) =>
+                        operation(
+                          {
+                            order_id: snapshot.order_id,
+                            transfer_id: transferId,
+                            move_id: move.id,
+                            operation_id: false,
+                          },
+                          event.currentTarget,
+                        )
                       }
                     >
                       Add operation for {label(move.product)}
@@ -441,16 +449,21 @@ function TransferDetails({
                       <Button
                         kind="ghost"
                         disabled={
-                          locked || ['done', 'cancel'].includes(transfer.state)
+                          stockLocked ||
+                          fetching ||
+                          ['done', 'cancel'].includes(transfer.state)
                         }
-                        onClick={() => {
+                        onClick={(event) => {
                           if (line.move_id !== false)
-                            operation({
-                              order_id: snapshot.order_id,
-                              transfer_id: transferId,
-                              move_id: line.move_id,
-                              operation_id: line.id,
-                            });
+                            operation(
+                              {
+                                order_id: snapshot.order_id,
+                                transfer_id: transferId,
+                                move_id: line.move_id,
+                                operation_id: line.id,
+                              },
+                              event.currentTarget,
+                            );
                         }}
                       >
                         Edit operation #{line.id}

@@ -1,5 +1,59 @@
 # Complete paged stock operation review
 
+## React operation consumer source, 19 October 2026
+
+New create/edit/removal actions from transfer details now open the
+[complete operation editor](../../apps/home/src/components/Billing/PagedStockOperationEditor.tsx).
+It connects the seven existing named paged clients: native form load, rollback-only
+onchange, native choice search, complete effect review, save, status and references.
+The [shared request recovery dialog](../../apps/home/src/components/Billing/PagedStockWriteModal.tsx)
+also connects exact operation stop, alongside confirmation and preparation.
+No native/API/storage-schema/gateway/module-version change is included.
+
+- The [shared fields](../../apps/home/src/components/Billing/StockOperationFields.tsx)
+  preserve all 14 native field identities, readonly/visibility rules, warnings,
+  units, batches, prices and UTC expiry. Ordered edits replay native onchange;
+  the editor does not invent a separate stock calculation. Choice search uses
+  the complete form's version and a protocol-separated query cache, never the
+  legacy endpoint with a new version. Native choice/edit-count bounds remain.
+- Every sequential 50-effect page and terminal proof is required before save.
+  Review locks the form; returning to edit requires another complete preview.
+  Backward paging retains original action, scope and proofs. Changed/failed pages
+  cannot leave a stale saveable review. Unsaved edits require explicit discard.
+- Save commits the exact action/edits/proof/nonce to schema-5 storage before HTTP.
+  Rejection, expiry, navigation and lost responses retain it. Recovery is read-only,
+  never generates a new nonce and does not reload a fresh form over a pending
+  request. All pinned accepted references and fresh receipt identity/state/count
+  are checked before exact clearing. A changed receipt retains recovery.
+- Explicit stop requires the matching native acknowledgment; acceptance wins
+  recover a receipt instead of undoing stock. Unknown/failed outcomes remain
+  pending. [Every writer must support stop before release](STOCK_REQUEST_STOP.md#remaining-release-gates).
+- Parent routing preserves original pending protocol, order, transfer, move and
+  operation, including off-page/deleted rows. Legacy requests still use the old
+  editor. Only operation editing's old transfer-size UI lock is removed here;
+  native eligibility, pending locks and validation's size guard remain.
+
+The shared input conversion also corrects a browser/native mismatch in both
+editors: `datetime-local` may append `.000`, while native expiry accepts whole UTC
+seconds only. Zero milliseconds are removed without device-zone conversion;
+non-zero fractions are rejected rather than silently rounded.
+
+Verification: **1,012 Home tests in 85 suites pass**, including 26 new editor/
+recovery cases, 12 input-conversion cases, two complete-choice cases and two new
+original-kind routing cases. Existing legacy operation, 25 confirmation and 24
+preparation cases remain passing. Library/focused source-test types, scoped
+lint/format/diff, three gateway unit cases and contributor links pass. Test-only
+row-count/danger-label assumptions, fixture literal types and import/format
+issues were corrected; native validation/permission guards were not weakened.
+
+These are source/JSDOM checks with SDK/storage doubles, not native screen,
+actual protected gateway, real IndexedDB, browser keyboard/layout/multi-tab or
+runtime-upgrade acceptance. Earlier native/HTTP evidence below retains its own
+scope. No frontend build/server, review-gate reopening, tunnel, addon upgrade or
+tester/production deployment. Large validation/returns, broader Billing parity
+and the remaining product redesign are unfinished. The dated candidate-57
+consumer gap below is superseded by this source increment, not a release.
+
 ## Candidate 57, complete operation inventory (16 October 2026)
 
 The new operation protocol now uses the complete inventory reader from

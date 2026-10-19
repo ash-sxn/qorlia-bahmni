@@ -51,12 +51,19 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
-The latest [19 October preparation consumer source](runtime/billing/STOCK_RESERVATION_PAGING.md#react-preparation-consumer-source-19-october-2026)
+The latest [19 October operation consumer source](runtime/billing/STOCK_OPERATION_PAGING.md#react-operation-consumer-source-19-october-2026)
+connects create/edit/removal through native forms, complete choice/effect pages,
+durable exact-request recovery and stop. Older pending operations keep their
+original protocol. Home passes 1,012 cases/85 suites. This is source/component
+evidence, not a built or deployed tester update. Large validation/returns and
+actual browser/gateway/IndexedDB acceptance remain. The review gate stays closed.
+
+The earlier [19 October preparation consumer source](runtime/billing/STOCK_RESERVATION_PAGING.md#react-preparation-consumer-source-19-october-2026)
 connects all four native preparation actions to complete paged review, durable
 exact-request recovery and explicit stop. Confirmation shares the same dialog
 core; older pending requests keep their original protocols. Home passes 970
 cases/83 suites. This is source/component evidence, not a built or deployed
-tester update. Operation editing, large validation/returns and actual
+tester update. At that checkpoint, operation editing, large validation/returns and actual
 browser/gateway/IndexedDB acceptance remain. The Billing review gate stays closed.
 
 Latest API-consumer source connects [paged transfer summaries and details](runtime/billing/STOCK_TRANSFER_DETAILS.md#react-api-consumer-checkpoint-16-october-2026), with component checks for 101 transfers, 501 moves and 2,001 operations. Large signed-write dialogs and gateway/browser acceptance remain unfinished. This does not update the hosted tester or reopen local review access.

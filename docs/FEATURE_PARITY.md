@@ -1,5 +1,24 @@
 # Bahmni workflow parity ledger
 
+## 19 October complete operation consumer source
+
+- Create/edit/removal now connects native form/onchange, complete choice search,
+  sequential effect pages, terminal-proof save and shared exact status/retry/
+  reference/stop recovery. Old pending requests retain their protocol and original
+  scope, including off-page/deleted operations. Native field rules and domains
+  remain; current recovery cannot become editable state.
+- Only operation editing's UI transfer-size guard is removed. Validation's cap,
+  native eligibility and shared pending locks remain. Both editors normalise
+  zero-millisecond expiry input to whole UTC seconds, rejecting non-zero fractions.
+- Home passes 1,012 cases/85 suites, including 26 editor/recovery, 12 input,
+  two complete-choice and two original-kind routing cases. Types, scoped lint/
+  format/diff, three gateway unit cases and contributor links pass. Existing
+  confirmation/preparation/legacy suites pass. These use SDK/storage doubles.
+- Actual browser/native screen/gateway/IndexedDB, keyboard/layout/multi-tab and
+  installed-upgrade acceptance remain. No native contract change, build/server,
+  gate reopening, tunnel or deployment. Large validation/returns and full
+  Billing/product parity remain. See [the exact source/evidence scope](../runtime/billing/STOCK_OPERATION_PAGING.md#react-operation-consumer-source-19-october-2026).
+
 ## 19 October complete preparation consumer source
 
 - Transfer details routes new preparation to all four complete paged native

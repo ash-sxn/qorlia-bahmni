@@ -1,6 +1,15 @@
 # New-team handover: Qorlia engineering
 
 Newest API-consumer source, 19 October:
+[complete operation editor](../runtime/billing/STOCK_OPERATION_PAGING.md#react-operation-consumer-source-19-october-2026)
+connects create/edit/removal and all native form/choice/review/recovery APIs.
+Legacy pending operations keep their original protocol. Native fields and
+permissions remain; only operation editing's old UI size lock is removed. Home
+passes 1,012 cases/85 suites with SDK/storage doubles. Large validation/returns
+and actual browser/gateway/IndexedDB acceptance remain. No build/server, review
+reopening or deployment. This does not change your assigned starter-task base.
+
+Earlier API-consumer source, 19 October:
 [complete preparation review](../runtime/billing/STOCK_RESERVATION_PAGING.md#react-preparation-consumer-source-19-october-2026)
 connects all four native actions through the shared confirmation/preparation
 dialog, exact recovery and stop, while preserving legacy pending routes. Home
@@ -15,8 +24,8 @@ matching-writer deployment requirement and separate HTTP/browser release gates
 before changing recovery. The expired review gate stays closed.
 The later [six native HTTP races](../runtime/billing/STOCK_REQUEST_STOP.md#native-http-race-and-recovery-checkpoint-18-october-2026)
 now pass with independent post-close checks. This does not deploy the feature or
-complete the remaining operation consumer or browser acceptance. Preparation's
-later source migration is linked above.
+complete browser acceptance. The later operation/preparation source migrations
+are linked above.
 
 Newest API-consumer source: [complete confirmation review](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#react-confirmation-consumer-source-16-october-2026)
 connects the five paged APIs with exact recovery, while preserving the older

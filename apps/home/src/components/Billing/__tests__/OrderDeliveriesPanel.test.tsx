@@ -28,6 +28,15 @@ jest.mock('../stockReservationRecovery', () => ({
   loadStockWriteRecovery: jest.fn(),
 }));
 const mockEditor = jest.fn();
+const mockPagedEditor = jest.fn();
+const mockLegacyEditor = jest.fn();
+jest.mock('../PagedStockOperationEditor', () => ({
+  PagedStockOperationEditor: (props: { close: () => void }) => {
+    mockPagedEditor(props);
+    mockEditor(props);
+    return <button onClick={props.close}>Return from operation</button>;
+  },
+}));
 const mockConfirmation = jest.fn();
 const mockPagedConfirmation = jest.fn();
 const mockPagedReservation = jest.fn();
@@ -63,6 +72,7 @@ jest.mock('../StockConfirmationModal', () => ({
 }));
 jest.mock('../StockOperationEditor', () => ({
   StockOperationEditor: (props: { close: () => void }) => {
+    mockLegacyEditor(props);
     mockEditor(props);
     return <button onClick={props.close}>Return from operation</button>;
   },
@@ -406,6 +416,11 @@ describe('Order stock transfer review', () => {
       uid: 3,
       selection: { ...operationSelection(), operation_id: false },
     });
+    expect(mockPagedEditor.mock.calls.at(-1)?.[0]).toMatchObject({
+      uid: 3,
+      returnFocus: expect.any(Function),
+    });
+    expect(mockLegacyEditor).not.toHaveBeenCalled();
     fireEvent.click(
       screen.getByRole('button', { name: 'Return from operation' }),
     );
@@ -453,6 +468,8 @@ describe('Order stock transfer review', () => {
     expect(mockEditor.mock.calls.at(-1)?.[0]).toMatchObject({
       selection: operationSelection(),
     });
+    expect(mockLegacyEditor).toHaveBeenCalled();
+    expect(mockPagedEditor).not.toHaveBeenCalled();
     fireEvent.click(
       screen.getByRole('button', { name: 'Return from operation' }),
     );
@@ -467,6 +484,39 @@ describe('Order stock transfer review', () => {
       screen.getByRole('button', { name: 'Review transfer confirmation' }),
     ).toBeDisabled();
   });
+  it.each(['save', 'delete'] as const)(
+    'resumes completed %s in its original off-page operation, never the legacy editor',
+    async (action) => {
+      const pending = {
+        ...operationRequest(),
+        action,
+        edits: action === 'delete' ? [] : operationRequest().edits,
+        review_complete_token: 'd'.repeat(64),
+        order_id: 99,
+        transfer_id: 98,
+      };
+      jest.mocked(loadStockWriteRecovery).mockResolvedValue(pending);
+      show();
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Resume operation request' }),
+      );
+      expect(mockPagedEditor.mock.calls.at(-1)?.[0]).toMatchObject({
+        uid: 3,
+        selection: { ...operationSelection(), order_id: 99, transfer_id: 98 },
+      });
+      expect(mockLegacyEditor).not.toHaveBeenCalled();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Return from operation' }),
+      );
+      await openTransfer();
+      expect(
+        screen.getByRole('button', { name: 'Edit operation #13' }),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: 'Review stock preparation' }),
+      ).toBeDisabled();
+    },
+  );
   it('blocks new stock actions when recovery storage fails and supports an explicit reload', async () => {
     jest
       .mocked(loadStockWriteRecovery)

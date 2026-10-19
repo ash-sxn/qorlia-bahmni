@@ -1,5 +1,21 @@
 # Qorlia React frontend backend readiness
 
+## Complete operation consumer source (19 October 2026)
+
+New create/edit/removal uses existing complete native form/onchange/choice,
+review/save/status/reference clients and exact stop/recovery. Every effect page
+and terminal proof precede durable dispatch; readonly/visibility/domains/warnings,
+ordered edits and old pending protocols remain. Native current recovery is not
+an editable load. Exact accepted receipt identity/state/count and complete
+references precede clear. Only operation editing's old UI size lock is removed;
+validation/native eligibility/pending guards remain. Whole-second UTC expiry
+conversion is corrected in both editors without rounding non-zero fractions.
+Home passes 1,012 cases/85 suites, including 26 new editor/recovery and 12 input
+cases. Types and scoped checks pass. This is JSDOM with SDK/storage doubles, not
+actual browser/gateway/IndexedDB or installed-upgrade acceptance. No native/API/
+schema change, build/server, gate reopening, tunnel or deployment. Large
+validation/returns and full parity remain. Read [the source contract](../runtime/billing/STOCK_OPERATION_PAGING.md#react-operation-consumer-source-19-october-2026).
+
 ## Complete preparation consumer source (19 October 2026)
 
 All four preparation actions now use the existing complete paged native clients

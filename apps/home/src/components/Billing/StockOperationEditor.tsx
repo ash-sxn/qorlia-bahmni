@@ -1,4 +1,4 @@
-import { Button, Modal, TextInput } from '@bahmni/design-system';
+import { Button, Modal } from '@bahmni/design-system';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import styles from './BillingPage.module.scss';
@@ -19,34 +19,18 @@ import {
   StockOperationReview,
   StockOperationSelection,
   StockOperationStatus,
-  stockOperationFields,
-  stockOperationNumberFields,
-  stockOperationRelationFields,
 } from './billingService';
-import { StockOperationChoice } from './StockOperationChoice';
 import { StockOperationEffects } from './StockOperationEffects';
+import {
+  StockOperationFields,
+  stockOperationInputValue,
+} from './StockOperationFields';
 import {
   clearStockOperationRecovery,
   loadStockOperationRecovery,
   persistStockOperationRecovery,
 } from './stockReservationRecovery';
 
-const labels: Record<StockOperationField, string> = {
-  qty_done: 'Recorded done quantity',
-  product_uom_id: 'Operation unit',
-  lot_id: 'Batch / serial',
-  lot_name: 'New batch / serial name',
-  existing_lot_id: 'Existing receiving batch',
-  expiration_date: 'Expiry (UTC)',
-  location_id: 'Source location',
-  location_dest_id: 'Destination location',
-  package_id: 'Source package',
-  result_package_id: 'Destination package',
-  owner_id: 'Stock owner',
-  cost_price: 'Cost price',
-  sale_price: 'Sale price',
-  mrp: 'MRP',
-};
 type Props = {
   uid: number;
   selection: StockOperationSelection;
@@ -193,18 +177,15 @@ export function StockOperationEditor({
   const commitInput = (field: StockOperationField) => {
     const raw = local[field];
     if (raw === undefined || !form || locked) return;
-    let value: number | string | false = raw;
-    if ((stockOperationNumberFields as readonly string[]).includes(field)) {
-      if (!raw.trim() || !Number.isFinite(Number(raw))) {
-        setFailure(new Error(`Enter a finite number for ${labels[field]}.`));
-        return;
-      }
-      value = Number(raw);
-    } else if (field === 'expiration_date')
-      value = raw
-        ? raw.replace('T', ' ') + (raw.length === 16 ? ':00' : '')
-        : false;
-    else value = raw || false;
+    let value: number | string | false;
+    try {
+      value = stockOperationInputValue(field, raw);
+    } catch (error) {
+      setFailure(
+        error instanceof Error ? error : new Error('Invalid operation value.'),
+      );
+      return;
+    }
     if (value === form.values[field] || (!value && !form.values[field])) {
       setLocal((old) => {
         const next = { ...old };
@@ -393,93 +374,23 @@ export function StockOperationEditor({
                 within 30 days or has passed.
               </p>
             ) : null}
-            <div className={styles.editorGrid}>
-              {stockOperationFields
-                .filter((field) => form.rules[field].visible)
-                .map((field) => {
-                  const rule = form.rules[field];
-                  if (
-                    (
-                      stockOperationRelationFields as readonly string[]
-                    ).includes(field)
-                  ) {
-                    const relation =
-                      field as (typeof stockOperationRelationFields)[number];
-                    const selectedLabel = form.labels[relation];
-                    const name = selectedLabel ? selectedLabel[1] : undefined;
-                    return rule.readonly ? (
-                      <p key={field}>
-                        {labels[field]}: {name ?? 'Not set'}
-                      </p>
-                    ) : (
-                      <StockOperationChoice
-                        key={field}
-                        uid={uid}
-                        request={{ ...selection, version: form.version, edits }}
-                        field={relation}
-                        label={labels[field]}
-                        value={form.values[relation]}
-                        name={name}
-                        disabled={locked}
-                        change={(value) => commit(field, value)}
-                        reconnect={() => leave('reconnect')}
-                      />
-                    );
-                  }
-                  const number = (
-                    stockOperationNumberFields as readonly string[]
-                  ).includes(field);
-                  const value = form.values[field];
-                  return (
-                    <TextInput
-                      key={field}
-                      id={`operation-${field}`}
-                      labelText={labels[field]}
-                      type={
-                        number
-                          ? 'number'
-                          : field === 'expiration_date'
-                            ? 'datetime-local'
-                            : 'text'
-                      }
-                      value={
-                        local[field] ??
-                        (value === false
-                          ? ''
-                          : field === 'expiration_date'
-                            ? String(value).replace(' ', 'T')
-                            : String(value))
-                      }
-                      readOnly={rule.readonly}
-                      disabled={locked}
-                      step={
-                        number
-                          ? 'any'
-                          : field === 'expiration_date'
-                            ? 1
-                            : undefined
-                      }
-                      helperText={
-                        field === 'expiration_date'
-                          ? 'Enter UTC, not device local time.'
-                          : 'Native rules apply when you leave this field.'
-                      }
-                      onChange={(event) => {
-                        if (!locked && !rule.readonly) {
-                          setLocal((old) => ({
-                            ...old,
-                            [field]: event.target.value,
-                          }));
-                          setReview(null);
-                          setFailure(null);
-                          setNotice('');
-                        }
-                      }}
-                      onBlur={() => commitInput(field)}
-                    />
-                  );
-                })}
-            </div>
+            <StockOperationFields
+              uid={uid}
+              form={form}
+              request={{ ...selection, version: form.version, edits }}
+              local={local}
+              disabled={locked}
+              protocol="legacy"
+              change={commit}
+              blur={commitInput}
+              reconnect={() => leave('reconnect')}
+              edit={(field, value) => {
+                setLocal((old) => ({ ...old, [field]: value }));
+                setReview(null);
+                setFailure(null);
+                setNotice('');
+              }}
+            />
             {busy ? (
               <p role="status">Applying native operation rules...</p>
             ) : null}

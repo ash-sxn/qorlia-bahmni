@@ -5,6 +5,7 @@ import { useState } from 'react';
 import styles from './BillingPage.module.scss';
 import {
   BillingSessionExpired,
+  getPagedStockOperationChoices,
   getStockOperationChoices,
   StockOperationFormRequest,
   stockOperationRelationFields,
@@ -20,6 +21,7 @@ export function StockOperationChoice({
   disabled,
   change,
   reconnect,
+  protocol = 'legacy',
 }: {
   uid: number;
   request: StockOperationFormRequest;
@@ -30,6 +32,7 @@ export function StockOperationChoice({
   disabled: boolean;
   change: (value: number | false) => void;
   reconnect: () => void;
+  protocol?: 'legacy' | 'complete';
 }) {
   const [search, setSearch] = useState('');
   const [offset, setOffset] = useState(0);
@@ -39,13 +42,17 @@ export function StockOperationChoice({
     queryKey: [
       'billing',
       'stock-operation-choices',
+      protocol,
       uid,
       request,
       field,
       term,
       offset,
     ],
-    queryFn: () => getStockOperationChoices(request, field, term, offset),
+    queryFn: () =>
+      (protocol === 'complete'
+        ? getPagedStockOperationChoices
+        : getStockOperationChoices)(request, field, term, offset),
     enabled: !disabled,
     retry: false,
     refetchOnWindowFocus: false,

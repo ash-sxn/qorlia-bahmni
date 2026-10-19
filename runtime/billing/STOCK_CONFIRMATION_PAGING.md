@@ -15,7 +15,9 @@ gateway contract changes. Home passes 970 cases/83 suites; types and scoped
 source checks pass. This does not establish actual browser/storage/gateway
 acceptance or deploy a UI. The dated source checkpoint below describes its
 original scope; preparation's size-lock/consumer gap is superseded by the later
-linked increment. Operation editing and large validation/return flows remain.
+linked increment. The later [operation consumer](STOCK_OPERATION_PAGING.md#react-operation-consumer-source-19-october-2026)
+supersedes operation editing's source gap. Large validation/return flows and
+actual browser/gateway/storage acceptance remain.
 
 ## React confirmation consumer source, 16 October 2026
 

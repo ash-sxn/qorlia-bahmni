@@ -38,7 +38,9 @@ doubles, not native screen, real IndexedDB, gateway or browser acceptance.
 The earlier native HTTP evidence below keeps its separate scope. No frontend
 build/server, browser review, expired-gate reopening, installed upgrade, public
 tunnel or tester/production deployment is included. Paged operation editing,
-large validation/returns and full Billing/product parity remain unfinished.
+large validation/returns and full Billing/product parity remained unfinished at
+this checkpoint. The later [operation consumer](STOCK_OPERATION_PAGING.md#react-operation-consumer-source-19-october-2026)
+supersedes the operation-editor source gap, not runtime acceptance gates.
 
 ## Candidate 55, 16 October 2026
 

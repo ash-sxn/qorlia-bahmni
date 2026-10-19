@@ -13,6 +13,7 @@ import {
 } from './billingService';
 import { OrderTransferDetails } from './OrderTransferDetails';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
+import { PagedStockOperationEditor } from './PagedStockOperationEditor';
 import { PagedStockReservationModal } from './PagedStockReservationModal';
 import { StockConfirmationModal } from './StockConfirmationModal';
 import { StockOperationEditor } from './StockOperationEditor';
@@ -61,9 +62,10 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
     transferId: number;
     paged: boolean;
   } | null>(null);
-  const [operation, setOperation] = useState<StockOperationSelection | null>(
-    null,
-  );
+  const [operation, setOperation] = useState<{
+    selection: StockOperationSelection;
+    paged: boolean;
+  } | null>(null);
   const [confirmation, setConfirmation] = useState<{
     orderId: number;
     transferId: number;
@@ -176,14 +178,18 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
                   transferId: pending.transfer_id,
                   paged: isPagedStockWriteRequest(pending),
                 });
-              } else if (isStockOperationRequest(pending))
+              } else if (isStockOperationRequest(pending)) {
+                confirmationOpener.current = event.currentTarget;
                 setOperation({
-                  order_id: pending.order_id,
-                  transfer_id: pending.transfer_id,
-                  move_id: pending.move_id,
-                  operation_id: pending.operation_id,
+                  paged: isPagedStockWriteRequest(pending),
+                  selection: {
+                    order_id: pending.order_id,
+                    transfer_id: pending.transfer_id,
+                    move_id: pending.move_id,
+                    operation_id: pending.operation_id,
+                  },
                 });
-              else {
+              } else {
                 confirmationOpener.current = event.currentTarget;
                 setReservation({
                   orderId: pending.order_id,
@@ -345,7 +351,10 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
                 confirmationOpener.current = event.currentTarget;
                 setReservation({ orderId, transferId, paged: true });
               }}
-              operation={setOperation}
+              operation={(selection, opener) => {
+                confirmationOpener.current = opener;
+                setOperation({ selection, paged: true });
+              }}
               reload={refresh}
               reconnect={reconnect}
             />
@@ -400,11 +409,19 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
           returnFocus={restoreConfirmationFocus}
         />
       ) : null}
-      {operation ? (
-        <StockOperationEditor
-          key={`${uid}:${operation.order_id}:${operation.transfer_id}:${operation.move_id}:${operation.operation_id}`}
+      {operation?.paged ? (
+        <PagedStockOperationEditor
           uid={uid}
-          selection={operation}
+          selection={operation.selection}
+          close={reloadTransfers}
+          reconnect={reconnect}
+          returnFocus={restoreConfirmationFocus}
+        />
+      ) : operation ? (
+        <StockOperationEditor
+          key={`${uid}:${operation.selection.order_id}:${operation.selection.transfer_id}:${operation.selection.move_id}:${operation.selection.operation_id}`}
+          uid={uid}
+          selection={operation.selection}
           close={reloadTransfers}
           reconnect={reconnect}
         />

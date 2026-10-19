@@ -94,8 +94,11 @@ The later [19 October preparation source](STOCK_RESERVATION_PAGING.md#react-prep
 uses this same inline stop/recovery path through the shared dialog, retaining
 all 25 confirmation cases and adding 24 preparation cases. Home passes 970 cases
 in 83 suites. This is SDK/storage-double evidence, not browser acceptance.
-The operation client/storage supports stop but its complete React consumer still
-needs migration. Legacy pending
+The later [19 October operation editor](STOCK_OPERATION_PAGING.md#react-operation-consumer-source-19-october-2026)
+also uses this shared exact stop/recovery path. Home passes 1,012 cases/85 suites,
+including 26 operation editor/recovery cases. Operation acceptance races, lost stop
+response/remount, expiry and clear failure retain exact requests in component
+tests. Actual browser/storage/runtime release gates remain. Legacy pending
 requests retain their original contracts and do not gain this stop action.
 
 ## Evidence and release gates
@@ -217,5 +220,5 @@ separate scope.
   source-58 830-case full regression does not establish those runtime states.
 - Actual protected-gateway/browser/IndexedDB durability, keyboard/narrow layout,
   multi-tab and reconnect fault acceptance remain open behind owner approval.
-- Remaining paged operation consumer, large validation/return flows,
+- Large validation/return flows,
   performance under realistic hospital load and full Billing/product parity remain.

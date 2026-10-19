@@ -2,14 +2,18 @@
 
 ## Consumer checkpoint, 19 October 2026
 
-Both [confirmation](STOCK_CONFIRMATION_PAGING.md#shared-confirmation-and-preparation-source-19-october-2026)
-and [preparation](STOCK_RESERVATION_PAGING.md#react-preparation-consumer-source-19-october-2026)
+The later [operation editor](STOCK_OPERATION_PAGING.md#react-operation-consumer-source-19-october-2026)
+joins [confirmation](STOCK_CONFIRMATION_PAGING.md#shared-confirmation-and-preparation-source-19-october-2026)
+and [preparation](STOCK_RESERVATION_PAGING.md#react-preparation-consumer-source-19-october-2026).
+All three
 now use completed paged requests in source, with original-kind routing, strict
 commit before save, exact retry/stop and complete accepted-reference recovery.
 The new shared dialog does not invent writable state from a compact recovery
 summary. Legacy pending dialogs, schemas and slot exclusion remain unchanged.
-Home passes 970 cases/83 suites. Actual browser/IndexedDB/gateway acceptance and
-the paged operation consumer remain open. No review gate, build/server or
+Home passes 1,012 cases/85 suites. Fresh accepted receipt state/count and operation
+identity are checked before clearing; mismatches retain recovery. Actual browser/
+IndexedDB/gateway acceptance and large validation/return consumers remain open.
+No review gate, build/server or
 deployment is included. The dated storage checkpoint below retains its original
 evidence scope; it is not a claim that later consumers are still unmigrated.
 
@@ -109,7 +113,7 @@ evidence keeps its separate scope.
 
 At this storage checkpoint, operation/preparation dialogs, pending routing and
 pagination still needed integration. The later consumer checkpoint above records
-preparation's source integration; operation remains. No frontend build, browser review, expired
+preparation/operation source integration. No frontend build, browser review, expired
 gate reopening, protected-host upgrade or public/tester/production deployment is
 included. Real IndexedDB durability/concurrency and save/reload/expiry/storage-
 failure flows remain acceptance gates.

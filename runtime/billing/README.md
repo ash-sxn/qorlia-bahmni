@@ -3,7 +3,17 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest consumer source, 19 October: [complete preparation review](STOCK_RESERVATION_PAGING.md#react-preparation-consumer-source-19-october-2026)
+Latest consumer source, 19 October: [complete operation editor](STOCK_OPERATION_PAGING.md#react-operation-consumer-source-19-october-2026)
+connects native form/onchange/choice APIs, sequential review, exact save/retry,
+all accepted references and explicit stop, preserving older pending protocols.
+Shared fields retain the native 14-field rules; expiry conversion preserves UTC
+whole seconds in both editors. Home passes 1,012 cases/85 suites, including 26
+new editor/recovery and 12 input cases. Types and scoped checks pass. This is
+SDK/storage-double evidence, not browser/IndexedDB/gateway acceptance. No native
+contract/runtime change, build/server, review reopening or deployment. Large
+validation/returns and full Billing/product parity remain.
+
+Earlier consumer source, 19 October: [complete preparation review](STOCK_RESERVATION_PAGING.md#react-preparation-consumer-source-19-october-2026)
 connects all four actions, terminal-proof save, exact schema-5 recovery,
 pinned references and explicit stop. Confirmation retains its wrapper and shares
 the review/recovery core. Older pending requests retain their original dialogs.

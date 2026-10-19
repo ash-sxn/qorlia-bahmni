@@ -10,13 +10,17 @@ import {
   getPagedStockConfirmationReferences,
   getPagedStockConfirmationReview,
   getPagedStockConfirmationStatus,
+  getPagedStockOperationReferences,
+  getPagedStockOperationStatus,
   getPagedStockReservation,
   getPagedStockReservationReferences,
   getPagedStockReservationReview,
   getPagedStockReservationStatus,
   savePagedStockConfirmation,
+  savePagedStockOperation,
   savePagedStockReservation,
   stopPagedStockConfirmation,
+  stopPagedStockOperation,
   stopPagedStockReservation,
   stockPreparationActions,
   type PagedStockConfirmationLoad,
@@ -24,6 +28,8 @@ import {
   type PagedStockConfirmationRequest,
   type PagedStockConfirmationReview,
   type PagedStockConfirmationStatus,
+  type PagedStockOperationRequest,
+  type PagedStockOperationStatus,
   type PagedStockReservationLoad,
   type PagedStockReservationRequest,
   type PagedStockReservationReview,
@@ -55,10 +61,17 @@ export type PagedStockWriteModalProps = {
   returnFocus?: () => void;
 };
 type Props = PagedStockWriteModalProps & {
-  kind: 'confirmation' | 'preparation';
+  kind: 'confirmation' | 'preparation' | 'operation';
+  initialFailure?: Error | null;
 };
-type Request = PagedStockConfirmationRequest | PagedStockReservationRequest;
-type Status = PagedStockConfirmationStatus | PagedStockReservationStatus;
+type Request =
+  | PagedStockConfirmationRequest
+  | PagedStockReservationRequest
+  | PagedStockOperationRequest;
+type Status =
+  | PagedStockConfirmationStatus
+  | PagedStockReservationStatus
+  | PagedStockOperationStatus;
 type Load = PagedStockConfirmationLoad | PagedStockReservationLoad;
 type ReviewCursor = {
   after: number;
@@ -70,26 +83,36 @@ type Review = {
   cursors: ReviewCursor[];
 };
 type References = { page: PagedStockConfirmationReferences; cursors: number[] };
+const isOperation = (request: Request): request is PagedStockOperationRequest =>
+  isStockOperationRequest(request);
 const requestStatus = (request: Request) =>
-  request.action !== undefined
-    ? getPagedStockReservationStatus(request)
-    : getPagedStockConfirmationStatus(request);
+  isOperation(request)
+    ? getPagedStockOperationStatus(request)
+    : request.action !== undefined
+      ? getPagedStockReservationStatus(request)
+      : getPagedStockConfirmationStatus(request);
 const requestSave = (request: Request) =>
-  request.action !== undefined
-    ? savePagedStockReservation(request)
-    : savePagedStockConfirmation(request);
+  isOperation(request)
+    ? savePagedStockOperation(request)
+    : request.action !== undefined
+      ? savePagedStockReservation(request)
+      : savePagedStockConfirmation(request);
 const requestStop = (request: Request) =>
-  request.action !== undefined
-    ? stopPagedStockReservation(request)
-    : stopPagedStockConfirmation(request);
+  isOperation(request)
+    ? stopPagedStockOperation(request)
+    : request.action !== undefined
+      ? stopPagedStockReservation(request)
+      : stopPagedStockConfirmation(request);
 const requestReferences = (
   request: Request,
   after: number,
   version: string | false,
 ) =>
-  request.action !== undefined
-    ? getPagedStockReservationReferences(request, after, version, 50)
-    : getPagedStockConfirmationReferences(request, after, version, 50);
+  isOperation(request)
+    ? getPagedStockOperationReferences(request, after, version, 50)
+    : request.action !== undefined
+      ? getPagedStockReservationReferences(request, after, version, 50)
+      : getPagedStockConfirmationReferences(request, after, version, 50);
 
 export function PagedStockWriteModal(props: Props) {
   return (
@@ -108,14 +131,25 @@ function StockWriteReview({
   close,
   reconnect,
   returnFocus,
+  initialFailure,
 }: Props) {
-  const noun = kind === 'confirmation' ? 'confirmation' : 'preparation';
-  const title = kind === 'confirmation' ? 'Confirmation' : 'Preparation';
-  const heading = `Complete transfer ${noun} review`;
+  const noun = kind;
+  const title =
+    kind === 'confirmation'
+      ? 'Confirmation'
+      : kind === 'operation'
+        ? 'Operation'
+        : 'Preparation';
+  const heading =
+    kind === 'operation'
+      ? 'Stock operation request recovery'
+      : `Complete transfer ${noun} review`;
   const query =
     kind === 'confirmation'
       ? 'stock-confirmation-paged'
-      : 'stock-reservation-paged';
+      : kind === 'operation'
+        ? 'stock-operation-paged'
+        : 'stock-reservation-paged';
   const client = useQueryClient();
   const mounted = useRef(true),
     busyRef = useRef(false);
@@ -129,7 +163,7 @@ function StockWriteReview({
   const [review, setReview] = useState<Review | null>(null);
   const [receipt, setReceipt] = useState<Status | null>(null);
   const [references, setReferences] = useState<References | null>(null);
-  const [failure, setFailure] = useState<Error | null>(null);
+  const [failure, setFailure] = useState<Error | null>(initialFailure ?? null);
   const [notice, setNotice] = useState('');
   const [confirmStop, setConfirmStop] = useState(false);
   const [stopped, setStopped] = useState(false);
@@ -156,13 +190,19 @@ function StockWriteReview({
       const request = await loadPagedStockWriteRecovery(uid);
       if (
         request &&
-        (isStockOperationRequest(request) ||
-          (kind === 'confirmation'
-            ? !isStockConfirmationRequest(request)
-            : isStockConfirmationRequest(request)))
+        (kind === 'operation'
+          ? !isStockOperationRequest(request)
+          : isStockOperationRequest(request) ||
+            (kind === 'confirmation'
+              ? !isStockConfirmationRequest(request)
+              : isStockConfirmationRequest(request)))
       )
         throw new Error(
           'Another stock request is pending. Resume its original workflow before starting this action.',
+        );
+      if (kind === 'operation' && !request)
+        throw new Error(
+          'No pending operation request was found. Return to transfers and open a fresh native form.',
         );
       let status: Status | null = null;
       if (request) {
@@ -397,6 +437,8 @@ function StockWriteReview({
       ...[
         'stock-confirmation-paged',
         'stock-reservation-paged',
+        'stock-operation-paged',
+        'stock-operation-form-paged',
         'stock-confirmation',
         'stock-reservation',
         'stock-operation',
@@ -415,7 +457,12 @@ function StockWriteReview({
       const fresh = await requestStatus(request);
       if (
         !fresh.accepted ||
-        fresh.reference_count !== accepted?.reference_count
+        fresh.reference_count !== accepted?.reference_count ||
+        fresh.state_after !== accepted?.state_after ||
+        ('operation_id' in fresh &&
+          (!accepted ||
+            !('operation_id' in accepted) ||
+            fresh.operation_id !== accepted.operation_id))
       )
         throw new Error(
           `Accepted ${noun} receipt changed or is unavailable. Keep this recovery request.`,
@@ -463,6 +510,11 @@ function StockWriteReview({
             Mark as Todo can reserve stock, merge moves and create upstream
             transfers or vendor RFQs. It does not complete delivery, post an
             invoice or record a payment.
+          </p>
+        ) : kind === 'operation' ? (
+          <p>
+            Recover only the exact saved operation request. This does not
+            validate delivery or reverse an accepted operation.
           </p>
         ) : (
           <p>
@@ -615,7 +667,28 @@ function StockWriteReview({
                 : 'This request may already be saved. It is never retried automatically.'}
             </p>
             {request.action !== undefined ? (
-              <p>Action: {stockPreparationLabels[request.action]}</p>
+              <p>
+                Action:{' '}
+                {request.action === 'save'
+                  ? 'Save operation'
+                  : request.action === 'delete'
+                    ? 'Remove operation'
+                    : stockPreparationLabels[request.action]}
+              </p>
+            ) : null}
+            {request.action === 'save' || request.action === 'delete' ? (
+              <p>
+                Move #{request.move_id} ·{' '}
+                {request.operation_id
+                  ? `Original operation #${request.operation_id}`
+                  : 'Original request creates an operation'}
+                .
+                {accepted?.accepted && 'operation_id' in accepted
+                  ? accepted.operation_id
+                    ? ` Saved operation #${accepted.operation_id}.`
+                    : ' The operation was removed.'
+                  : ''}
+              </p>
             ) : null}
             <Button
               kind="tertiary"
