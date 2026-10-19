@@ -9,6 +9,7 @@ import {
   InventoryTransferLoad,
 } from './billingService';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
+import { PagedStockReservationModal } from './PagedStockReservationModal';
 import {
   sameTransferSummary,
   formatTransferDate,
@@ -25,10 +26,16 @@ type Props = {
 };
 export function InventoryTransferDetails(props: Props) {
   const [revision, setRevision] = useState(0);
-  const [confirming, setConfirming] = useState(false);
+  const [workflow, setWorkflow] = useState<
+    'confirmation' | 'preparation' | null
+  >(null);
   const back = useRef<HTMLButtonElement>(null);
   const client = useQueryClient();
   const returnFocus = useCallback(() => back.current?.focus(), []);
+  const Workflow =
+    workflow === 'preparation'
+      ? PagedStockReservationModal
+      : PagedStockConfirmationModal;
   return (
     <section className={styles.card} aria-label="Inventory transfer details">
       <Button ref={back} kind="tertiary" onClick={props.close}>
@@ -39,18 +46,18 @@ export function InventoryTransferDetails(props: Props) {
         uid={props.uid}
         transferId={props.transferId}
         reconnect={props.reconnect}
-        confirmation={() => setConfirming(true)}
+        openWrite={setWorkflow}
         reload={() => setRevision((value) => value + 1)}
       />
-      {confirming ? (
-        <PagedStockConfirmationModal
+      {workflow ? (
+        <Workflow
           uid={props.uid}
           orderId={false}
           transferId={props.transferId}
           reconnect={props.reconnect}
           returnFocus={returnFocus}
           close={() => {
-            setConfirming(false);
+            setWorkflow(null);
             setRevision((value) => value + 1);
             void client.invalidateQueries({
               queryKey: ['billing', 'inventory-transfers', props.uid],
@@ -70,13 +77,13 @@ function ReadTransfer({
   transferId,
   reconnect,
   reload,
-  confirmation,
+  openWrite,
 }: {
   uid: number;
   transferId: number;
   reconnect: () => void;
   reload: () => void;
-  confirmation: () => void;
+  openWrite: (kind: 'confirmation' | 'preparation') => void;
 }) {
   const loaded = useQuery({
     queryKey: ['billing', 'inventory-transfer-load', uid, transferId],
@@ -105,7 +112,7 @@ function ReadTransfer({
       loaded={loaded.data}
       reconnect={reconnect}
       reload={reload}
-      confirmation={confirmation}
+      openWrite={openWrite}
     />
   );
 }
@@ -118,13 +125,13 @@ function DetailPages({
   loaded,
   reconnect,
   reload,
-  confirmation,
+  openWrite,
 }: {
   uid: number;
   loaded: InventoryTransferLoad;
   reconnect: () => void;
   reload: () => void;
-  confirmation: () => void;
+  openWrite: (kind: 'confirmation' | 'preparation') => void;
 }) {
   const [cursors, setCursors] = useState<Record<Section, Cursor[]>>({
     moves: [{ after: 0, position: 0 }],
@@ -254,8 +261,9 @@ function DetailPages({
       </p>
       <p>
         Recorded done quantities are not proof of a completed stock movement.
-        Confirmation has a separate native effect review and does not deliver
-        stock. Other global stock actions are still being integrated.
+        Confirmation and preparation have separate native effect reviews and do
+        not deliver stock. Other global stock actions are still being
+        integrated.
       </p>
       <p>
         Operation: {transferLabel(loaded.transfer.operation_type)} · Backorder
@@ -276,8 +284,19 @@ function DetailPages({
       >
         Reload inventory details
       </Button>
-      <Button kind="tertiary" disabled={fetching} onClick={confirmation}>
+      <Button
+        kind="tertiary"
+        disabled={fetching}
+        onClick={() => openWrite('confirmation')}
+      >
         Review or recover confirmation
+      </Button>
+      <Button
+        kind="tertiary"
+        disabled={fetching}
+        onClick={() => openWrite('preparation')}
+      >
+        Prepare stock or recover request
       </Button>
       {sections.map((section, index) => {
         const page = queries[index].data!;

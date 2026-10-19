@@ -1,5 +1,13 @@
 # Bahmni workflow parity ledger
 
+## 19 October global Inventory preparation source
+
+[Candidate 69](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-69-global-preparation-19-october-2026)
+connects all four native preparation actions, six APIs and exact recovery without
+an order. Home passes 1,574 cases/102 suites; corrected native verification is
+pending. This does not accept editing, validation, the wider Inventory/native
+matrix, actual browser or release. Review access stays closed.
+
 ## 19 October global Inventory confirmation source
 
 [Candidate 68](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-68-global-confirmation-19-october-2026)

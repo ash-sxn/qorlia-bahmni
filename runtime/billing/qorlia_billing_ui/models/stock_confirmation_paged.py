@@ -201,7 +201,7 @@ class StockConfirmationPaged(models.Model):
             cr.execute(sql.SQL('LOCK TABLE {} IN SHARE ROW EXCLUSIVE MODE').format(sql.Identifier(table)))
         self.env.invalidate_all()
         picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'],
-            inventory=purpose == _PURPOSE)
+            inventory=purpose in (_PURPOSE, 'qorlia.paged-reservation.v1'))
         picking.check_access_rights('write')
         picking.check_access_rule('write')
         key, marker = picking._qorlia_paged_stop_marker(request, digest, purpose, receipt_field)

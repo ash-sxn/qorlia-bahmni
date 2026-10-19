@@ -3,7 +3,12 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Newest source: [global Inventory confirmation](STOCK_INVENTORY_WORKSPACE.md#candidate-68-global-confirmation-19-october-2026)
+Newest source: [global Inventory preparation](STOCK_INVENTORY_WORKSPACE.md#candidate-69-global-preparation-19-october-2026)
+reuses all four native preparation actions, six APIs and exact UI recovery
+without order links. Home passes 1,574 cases/102 suites; corrected native
+verification and remaining gates are in the guide. No review reopening or deployment.
+
+Earlier source: [global Inventory confirmation](STOCK_INVENTORY_WORKSPACE.md#candidate-68-global-confirmation-19-october-2026)
 reuses the complete native confirmation APIs/dialog and exact durable recovery
 for an explicit orderless transfer identity. Other global writes remain open.
 Home passes 1,561 cases/102 suites; native evidence and remaining gates are in

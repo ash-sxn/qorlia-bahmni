@@ -1,5 +1,13 @@
 # Qorlia React frontend backend readiness
 
+## Global Inventory preparation (19 October 2026)
+
+[Candidate 69](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-69-global-preparation-19-october-2026)
+connects native check availability, unreserve, set/clear recorded quantities and
+exact UI recovery without an order. Home passes 1,574 cases/102 suites; corrected
+native verification remains pending. Remaining workflows and runtime/browser/
+release gates are in the guide. No review reopening, upgrade or deployment.
+
 ## Global Inventory confirmation (19 October 2026)
 
 [Candidate 68](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-68-global-confirmation-19-october-2026)

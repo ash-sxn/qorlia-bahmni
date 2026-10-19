@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import styles from './BillingPage.module.scss';
 import { OrderDeliveriesPanel } from './OrderDeliveriesPanel';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
+import { PagedStockReservationModal } from './PagedStockReservationModal';
 import {
   isPagedStockReturnRequest,
   isPagedStockCancellationRequest,
@@ -27,6 +28,7 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
   const [target, setTarget] = useState<{
     orderId: number | false;
     transferId: number;
+    kind: 'confirmation' | 'preparation';
   } | null>(null);
   const opener = useRef<HTMLButtonElement>(null);
   const retryButton = useRef<HTMLButtonElement>(null);
@@ -54,9 +56,13 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
     saved.errorUpdatedAt,
     focusFallback,
   ]);
-  if (target?.orderId === false)
+  if (target?.orderId === false) {
+    const Workflow =
+      target.kind === 'confirmation'
+        ? PagedStockConfirmationModal
+        : PagedStockReservationModal;
     return (
-      <PagedStockConfirmationModal
+      <Workflow
         uid={uid}
         orderId={false}
         transferId={target.transferId}
@@ -68,6 +74,7 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
         }}
       />
     );
+  }
   if (target !== null)
     return (
       <OrderDeliveriesPanel
@@ -137,6 +144,9 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
           setTarget({
             orderId: request.order_id,
             transferId: request.transfer_id,
+            kind: isStockConfirmationRequest(request)
+              ? 'confirmation'
+              : 'preparation',
           })
         }
       >

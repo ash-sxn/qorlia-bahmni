@@ -77,11 +77,11 @@ export type PagedStockWriteModalProps = {
 };
 type Props = (
   | (Omit<PagedStockWriteModalProps, 'orderId'> & {
-      kind: 'confirmation';
+      kind: 'confirmation' | 'preparation';
       orderId: number | false;
     })
   | (PagedStockWriteModalProps & {
-      kind: 'preparation' | 'operation' | 'cancellation';
+      kind: 'operation' | 'cancellation';
     })
 ) & {
   initialFailure?: Error | null;
@@ -229,7 +229,11 @@ function StockWriteReview({
   const loaded = useQuery({
     queryKey: ['billing', query, uid, orderId, transferId],
     queryFn: async () => {
-      if (orderId === false && kind !== 'confirmation')
+      if (
+        orderId === false &&
+        kind !== 'confirmation' &&
+        kind !== 'preparation'
+      )
         throw new Error(
           'This stock workflow still requires its original charge order.',
         );
@@ -408,7 +412,7 @@ function StockWriteReview({
             )
           : kind === 'preparation' && action && action !== 'cancel_transfer'
             ? await getPagedStockReservationReview(
-                { ...linkedSelection(), action },
+                { ...selection, action },
                 cursor.after,
                 cursor.version,
                 cursor.token,

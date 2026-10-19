@@ -22,7 +22,7 @@ class StockReservationPaged(models.Model):
     @api.model
     def qorlia_reservation_paged_load(self, order_id, transfer_id):
         self = self._qorlia_operation_paged_context()
-        picking, order, scope = self._qorlia_confirmation_paged_transfer(order_id, transfer_id)
+        picking, order, scope = self._qorlia_confirmation_paged_transfer(order_id, transfer_id, inventory=True)
         configuration = {}
         reason = False
         try:
@@ -44,7 +44,8 @@ class StockReservationPaged(models.Model):
 
     def _qorlia_reservation_paged_selection(self, payload):
         if (not isinstance(payload, dict) or set(payload) != {'order_id', 'transfer_id', 'version', 'action'}
-                or any(type(payload[name]) is not int or payload[name] <= 0 for name in ('order_id', 'transfer_id'))
+                or (payload['order_id'] is not False and (type(payload['order_id']) is not int or payload['order_id'] <= 0))
+                or type(payload['transfer_id']) is not int or payload['transfer_id'] <= 0
                 or not _hash(payload['version']) or not isinstance(payload['action'], str) or payload['action'] not in _ACTIONS):
             raise ValidationError('Use an exact native reservation selection and action.')
         return dict(payload)
@@ -56,7 +57,7 @@ class StockReservationPaged(models.Model):
 
     def _qorlia_reservation_paged_preview(self, data):
         picking, _order, _scope = self._qorlia_confirmation_paged_transfer(
-            data['order_id'], data['transfer_id'], lock=True)
+            data['order_id'], data['transfer_id'], lock=True, inventory=True)
         picking._qorlia_reservation_write_access(data['action'])
         picking._qorlia_reservation_scope(lock=True, complete=True)
         current = self.qorlia_reservation_paged_load(data['order_id'], data['transfer_id'])
@@ -104,7 +105,8 @@ class StockReservationPaged(models.Model):
         if (not isinstance(payload, dict) or set(payload) != {'order_id', 'transfer_id', 'version', 'action',
                 'review_version', 'review_complete_token', 'request_key'} or not _hash(payload['review_complete_token'])):
             raise ValidationError('Use the exact completely reviewed reservation request.')
-        self._qorlia_reservation_request(**{name: value for name, value in payload.items() if name != 'review_complete_token'})
+        self._qorlia_reservation_request(**{name: value for name, value in payload.items() if name != 'review_complete_token'},
+            allow_inventory=True)
         return dict(payload), _digest({'purpose': _PURPOSE, 'request': payload,
             'author': self.env.uid, 'companies': self.env.companies.ids})
 
@@ -119,7 +121,7 @@ class StockReservationPaged(models.Model):
     def qorlia_reservation_paged_stop(self, payload):
         self = self._qorlia_operation_paged_context()
         request, digest = self._qorlia_reservation_paged_request(payload)
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         return picking._qorlia_paged_stop(request, digest, _PURPOSE, 'qorlia_reservation_receipts',
             'qorlia_reservation_receipt_token', _RECEIPT_TOKEN)
 
@@ -127,7 +129,7 @@ class StockReservationPaged(models.Model):
     def qorlia_reservation_paged_status(self, payload):
         self = self._qorlia_operation_paged_context()
         request, digest = self._qorlia_reservation_paged_request(payload)
-        picking, order, scope = self.env['sale.order']._qorlia_delivery_transfer_scope(request['order_id'], request['transfer_id'])
+        picking, order, scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         receipt = picking._qorlia_reservation_paged_receipt(request, digest)
         self.env.cr.execute('SELECT (SELECT count(*) FROM stock_move WHERE picking_id = %s), '
             '(SELECT count(*) FROM stock_move_line WHERE picking_id = %s)', [picking.id, picking.id])
@@ -144,7 +146,7 @@ class StockReservationPaged(models.Model):
                 or not (version is False or _hash(version)) or after and version is False):
             raise ValidationError('Use a bounded reservation reference page and its original version.')
         request, digest = self._qorlia_reservation_paged_request(payload)
-        picking, _order, scope = self.env['sale.order']._qorlia_delivery_transfer_scope(request['order_id'], request['transfer_id'])
+        picking, _order, scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         receipt = picking._qorlia_reservation_paged_receipt(request, digest)
         if not receipt:
             raise UserError('This reservation action has not been accepted. Check its original request status.')
@@ -163,14 +165,14 @@ class StockReservationPaged(models.Model):
     def qorlia_reservation_paged_save(self, payload):
         self = self._qorlia_operation_paged_context()
         request, digest = self._qorlia_reservation_paged_request(payload)
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         if picking._qorlia_reservation_paged_receipt(request, digest):
             return self.qorlia_reservation_paged_status(request)
         self.env.cr.flush()
         for table in picking._qorlia_operation_paged_tables():
             self.env.cr.execute(sql.SQL('LOCK TABLE {} IN SHARE ROW EXCLUSIVE MODE').format(sql.Identifier(table)))
         self.env.invalidate_all()
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         if picking._qorlia_reservation_paged_receipt(request, digest):
             return self.qorlia_reservation_paged_status(request)
         data = {key: value for key, value in request.items() if key not in ('review_version', 'review_complete_token', 'request_key')}

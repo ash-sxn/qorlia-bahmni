@@ -8,6 +8,7 @@ import {
   getPagedStockReservationReview,
   getPagedStockReservationStatus,
   savePagedStockReservation,
+  stopPagedStockReservation,
   PagedStockReservationRequest,
   StockReservationSelection,
   stockPreparationActions,
@@ -36,6 +37,60 @@ const params = () =>
 describe('Complete paged reservation API boundary', () => {
   beforeEach(() => {
     global.fetch = jest.fn();
+  });
+  it.each(stockPreparationActions)(
+    'preserves an explicit orderless identity through all six %s APIs',
+    async (action) => {
+      const current = { ...load(), order_id: false as const };
+      const exact = { ...request(), order_id: false as const, action };
+      const result = {
+        ...status(),
+        action,
+        current: { ...status().current, order_id: false as const },
+      };
+      reply(current);
+      expect(await getPagedStockReservation(false, 11)).toEqual(current);
+      reply({ ...review(), action, order_id: false });
+      await getPagedStockReservationReview({
+        ...selection(),
+        action,
+        order_id: false,
+      });
+      reply(result);
+      expect(await savePagedStockReservation(exact)).toEqual(result);
+      expect(await getPagedStockReservationStatus(exact)).toEqual(result);
+      reply(references());
+      await getPagedStockReservationReferences(exact);
+      reply({ request_key: exact.request_key, accepted: true, stopped: false });
+      await stopPagedStockReservation(exact);
+      expect(params().map((p) => p.method)).toEqual(
+        ['load', 'review', 'save', 'status', 'references', 'stop'].map(
+          (name) => 'qorlia_reservation_paged_' + name,
+        ),
+      );
+      for (const call of params().slice(2))
+        expect(call.kwargs.payload).toEqual(exact);
+    },
+  );
+  it('rejects false lookalikes and an order/global response swap', async () => {
+    for (const value of [0, true, null, '', -1, [], {}]) {
+      await expect(
+        getPagedStockReservation(value as never, 11),
+      ).rejects.toThrow();
+      expect(() =>
+        checkedPagedStockReservationRequest({
+          ...request(),
+          order_id: value,
+        } as never),
+      ).toThrow();
+    }
+    expect(fetch).not.toHaveBeenCalled();
+    reply(load());
+    await expect(getPagedStockReservation(false, 11)).rejects.toThrow();
+    reply(status());
+    await expect(
+      getPagedStockReservationStatus({ ...request(), order_id: false }),
+    ).rejects.toThrow();
   });
   it('uses five exact named methods and preserves large compact counts without legacy arrays', async () => {
     reply(load());

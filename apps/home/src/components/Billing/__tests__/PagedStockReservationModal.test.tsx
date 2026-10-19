@@ -121,11 +121,15 @@ const deferred = <T,>() => {
   });
   return { promise, resolve };
 };
-function show() {
+function show(initialOrderId: number | false = 9) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  const panel = (uid = 3, orderId = 9, transferId = 11) => (
+  const panel = (
+    uid = 3,
+    orderId: number | false = initialOrderId,
+    transferId = 11,
+  ) => (
     <QueryClientProvider client={client}>
       <PagedStockReservationModal
         uid={uid}
@@ -197,6 +201,56 @@ describe('Complete paged preparation consumer', () => {
       configurable: true,
       value: jest.fn(() => request().request_key),
     });
+  });
+  it.each(stockPreparationActions)(
+    'reviews and durably saves orderless %s without inventing a Sales order',
+    async (action) => {
+      effectCount = 1;
+      const current = { ...load(), order_id: false as const };
+      const request = { ...exact(action), order_id: false as const };
+      const receipt = {
+        ...accepted(true, action),
+        current: { ...accepted().current, order_id: false as const },
+      };
+      get.mockResolvedValue(current);
+      preview.mockImplementation(async () => ({
+        ...effectPage(action),
+        order_id: false,
+      }));
+      save.mockResolvedValue(receipt);
+      check.mockResolvedValue(receipt);
+      show(false);
+      await complete(action);
+      expect(get).toHaveBeenCalledWith(false, 11);
+      expect(preview.mock.calls[0][0].order_id).toBe(false);
+      expect(screen.queryByText(/Order #false/)).not.toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Save reviewed preparation' }),
+      );
+      await waitFor(() => expect(save).toHaveBeenCalledWith(request));
+      expect(persist).toHaveBeenCalledWith(3, request);
+      expect(disk.get(3)).toEqual(request);
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Finish and reload transfers',
+        }),
+      );
+      await waitFor(() => expect(clear).toHaveBeenCalledWith(3, request));
+    },
+  );
+  it('recovers an orderless accepted preparation without repeating its save', async () => {
+    const request = { ...exact(), order_id: false as const };
+    disk.set(3, request);
+    check.mockResolvedValue({
+      ...accepted(),
+      current: { ...accepted().current, order_id: false },
+    });
+    show(false);
+    await screen.findByRole('button', { name: 'Finish and reload transfers' });
+    expect(check).toHaveBeenCalledWith(request);
+    expect(get).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+    expect(disk.get(3)).toEqual(request);
   });
   it.each(stockPreparationActions)(
     'reviews all effects and saves the exact native %s action with terminal proof',

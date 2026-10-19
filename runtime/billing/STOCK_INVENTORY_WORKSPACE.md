@@ -2,6 +2,53 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Candidate 69 global preparation, 19 October 2026
+
+Inventory details now open the same complete preparation dialog for all four
+native actions: check availability, unreserve, set recorded quantities from
+reservations and clear matching recorded quantities. The six existing
+`qorlia_reservation_paged_*` APIs accept explicit `order_id: false`, with the
+complete Inventory scope, native availability/permissions, inventory/configuration
+stamp, rollback effect review, exact proofs, locks and actual-effect comparison.
+Positive order scopes/digests and legacy preparation stay unchanged. Other
+global write protocols are not silently enabled. No fake order, new engine,
+raw action route, module schema field, role grant or custom `sudo` is introduced.
+
+The typed client accepts false only for complete confirmation/preparation.
+Exact requests remain in the existing schema-8 account/database-bound slot.
+The recovery banner pins both workflow kind and transfer target, including while
+a cleared banner refetches, and opens preparation directly rather than an order
+or confirmation dialog. The existing finish path refreshes active Inventory
+views. Stock preparation is not validation, delivery, an invoice or payment.
+
+Native tracked receipts without prepared batch operations may accept Set
+quantities while leaving recorded done at zero. The inspected installed native
+`action_set_quantities_to_reservation` only fills eligible existing operations;
+Qorlia must not invent a quantity or create an undocumented receipt operation.
+The first native run exposed an incorrect five-unit expectation in the new test,
+not a reason to replace native behaviour. The corrected test compares the direct
+native action with the adapter. True internal-location destinations are now used
+in the shared unlinked confirmation/preparation fixture.
+
+Source checks pass **1,574 Home cases/102 suites**, source/test and library
+types, scoped lint and three gateway stub cases. Coverage includes all four
+orderless actions across all six client APIs, explicit false/lookalike rejection,
+exact storage, no-resave recovery, Inventory entry/refresh and workflow routing.
+The first 57-case native run finished with one failed receipt-fixture expectation,
+zero errors/skips and all 132 guarded tables preserved. Independent post-worker
+committed SQL counts/full-row hashes also match its baseline. This failed run
+is retained. A corrected **57-case source-matched run is now in progress**,
+including eight global preparation cases, 11 global confirmation regressions
+and all 38 existing preparation cases. Its final outcome remains unverified. The
+candidate-68 974-case full worker is older-source evidence, not acceptance of
+this increment. Actual HTTP/browser/layout/IndexedDB/multi-tab/concurrency,
+scale and rollout remain separate gates. Review stays closed; no build/server,
+installed upgrade, hosted tester or production deployment.
+
+Next: global operation editing and validation, then returns/cancellation,
+create/edit and the remaining native form fields, views, filters, grouping,
+bulk/print, permission/configuration matrix and whole-product parity.
+
 ## Candidate 68 global confirmation, 19 October 2026
 
 Inventory details now open the existing complete confirmation dialog, with

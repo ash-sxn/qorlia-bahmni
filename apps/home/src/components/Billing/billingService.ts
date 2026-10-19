@@ -5576,10 +5576,14 @@ export async function getPagedStockOperationReferences(
 
 export interface PagedStockReservationLoad
   extends Omit<PagedStockConfirmationLoad, 'reason'> {
-  order_id: number;
   reasons: Record<StockReservationAction, string | false>;
 }
-export interface PagedStockReservationReview extends StockReservationSelection {
+export interface PagedStockReservationSelection
+  extends PagedStockConfirmationSelection {
+  action: StockReservationAction;
+}
+export interface PagedStockReservationReview
+  extends PagedStockReservationSelection {
   review_version: string;
   state_after: string;
   write_ready: boolean;
@@ -5590,18 +5594,26 @@ export interface PagedStockReservationReview extends StockReservationSelection {
   continuation_token: string | false;
   review_complete_token: string | false;
 }
-export interface PagedStockReservationRequest extends StockReservationRequest {
+export interface PagedStockReservationRequest
+  extends Omit<StockReservationRequest, 'order_id'> {
+  order_id: number | false;
   review_complete_token: string;
 }
 export interface PagedStockReservationStatus
-  extends Omit<PagedStockOperationStatus, 'operation_id' | 'action'> {
+  extends Omit<
+    PagedStockOperationStatus,
+    'operation_id' | 'action' | 'current'
+  > {
   action: StockReservationAction;
+  current: Omit<PagedStockOperationStatus['current'], 'order_id'> & {
+    order_id: number | false;
+  };
 }
 export async function getPagedStockReservation(
-  orderId: number,
+  orderId: number | false,
   transferId: number,
 ) {
-  if (!stockId(orderId) || !stockId(transferId))
+  if (!(orderId === false || stockId(orderId)) || !stockId(transferId))
     throw new Error('Select a saved stock transfer.');
   const data = await stockCall<PagedStockReservationLoad>(
     'qorlia_reservation_paged_load',
@@ -5651,17 +5663,38 @@ export function checkedPagedStockReservationRequest(
     !stockVersion(request.review_complete_token)
   )
     throw new Error('Use the exact completely reviewed reservation request.');
-  const { review_complete_token, ...legacy } = request;
-  return { ...checkedStockReservationRequest(legacy), review_complete_token };
+  const { action, ...common } = request;
+  checkedPagedReservationSelection({
+    order_id: request.order_id,
+    transfer_id: request.transfer_id,
+    version: request.version,
+    action,
+  });
+  return { ...checkedPagedStockConfirmationRequest(common), action };
+}
+function checkedPagedReservationSelection(
+  value: PagedStockReservationSelection,
+): PagedStockReservationSelection {
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'action',
+    ]) ||
+    !stockPreparationActions.includes(value.action)
+  )
+    throw new Error('Use the exact native reservation selection and action.');
+  return { ...checkedConfirmationSelection(value, true), action: value.action };
 }
 export async function getPagedStockReservationReview(
-  selection: StockReservationSelection,
+  selection: PagedStockReservationSelection,
   after = 0,
   reviewVersion: string | false = false,
   continuationToken: string | false = false,
   limit = 50,
 ) {
-  const exact = checkedStockSelection(selection);
+  const exact = checkedPagedReservationSelection(selection);
   if (
     !confirmationKeys(selection, Object.keys(exact)) ||
     !stockCount(after) ||

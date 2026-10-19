@@ -16,6 +16,13 @@ jest.mock('../billingService', () => ({
   getInventoryTransferDetailPage: jest.fn(),
 }));
 const mockConfirmation = jest.fn();
+const mockPreparation = jest.fn();
+jest.mock('../PagedStockReservationModal', () => ({
+  PagedStockReservationModal: (props: { close: () => void }) => {
+    mockPreparation(props);
+    return <button onClick={props.close}>Close global preparation</button>;
+  },
+}));
 jest.mock('../PagedStockConfirmationModal', () => ({
   PagedStockConfirmationModal: (props: {
     close: () => void;
@@ -152,6 +159,25 @@ it('opens the existing confirmation consumer without an order and reloads detail
   expect(
     screen.queryByRole('region', { name: 'Global confirmation review' }),
   ).not.toBeInTheDocument();
+});
+it('opens native preparation with the same independent transfer and reloads after close', async () => {
+  show();
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: 'Prepare stock or recover request',
+    }),
+  );
+  expect(mockPreparation.mock.calls.at(-1)?.[0]).toMatchObject({
+    uid: 3,
+    orderId: false,
+    transferId: 11,
+    reconnect,
+  });
+  expect(mockConfirmation).not.toHaveBeenCalled();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close global preparation' }),
+  );
+  await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
 });
 it('shows complete empty sections without requiring an order or inventing stock', async () => {
   const loaded = inventoryLoad();

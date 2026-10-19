@@ -8,7 +8,9 @@ import type {
 import { orderDeliveryPageFixture } from './orderDeliveryFixture';
 import { stockLoad, stockRequest } from './stockReservationFixture';
 
-export const request = (): PagedStockReservationRequest => ({
+export const request = (): PagedStockReservationRequest & {
+  order_id: number;
+} => ({
   ...stockRequest(),
   review_complete_token: 'd'.repeat(64),
 });

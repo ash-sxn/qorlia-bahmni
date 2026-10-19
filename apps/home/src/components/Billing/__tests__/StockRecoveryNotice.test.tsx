@@ -17,6 +17,7 @@ import { confirmationRequest } from './stockConfirmationFixture';
 import { request as pagedConfirmationRequest } from './stockConfirmationPagedFixture';
 import { operationRequest } from './stockOperationFixture';
 import { stockRequest } from './stockReservationFixture';
+import { request as preparationRequest } from './stockReservationPagedFixture';
 import { returnRequest } from './stockReturnPagedFixture';
 import { validationRequest } from './stockValidationFixture';
 import { pagedValidationRequest } from './stockValidationPagedFixture';
@@ -27,6 +28,13 @@ jest.mock('../stockReservationRecovery', () => ({
 }));
 const mockPanel = jest.fn();
 const mockGlobalConfirmation = jest.fn();
+const mockGlobalPreparation = jest.fn();
+jest.mock('../PagedStockReservationModal', () => ({
+  PagedStockReservationModal: (props: { close: () => void }) => {
+    mockGlobalPreparation(props);
+    return <button onClick={props.close}>Close global preparation</button>;
+  },
+}));
 jest.mock('../PagedStockConfirmationModal', () => ({
   PagedStockConfirmationModal: (props: { close: () => void }) => {
     mockGlobalConfirmation(props);
@@ -133,6 +141,33 @@ it('keeps the exact global workflow mounted while its cleared recovery banner re
   expect(
     screen.queryByRole('button', { name: 'Close global confirmation' }),
   ).not.toBeInTheDocument();
+});
+it('pins a global preparation target through banner clearing and never routes it to confirmation or Sales', async () => {
+  disk = { ...preparationRequest(), order_id: false };
+  const { client } = show();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Open saved stock workflow' }),
+  );
+  expect(mockGlobalPreparation.mock.calls.at(-1)?.[0]).toMatchObject({
+    uid: 3,
+    orderId: false,
+    transferId: 11,
+  });
+  expect(mockGlobalConfirmation).not.toHaveBeenCalled();
+  expect(mockPanel).not.toHaveBeenCalled();
+  disk = null;
+  await act(async () => {
+    await client.invalidateQueries({
+      queryKey: ['billing', 'reservation-recovery', 3],
+    });
+  });
+  expect(
+    screen.getByRole('button', { name: 'Close global preparation' }),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close global preparation' }),
+  );
+  await waitFor(() => expect(fallback).toHaveBeenCalled());
 });
 const cases: [string, () => StockWriteRequest][] = [
   ['Transfer cancellation', cancellationRequest],

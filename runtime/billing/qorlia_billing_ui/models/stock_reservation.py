@@ -258,9 +258,10 @@ class StockReservation(models.Model):
     def qorlia_transfer_preview(self, order_id, transfer_id, version, action):
         return self._qorlia_reservation_prepare(order_id, transfer_id, version, action)[1]
 
-    def _qorlia_reservation_request(self, order_id, transfer_id, version, action, review_version, request_key):
+    def _qorlia_reservation_request(self, order_id, transfer_id, version, action, review_version, request_key, allow_inventory=False):
         try:
-            if (action not in _ACTIONS or type(order_id) is not int or order_id <= 0
+            if (action not in _ACTIONS or (not (allow_inventory and order_id is False)
+                    and (type(order_id) is not int or order_id <= 0))
                     or type(transfer_id) is not int or transfer_id <= 0
                     or any(not isinstance(value, str) or len(value) != 64 or any(char not in '0123456789abcdef' for char in value)
                         for value in (version, review_version)) or str(uuid.UUID(request_key)) != request_key):

@@ -111,7 +111,7 @@ function OrderTransfers({
     transferId: number;
   } | null>(null);
   const [reservation, setReservation] = useState<{
-    orderId: number;
+    orderId: number | false;
     transferId: number;
     paged: boolean;
   } | null>(null);
@@ -465,7 +465,7 @@ function OrderTransfers({
           reconnect={reconnect}
           returnFocus={restoreConfirmationFocus}
         />
-      ) : reservation ? (
+      ) : reservation && reservation.orderId !== false ? (
         <StockReservationModal
           key={`${uid}:${reservation.orderId}:${reservation.transferId}`}
           uid={uid}
