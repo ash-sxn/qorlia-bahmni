@@ -6,8 +6,9 @@
 connects all eight complete native return APIs and shared Qorlia form/review,
 schema-7 recovery and actual-created-transfer navigation without Sales orders.
 Creation is not physical validation or a financial refund. Home passes 1,613
-cases/102 suites; the native return run and corrected cancellation rerun are
-active, not accepted yet. The older source-68 full result is independently
+cases/102 suites; the native return run is active, not accepted yet. Corrected
+cancellation passes 49 native cases with 438 matching-client responses using
+mocked transport, not acceptance of newer returns. The older source-68 full result is independently
 verified at 974 cases, with 132 guards and 322 matching-client responses using
 mocked transport. Source-specific evidence and outstanding parity/runtime gates
 are in the guide. No review reopening, build/server or deployment.

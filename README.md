@@ -55,7 +55,9 @@ Newest source: [global Inventory returns](runtime/billing/STOCK_INVENTORY_WORKSP
 connects all eight complete return APIs and shared Qorlia form/review/recovery
 without Sales orders. The created native return opens in Inventory; creation and
 physical validation remain separate. Home passes 1,613 cases/102 suites. Native
-return/cancellation verification and remaining gates are in the guide. The older
+return verification and remaining gates are in the guide. The corrected
+cancellation run passes 49 native cases with 438 matching-client responses using
+mocked transport, not acceptance of newer returns. The older
 source-68 full regression now passes 974 cases, not acceptance of newer source.
 Review stays closed; no build/server, installed upgrade or deployment.
 

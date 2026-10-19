@@ -45,7 +45,11 @@ validation. Final native results, matching-client replay and independent SQL
 comparison remain pending. Source is readonly, HTTP/published ports disabled,
 and installed metadata stays 49 on a separate synthetic database copy.
 
-The corrected cancellation rerun below is also active. The older source-68 full
+The corrected cancellation rerun below passes 49 unique cases, with all 106
+Python hashes matching, 132 guarded tables preserved and independent committed
+SQL matching the baseline. Matching-client replay accepts 438 native responses,
+including 225 global, across all six methods with transport mocked. This does
+not accept the newer returns source. The older source-68 full
 run is now independently verified: **974 unique cases, zero failures/errors/
 skips**, 106 matching Python hashes and all 132 guarded tables preserved with
 mandatory analytics/SMS. The matching frozen client accepts 322 native JSON
@@ -105,9 +109,18 @@ test correctly reached the existing native rejection that an unlinked transfer
 does not belong to a Sales order, but expected `ValidationError` instead of
 the native `UserError`. The corrected test asserts that exact rejection text;
 product permissions, scope checks and errors are unchanged. The failed log and
-immutable source are retained. A fresh matching 49-case rerun is active, not
-accepted yet. Final result, source-matched replay and independent SQL are pending.
-Both runs use readonly source, no HTTP/published ports and installed metadata 49.
+immutable source are retained. The corrected rerun passes **49 unique native
+cases, zero failures/errors/skips**, with all 106 source hashes matching and all
+132 guarded tables preserved under mandatory analytics/SMS. Independent
+committed SQL counts/full-row hashes match its baseline. The frozen client
+accepts **438 native responses**, including 225 global, across all six methods
+with transport mocked. Log SHA256:
+`4dc94ecf81e55c87b9a6a648a8bf0a2ed37a7bdbfc20edadfce3b339fa2058ee`.
+Client SHA256:
+`250c41aac9d7edbb27330e7545d9479ad9151d58d0afe1939e41ea83a2e47b9f`.
+Both workers are terminal/removed; readonly source, no HTTP/published ports and
+installed metadata 49 were retained. Bootstrap warnings remain. This is not a
+clean install, installed upgrade, actual HTTP/browser or release acceptance.
 The older source-68 full result does not accept this source.
 
 Remaining: global returns, native transfer create/edit/duplicate, orphan and

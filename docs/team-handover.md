@@ -3,8 +3,9 @@
 Newest source: [global Inventory returns](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-73-global-returns-20-october-2026)
 connects eight native APIs, shared Qorlia form/review/recovery and the actual
 created Inventory transfer without a Sales order. Creation is separate from
-validation/refund. Home passes 1,613 cases/102 suites; return/cancellation native
-verification and remaining scope are in the guide. Older source-68 full
+validation/refund. Home passes 1,613 cases/102 suites; return native
+verification and remaining scope are in the guide. Corrected cancellation
+passes 49 native cases, not acceptance of newer returns. Older source-68 full
 regression passes 974 cases, not acceptance of the current source. Starter-task
 bases, closed review access, installed runtime and deployment remain unchanged.
 
