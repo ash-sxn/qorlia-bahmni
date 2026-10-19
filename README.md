@@ -170,6 +170,7 @@ installed upgrade or actual concurrent HTTP/browser acceptance.
 - [Paged reservation actions](runtime/billing/STOCK_RESERVATION_PAGING.md): complete effects and compact recovery for native availability, unreserve and quantity preparation.
 - [Stock recovery storage](runtime/billing/STOCK_RECOVERY.md): exact completed-request persistence, older-envelope compatibility and remaining browser integration gates.
 - [Stop pending stock requests](runtime/billing/STOCK_REQUEST_STOP.md): exact author-bound native stop, confirmation UI recovery and separate concurrency/rollout release gates.
+- [Native transfer cancellation](runtime/billing/STOCK_CANCELLATION.md): installed source audit, direct native contract cases and the separate cancellation API/UI still to implement.
 - [Complete reservation inventory scope](runtime/billing/STOCK_INVENTORY_SCOPE.md): checked stock paging and legacy compatibility, with scoped native evidence and remaining UI gates.
 - [Large-transfer confirmation candidate](runtime/billing/STOCK_CONFIRMATION_PAGING.md): native paged review/save contract, distinct from released UI and tester capabilities.
 - [Large confirmation HTTP verification](runtime/billing/STOCK_CONFIRMATION_PAGING.md#large-native-http-and-recovery-checkpoint-16-october-2026): complete 501-move/2,001-operation saves and generated-reference recovery, with explicit remaining gateway/UI/scale limits.

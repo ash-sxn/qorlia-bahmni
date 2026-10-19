@@ -1,5 +1,18 @@
 # Qorlia React frontend backend readiness
 
+## Native cancellation contract audit (19 October 2026)
+
+[Transfer cancellation](../runtime/billing/STOCK_CANCELLATION.md) is the next
+identified missing stock API/UI. Installed-source inspection and read-only module
+inventory separate native unreservation/propagation/analytic deletion from stopping
+an uncertain request. Ten direct synthetic contract cases pass with 132-table
+preservation, mandatory analytics/SMS and 101 matching source files. Independent
+post-worker SQL matches all 132 guarded tables to the committed synthetic source.
+The retained first run's one failure/one error are test setup corrections, not
+weakened native guards or omitted cases.
+The ongoing return regression retains its own frozen source and acceptance scope.
+No raw cancellation route, writer, frontend control or review access is added.
+
 ## Billing recovery entry and return lifecycle coverage (19 October 2026)
 
 The [signed-in Billing recovery entry](../runtime/billing/STOCK_RECOVERY.md#signed-in-billing-recovery-entry-19-october-2026)

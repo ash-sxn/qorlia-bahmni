@@ -18,6 +18,10 @@ the exact request only if the server has not already accepted it.
 undoes a previously accepted action. Native transfer cancellation, returns and
 accounting reversals retain their separate reviewed workflows.
 
+[Transfer cancellation](STOCK_CANCELLATION.md) has a separate native-source audit
+and direct contract cases. Its API/UI are still missing. A pending-request stop
+must not be relabelled as that destructive business action.
+
 ## Three fixed APIs
 
 | Native `stock.picking` method | TypeScript client |

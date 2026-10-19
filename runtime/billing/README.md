@@ -3,6 +3,14 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Next native workflow: [transfer cancellation contract](STOCK_CANCELLATION.md).
+Source inspection identifies cancellation, unreservation, downstream propagation
+and legitimate analytic deletion as distinct from stopping a pending request.
+Ten direct native cases pass with 132-table preservation, mandatory analytics/SMS
+and 101 matching Python hashes. Independent post-worker SQL verifies all 132
+guarded tables in the synthetic copy against its committed source. No cancellation
+API/control is implemented, and the live return regression has its own older snapshot.
+
 New source: [signed-in Billing recovery entry](STOCK_RECOVERY.md#signed-in-billing-recovery-entry-19-october-2026)
 surfaces the existing pending account request without an order search or any
 automatic native action. [Native return lifecycle coverage](RETURN_PAGED_WRITE.md#native-return-to-receipt-lifecycle-coverage-19-october-2026)

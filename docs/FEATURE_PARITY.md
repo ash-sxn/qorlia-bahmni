@@ -1,5 +1,19 @@
 # Bahmni workflow parity ledger
 
+## 19 October native cancellation contract audit
+
+Installed-source and read-only module inspection identify transfer cancellation
+as a distinct missing API/UI, not the implemented pending-request stop. Native
+unreservation, surviving recorded quantities, sibling-aware downstream effects
+and linked analytic deletion must remain intact. [Ten direct native cases](../runtime/billing/STOCK_CANCELLATION.md)
+pass with 132-table preservation, mandatory analytics/SMS and 101 matching source
+hashes. Independent post-worker SQL matches all 132 guarded tables to the
+committed synthetic source. The retained first run had one failure and one error
+from test setup assumptions, corrected without removing a guard. The running
+898-case return regression is frozen at its earlier 100-file source and does not
+include these later cases. No
+cancellation writer/control, runtime upgrade, review reopening or deployment.
+
 ## 19 October Billing recovery entry and return lifecycle coverage
 
 - The [signed-in Billing notice](../runtime/billing/STOCK_RECOVERY.md#signed-in-billing-recovery-entry-19-october-2026)
