@@ -56,8 +56,12 @@ connects the matching full-review writer, compact exact accepted/stopped/unknown
 status, all saved reference pages and stop without reversing accepted creation.
 Older return protocols retain their limits. The matching schema-7 durable store
 keeps the exact request and checks all accepted references or explicit stop before
-retirement. The React return workflow remains next; runtime and release acceptance
-are separate. Home passes 1,313 cases/92 suites. The scoped native run passes 88
+retirement. The matching [React return workflow](runtime/billing/RETURN_PAGED_WRITE.md#react-complete-return-consumer-source-19-october-2026)
+now connects complete item/effect review, exact save/retry/stop, all references and
+opening the created transfer for separate receipt. Runtime and release acceptance
+remain separate. Current Home checks pass 1,354 cases/94 suites, including 35
+return component and three actual-SDK wire cases with transport/storage doubles.
+The scoped native run passes 88
 cases with 132-table preservation and 99 matching source files; actual-client
 replay accepts 155 native responses with mocked transport.
 

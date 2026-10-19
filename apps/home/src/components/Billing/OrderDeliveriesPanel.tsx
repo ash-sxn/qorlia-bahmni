@@ -16,6 +16,7 @@ import { OrderTransferDetails } from './OrderTransferDetails';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
 import { PagedStockOperationEditor } from './PagedStockOperationEditor';
 import { PagedStockReservationModal } from './PagedStockReservationModal';
+import { PagedStockReturnModal } from './PagedStockReturnModal';
 import { PagedStockValidationModal } from './PagedStockValidationModal';
 import { SavedValidationRecoveryModal } from './SavedValidationRecoveryModal';
 import { StockConfirmationModal } from './StockConfirmationModal';
@@ -28,6 +29,7 @@ import {
   isStockValidationStepRequest,
   isPagedStockWriteRequest,
   isPagedStockValidationRequest,
+  isPagedStockReturnRequest,
   loadStockWriteRecovery,
 } from './stockReservationRecovery';
 import {
@@ -44,9 +46,36 @@ type Props = {
   reconnect: () => void;
 };
 export function OrderDeliveriesPanel(props: Props) {
-  return <OrderTransfers key={`${props.uid}:${props.orderId}`} {...props} />;
+  return (
+    <OrderTransferWorkspace key={`${props.uid}:${props.orderId}`} {...props} />
+  );
 }
-function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
+function OrderTransferWorkspace(props: Props) {
+  const [target, setTarget] = useState({
+    orderId: props.orderId,
+    transferId: null as number | null,
+  });
+  return (
+    <OrderTransfers
+      key={`${props.uid}:${target.orderId}:${target.transferId ?? ''}`}
+      {...props}
+      orderId={target.orderId}
+      initialTransferId={target.transferId}
+      openTransfer={(orderId, transferId) => setTarget({ orderId, transferId })}
+    />
+  );
+}
+function OrderTransfers({
+  uid,
+  orderId,
+  initialTransferId,
+  openTransfer,
+  close,
+  reconnect,
+}: Props & {
+  initialTransferId: number | null;
+  openTransfer: (orderId: number, transferId: number) => void;
+}) {
   const client = useQueryClient();
   const confirmationOpener = useRef<HTMLButtonElement | null>(null);
   const backButton = useRef<HTMLButtonElement | null>(null);
@@ -61,7 +90,13 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
         : backButton.current;
     target?.focus();
   }, []);
-  const [transferId, setTransferId] = useState<number | null>(null);
+  const [transferId, setTransferId] = useState<number | null>(
+    initialTransferId,
+  );
+  const [stockReturn, setStockReturn] = useState<{
+    orderId: number;
+    transferId: number;
+  } | null>(null);
   const [reservation, setReservation] = useState<{
     orderId: number;
     transferId: number;
@@ -149,6 +184,7 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
     setOperation(null);
     setConfirmation(null);
     setValidation(null);
+    setStockReturn(null);
     refresh();
     void client.invalidateQueries({
       queryKey: ['billing', 'reservation-recovery', uid],
@@ -173,7 +209,13 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
             disabled={recovery.isFetching || recovery.isError}
             onClick={(event) => {
               const pending = recovery.data!;
-              if (isPagedStockValidationRequest(pending)) {
+              if (isPagedStockReturnRequest(pending)) {
+                confirmationOpener.current = event.currentTarget;
+                setStockReturn({
+                  orderId: pending.order_id,
+                  transferId: pending.transfer_id,
+                });
+              } else if (isPagedStockValidationRequest(pending)) {
                 confirmationOpener.current = event.currentTarget;
                 setValidation({
                   orderId: pending.order_id,
@@ -217,13 +259,15 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
               }
             }}
           >
-            {isStockValidationRequest(recovery.data)
-              ? 'Resume validation request'
-              : isStockConfirmationRequest(recovery.data)
-                ? 'Resume confirmation request'
-                : isStockOperationRequest(recovery.data)
-                  ? 'Resume operation request'
-                  : 'Resume reservation request'}
+            {isPagedStockReturnRequest(recovery.data)
+              ? 'Resume return request'
+              : isStockValidationRequest(recovery.data)
+                ? 'Resume validation request'
+                : isStockConfirmationRequest(recovery.data)
+                  ? 'Resume confirmation request'
+                  : isStockOperationRequest(recovery.data)
+                    ? 'Resume operation request'
+                    : 'Resume reservation request'}
           </Button>
         ) : null}
         <Button ref={backButton} kind="tertiary" onClick={close}>
@@ -357,6 +401,11 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
               transferId={transferId}
               snapshot={first}
               stockLocked={stockLocked}
+              focusOnLoad={initialTransferId === transferId}
+              returnStock={(event) => {
+                confirmationOpener.current = event.currentTarget;
+                setStockReturn({ orderId, transferId });
+              }}
               validation={(event) => {
                 confirmationOpener.current = event.currentTarget;
                 setValidation({ orderId, transferId, paged: true });
@@ -396,6 +445,17 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
           transferId={reservation.transferId}
           close={reloadTransfers}
           reconnect={reconnect}
+        />
+      ) : null}
+      {stockReturn ? (
+        <PagedStockReturnModal
+          uid={uid}
+          orderId={stockReturn.orderId}
+          transferId={stockReturn.transferId}
+          close={reloadTransfers}
+          reconnect={reconnect}
+          returnFocus={restoreConfirmationFocus}
+          openTransfer={openTransfer}
         />
       ) : null}
       {confirmation?.paged ? (

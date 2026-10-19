@@ -11,11 +11,17 @@
   remains separate from physically receiving goods or issuing a refund.
 - Schema-7 return storage is added in the same account slot. Strict persistence,
   complete pinned references, fresh exact status and UID/database checks gate
-  retirement. Older readers/clearers and generic dispatch remain fail-closed
-  until the React return consumer is connected. Prior requests/history remain.
-- Home: 1,313 cases/92 suites, with 71 storage cases. Native: 88 cases, 132-table
+  retirement. Older typed readers/clearers still reject returns, while generic
+  dispatch routes them to the dedicated React consumer. Prior requests/history remain.
+- The [React return workflow](../runtime/billing/RETURN_PAGED_WRITE.md#react-complete-return-consumer-source-19-october-2026)
+  connects all original items, native destination/quantity rules, ordered complete
+  review, exact save/retry/stop and every saved reference before retirement. The
+  created transfer opens in Qorlia for separate receipt/validation, including a
+  recovered return for another order. Creation is never labelled a refund.
+- Current UI: 1,354 Home cases/94 suites, with 35 return component, three actual-SDK
+  wire cases using transport/storage doubles and 71 storage cases. Native: 88 cases, 132-table
   preservation and 99 matching source files. Actual-client replay: 155 responses
-  with mocked transport. React, actual runtime/browser/storage/race/scale/release
+  with mocked transport. Actual runtime/browser/storage/race/scale/release
   gates remain. No review reopening, build/server, upgrade or deployment.
 
 ## 19 October complete return form and review source

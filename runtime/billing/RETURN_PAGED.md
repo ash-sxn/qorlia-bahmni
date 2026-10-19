@@ -5,8 +5,9 @@
 Later [candidate-63 creation/recovery source](RETURN_PAGED_WRITE.md) adds the
 matching writer, saved references and explicit stop. False-readiness and
 missing-writer statements below describe the candidate-62 checkpoint, not the
-newer source. Candidate 63 also has dedicated durable recovery storage; its React
-return consumer remains unfinished.
+newer source. Candidate 63 also has dedicated durable recovery storage and a
+[React consumer](RETURN_PAGED_WRITE.md#react-complete-return-consumer-source-19-october-2026).
+Actual runtime/release acceptance remains separate.
 
 ## Candidate 62 source, 19 October 2026
 

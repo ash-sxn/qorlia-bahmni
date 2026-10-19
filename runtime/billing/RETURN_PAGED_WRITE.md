@@ -10,8 +10,8 @@ and stop. The native writer requires the exact complete review and checks actual
 effects again before recording acceptance. It uses the existing protected receipt
 field, not a new stock database or a generic wizard endpoint.
 
-This is backend/client/source-gateway and durable recovery-storage integration.
-The React return form/review/recovery/receipt workflow is not connected yet.
+This includes backend/client/source-gateway, durable recovery storage and the
+React return form/review/recovery/receipt consumer described below.
 A passing client test does not authorize exposing or deploying this source.
 
 Implementation: [writer](qorlia_billing_ui/models/stock_return_paged_write.py),
@@ -32,8 +32,8 @@ the candidate-62 read/review-only checkpoint, not the legacy writer's contract.
 Creating a return creates and prepares a linked, uncompleted transfer. It does
 not receive the goods, reduce delivered quantities, post a credit note or refund
 money. Save receipts retain the state at creation, not a promise that later
-physical receipt is finished. The eventual React consumer must link to the
-returned transfer's separate native operation/validation workflow.
+physical receipt is finished. The React consumer links to the returned
+transfer's separate native operation/validation workflow.
 
 ## Exact write and recovery contracts
 
@@ -102,7 +102,7 @@ record in the complete native order scope denies recovery rather than returning
 a misleading partial graph.
 
 All business references must be read and cross-checked against the compact
-receipt by the future UI before retiring its durable request. Merely receiving
+receipt by the UI before retiring its durable request. Merely receiving
 one page or seeing a creation success message is not complete recovery.
 
 ## Explicit stop
@@ -196,10 +196,11 @@ fallback or delete the request. A changed pending action before the final clear
 is retained. Failed strict deletion commits retain even known accepted requests.
 
 Return requests are excluded from confirmation and generic paged-write
-discrimination. Until the new React consumer is wired, generic resume and all
-older typed readers/clearers reject pending returns. A complete-validation clear
-also cannot consume the return kind. Older pending payloads and validation
-histories are not migrated, proof-stripped, overwritten or silently cleared.
+discrimination. The generic resume dispatcher now returns them intact and routes
+them to the dedicated React return workflow. All older typed readers/clearers
+still reject pending returns. A complete-validation clear also cannot consume
+the return kind. Older pending payloads and validation histories are not
+migrated, proof-stripped, overwritten or silently cleared.
 
 The storage suite passes **71 cases**, including 24 new return cases. Tests cover
 501 selected rows, strict commit/abort, malformed/foreign envelopes, old-protocol
@@ -211,17 +212,87 @@ The full Home suite now passes **1,313 cases in 92 suites**. Source/test types a
 scoped lint/format/diff checks pass. Native contracts/runtime are unchanged by
 this storage increment.
 
+## React complete return consumer source, 19 October 2026
+
+The [return dialog](../../apps/home/src/components/Billing/PagedStockReturnModal.tsx)
+is available from completed transfer details inside signed-in Billing. The
+existing transfer recovery dispatcher recognises the exact schema-7 request,
+including its original order/transfer even when another order is currently open.
+The workflow uses the same shared Modal, Button, TextInput, effect viewer and
+Billing styles as the other redesigned stock workflows. It does not embed the
+old Odoo screen, add a pre-login Billing entry or introduce another design system.
+
+1. Load the native compact form and first original-item page. Explicitly load
+   every remaining page before review. Counts, metadata, pinned version and
+   strictly increasing original move IDs must agree across pages. Only 50 rows
+   render at once; loaded quantities and removed selections survive navigation.
+2. Edit finite base-unit quantities or remove original rows. There is no new
+   default-quantity maximum or zero/negative clamp. Native rejection remains
+   authoritative. The hidden order-quantity rule is read-only, not a submitted
+   flag. Unit visibility follows the native form. Role-controlled destination
+   search uses the pinned native domain and ID cursor; other roles cannot edit it.
+3. Review selected item rows followed by every native effect page in order.
+   Selection, review identity, counts, metadata and continuation proof remain
+   pinned. Reviewed quantities must match the full selection, with original
+   products/units/hidden rules. No create action is available before the terminal
+   completion proof. Editing again discards the review and starts from page zero.
+4. Generate one request key and await strict durable persistence before save.
+   On rejection, lost response, session expiry or uncertain status, retain all
+   eight fields. Recovery never automatically replays a write. A manual exact
+   retry checks fresh status first and uses the same stored payload, not a new
+   nonce. A changed storage slot blocks it. Stop has an inline confirmation and
+   cannot undo an accepted creation, including when save wins the race.
+5. Read every pinned saved-reference page, checking cross-page keys, counts and
+   the actual saved return. Missing/inaccessible references are explicit, not
+   invented successes. Fresh displayed-outcome and durable-store checks precede
+   retirement. Unknown or failed retirement retains the pending request.
+6. Open the actual created return in the Qorlia transfer workspace, including
+   recovery from another order. Its operations, batches, preparation and native
+   validation remain separate. Alternatively finish creation recovery without
+   claiming receipt, delivered-quantity adjustment, credit note or money refund.
+
+Closing preserves pending requests. Unsaved form edits require explicit discard
+before close, reload or reconnect. Page/error/stop/discard headings have focus
+targets; close restores the opening control or its Back-button fallback. The
+created-transfer handoff focuses its heading when this will not steal focus
+from another control. These are source/JSDOM checks,
+not a rendered visual, complete keyboard or assistive-technology acceptance claim.
+
+The component tests use actual React/shared UI with SDK and storage doubles.
+They cover complete 501-item loading/review, unit and hidden-rule preservation,
+over-return/zero/removed quantities, finite-input correction, inconsistent pages,
+strict-commit ordering/failure, unknown/expired/rejected saves, exact retry,
+save-winning-stop, acknowledged stop, deletion failure, all 101 references,
+missing/overlapping/drifting/inaccessible references, stale displayed outcomes,
+native destination rules, dirty discard, focus return and basic axe checks.
+Transfer tests cover fresh entry, unavailable unfinished transfers, exact resume
+dispatch and opening a returned transfer belonging to another order. Older
+typed storage consumers still reject returns rather than converting their proofs.
+
+Current checks: **1,354 Home cases in 94 suites** pass, including 35 return
+component cases, three actual-SDK wire cases and three new transfer routing cases.
+The wire tests stub transport and durable storage, not client request/response
+validation. They cover the complete create/reference/handoff path, incomplete
+proof rejection and lost save acknowledgment without replay. Library and focused
+actual-source/test TypeScript, scoped ESLint, formatting and contributor links
+pass. The earlier 88-case native and 155-frame client replay evidence is retained;
+native tests were not rerun for this UI-only increment. The first UI diagnostic
+failed because JSDOM lacks `structuredClone` and Carbon exposes empty alert
+regions; the fixture clone and named error queries were corrected without
+relaxing production guards. A subsequent focused run passed before the full suite.
+
+No native contract, addon source, installed version, frontend build/server,
+review gate, hosted tester or deployment changed in this consumer increment.
+
 ## Remaining work and release gates
 
-Recovery dispatch and the React return editor, review, receipt and physical-
-validation handoff remain next. Actual HTTP/gateway,
+Actual HTTP/gateway,
 browser/IndexedDB, keyboard/visual, concurrent save/stop, source/worker rollout,
 clean install and deployment acceptance remain unproven. Whole Billing and the
 remaining product redesign are not complete.
 
-The dedicated return storage API is not yet used by an actual React return
-consumer. Do not strip `location_id`/`lines`, drop completion proofs or force a
-return into an older schema to bypass that remaining integration.
+Do not strip `location_id`/`lines`, drop completion proofs or force a return into
+an older schema to bypass a failing deployment or acceptance gate.
 
 Complete selected forms still travel in each review/write/recovery request.
 Those five fixed complete-return routes get a bounded 1 MiB JSON body allowance,

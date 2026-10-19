@@ -8,8 +8,12 @@ adds exact full-review save, compact accepted/stopped/unknown recovery, saved
 reference paging and stop through the protected native receipt mechanism.
 Load/review now reflect native write readiness. The matching durable schema-7
 store preserves exact requests and requires full references/acknowledgment before
-retirement. React and actual runtime/release acceptance remain next. Home passes
-1,313 cases/92 suites, including 71 storage cases. The scoped native run passes
+retirement. The [React return consumer](RETURN_PAGED_WRITE.md#react-complete-return-consumer-source-19-october-2026)
+now connects complete form/review, exact creation/recovery/stop, all references and
+opening the returned transfer for separate physical receipt. Actual runtime/release
+acceptance remains next. Current Home checks pass 1,354 cases/94 suites, including
+35 return component, three actual-SDK wire cases using transport/storage doubles
+and 71 storage cases. The scoped native run passes
 88 cases with 132-table preservation and 99 matching Python files. Client replay
 accepts 155 native responses with mocked transport, not runtime acceptance.
 

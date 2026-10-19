@@ -23,9 +23,11 @@ type Props = {
     'order_id' | 'order_name' | 'order_state' | 'version'
   >;
   stockLocked: boolean;
+  focusOnLoad?: boolean;
   validation: MouseEventHandler<HTMLButtonElement>;
   confirmation: MouseEventHandler<HTMLButtonElement>;
   reservation: MouseEventHandler<HTMLButtonElement>;
+  returnStock: MouseEventHandler<HTMLButtonElement>;
   operation: (
     selection: StockOperationSelection,
     opener: HTMLButtonElement,
@@ -48,9 +50,11 @@ function TransferDetails({
   transferId,
   snapshot,
   stockLocked,
+  focusOnLoad,
   validation,
   confirmation,
   reservation,
+  returnStock,
   operation,
   reload,
   reconnect,
@@ -63,6 +67,8 @@ function TransferDetails({
   const operationCursor = operationCursors[operationCursors.length - 1];
   const pageFocus = useRef<HTMLButtonElement | null>(null);
   const reloadButton = useRef<HTMLButtonElement | null>(null);
+  const transferHeading = useRef<HTMLHeadingElement>(null);
+  const focused = useRef(false);
   const moves = useQuery({
     queryKey: [
       'billing',
@@ -142,6 +148,20 @@ function TransferDetails({
       sameTransferSummary(movePage.transfer, operationPage.transfer));
   const fetching = moves.isFetching || operations.isFetching;
   useEffect(() => {
+    if (
+      focusOnLoad &&
+      !focused.current &&
+      !fetching &&
+      !failure &&
+      coherent &&
+      transferHeading.current &&
+      document.activeElement === document.body
+    ) {
+      focused.current = true;
+      transferHeading.current.focus();
+    }
+  }, [focusOnLoad, fetching, failure, coherent]);
+  useEffect(() => {
     if (fetching || !pageFocus.current) return;
     const previous = pageFocus.current;
     pageFocus.current = null;
@@ -191,7 +211,14 @@ function TransferDetails({
   const nextOperation = operationPage.next_after;
   return (
     <>
-      <h3>{transfer.name}</h3>
+      <h3 ref={transferHeading} tabIndex={-1}>
+        {transfer.name}
+      </h3>
+      {transfer.state === 'done' ? (
+        <Button kind="tertiary" disabled={locked} onClick={returnStock}>
+          Review stock return
+        </Button>
+      ) : null}
       <Button kind="tertiary" disabled={locked} onClick={validation}>
         Review transfer validation
       </Button>

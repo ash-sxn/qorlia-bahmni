@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -21,6 +22,7 @@ import {
 import { confirmationRequest } from './stockConfirmationFixture';
 import { operationRequest, operationSelection } from './stockOperationFixture';
 import { stockRequest } from './stockReservationFixture';
+import { returnRequest } from './stockReturnPagedFixture';
 import { validationRequest } from './stockValidationFixture';
 
 jest.mock('../stockReservationRecovery', () => ({
@@ -59,6 +61,13 @@ jest.mock('../PagedStockConfirmationModal', () => ({
 }));
 const mockValidation = jest.fn();
 const mockPagedValidation = jest.fn();
+const mockPagedReturn = jest.fn();
+jest.mock('../PagedStockReturnModal', () => ({
+  PagedStockReturnModal: (props: { close: () => void }) => {
+    mockPagedReturn(props);
+    return <button onClick={props.close}>Return from complete return</button>;
+  },
+}));
 jest.mock('../PagedStockValidationModal', () => ({
   PagedStockValidationModal: (props: { close: () => void }) => {
     mockPagedValidation(props);
@@ -150,6 +159,62 @@ const openTransfer = async () => {
   });
 };
 describe('Order stock transfer review', () => {
+  it('offers complete return only for completed transfers and restores focus on close', async () => {
+    fixture.rows[0].state = 'done';
+    show();
+    await openTransfer();
+    const opener = screen.getByRole('button', { name: 'Review stock return' });
+    await waitFor(() => expect(opener).toBeEnabled());
+    fireEvent.click(opener);
+    const props = mockPagedReturn.mock.calls.at(-1)?.[0];
+    expect(props).toMatchObject({ uid: 3, orderId: 9, transferId: 11 });
+    props.returnFocus();
+    expect(opener).toHaveFocus();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Return from complete return' }),
+    );
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+    expect(mockPagedConfirmation).not.toHaveBeenCalled();
+  });
+  it('does not offer return creation for uncompleted transfers', async () => {
+    show();
+    await openTransfer();
+    expect(
+      screen.queryByRole('button', { name: 'Review stock return' }),
+    ).not.toBeInTheDocument();
+  });
+  it('resumes the original return scope and opens its actual created transfer even for another order', async () => {
+    const pending = { ...returnRequest(), order_id: 10, transfer_id: 99 };
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue(pending);
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Resume return request' }),
+    );
+    const props = mockPagedReturn.mock.calls.at(-1)?.[0];
+    expect(props).toMatchObject({ uid: 3, orderId: 10, transferId: 99 });
+    expect(mockPagedConfirmation).not.toHaveBeenCalled();
+    expect(mockPagedValidation).not.toHaveBeenCalled();
+    expect(mockPagedReservation).not.toHaveBeenCalled();
+    fixture.order_id = 10;
+    fixture.order_name = 'QORLIAQA-OTHER-ORDER';
+    fixture.rows[0] = { ...fixture.rows[0], id: 19, name: 'QA/RETURN/19' };
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue(null);
+    act(() => props.openTransfer(10, 19));
+    await screen.findByRole('heading', { name: 'QA/RETURN/19' });
+    expect(screen.getByRole('heading', { name: 'QA/RETURN/19' })).toHaveFocus();
+    expect(get).toHaveBeenLastCalledWith(10, 0, false, 25);
+    expect(details).toHaveBeenCalledWith(
+      10,
+      19,
+      'moves',
+      0,
+      fixture.version,
+      50,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Review transfer validation' }),
+    ).toBeEnabled();
+  });
   it('opens native validation from details with focus return and refresh, not a raw Validate action', async () => {
     show();
     await openTransfer();

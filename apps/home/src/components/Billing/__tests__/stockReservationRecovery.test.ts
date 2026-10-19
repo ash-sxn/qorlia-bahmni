@@ -393,8 +393,8 @@ describe('Complete native return durable recovery', () => {
   it('keeps return requests intact and rejects every older reader/clearer instead of converting their protocol', async () => {
     const fake = database();
     await persistPagedStockReturnRecovery(3, completeReturn());
+    expect(await loadStockWriteRecovery(3)).toEqual(completeReturn());
     for (const load of [
-      loadStockWriteRecovery,
       loadStockReservationRecovery,
       loadStockOperationRecovery,
       loadStockConfirmationRecovery,

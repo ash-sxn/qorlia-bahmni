@@ -2,8 +2,10 @@
 
 Current [complete native creation/recovery source](RETURN_PAGED_WRITE.md)
 connects the matching full-review writer and compact recovery/stop/reference
-protocol without the older graph/selection caps. This is not a React return
-consumer, runtime upgrade or complete Billing acceptance.
+protocol without the older graph/selection caps. The matching
+[React consumer](RETURN_PAGED_WRITE.md#react-complete-return-consumer-source-19-october-2026)
+now connects form/review, durable exact recovery, all references and separate
+physical-validation handoff. This is not a runtime upgrade or complete Billing acceptance.
 
 Later [complete form/review source](RETURN_PAGED.md) adds compact native load,
 all original form-line pages, pinned location search and sequential rollback

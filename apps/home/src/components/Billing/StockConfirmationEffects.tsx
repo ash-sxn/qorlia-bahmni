@@ -74,13 +74,18 @@ export function StockConfirmationEffects({
   workflow = 'confirmation',
 }: {
   effects: Effects | StockValidationEffects;
-  workflow?: 'confirmation' | 'preparation' | 'operation';
+  workflow?: 'confirmation' | 'preparation' | 'operation' | 'return creation';
 }) {
   const validation = 'private_effect_counts' in effects;
   const privateCounts = validation
     ? effects.private_effect_counts
     : effects.private_audit_counts;
-  const action = validation ? 'validation' : workflow;
+  const action =
+    workflow === 'return creation'
+      ? workflow
+      : validation
+        ? 'validation'
+        : workflow;
   return (
     <section
       className={styles.review}

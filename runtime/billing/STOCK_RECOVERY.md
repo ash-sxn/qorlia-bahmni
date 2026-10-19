@@ -7,9 +7,10 @@ now has exact database/account-bound schema 7 in the same pending slot. It keeps
 all eight native request fields and requires complete accepted-reference reads
 or exact stopped acknowledgment before clearing. Native UID/database, outcome
 and reference versions are rechecked; failed/changed reads or commits retain the
-request. Older typed readers/clearers and generic resume remain fail-closed until
-the dedicated React return consumer is connected. No old pending request/history
-is converted. Storage has 71 unit cases, including 24 new return cases; full Home
+request. Generic resume now returns the exact validated return request for the
+[dedicated React workflow](RETURN_PAGED_WRITE.md#react-complete-return-consumer-source-19-october-2026).
+Older typed readers/clearers still reject it. No old pending request/history is
+converted. Storage has 71 unit cases, including 24 new return cases; the storage checkpoint's full Home
 has 1,313 cases/92 suites. This is storage-double source evidence, not actual
 browser/IndexedDB/multi-tab or release acceptance. No review reopening or build.
 

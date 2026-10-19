@@ -37,6 +37,7 @@ export type StockWriteRequest =
   | StockValidationRequest
   | StockValidationStepRequest
   | PagedStockValidationRequest
+  | PagedStockReturnRequest
   | PagedStockWriteRequest;
 type ValidationParent =
   | StockValidationStepRequest
@@ -507,11 +508,6 @@ export const loadStockWriteRecovery = async (
   uid: number,
 ): Promise<StockWriteRequest | null> => {
   const record = await recoveryRecord(uid, 'read');
-  // The generic dispatcher cannot resume a return until its dedicated React consumer is connected.
-  if (record && isPagedStockReturnRequest(record.request))
-    throw new Error(
-      'A return request is pending. Keep it intact and use its dedicated return recovery.',
-    );
   return record?.request ?? null;
 };
 export async function loadPagedStockReturnRecovery(
@@ -703,6 +699,10 @@ export async function clearPagedStockValidationRecovery(
 }
 async function loadLegacyStockWriteRecovery(uid: number) {
   const pending = await loadStockWriteRecovery(uid);
+  if (pending && isPagedStockReturnRequest(pending))
+    throw new Error(
+      'A return request is pending. Resume its dedicated return workflow.',
+    );
   if (
     pending &&
     (isPagedStockValidationRequest(pending) ||
@@ -715,6 +715,10 @@ async function loadLegacyStockWriteRecovery(uid: number) {
 }
 export async function loadPagedStockWriteRecovery(uid: number) {
   const pending = await loadStockWriteRecovery(uid);
+  if (pending && isPagedStockReturnRequest(pending))
+    throw new Error(
+      'A return request is pending. Resume its dedicated return workflow.',
+    );
   if (pending && isPagedStockValidationRequest(pending))
     throw new Error(
       'A complete validation request is pending. Resume it before another stock workflow.',

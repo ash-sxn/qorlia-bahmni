@@ -8,8 +8,12 @@ Complete review proof and matching actual native effects precede protected
 acceptance; an accepted creation is never undone by stop. Earlier protocols and
 their payloads are unchanged. The dedicated schema-7 store now persists exact
 requests and gates retirement on all references, fresh native outcomes and account
-identity. Generic resume/older dialogs reject that kind until the React return
-consumer is connected. Home passes 1,313 cases/92 suites, including 71 storage
+identity. The [React return consumer](../runtime/billing/RETURN_PAGED_WRITE.md#react-complete-return-consumer-source-19-october-2026)
+now connects complete form/effect paging, exact durable creation/recovery, all
+references and the separate physical-validation handoff. Generic resume routes
+returns explicitly; older typed dialogs still reject them. Current Home checks
+pass 1,354 cases/94 suites, including 35 return component, three actual-SDK wire
+cases with transport/storage doubles and 71 storage
 cases. Native: 88 cases, 132-table preservation and 99 matching Python files.
 Client replay: 155 native responses with mocked transport. Actual browser/storage,
 runtime, concurrency, payload/scale and release acceptance remain unfinished.
