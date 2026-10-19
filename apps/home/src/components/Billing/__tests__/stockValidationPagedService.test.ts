@@ -29,13 +29,13 @@ const load = (): PagedStockValidationLoad => ({
   package_count: 0,
   inventory_quant_count: 2001,
   reason: false,
-  write_ready: false,
+  write_ready: true,
 });
 const review = (): PagedStockValidationReview => ({
   ...selection(),
   review_version: 'b'.repeat(64),
   state_after: 'done',
-  write_ready: false,
+  write_ready: true,
   input_prompt: false,
   prompt_rows: [],
   next_step: false,
@@ -59,7 +59,7 @@ describe('Complete native validation review client', () => {
   beforeEach(() => {
     global.fetch = jest.fn();
   });
-  it('loads complete compact state through the fixed native review API, without claiming a ready writer', async () => {
+  it('loads complete compact state with native write availability through the fixed API', async () => {
     reply(load());
     expect(await getPagedStockValidation(9, 11)).toEqual(load());
     expect(
@@ -72,7 +72,7 @@ describe('Complete native validation review client', () => {
     });
   });
   it.each([
-    { write_ready: true },
+    { write_ready: false },
     { package_count: -1 },
     { inventory_quant_count: -1 },
     { version: false },
@@ -207,7 +207,7 @@ describe('Complete native validation review client', () => {
     ).toEqual([0, 50, 100]);
   });
   it.each([
-    { write_ready: true },
+    { write_ready: false },
     { after: 1 },
     { total_count: 2 },
     { prompt_count: 1 },

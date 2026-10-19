@@ -3,6 +3,14 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Candidate 61: [complete native validation write/recovery](VALIDATION_PAGED_WRITE.md)
+adds exact save, accepted/stopped status, prompt/reference paging and stop while
+preserving prior preparation. Typed clients and fixed source routes are included.
+Home passes 1,135 cases/89 suites. The corrected scoped native run passes 50
+cases, preserves 130 guarded tables and matches 95 Python files; actual-client
+replay accepts 238 native responses with mocked transport. Storage, React
+write UI and runtime acceptance remain. Current UI limits are not removed.
+
 Candidate 60: [complete native validation review](VALIDATION_PAGED.md) adds compact
 complete load and sequential prompt/effect review APIs. It does not enable a new
 save or remove current UI limits. Both responses declare `write_ready: false`.

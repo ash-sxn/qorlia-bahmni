@@ -35,11 +35,11 @@ class StockValidationStep(models.Model):
         request['continuation_key'] = continuation
         return request, _digest({'request': request, 'author': self.env.uid, 'companies': self.env.companies.ids})
 
-    def _qorlia_step_action(self, order_id, continuation, receipts):
+    def _qorlia_step_action(self, order_id, continuation, receipts, kind='validation_step'):
         if continuation is False:
             return None
         receipt = receipts.get(continuation)
-        if (not receipt or receipt.get('kind') != 'validation_step'
+        if (not receipt or receipt.get('kind') != kind
                 or receipt['author'] != self.env.uid or receipt['companies'] != self.env.companies.ids
                 or receipt['order_id'] != order_id):
             raise AccessError('This native continuation belongs to another validation workflow.')

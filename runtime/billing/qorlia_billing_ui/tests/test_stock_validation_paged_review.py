@@ -34,7 +34,7 @@ class StockValidationPagedReviewTest(StockValidationFixture, TransactionCase):
             pages.append(page)
             count = len(page['prompt_rows']) + len(_effect_rows(page['effects']))
             self.assertEqual(count, min(limit, page['total_count'] - after))
-            self.assertFalse(page['write_ready'], 'The new write contract is not implemented in this review checkpoint')
+            self.assertTrue(page['write_ready'])
             self.assertNotIn('next_action', page)
             self.assertNotIn('res_model', page)
             if page['next_after'] is False:
@@ -64,7 +64,7 @@ class StockValidationPagedReviewTest(StockValidationFixture, TransactionCase):
         self.assertEqual((loaded['transfer']['move_count'], loaded['transfer']['operation_count']), (501, 2001))
         self.assertNotIn('graph', loaded)
         self.assertFalse(loaded['reason'])
-        self.assertFalse(loaded['write_ready'])
+        self.assertTrue(loaded['write_ready'])
         page = self.pages(picking, self.selection(picking))[0]
         self.assertEqual(page['next_step']['kind'], 'immediate')
         self.assertFalse(page['input_prompt'])

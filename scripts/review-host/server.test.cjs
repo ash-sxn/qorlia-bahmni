@@ -177,10 +177,10 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     for (const change of [{method:'button_validate'}, {model:'stock.immediate.transfer'}, {args:[1]}, {kwargs:{context:{uid:1}}}])
       assert.equal((await rpc(path, allCookies, {...params,...change})).status,400);
   }
-  const pagedValidationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_validation_paged.py'), 'utf8')
-    .matchAll(/^    def (qorlia_validation_paged_\w+)\(/gm)].map(match => match[1]);
-  assert.deepEqual([...pagedValidationMethods].sort(), ['load', 'review'].map(action => `qorlia_validation_paged_${action}`).sort(),
-    'Complete validation review is not a new save or generic native wizard API.');
+  const pagedValidationMethods = ['stock_validation_paged.py','stock_validation_paged_write.py'].flatMap(name => [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models', name), 'utf8')
+    .matchAll(/^    def (qorlia_validation_paged_\w+)\(/gm)].map(match => match[1]));
+  assert.deepEqual([...pagedValidationMethods].sort(), ['load', 'review', 'save', 'status', 'stop', 'prompt_page', 'reference_page'].map(action => `qorlia_validation_paged_${action}`).sort(),
+    'Only seven fixed native validation APIs are covered, not generic wizard methods.');
   for (const method of pagedValidationMethods) {
     const path = `/web/dataset/call_kw/stock.picking/${method}`;
     const params = { model: 'stock.picking', method, args: [], kwargs: {} };
@@ -189,8 +189,6 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     for (const change of [{method:'button_validate'}, {model:'stock.immediate.transfer'}, {args:[1]}, {kwargs:{context:{uid:1}}}])
       assert.equal((await rpc(path, allCookies, {...params,...change})).status,400);
   }
-  assert.equal((await rpc('/web/dataset/call_kw/stock.picking/qorlia_validation_paged_save', allCookies,
-    {model:'stock.picking', method:'qorlia_validation_paged_save', args:[], kwargs:{}})).status,404);
   const returnMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_return.py'), 'utf8')
     .matchAll(/^    def (qorlia_return_\w+)\(/gm)].map(match => match[1]);
   assert.deepEqual([...returnMethods].sort(), ['load', 'locations', 'preview', 'save', 'status'].map(action => `qorlia_return_${action}`).sort(),

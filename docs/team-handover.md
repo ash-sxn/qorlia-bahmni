@@ -1,8 +1,18 @@
 # New-team handover: Qorlia engineering
 
+Latest backend/client source: [complete native validation write/recovery](../runtime/billing/VALIDATION_PAGED_WRITE.md)
+adds full-review save, accepted/stopped recovery and prior-prompt-safe stop. New
+storage and React write consumers are not connected yet; do not strip proofs or
+fit new requests into older envelopes. Home passes 1,135 cases/89 suites. The
+corrected scoped native run passes 50 cases, preserves 130 guarded tables and
+matches 95 Python files. Actual-client replay accepts 238 native responses with
+mocked transport; diagnostics and release gates are separate. Review access
+remains closed.
+
 Latest backend candidate: [complete validation review](../runtime/billing/VALIDATION_PAGED.md)
-adds compact complete load and ordered native input-prompt/effect pages. Both
-responses remain non-writable until the matching save/recovery contract exists.
+adds compact complete load and ordered native input-prompt/effect pages. At that
+candidate-60 checkpoint both responses were non-writable; candidate 61 above
+adds the matching save/recovery contract.
 Do not connect these versions/proofs to older writes or change tester branches.
 Home passes 1,109 cases/88 suites; 36 scoped native cases pass with 130-table
 preservation and 93 matching Python hashes. Client replay accepts 69 native JSON

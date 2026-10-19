@@ -2,6 +2,11 @@
 
 [Billing](README.md) · [Native validation steps](STOCK_VALIDATION.md) · [Saved recovery](VALIDATION_RECOVERY_PAGING.md)
 
+Later [candidate 61 write/recovery source](VALIDATION_PAGED_WRITE.md) adds the
+matching native writer and reports actual native write availability. The false
+readiness flag and missing-writer notes below describe the candidate-60 checkpoint,
+not the newer source. The new React/storage consumer remains unfinished.
+
 ## Candidate 60 source, 19 October 2026
 
 This is the complete-review side of the unfinished large-validation writer. Two

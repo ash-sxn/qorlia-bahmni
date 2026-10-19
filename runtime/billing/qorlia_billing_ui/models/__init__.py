@@ -11,6 +11,7 @@ from . import stock_validation
 from . import stock_validation_step
 from . import stock_validation_recovery
 from . import stock_validation_paged
+from . import stock_validation_paged_write
 from . import stock_return
 from . import stock_operation_paged
 from . import stock_reservation_paged

@@ -1,5 +1,19 @@
 # Qorlia React frontend backend readiness
 
+## Complete validation write/recovery candidate 61 (19 October 2026)
+
+Exact complete-review save, accepted/stopped status, prompt/reference pages and
+native stop preserve prior accepted actions through a stopped continuation.
+Author/company/order/prompt scope, proof rechecks, actual-effects comparison and
+metadata/stop-response guards remain. A stale ORM snapshot diagnostic is corrected
+by cache invalidation before load versioning, not relaxed stale-data checks.
+Home passes 1,135 cases/89 suites; types, scoped lint and gateway cases pass.
+The corrected scoped native run passes 50 cases with all 130 guarded tables
+preserved and 95 Python files matched; actual-client replay accepts 238 native
+responses with mocked transport. [Retained diagnostics and remaining gates](../runtime/billing/VALIDATION_PAGED_WRITE.md)
+are separate. New storage, React write UI and real runtime/concurrency acceptance
+remain; no current UI-limit removal, review reopening, build/server or deployment.
+
 ## Complete validation review candidate 60 (19 October 2026)
 
 Compact complete-scope load and sequential rollback review cover saved native

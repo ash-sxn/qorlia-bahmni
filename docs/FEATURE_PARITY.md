@@ -1,5 +1,20 @@
 # Bahmni workflow parity ledger
 
+## 19 October complete validation write/recovery candidate 61
+
+- Matching native eight-key full-review save, accepted/stopped status, paged
+  saved prompts/references and exact stop retain prior accepted preparation.
+- Scope/proofs/actual effects are rechecked. Lost/consumed prompts, unknown writes,
+  terminal declines and stopped children remain distinct. Older payloads stay
+  separate and direct receipt CRUD protection remains.
+- Home passes 1,135 cases/89 suites, including 26 new write/recovery client cases.
+  Types, scoped lint and source-gateway cases pass. Corrected scoped native:
+  50 cases pass, 130 guarded tables preserved, 95 matching Python files. Actual
+  client accepts 238 native JSON responses with mocked transport.
+  [Native evidence and retained diagnostics](../runtime/billing/VALIDATION_PAGED_WRITE.md).
+- Durable storage/handoff, React consumer, actual runtime/storage/concurrency,
+  broader scope/scale and whole Billing/product parity remain. No deployment or UI-limit removal.
+
 ## 19 October complete validation review candidate 60
 
 - New complete-scope load and sequential review bind all saved input-prompt rows,

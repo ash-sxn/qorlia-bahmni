@@ -51,11 +51,18 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
-Current backend candidate: [complete native validation review](runtime/billing/VALIDATION_PAGED.md)
+Current backend/client source: [complete native validation write/recovery](runtime/billing/VALIDATION_PAGED_WRITE.md)
+adds exact full-review save, accepted/stopped status, saved prompt/reference pages
+and a native stop that retains prior accepted preparation. Home passes 1,135
+cases/89 suites. The corrected scoped native run passes 50 cases, preserves 130
+guarded tables and matches 95 Python files. Actual-client replay accepts 238
+native responses with mocked transport. Remaining storage/UI/runtime gates are
+tracked separately; current UI write limits remain. Nothing is deployed.
+
+Earlier candidate 60: [complete native validation review](runtime/billing/VALIDATION_PAGED.md)
 removes the legacy full-graph dependency from review, with one ordered proof chain
-covering all saved input-prompt rows and native effects. It does not yet implement
-the matching large-validation writer or remove UI write limits. Both new APIs
-return `write_ready: false`. Home passes 1,109 cases/88 suites. The scoped native
+covering all saved input-prompt rows and native effects. At that checkpoint the
+matching writer was absent and both APIs returned `write_ready: false`. Home passed 1,109 cases/88 suites. The scoped native
 run passes 36 cases with 130-table preservation and 93 matched Python hashes;
 the actual client accepts 69 native JSON responses with mocked replay transport.
 Runtime and remaining write/UI gates are separate in that guide.

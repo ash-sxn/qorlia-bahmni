@@ -2,6 +2,11 @@
 
 [Billing adapter](README.md) · [Stock confirmation](STOCK_CONFIRMATION.md) · [Architecture](../../docs/architecture.md) · [Parity ledger](../../docs/FEATURE_PARITY.md)
 
+Later [candidate 61 native write/recovery](VALIDATION_PAGED_WRITE.md) adds the
+matching eight-key complete request, accepted/stopped outcomes and prior-prompt
+recovery without converting older pending requests. React/storage migration and
+runtime acceptance remain separate.
+
 Candidate 60 introduces [complete native prompt/effect review](VALIDATION_PAGED.md)
 without changing these older write contracts. Both new APIs remain non-writable;
 the matching large-validation save/recovery and UI consumer are unfinished.

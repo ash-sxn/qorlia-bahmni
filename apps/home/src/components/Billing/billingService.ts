@@ -6657,6 +6657,12 @@ export async function getStockValidationStepCompactStatus(
     'qorlia_validation_step_compact_status',
     { payload: exact },
   );
+  return checkedCompactValidationReceipt(data, exact);
+}
+function checkedCompactValidationReceipt(
+  data: StockValidationStepCompactStatus,
+  exact: StockValidationStepRequest,
+) {
   if (
     !confirmationKeys(data, [
       'accepted',
@@ -6727,6 +6733,15 @@ export async function getStockValidationStepPromptPage(
     'qorlia_validation_step_prompt_page',
     { payload: exact, after, version, limit },
   );
+  return checkedValidationPromptPage(data, exact, after, version, limit);
+}
+function checkedValidationPromptPage(
+  data: StockValidationPromptPage,
+  exact: StockValidationStepRequest,
+  after: number,
+  version: string | false,
+  limit: number,
+) {
   if (
     !confirmationKeys(data, [
       'request_key',
@@ -6791,13 +6806,237 @@ export interface PagedStockValidationLoad extends StockConfirmationSelection {
   package_count: number;
   inventory_quant_count: number;
   reason: string | false;
-  write_ready: false;
+  write_ready: boolean;
+}
+export interface PagedStockValidationRequest
+  extends StockValidationStepRequest {
+  review_complete_token: string;
+}
+export type PagedStockValidationReceipt = Omit<
+  StockValidationStepCompactStatus,
+  'accepted' | 'current'
+>;
+export interface PagedStockValidationStatus {
+  accepted: boolean;
+  stopped: boolean;
+  request_key: string;
+  receipt: PagedStockValidationReceipt | false;
+  current: StockValidationStepCompactStatus['current'];
+}
+export interface PagedStockValidationPromptPage
+  extends StockValidationPromptPage {
+  receipt_key: string;
+}
+export interface PagedStockValidationReferences
+  extends PagedStockConfirmationReferences {
+  receipt_key: string;
+}
+export function checkedPagedStockValidationRequest(
+  value: PagedStockValidationRequest,
+): PagedStockValidationRequest {
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'continuation_key',
+      'decisions',
+      'review_version',
+      'review_complete_token',
+      'request_key',
+    ]) ||
+    !stockVersion(value.review_complete_token)
+  )
+    throw new Error(
+      'Use the exact completely reviewed native validation request.',
+    );
+  const { review_complete_token, ...request } = value;
+  return {
+    ...checkedStockValidationStepRequest(request),
+    review_complete_token,
+  };
+}
+function checkedPagedValidationStatus(
+  data: PagedStockValidationStatus,
+  exact: PagedStockValidationRequest,
+) {
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'stopped',
+      'request_key',
+      'receipt',
+      'current',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    typeof data.stopped !== 'boolean' ||
+    (data.accepted && data.stopped) ||
+    data.request_key !== exact.request_key
+  )
+    throw new Error(
+      'Invalid validation outcome. Keep the exact recovery request.',
+    );
+  const receiptKey = data.accepted
+    ? exact.request_key
+    : data.stopped
+      ? exact.continuation_key
+      : false;
+  if (
+    data.receipt !== false &&
+    !confirmationKeys(data.receipt, [
+      'request_key',
+      'state_after',
+      'reference_count',
+      'next_step',
+      'prompt_count',
+      'prompt_version',
+      'continuation_key',
+      'continuation_reason',
+      'terminal',
+    ])
+  )
+    throw new Error(
+      'Invalid saved validation receipt fields. Keep the exact recovery request.',
+    );
+  if (
+    receiptKey === false
+      ? data.receipt !== false
+      : data.receipt === false || data.receipt.request_key !== receiptKey
+  )
+    throw new Error(
+      'Validation receipt identity changed. Keep the exact recovery request.',
+    );
+  const receipt = data.receipt;
+  checkedCompactValidationReceipt(
+    receipt
+      ? { accepted: true, ...receipt, current: data.current }
+      : {
+          accepted: false,
+          request_key: exact.request_key,
+          state_after: false,
+          reference_count: 0,
+          current: data.current,
+          next_step: false,
+          prompt_count: 0,
+          prompt_version: false,
+          continuation_key: false,
+          continuation_reason: false,
+          terminal: false,
+        },
+    { ...exact, request_key: receiptKey || exact.request_key },
+  );
+  return data;
+}
+async function pagedValidationRequest(
+  method: string,
+  value: PagedStockValidationRequest,
+) {
+  const exact = checkedPagedStockValidationRequest(value);
+  const data = checkedPagedValidationStatus(
+    await stockCall<PagedStockValidationStatus>(method, { payload: exact }),
+    exact,
+  );
+  if (
+    (method === 'qorlia_validation_paged_save' && !data.accepted) ||
+    (method === 'qorlia_validation_paged_stop' &&
+      !data.accepted &&
+      !data.stopped)
+  )
+    throw new Error(
+      'The native validation outcome is not acknowledged. Keep the exact recovery request.',
+    );
+  return data;
+}
+export const savePagedStockValidation = (
+  request: PagedStockValidationRequest,
+) => pagedValidationRequest('qorlia_validation_paged_save', request);
+export const getPagedStockValidationStatus = (
+  request: PagedStockValidationRequest,
+) => pagedValidationRequest('qorlia_validation_paged_status', request);
+export const stopPagedStockValidation = (
+  request: PagedStockValidationRequest,
+) => pagedValidationRequest('qorlia_validation_paged_stop', request);
+const validationReceiptKey = (
+  key: string,
+  request: PagedStockValidationRequest,
+) =>
+  key === request.request_key ||
+  (request.continuation_key !== false && key === request.continuation_key);
+export async function getPagedStockValidationPromptPage(
+  request: PagedStockValidationRequest,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedPagedStockValidationRequest(request);
+  validationRecoveryPageParameters(after, version, limit);
+  const data = await stockCall<PagedStockValidationPromptPage>(
+    'qorlia_validation_paged_prompt_page',
+    { payload: exact, after, version, limit },
+  );
+  if (
+    !confirmationKeys(data, [
+      'request_key',
+      'receipt_key',
+      'version',
+      'descriptor',
+      'after',
+      'total_count',
+      'next_after',
+      'rows',
+    ]) ||
+    !validationReceiptKey(data.receipt_key, exact)
+  )
+    throw new Error(
+      'Invalid saved validation prompt identity. Reload its pages.',
+    );
+  const { receipt_key, ...page } = data;
+  checkedValidationPromptPage(page, exact, after, version, limit);
+  return { ...page, receipt_key };
+}
+export async function getPagedStockValidationReferencePage(
+  request: PagedStockValidationRequest,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedPagedStockValidationRequest(request);
+  validationRecoveryPageParameters(after, version, limit);
+  const data = await stockCall<PagedStockValidationReferences>(
+    'qorlia_validation_paged_reference_page',
+    { payload: exact, after, version, limit },
+  );
+  if (
+    !confirmationKeys(data, [
+      'request_key',
+      'receipt_key',
+      'version',
+      'after',
+      'total_count',
+      'next_after',
+      'rows',
+    ]) ||
+    !validationReceiptKey(data.receipt_key, exact)
+  )
+    throw new Error(
+      'Invalid saved validation reference identity. Reload its pages.',
+    );
+  const { receipt_key, ...page } = data;
+  checkedStockReferencePage(
+    page,
+    exact.request_key,
+    after,
+    version,
+    limit,
+    'validation step',
+  );
+  return { ...page, receipt_key };
 }
 export interface PagedStockValidationReview
   extends StockValidationStepSelection {
   review_version: string;
   state_after: OrderTransfer['state'];
-  write_ready: false;
+  write_ready: boolean;
   input_prompt: StockValidationPromptMetadata | false;
   prompt_rows: StockValidationPromptRow[];
   next_step: StockValidationPromptMetadata | false;
@@ -6840,7 +7079,8 @@ export async function getPagedStockValidation(
     !stockCount(data.package_count) ||
     !stockCount(data.inventory_quant_count) ||
     !stockText(data.reason) ||
-    data.write_ready !== false
+    typeof data.write_ready !== 'boolean' ||
+    data.write_ready !== !data.reason
   )
     throw new Error(
       'Invalid complete validation review state. Reload the transfer.',
@@ -6909,7 +7149,7 @@ export async function getPagedStockValidationReview(
     !stockVersion(data.review_version) ||
     (reviewVersion !== false && data.review_version !== reviewVersion) ||
     !validationStates.includes(data.state_after) ||
-    data.write_ready !== false ||
+    data.write_ready !== true ||
     typeof data.terminal !== 'boolean' ||
     (data.terminal
       ? data.next_step !== false
