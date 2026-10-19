@@ -4984,7 +4984,8 @@ function checkedStockReferencePage(
     | 'operation'
     | 'reservation'
     | 'validation step'
-    | 'return',
+    | 'return'
+    | 'cancellation',
 ) {
   if (
     !confirmationKeys(data, [
@@ -5007,7 +5008,9 @@ function checkedStockReferencePage(
       (row, index) =>
         confirmationKeys(row, ['key', 'model', 'id', 'name', 'available']) &&
         typeof row.key === 'string' &&
-        (kind === 'validation step' || kind === 'return'
+        (kind === 'validation step' ||
+        kind === 'return' ||
+        kind === 'cancellation'
           ? validValidationReference(row.key, row)
           : validConfirmationReference(row.key, row)) &&
         (!index || row.key > data.rows[index - 1].key),
@@ -6101,6 +6104,272 @@ export const getStockReturnStatus = (request: StockReturnRequest) =>
   returnRequest('qorlia_return_status', request);
 
 export type StockReturnMetadata = Omit<StockReturnForm, 'lines'>;
+export interface StockCancellationSelection extends StockConfirmationSelection {
+  action: 'cancel_transfer';
+}
+export interface PagedStockCancellationLoad extends StockConfirmationSelection {
+  transfer: OrderTransferSummary;
+  reason: string | false;
+  write_ready: boolean;
+}
+export interface PagedStockCancellationReview
+  extends StockCancellationSelection {
+  review_version: string;
+  state_after: OrderTransfer['state'];
+  write_ready: boolean;
+  after: number;
+  total_count: number;
+  next_after: number | false;
+  effects: StockValidationEffects;
+  continuation_token: string | false;
+  review_complete_token: string | false;
+}
+export interface PagedStockCancellationRequest
+  extends StockCancellationSelection {
+  review_version: string;
+  review_complete_token: string;
+  request_key: string;
+}
+export interface PagedStockCancellationStatus {
+  accepted: boolean;
+  stopped: boolean;
+  request_key: string;
+  state_after: OrderTransfer['state'] | false;
+  reference_count: number;
+  current: StockValidationStepCompactStatus['current'];
+}
+function checkedCancellationSelection(
+  value: StockCancellationSelection,
+): StockCancellationSelection {
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'action',
+    ]) ||
+    value.action !== 'cancel_transfer'
+  )
+    throw new Error('Use the exact native transfer cancellation selection.');
+  return { ...checkedConfirmationSelection(value), action: 'cancel_transfer' };
+}
+export function checkedPagedStockCancellationRequest(
+  value: PagedStockCancellationRequest,
+): PagedStockCancellationRequest {
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'action',
+      'review_version',
+      'review_complete_token',
+      'request_key',
+    ])
+  )
+    throw new Error('Use the exact completely reviewed cancellation request.');
+  const { action, ...common } = value;
+  checkedCancellationSelection({
+    order_id: value.order_id,
+    transfer_id: value.transfer_id,
+    version: value.version,
+    action,
+  });
+  return { ...checkedPagedStockConfirmationRequest(common), action };
+}
+export async function getPagedStockCancellation(
+  orderId: number,
+  transferId: number,
+) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  const data = await stockCall<PagedStockCancellationLoad>(
+    'qorlia_cancellation_paged_load',
+    { order_id: orderId, transfer_id: transferId },
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'transfer',
+      'reason',
+      'write_ready',
+    ]) ||
+    data.order_id !== orderId ||
+    data.transfer_id !== transferId ||
+    !stockVersion(data.version) ||
+    !validTransferSummary(data.transfer) ||
+    data.transfer.id !== transferId ||
+    !stockText(data.reason) ||
+    typeof data.write_ready !== 'boolean' ||
+    data.write_ready !== !data.reason
+  )
+    throw new Error('Invalid native cancellation state. Reload the transfer.');
+  return data;
+}
+export async function getPagedStockCancellationReview(
+  selection: StockCancellationSelection,
+  after = 0,
+  reviewVersion: string | false = false,
+  continuationToken: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedCancellationSelection(selection);
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    (after === 0
+      ? reviewVersion !== false || continuationToken !== false
+      : !stockVersion(reviewVersion) || !stockVersion(continuationToken))
+  )
+    throw new Error(
+      'Review bounded cancellation pages in order with their original proofs.',
+    );
+  const data = await stockCall<PagedStockCancellationReview>(
+    'qorlia_cancellation_paged_review',
+    {
+      payload: exact,
+      after,
+      review_version: reviewVersion,
+      continuation_token: continuationToken,
+      limit,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      ...Object.keys(exact),
+      'review_version',
+      'state_after',
+      'write_ready',
+      'after',
+      'total_count',
+      'next_after',
+      'effects',
+      'continuation_token',
+      'review_complete_token',
+    ]) ||
+    data.order_id !== exact.order_id ||
+    data.transfer_id !== exact.transfer_id ||
+    data.version !== exact.version ||
+    data.action !== exact.action ||
+    !stockVersion(data.review_version) ||
+    (reviewVersion !== false && data.review_version !== reviewVersion) ||
+    !validationStates.includes(data.state_after) ||
+    data.write_ready !== true ||
+    data.after !== after ||
+    !stockCount(data.total_count) ||
+    after > data.total_count ||
+    !validValidationEffects(data.effects)
+  )
+    throw new Error(
+      'Invalid native cancellation review. Review from the start.',
+    );
+  const page = confirmationEffectPageRows({
+    ...data.effects,
+    private_audit_counts: data.effects.private_effect_counts,
+  });
+  const end = after + page.count;
+  if (
+    !page.valid ||
+    page.count !== Math.min(limit, data.total_count - after) ||
+    (end < data.total_count
+      ? data.next_after !== end ||
+        !stockVersion(data.continuation_token) ||
+        data.review_complete_token !== false
+      : data.next_after !== false ||
+        data.continuation_token !== false ||
+        !stockVersion(data.review_complete_token))
+  )
+    throw new Error(
+      'Incomplete cancellation page or proof. Review every page in order.',
+    );
+  return data;
+}
+async function pagedCancellationRequest(
+  method: string,
+  request: PagedStockCancellationRequest,
+) {
+  const exact = checkedPagedStockCancellationRequest(request);
+  const data = await stockCall<PagedStockCancellationStatus>(method, {
+    payload: exact,
+  });
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'stopped',
+      'request_key',
+      'state_after',
+      'reference_count',
+      'current',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    typeof data.stopped !== 'boolean' ||
+    (data.accepted && data.stopped) ||
+    data.request_key !== exact.request_key ||
+    !stockCount(data.reference_count) ||
+    (data.accepted
+      ? !validationStates.includes(String(data.state_after))
+      : data.state_after !== false || data.reference_count !== 0) ||
+    !confirmationKeys(data.current, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'transfer',
+    ]) ||
+    data.current.order_id !== exact.order_id ||
+    data.current.transfer_id !== exact.transfer_id ||
+    !stockVersion(data.current.version) ||
+    !validTransferSummary(data.current.transfer) ||
+    data.current.transfer.id !== exact.transfer_id
+  )
+    throw new Error(
+      'Invalid native cancellation outcome. Keep the exact recovery request.',
+    );
+  if (
+    (method === 'qorlia_cancellation_paged_save' && !data.accepted) ||
+    (method === 'qorlia_cancellation_paged_stop' &&
+      !data.accepted &&
+      !data.stopped)
+  )
+    throw new Error(
+      'The native cancellation outcome is not acknowledged. Keep the exact recovery request.',
+    );
+  return data;
+}
+export const savePagedStockCancellation = (
+  request: PagedStockCancellationRequest,
+) => pagedCancellationRequest('qorlia_cancellation_paged_save', request);
+export const getPagedStockCancellationStatus = (
+  request: PagedStockCancellationRequest,
+) => pagedCancellationRequest('qorlia_cancellation_paged_status', request);
+export const stopPagedStockCancellation = (
+  request: PagedStockCancellationRequest,
+) => pagedCancellationRequest('qorlia_cancellation_paged_stop', request);
+export async function getPagedStockCancellationReferences(
+  request: PagedStockCancellationRequest,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedPagedStockCancellationRequest(request);
+  validationRecoveryPageParameters(after, version, limit);
+  const data = await stockCall<PagedStockConfirmationReferences>(
+    'qorlia_cancellation_paged_references',
+    { payload: exact, after, version, limit },
+  );
+  return checkedStockReferencePage(
+    data,
+    exact.request_key,
+    after,
+    version,
+    limit,
+    'cancellation',
+  );
+}
+
 export interface PagedStockReturnLoad extends StockConfirmationSelection {
   transfer: OrderTransferSummary;
   form: StockReturnMetadata | false;

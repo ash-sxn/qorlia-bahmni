@@ -61,6 +61,18 @@ class StockCancellationContractTest(StockValidationFixture, TransactionCase):
         self.assertEqual((self.source_stock(), self.sale_line.qty_delivered), (10, 0))
         self.assertEqual(finance, self.finance(picking))
 
+    def test_empty_native_transfer_can_cancel_without_inventing_an_order_link(self):
+        picking = self.picking()
+        picking.move_ids.unlink()
+        self.assertFalse(picking.move_ids)
+        self.assertFalse(picking.sale_id)
+        finance = self.finance(picking)
+        self.assertIs(picking.action_cancel(), True)
+        self.assertEqual(picking.state, 'cancel')
+        self.assertTrue(picking.is_locked)
+        self.assertEqual((self.source_stock(), self.sale_line.qty_delivered), (10, 0))
+        self.assertEqual(finance, self.finance(picking))
+
     def test_reserved_zero_done_lines_are_deleted_and_reservations_released(self):
         picking = self.picking()
         lines = self.reserve(picking)

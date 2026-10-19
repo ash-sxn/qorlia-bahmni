@@ -197,10 +197,16 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     .matchAll(/^    def (qorlia_return_paged_\w+)\(/gm)].map(match => match[1]));
   assert.deepEqual([...pagedReturnMethods].sort(), ['load', 'lines', 'locations', 'review', 'save', 'status', 'stop', 'references'].map(action => `qorlia_return_paged_${action}`).sort(),
     'Only eight fixed native return routes are covered, never generic wizard access.');
+  const cancellationMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_cancellation.py'), 'utf8')
+    .matchAll(/^    def (qorlia_cancellation_paged_\w+)\(/gm)].map(match => match[1]);
+  assert.deepEqual([...cancellationMethods].sort(), ['load', 'review', 'save', 'status', 'references', 'stop'].map(action => `qorlia_cancellation_paged_${action}`).sort(),
+    'Only six fixed cancellation APIs are covered, with no raw cancellation or larger body allowance.');
   for (const method of ['qorlia_return_paged_unknown', 'qorlia_return_paged_preview', '_qorlia_return_paged_preview'])
     assert.equal((await rpc(`/web/dataset/call_kw/stock.picking/${method}`, allCookies,
       {model:'stock.picking',method,args:[],kwargs:{}})).status,404);
-  for (const [model, method] of [['stock.picking', 'button_validate'], ['stock.immediate.transfer', 'process'],
+  for (const [model, method] of [['stock.picking', 'action_cancel'], ['stock.move', '_action_cancel'],
+    ['stock.picking', 'qorlia_cancellation_paged_unknown'], ['stock.picking', 'qorlia_cancellation_paged_preview'],
+    ['stock.picking', '_qorlia_cancellation_execute'], ['stock.picking', 'button_validate'], ['stock.immediate.transfer', 'process'],
     ['stock.picking.validate.wizard', 'btn_confirm'], ['stock.backorder.confirmation', 'process'], ['expiry.picking.confirmation', 'process'],
     ['stock.return.picking', 'create_returns'], ['stock.return.picking', 'create'], ['stock.return.picking.line', 'write'],
     ['stock.picking', 'qorlia_return_unknown'], ['stock.return.picking', '_create_returns'],
@@ -224,6 +230,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     ...validationStepMethods.map(method => ['stock.picking', method]),
     ...returnMethods.map(method => ['stock.picking', method]),
     ...pagedReturnMethods.map(method => ['stock.picking', method]),
+    ...cancellationMethods.map(method => ['stock.picking', method]),
     ...bankMethods.map(method => ['account.bank.statement.line', method]),
     ...checkpointMethods.map(method => ['account.bank.statement', method]),
   ]) {

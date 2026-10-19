@@ -51,11 +51,21 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
+Candidate-64 source: [native transfer cancellation](runtime/billing/STOCK_CANCELLATION.md#candidate-64-native-api-and-client-source)
+adds complete effect review, native save, exact status/reference/stop recovery,
+typed clients and six fixed gateway routes. It has no cancellation UI or durable
+schema yet. Client checks pass 51 cases; the full Home suite passes 1,423 cases/96
+suites. Thirty native cases preserve 132 tables with 103 matching Python hashes;
+actual-client replay accepts 166 native response frames with transport mocked.
+Independent committed-table SQL agrees. Remaining runtime gates are separate.
+
 New source: [saved-stock recovery on the signed-in Billing landing page](runtime/billing/STOCK_RECOVERY.md#signed-in-billing-recovery-entry-19-october-2026)
 opens the original transfer workspace without requiring an order search or
 automatically replaying/clearing a request. The [native return lifecycle coverage](runtime/billing/RETURN_PAGED_WRITE.md#native-return-to-receipt-lifecycle-coverage-19-october-2026)
-joins creation to separate physical receipt; its full 898-case regression is
-still running. Home passes 1,372 cases/95 suites; types and scoped lint pass.
+joins creation to separate physical receipt; its frozen candidate-63 regression
+passes 898 cases with 132-table preservation and 100 matching Python files.
+Matching client replay accepts 371 native response frames with transport mocked.
+The recovery-entry checkpoint passed 1,372 Home cases/95 suites, types and scoped lint.
 These changes do not reopen review access or deploy the product.
 
 Current backend/client source: [complete return creation and recovery](runtime/billing/RETURN_PAGED_WRITE.md)

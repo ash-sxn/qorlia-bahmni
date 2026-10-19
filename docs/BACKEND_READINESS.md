@@ -1,5 +1,20 @@
 # Qorlia React frontend backend readiness
 
+## Complete native cancellation API and client source (19 October 2026)
+
+[Candidate 64](../runtime/billing/STOCK_CANCELLATION.md#candidate-64-native-api-and-client-source)
+adds complete native effect review, exact save/status/reference/stop, matching
+typed clients and six fixed gateway routes. Stock cancellation remains distinct
+from stopping an uncertain browser request. Native permissions, protected
+financial rows, physical quantities and recovery receipts remain guarded.
+Client/source checks pass 51 cancellation cases, 1,423 Home cases/96 suites, both
+type checks, scoped lint and three gateway tests. Thirty native cases preserve
+132 tables with 103 matching Python hashes, and actual-client replay accepts 166
+frames with transport mocked. Independent committed-table SQL agrees. See the
+guide for separate native evidence and retained failed-run diagnostics. Dedicated durable
+cancellation storage and its React consumer remain unfinished; this is not
+runtime, browser or release acceptance. The earlier audit below predates the API.
+
 ## Native cancellation contract audit (19 October 2026)
 
 [Transfer cancellation](../runtime/billing/STOCK_CANCELLATION.md) is the next
@@ -10,7 +25,7 @@ preservation, mandatory analytics/SMS and 101 matching source files. Independent
 post-worker SQL matches all 132 guarded tables to the committed synthetic source.
 The retained first run's one failure/one error are test setup corrections, not
 weakened native guards or omitted cases.
-The ongoing return regression retains its own frozen source and acceptance scope.
+The passed return regression retains its own frozen source and acceptance scope.
 No raw cancellation route, writer, frontend control or review access is added.
 
 ## Billing recovery entry and return lifecycle coverage (19 October 2026)
@@ -25,9 +40,11 @@ cases. Library/focused source-test types, scoped lint/format and docs checks pas
 
 The [native lifecycle tests](../runtime/billing/RETURN_PAGED_WRITE.md#native-return-to-receipt-lifecycle-coverage-19-october-2026)
 join complete return creation to native operation/preparation and separate
-receipt/backorder/valuation, including 501 moves. The first five-case frozen
-snapshot passed with 132-table preservation. Current extra assertions and the
-898-case full run are pending terminal verification. This is not HTTP/browser,
+receipt/backorder/valuation, including 501 moves. The frozen candidate-63 full
+regression passes 898 cases, zero failures/errors/skips, with 132-table
+preservation and 100 matching Python files. Actual matching client replay accepts
+371 native JSON frames with transport mocked. Later cancellation source is not
+included; the earlier five-case run overlaps this evidence. This is not HTTP/browser,
 real IndexedDB, hosted or complete Billing acceptance. Review access stays closed.
 
 ## Complete return creation and recovery source (19 October 2026)

@@ -310,12 +310,25 @@ stopped before execution because the harness expected 847 text-defined methods,
 while the native loader includes 898 unique cases through inherited tests. The
 diagnostic is retained, and no product test was skipped or changed to fix it.
 
-The corrected 898-case run is in progress against a matching read-only 100-Python-
-file source mount in the isolated synthetic native database. Source candidate 63
-and installed metadata 49 remain distinct. No HTTP listener, published port,
-persistent addon upgrade or frontend server is involved. Do not describe the full
-run or subsequent actual-client replay as passed until their terminal results and
-matching source hashes are checked. The separate signed-in Billing
+The corrected full run passes **898 cases, zero failures/errors/skips**. All 132
+guarded tables are preserved, mandatory analytics and native SMS remain enabled,
+and all 100 Python files match the frozen source at commit
+`a8792f2513030be97d42b38fa74544fe47d151d6`. Source candidate 63 and installed
+metadata 49 remain distinct. The actual matching TypeScript client accepts **371
+captured native JSON frames across 21 methods**, checking routes, model, empty
+positional arguments, exact named arguments and response validators. Only
+transport is mocked. Some frames originate in rolled-back native reviews; this
+is not proof that every captured response committed a write.
+
+Complete native log SHA256:
+`9842f342b5e952f07d33885de927d5f15d7f94b4fcd895c27cb5459b772ccc67`.
+Matching client source SHA256:
+`62229ec11e0174bc489cf3f8c41b11e4cd66edba2e960dbe2ec0a22b9ecdb00f`.
+Later cancellation source is not part of this frozen 898-case run. The earlier
+five-case run overlaps this evidence and must not be added to its count.
+Existing pandas/bootstrap and wkhtmltopdf network warnings remain in the retained
+logs; this is not a clean-install check. No HTTP listener, published port,
+persistent addon upgrade or frontend server is involved. The separate signed-in Billing
 [recovery-entry source](STOCK_RECOVERY.md#signed-in-billing-recovery-entry-19-october-2026)
 does not change this native contract.
 

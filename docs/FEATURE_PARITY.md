@@ -1,5 +1,26 @@
 # Bahmni workflow parity ledger
 
+## 19 October complete native cancellation API and client source
+
+- [Candidate 64](../runtime/billing/STOCK_CANCELLATION.md#candidate-64-native-api-and-client-source)
+  adds complete ordered rollback review and terminal proof, actual native save,
+  compact exact outcome, saved references and explicit pending-request stop.
+  Stopping cannot cancel goods or undo an accepted cancellation.
+- Author/company/order/purpose binding, native ACL/rules, full-row financial and
+  physical-quantity guards, callback rollback and receipt protection remain.
+  Native sale-order delivery-status recomputation and readable analytic deletion
+  are reviewed, not silently prohibited or hidden. Orphaned transfers cannot be
+  attached to an unrelated order merely to enable cancellation.
+- Matching typed clients and six fixed source-gateway routes pass 51 client cases,
+  1,423 Home cases/96 suites, library/focused source-test types, scoped lint and
+  three gateway tests. Thirty native cases preserve 132 guarded tables with 103
+  matching Python hashes; actual-client replay accepts 166 native JSON frames
+  with transport mocked. Independent post-worker SQL matches every guarded table
+  to the committed synthetic source. Retained diagnostics stay in the guide.
+- Dedicated durable cancellation recovery and React controls remain unfinished.
+  No raw native route, review reopening, frontend build/server, installed upgrade
+  or deployment is included. The older contract audit below predates this API.
+
 ## 19 October native cancellation contract audit
 
 Installed-source and read-only module inspection identify transfer cancellation
@@ -9,7 +30,7 @@ and linked analytic deletion must remain intact. [Ten direct native cases](../ru
 pass with 132-table preservation, mandatory analytics/SMS and 101 matching source
 hashes. Independent post-worker SQL matches all 132 guarded tables to the
 committed synthetic source. The retained first run had one failure and one error
-from test setup assumptions, corrected without removing a guard. The running
+from test setup assumptions, corrected without removing a guard. The passed
 898-case return regression is frozen at its earlier 100-file source and does not
 include these later cases. No
 cancellation writer/control, runtime upgrade, review reopening or deployment.
@@ -27,8 +48,10 @@ cancellation writer/control, runtime upgrade, review reopening or deployment.
   entry/routing suites. Source/test types, scoped lint/format and docs checks pass.
 - [Native lifecycle tests](../runtime/billing/RETURN_PAGED_WRITE.md#native-return-to-receipt-lifecycle-coverage-19-october-2026)
   join creation, operation/preparation, receipt/backorder and valuation, with a
-  501-move case. The first five-case frozen run passed; the current 898-case
-  regression is still running. Do not conflate different source snapshots.
+  501-move case. The frozen candidate-63 regression passes 898 cases, preserving
+  all 132 guarded tables with 100 matching Python files. Matching client replay
+  accepts 371 native JSON frames with transport mocked. Later cancellation source
+  is not included. Do not add the overlapping first five-case diagnostic.
 - Browser/IndexedDB/visual, native concurrency, performance, hosted and remaining
   whole-product parity are not accepted. The Billing review gate stays closed.
 

@@ -1,13 +1,24 @@
 # New-team handover: Qorlia engineering
 
+Candidate-64 backend/client source now includes [native transfer cancellation](../runtime/billing/STOCK_CANCELLATION.md#candidate-64-native-api-and-client-source)
+with complete effect review and exact save/status/reference/stop. Dedicated
+durable recovery and its React controls remain unfinished. Native verification
+is documented separately from client checks: 51 cancellation cases and the full
+1,423-case Home suite/96 suites pass. Thirty native cases preserve 132 tables with
+103 matching Python hashes, and actual-client replay accepts 166 frames with
+transport mocked. Independent committed-table SQL agrees. This does not change starter-task bases,
+reopen review access or deploy the integration branch.
+
 Newest source: [signed-in Billing recovery entry](../runtime/billing/STOCK_RECOVERY.md#signed-in-billing-recovery-entry-19-october-2026)
 shows pending stock work without searching for its order and opens the existing
 workspace without replaying or clearing a request. Account/storage/focus tests
 are distinct from real browser acceptance. [Native lifecycle tests](../runtime/billing/RETURN_PAGED_WRITE.md#native-return-to-receipt-lifecycle-coverage-19-october-2026)
 join complete creation to separate receipt, including partial/backorder,
-automatic valuation and 501 moves. The initial five-case snapshot passed; the
-latest 898-case regression is in progress. Home passes 1,372 cases/95 suites;
-source/test types and scoped lint/format pass. Starter-task bases and the closed
+automatic valuation and 501 moves. The frozen candidate-63 regression passes 898
+cases with 132-table preservation and 100 matching Python files. Matching client
+replay accepts 371 native JSON frames with transport mocked. Later cancellation
+source is not included. The recovery-entry checkpoint passed 1,372 Home cases/95
+suites, source/test types and scoped lint/format. Starter-task bases and the closed
 Billing gate are unchanged. Do not branch staff tasks from this unfinished work.
 
 Current backend/client source: [complete return creation/recovery](../runtime/billing/RETURN_PAGED_WRITE.md)

@@ -15,6 +15,7 @@ from . import stock_validation_paged_write
 from . import stock_return
 from . import stock_return_paged
 from . import stock_return_paged_write
+from . import stock_cancellation
 from . import stock_operation_paged
 from . import stock_reservation_paged
 from . import account_move

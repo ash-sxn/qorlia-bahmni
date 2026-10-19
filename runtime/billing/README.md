@@ -3,19 +3,25 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Next native workflow: [transfer cancellation contract](STOCK_CANCELLATION.md).
-Source inspection identifies cancellation, unreservation, downstream propagation
-and legitimate analytic deletion as distinct from stopping a pending request.
-Ten direct native cases pass with 132-table preservation, mandatory analytics/SMS
-and 101 matching Python hashes. Independent post-worker SQL verifies all 132
-guarded tables in the synthetic copy against its committed source. No cancellation
-API/control is implemented, and the live return regression has its own older snapshot.
+Candidate-64 source: [native transfer cancellation](STOCK_CANCELLATION.md#candidate-64-native-api-and-client-source)
+adds six fixed native APIs, typed clients and gateway routes. Complete effect
+review and exact save/status/reference/stop are distinct from quantity
+preparation, physical receipt and refund. Protected finance, physical quantities,
+native permissions and receipt guards remain. There is no dedicated durable
+cancellation schema or UI yet. Client checks pass 51 cases; full Home passes
+1,423 cases/96 suites. Thirty native cases preserve 132 tables with 103 matching
+Python hashes, and actual-client replay accepts 166 frames with transport mocked.
+Independent committed-table SQL agrees. Retained diagnostics are recorded
+in the guide, separately from runtime/browser acceptance and the earlier return
+regression. Review access stays closed.
 
 New source: [signed-in Billing recovery entry](STOCK_RECOVERY.md#signed-in-billing-recovery-entry-19-october-2026)
 surfaces the existing pending account request without an order search or any
 automatic native action. [Native return lifecycle coverage](RETURN_PAGED_WRITE.md#native-return-to-receipt-lifecycle-coverage-19-october-2026)
 joins complete creation, operation/preparation and separate receipt. The initial
-five-case frozen snapshot passed; the latest full 898-case run remains pending.
+five-case frozen snapshot overlaps the completed candidate-63 regression: 898
+cases pass with 132-table preservation and 100 matching Python files. Matching
+actual-client replay accepts 371 native JSON frames with transport mocked.
 The current Home suite passes 1,372 cases/95 suites, plus source/test types and
 scoped lint/format checks. See the entry guide for the retained focus diagnostics.
 No review reopening, HTTP/frontend server, upgrade or deployment is included.
