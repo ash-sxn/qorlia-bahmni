@@ -51,21 +51,30 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
+Latest UI source: [complete native validation workflow](runtime/billing/VALIDATION_PAGED_WRITE.md#react-complete-validation-consumer-source-19-october-2026)
+connects all seven APIs, complete prompt/effect/reference paging, strict history
+storage, exact retry/stop and explicit accepted-legacy handoff. New validation and
+schema-6 resume routes use the new dialog without the former UI size threshold.
+Older unresolved requests keep their original protocols. Native permissions and
+safeguards remain; runtime/browser/performance acceptance is separate and review
+access stays closed. This is not an installed or hosted update.
+Home passes 1,184 cases in 90 suites; types and scoped lint pass.
+
 Latest storage source: [complete validation history](runtime/billing/STOCK_RECOVERY.md#complete-validation-history-source-19-october-2026)
 keeps the exact eight-key request and prior native actions together in the existing
 account slot. Fresh native acknowledgements gate continuation, terminal clear
-and stopped-child restoration; aborted commits retain the history. The new React
-consumer/resume route is not connected yet and older dialogs reject this schema.
-Existing UI limits remain; no installed, hosted or browser update is claimed.
-Home passes 1,155 cases in 89 suites, including 47 recovery-storage cases.
+and stopped-child restoration; aborted commits retain the history. At that
+storage-only checkpoint the React route was not connected; the later consumer
+above now uses it. Older unrelated dialogs still reject this schema. The storage
+checkpoint passed 1,155 cases/89 suites, including 47 recovery-storage cases.
 
 Current backend/client source: [complete native validation write/recovery](runtime/billing/VALIDATION_PAGED_WRITE.md)
 adds exact full-review save, accepted/stopped status, saved prompt/reference pages
-and a native stop that retains prior accepted preparation. Home passes 1,135
-cases/89 suites. The corrected scoped native run passes 50 cases, preserves 130
+and a native stop that retains prior accepted preparation. That backend checkpoint
+passed 1,135 cases/89 suites. The corrected scoped native run passes 50 cases, preserves 130
 guarded tables and matches 95 Python files. Actual-client replay accepts 238
-native responses with mocked transport. Remaining storage/UI/runtime gates are
-tracked separately; current UI write limits remain. Nothing is deployed.
+native responses with mocked transport. The newer storage/UI source is above;
+real runtime, browser, concurrency and scale acceptance remain. Nothing is deployed.
 
 Earlier candidate 60: [complete native validation review](runtime/billing/VALIDATION_PAGED.md)
 removes the legacy full-graph dependency from review, with one ordered proof chain
@@ -75,11 +84,12 @@ run passes 36 cases with 130-table preservation and 93 matched Python hashes;
 the actual client accepts 69 native JSON responses with mocked replay transport.
 Runtime and remaining write/UI gates are separate in that guide.
 
-The latest UI source connects [saved-validation recovery](runtime/billing/VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026)
+An earlier UI checkpoint connected [saved-validation recovery](runtime/billing/VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026)
 to the transfer resume path. It reads complete saved prompts and references in
 pinned pages without the capped editable graph, rechecks terminal receipts before
 durable clear, and explicitly hands small continuations to the original writer.
-Large validation writes and live/browser acceptance remain unfinished. Review
+At that checkpoint large writes remained unfinished; later complete-write source
+is above. Live/browser acceptance remains unfinished. Review
 access stays closed. Home passes 1,073 cases in 87 suites; types and scoped lint
 pass. This is source-only, not an installed or hosted update.
 

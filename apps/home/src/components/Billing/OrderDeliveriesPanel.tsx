@@ -16,6 +16,7 @@ import { OrderTransferDetails } from './OrderTransferDetails';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
 import { PagedStockOperationEditor } from './PagedStockOperationEditor';
 import { PagedStockReservationModal } from './PagedStockReservationModal';
+import { PagedStockValidationModal } from './PagedStockValidationModal';
 import { SavedValidationRecoveryModal } from './SavedValidationRecoveryModal';
 import { StockConfirmationModal } from './StockConfirmationModal';
 import { StockOperationEditor } from './StockOperationEditor';
@@ -26,6 +27,7 @@ import {
   isStockValidationRequest,
   isStockValidationStepRequest,
   isPagedStockWriteRequest,
+  isPagedStockValidationRequest,
   loadStockWriteRecovery,
 } from './stockReservationRecovery';
 import {
@@ -78,6 +80,8 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
     orderId: number;
     transferId: number;
     request?: StockValidationStepRequest;
+    paged?: boolean;
+    legacyParent?: StockValidationStepRequest;
   } | null>(null);
   const recovery = useQuery({
     queryKey: ['billing', 'reservation-recovery', uid],
@@ -169,7 +173,14 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
             disabled={recovery.isFetching || recovery.isError}
             onClick={(event) => {
               const pending = recovery.data!;
-              if (isStockValidationRequest(pending)) {
+              if (isPagedStockValidationRequest(pending)) {
+                confirmationOpener.current = event.currentTarget;
+                setValidation({
+                  orderId: pending.order_id,
+                  transferId: pending.transfer_id,
+                  paged: true,
+                });
+              } else if (isStockValidationRequest(pending)) {
                 confirmationOpener.current = event.currentTarget;
                 setValidation({
                   orderId: pending.order_id,
@@ -348,7 +359,7 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
               stockLocked={stockLocked}
               validation={(event) => {
                 confirmationOpener.current = event.currentTarget;
-                setValidation({ orderId, transferId });
+                setValidation({ orderId, transferId, paged: true });
               }}
               confirmation={(event) => {
                 confirmationOpener.current = event.currentTarget;
@@ -406,7 +417,17 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
           returnFocus={restoreConfirmationFocus}
         />
       ) : null}
-      {validation?.request ? (
+      {validation?.paged ? (
+        <PagedStockValidationModal
+          uid={uid}
+          orderId={validation.orderId}
+          transferId={validation.transferId}
+          legacyParent={validation.legacyParent}
+          close={reloadTransfers}
+          reconnect={reconnect}
+          returnFocus={restoreConfirmationFocus}
+        />
+      ) : validation?.request ? (
         <SavedValidationRecoveryModal
           key={`${uid}:${validation.request.request_key}`}
           uid={uid}
@@ -418,6 +439,14 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
             setValidation({
               orderId: validation.orderId,
               transferId: validation.transferId,
+            })
+          }
+          continueCompleteReview={() =>
+            setValidation({
+              orderId: validation.orderId,
+              transferId: validation.transferId,
+              paged: true,
+              legacyParent: validation.request,
             })
           }
         />

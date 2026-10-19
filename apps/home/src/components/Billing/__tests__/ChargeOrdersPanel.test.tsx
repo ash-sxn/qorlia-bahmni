@@ -39,9 +39,9 @@ jest.mock('../stockReservationRecovery', () => ({
   ...jest.requireActual('../stockReservationRecovery'),
   loadStockWriteRecovery: jest.fn(),
 }));
-jest.mock('../StockValidationModal', () => ({
-  StockValidationModal: ({ close }: { close: () => void }) => (
-    <button onClick={close}>Return from saved validation</button>
+jest.mock('../PagedStockValidationModal', () => ({
+  PagedStockValidationModal: ({ close }: { close: () => void }) => (
+    <button onClick={close}>Return from complete validation</button>
   ),
 }));
 jest.mock('../DraftOrderEditor', () => ({
@@ -169,7 +169,7 @@ describe('Charge orders workspace', () => {
         ReturnType<typeof getChargeOrderLines>
       >);
     fireEvent.click(
-      screen.getByRole('button', { name: 'Return from saved validation' }),
+      screen.getByRole('button', { name: 'Return from complete validation' }),
     );
     fireEvent.click(
       screen.getByRole('button', { name: 'Back to order details' }),

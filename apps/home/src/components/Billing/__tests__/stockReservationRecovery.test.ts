@@ -230,6 +230,7 @@ describe('Complete validation durable recovery and prior-action handoff', () => 
     });
     expect(isPagedStockValidationRequest(exact)).toBe(true);
     expect(isPagedStockWriteRequest(exact)).toBe(false);
+    expect(await loadStockWriteRecovery(3)).toEqual(exact);
     await persistPagedStockValidationRecovery(3, exact);
     for (const other of [
       { ...exact, request_key: '99999999-2222-4333-8444-555555555555' },
@@ -243,7 +244,6 @@ describe('Complete validation durable recovery and prior-action handoff', () => 
       expect(fake.records.get(3)).toEqual(validationEnvelope());
     }
     for (const load of [
-      loadStockWriteRecovery,
       loadPagedStockWriteRecovery,
       loadStockValidationRecovery,
       loadStockReservationRecovery,
@@ -251,7 +251,7 @@ describe('Complete validation durable recovery and prior-action handoff', () => 
       loadStockConfirmationRecovery,
     ])
       await expect(load(3)).rejects.toThrow(
-        /complete validation request is pending/,
+        /complete validation request is pending|older stock dialog/,
       );
     for (const [, other] of pagedRequests) {
       await expect(persistPagedStockWriteRecovery(3, other)).rejects.toThrow(

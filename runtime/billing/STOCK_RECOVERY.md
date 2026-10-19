@@ -1,5 +1,16 @@
 # Stock write recovery storage
 
+## Later React validation integration, 19 October 2026
+
+The [complete validation dialog and resume routing](VALIDATION_PAGED_WRITE.md#react-complete-validation-consumer-source-19-october-2026)
+now consume schema 6 explicitly. Generic `loadStockWriteRecovery` returns its
+validated current request intact for dispatch; the typed validation loader retains
+the whole history. All other older dialog loaders still reject it. New writes,
+exact recovery, terminal clear and stopped-child restoration use this store;
+accepted legacy parents can hand off explicitly without payload conversion.
+The historical storage-only checkpoint below is superseded only for consumer
+source integration, not real browser/IndexedDB/concurrency or release acceptance.
+
 ## Complete validation history source, 19 October 2026
 
 The [candidate-61 validation writer](VALIDATION_PAGED_WRITE.md) now has a matching

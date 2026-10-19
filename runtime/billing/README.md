@@ -3,29 +3,39 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest UI source: [complete native validation consumer](VALIDATION_PAGED_WRITE.md#react-complete-validation-consumer-source-19-october-2026)
+connects all seven APIs, exact-history recovery/stop and explicit accepted-legacy
+handoff. The new validation path removes its old UI size threshold without native
+permission/validation changes. Component tests are source/JSDOM evidence, not
+browser, storage, native concurrency or performance acceptance. No review reopening,
+frontend build/server, installed upgrade or hosted deployment is included.
+Home passes 1,184 cases/90 suites; types and scoped lint/format pass.
+
 Latest client source: [complete validation history storage](STOCK_RECOVERY.md#complete-validation-history-source-19-october-2026)
 keeps exact current/prior requests in the existing account slot. Fresh native
 status gates continuation, terminal clear and stopped-child restoration. Older
-protocols are not converted; the new React consumer/resume route is not connected
-yet. Storage-double tests are not browser, IndexedDB or multi-tab acceptance.
-Home passes 1,155 cases/89 suites, including 47 recovery-storage cases.
+protocols are not converted. At that storage-only checkpoint the React route was
+not connected; the newer UI source above uses it. Storage-double tests are not
+browser, IndexedDB or multi-tab acceptance. That checkpoint passed 1,155 cases/
+89 suites, including 47 recovery-storage cases.
 
 Candidate 61: [complete native validation write/recovery](VALIDATION_PAGED_WRITE.md)
 adds exact save, accepted/stopped status, prompt/reference paging and stop while
 preserving prior preparation. Typed clients and fixed source routes are included.
 Home passes 1,135 cases/89 suites. The corrected scoped native run passes 50
 cases, preserves 130 guarded tables and matches 95 Python files; actual-client
-replay accepts 238 native responses with mocked transport. Storage, React
-write UI and runtime acceptance remain. Current UI limits are not removed.
+replay accepts 238 native responses with mocked transport. At that checkpoint
+storage/UI consumers were absent; newer source above connects them. Real runtime
+acceptance remains unproven.
 
 Candidate 60: [complete native validation review](VALIDATION_PAGED.md) adds compact
 complete load and sequential prompt/effect review APIs. It does not enable a new
-save or remove current UI limits. Both responses declare `write_ready: false`.
+save or remove current UI limits. At that checkpoint both responses declared `write_ready: false`.
 Home passes 1,109 cases/88 suites. Scoped native: 36 cases pass with 130-table
 preservation and 93 matching Python hashes; client replay: 69 native JSON responses.
 Replay transport is mocked and remaining write/UI/runtime gates are separate.
 
-Latest [React saved-step recovery reader](VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026)
+Earlier [React saved-step recovery reader](VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026)
 connects the transfer resume path to compact status and complete saved prompt/
 reference pages, with exact durable terminal clear. Small continuations return
 explicitly to the original native writer; large validation writes remain open.

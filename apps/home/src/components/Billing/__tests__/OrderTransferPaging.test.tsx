@@ -301,13 +301,8 @@ describe('Native transfer summary and detail paging consumers', () => {
       ...Array.from({ length: 40 }, (_, index) => 40050 + index * 50),
     ]);
     expect(
-      screen.getByText(
-        /Confirmation and preparation use complete paged review/,
-      ),
-    ).toBeInTheDocument();
-    expect(
       screen.getByRole('button', { name: 'Review transfer validation' }),
-    ).toBeDisabled();
+    ).toBeEnabled();
     expect(
       screen.getByRole('button', { name: 'Edit operation #42001' }),
     ).toBeEnabled();

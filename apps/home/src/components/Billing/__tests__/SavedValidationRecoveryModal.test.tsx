@@ -129,7 +129,7 @@ const promptPage = (after: number): StockValidationPromptPage => ({
     },
   })),
 });
-const renderModal = () =>
+const renderModal = (continueCompleteReview?: () => void) =>
   render(
     <QueryClientProvider
       client={
@@ -145,6 +145,7 @@ const renderModal = () =>
         reconnect={reconnect}
         returnFocus={returnFocus}
         continueReview={continueReview}
+        continueCompleteReview={continueCompleteReview}
       />
     </QueryClientProvider>,
   );
@@ -222,6 +223,22 @@ describe('Bounded exact validation-step recovery UI', () => {
     expect(saveStockValidationStep).not.toHaveBeenCalled();
     view.unmount();
     expect(returnFocus).toHaveBeenCalledTimes(1);
+  });
+  it('hands a large accepted native prompt to the complete writer only after all saved pages and fresh checks', async () => {
+    const complete = jest.fn();
+    renderModal(complete);
+    const button = await screen.findByRole('button', {
+      name: 'Continue saved native workflow',
+    });
+    expect(button).toBeDisabled();
+    await readPrompt();
+    expect(button).toBeDisabled();
+    await readReferences();
+    fireEvent.click(button);
+    await waitFor(() => expect(complete).toHaveBeenCalledTimes(1));
+    expect(continueReview).not.toHaveBeenCalled();
+    expect(clear).not.toHaveBeenCalled();
+    expect(references).toHaveBeenLastCalledWith(exact(), 0, version, 50);
   });
   it('renders all saved prompt rows over bounded pinned pages, native prices/units/warnings, and supports keyboard focus and previous pages', async () => {
     renderModal();

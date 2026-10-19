@@ -186,10 +186,7 @@ function TransferDetails({
       </p>
     );
   const transfer = movePage.transfer;
-  // shortcut: Validation stays capped until its paged consumer is connected.
-  const legacyLimit =
-    transfer.move_count > 500 || transfer.operation_count > 2000;
-  const locked = stockLocked || legacyLimit || fetching;
+  const locked = stockLocked || fetching;
   const nextMove = movePage.next_after;
   const nextOperation = operationPage.next_after;
   return (
@@ -212,14 +209,6 @@ function TransferDetails({
       >
         Review stock preparation
       </Button>
-      {legacyLimit ? (
-        <p>
-          All details can be read in pages. Confirmation and preparation use
-          complete paged review. Operation editing uses complete native form and
-          effect pages. Validation for this larger transfer is not connected to
-          this screen yet.
-        </p>
-      ) : null}
       <p>
         Status: {transferStates[transfer.state]} · Company:{' '}
         {label(transfer.company)}

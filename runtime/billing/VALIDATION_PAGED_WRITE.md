@@ -206,3 +206,99 @@ The React complete-write/recovery/stop consumer and generic resume routing are
 still unconnected; existing UI limits stay unchanged. The 47 storage cases use
 an IndexedDB double, not browser or multi-tab acceptance. This supersedes only
 the storage-source item in the earlier remaining-gates list, not runtime parity.
+
+## React complete-validation consumer source, 19 October 2026
+
+The [complete validation dialog](../../apps/home/src/components/Billing/PagedStockValidationModal.tsx)
+now connects all seven fixed native APIs and the exact-history store. New transfer
+validation and schema-6 recovery route here from
+[order transfers](../../apps/home/src/components/Billing/OrderDeliveriesPanel.tsx).
+The old 500-move/2,000-operation UI block is removed for this new path, without
+removing native permissions, lot checks, required analytics or SMS safeguards.
+This is source integration, not an installed/hosted update or browser acceptance.
+
+### User flow and API identity
+
+1. Open a saved order, stock transfers and a transfer, then **Review transfer
+   validation**. Complete native load provides the editable snapshot, not the
+   compact recovery version.
+2. Review every native input/effect page in order. Only the terminal completion
+   proof enables **Save reviewed native validation**. Backward navigation does
+   not carry a later page's completion token. A changed/failed page hides the
+   previous effects and prevents saving.
+3. Save awaits strict history-storage commit, then sends only the exact eight-key
+   payload. An opening native action may save preparation and open another prompt
+   rather than complete delivery. It never automatically chooses that prompt.
+4. Read all pinned saved references and prompt rows before the next choice.
+   Receipt operation pages retain units, batches, expiry warnings and native cost,
+   sale and MRP prices. Explicit receipt/immediate/backorder/expiry choices start
+   a fresh complete review using a newly loaded writer version. Read-only receipt
+   scope versions are never submitted as editable versions.
+5. An accepted terminal action can finish only after all reference pages, a fresh
+   matching native outcome and pinned reference revalidation. A terminal decline
+   remains distinct from completed stock movement. Unknown outcomes retain the
+   exact stored request, with explicit status check or identical retry only.
+6. Stop needs explicit confirmation. If save already won, recover its accepted
+   result instead. A matching stopped outcome has a separate retire/restore action
+   that preserves prior native preparation and history. It does not cancel the
+   transfer or silently undo earlier native effects.
+
+Status, prompt and reference responses must match the displayed exact request
+and accepted `receipt_key`, including when a stopped child refers to its parent.
+Every later page remains on its original pinned version and count. The dialog
+renders only the current page while tracking contiguous read progress. Read
+failures, stale outcomes, storage failures, expiry, unmount and another pending
+request do not produce a blank fresh-write state or an automatic replay.
+
+Older pending atomic/step requests retain their original recovery/writer routes.
+The [saved step reader](../../apps/home/src/components/Billing/SavedValidationRecoveryModal.tsx)
+can explicitly hand an accepted prompt of any supported size to complete review
+after all saved pages and fresh checks. Its exact seven-key parent stays in the
+new child's history; no payload or unresolved request is converted. An unknown
+legacy request still uses its original identical-request recovery path. All other
+older stock-dialog loaders continue rejecting schema 6, while the generic
+dispatcher now returns it intact for the new route.
+
+The [native prompt table](../../apps/home/src/components/Billing/StockValidationPromptRows.tsx)
+is shared by the older reader and complete dialog. Both retain the established
+Qorlia modal, buttons, table layout and native effect viewer. Paging headings,
+errors and stop confirmation receive focus; close returns focus to the opener.
+Native labels/audit markup remain text, not executable HTML.
+
+### Evidence and remaining acceptance gates
+
+The new dialog has 26 component cases. The six focused dialog/routing/transfer/
+legacy-reader/storage/parent-workspace suites pass 152 cases. They use SDK/storage doubles,
+including simulated response loss, storage commit/abort, changed page/receipt
+identity, explicit legacy handoff and save-winning-stop outcomes. They are not
+real browser, native race or human-usability acceptance. The prior failed fixture
+selectors counted both captions and summaries, assumed an earlier reference was
+still rendered after paging, or did not wait for a one-page prompt to finish.
+Those test helpers/selectors were corrected without weakening product guards.
+The zero-reference decline fixture also initially overwrote its zero count with
+the generic fixture's default 101; the controller correctly refused that mismatch.
+The fixture now retains the actual zero-reference outcome and the test passes.
+
+Full Home passes **1,184 cases in 90 suites**. Library and focused actual-source/
+test types, scoped ESLint/format, contributor links and diff checks pass. The full
+suite initially caught the charge-order parent refresh test still mocking the
+older dialog; its mock now follows the actual new route and the quantity-refresh
+assertion remains. The React review checklist covered conditional rendering,
+effect dependencies, identity/unmount guards, focus and reuse of existing house
+components. No new dependencies or parallel stock ledger were introduced.
+
+The unchanged actual SDK still accepts the retained 238 native responses across
+all seven methods, with all 95 native Python files matched. That is replay
+transport evidence from the earlier 50-case native run, not a new native run or
+acceptance of this React consumer against a running server.
+
+Matching addon deployment, real HTTP/gateway/IndexedDB/browser save/reload/expiry/
+quota/crash/multi-tab tests, visual and manual keyboard review, native concurrency,
+actual large physical-effect/reference saves, broader roles/configuration and
+performance remain release gates. The native engine still repeatedly previews
+full tables with coarse locks; removing a UI size threshold is not proof of
+hospital-scale performance. Large returns and whole Billing/product parity also
+remain unfinished.
+
+The review gate stays closed. No frontend build/server, live browser, tunnel,
+installed addon upgrade, public/tester/production update or purchase is included.

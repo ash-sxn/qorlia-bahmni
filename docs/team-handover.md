@@ -1,24 +1,35 @@
 # New-team handover: Qorlia engineering
 
+Latest UI source: [complete validation consumer](../runtime/billing/VALIDATION_PAGED_WRITE.md#react-complete-validation-consumer-source-19-october-2026)
+connects new validation/resume to seven native APIs and exact-history storage.
+New transfers use complete paged review; accepted legacy prompts hand off
+explicitly, while older unknown requests keep their original recovery path.
+The generic dispatcher now recognises schema 6; unrelated stock dialogs reject
+it. Read the remaining runtime/storage/visual/concurrency gates before interpreting
+the 26 component and 152 focused test cases as release acceptance. Review remains
+closed; contributor starter-task bases are unchanged.
+Home passes 1,184 cases/90 suites; types and scoped lint/format pass.
+
 Latest storage source: [complete validation history](../runtime/billing/STOCK_RECOVERY.md#complete-validation-history-source-19-october-2026)
 keeps current and prior exact native requests in one strict-commit account slot.
 Fresh native reads gate parent continuation, accepted terminal clear and stopped
-child restoration. Do not strip proofs or clear unknown requests. Older readers
-reject this schema until the new React consumer/resume route is connected.
+child restoration. Do not strip proofs or clear unknown requests. Older typed
+dialog readers reject this schema; the later generic dispatch route above now
+recognises it and keeps the stored history intact.
 This is not permission to switch your starter-task base or reopen review access.
 Home passes 1,155 cases/89 suites, including 47 recovery-storage cases.
 
 Latest backend/client source: [complete native validation write/recovery](../runtime/billing/VALIDATION_PAGED_WRITE.md)
-adds full-review save, accepted/stopped recovery and prior-prompt-safe stop. New
-React write consumers are not connected yet; the later storage source is linked
-above. Do not strip proofs or
+adds full-review save, accepted/stopped recovery and prior-prompt-safe stop. At
+that backend checkpoint the React consumer was not connected; later storage and
+consumer source are linked above. Do not strip proofs or
 fit new requests into older envelopes. Home passes 1,135 cases/89 suites. The
 corrected scoped native run passes 50 cases, preserves 130 guarded tables and
 matches 95 Python files. Actual-client replay accepts 238 native responses with
 mocked transport; diagnostics and release gates are separate. Review access
 remains closed.
 
-Latest backend candidate: [complete validation review](../runtime/billing/VALIDATION_PAGED.md)
+Earlier backend candidate: [complete validation review](../runtime/billing/VALIDATION_PAGED.md)
 adds compact complete load and ordered native input-prompt/effect pages. At that
 candidate-60 checkpoint both responses were non-writable; candidate 61 above
 adds the matching save/recovery contract.
@@ -27,7 +38,7 @@ Home passes 1,109 cases/88 suites; 36 scoped native cases pass with 130-table
 preservation and 93 matching Python hashes. Client replay accepts 69 native JSON
 responses with mocked transport. Runtime acceptance remains separate.
 
-Latest consumer: [saved validation recovery reader](../runtime/billing/VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026)
+Earlier consumer: [saved validation recovery reader](../runtime/billing/VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026)
 connects the transfer resume route to compact native receipt status and complete
 saved prompt/reference pages. It does not enable large validation writes or
 reopen review access. Evidence and remaining gates are separate in that guide;

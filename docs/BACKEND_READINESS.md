@@ -1,5 +1,19 @@
 # Qorlia React frontend backend readiness
 
+## Complete validation React consumer source (19 October 2026)
+
+The new transfer validation/resume dialog connects all seven candidate-61 native
+APIs and schema-6 history. Complete ordered review, exact persist-before-save,
+saved prompt/reference paging, accepted terminal clear and explicit stop/restore
+replace the old size-limited path for new requests. Accepted legacy steps can
+hand off explicitly; unresolved older requests retain their own protocols.
+The [consumer guide](../runtime/billing/VALIDATION_PAGED_WRITE.md#react-complete-validation-consumer-source-19-october-2026)
+separates 26 new component cases and 152 cases in six focused suites from replay/native evidence
+and remaining real runtime/IndexedDB/browser, visual, concurrency and scale gates.
+No backend permission relaxation, build/server, review reopening or deployment.
+Home passes 1,184 cases/90 suites; library/focused source-test types and scoped
+lint/format pass. The parent charge-order refresh test now uses the new route.
+
 ## Complete validation history storage source (19 October 2026)
 
 The existing account slot now stores the exact paged validation request plus its
@@ -8,8 +22,8 @@ atomically; it cannot erase earlier accepted preparation. Fresh native reads gat
 parent handoff, terminal clear and stopped restoration. Unknown/lost reads,
 transaction aborts and changed slots retain recovery. Older protocols are not
 converted. [Storage contract and evidence](../runtime/billing/STOCK_RECOVERY.md#complete-validation-history-source-19-october-2026).
-The complete React consumer and generic resume routing remain unfinished, with
-existing limits retained. No native addon changes, runtime/browser acceptance,
+At this storage-only checkpoint the React consumer/resume routing was unfinished;
+the later source above connects it. No native addon changes, runtime/browser acceptance,
 review reopening, frontend build/server or deployment is included.
 Home passes 1,155 cases/89 suites; 47 storage cases, types and scoped lint pass.
 

@@ -444,7 +444,10 @@ async function recovery(
     );
   return result?.request ?? null;
 }
-export const loadStockWriteRecovery = (uid: number) => recovery(uid, 'read');
+export const loadStockWriteRecovery = async (
+  uid: number,
+): Promise<StockWriteRequest | null> =>
+  (await recoveryRecord(uid, 'read'))?.request ?? null;
 export async function loadPagedStockValidationRecovery(
   uid: number,
 ): Promise<PagedStockValidationRecovery | null> {
@@ -523,7 +526,11 @@ export async function clearPagedStockValidationRecovery(
 }
 async function loadLegacyStockWriteRecovery(uid: number) {
   const pending = await loadStockWriteRecovery(uid);
-  if (pending && isPagedStockWriteRequest(pending))
+  if (
+    pending &&
+    (isPagedStockValidationRequest(pending) ||
+      isPagedStockWriteRequest(pending))
+  )
     throw new Error(
       'A complete-review stock request is pending. Keep it intact and ask your Billing administrator to resume it. This older stock dialog cannot recover it.',
     );
@@ -531,6 +538,10 @@ async function loadLegacyStockWriteRecovery(uid: number) {
 }
 export async function loadPagedStockWriteRecovery(uid: number) {
   const pending = await loadStockWriteRecovery(uid);
+  if (pending && isPagedStockValidationRequest(pending))
+    throw new Error(
+      'A complete validation request is pending. Resume it before another stock workflow.',
+    );
   if (pending && !isPagedStockWriteRequest(pending))
     throw new Error(
       'An older stock request is pending. Resume its original workflow before a complete-review stock action.',

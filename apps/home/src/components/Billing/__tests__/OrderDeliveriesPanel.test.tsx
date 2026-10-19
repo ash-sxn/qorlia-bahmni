@@ -58,11 +58,21 @@ jest.mock('../PagedStockConfirmationModal', () => ({
   },
 }));
 const mockValidation = jest.fn();
+const mockPagedValidation = jest.fn();
+jest.mock('../PagedStockValidationModal', () => ({
+  PagedStockValidationModal: (props: { close: () => void }) => {
+    mockPagedValidation(props);
+    return (
+      <button onClick={props.close}>Return from complete validation</button>
+    );
+  },
+}));
 const mockSavedValidation = jest.fn();
 jest.mock('../SavedValidationRecoveryModal', () => ({
   SavedValidationRecoveryModal: (props: {
     close: () => void;
     continueReview: () => void;
+    continueCompleteReview: () => void;
   }) => {
     mockSavedValidation(props);
     return (
@@ -70,6 +80,9 @@ jest.mock('../SavedValidationRecoveryModal', () => ({
         <button onClick={props.close}>Return from saved validation</button>
         <button onClick={props.continueReview}>
           Continue saved validation
+        </button>
+        <button onClick={props.continueCompleteReview}>
+          Continue complete saved validation
         </button>
       </>
     );
@@ -145,12 +158,12 @@ describe('Order stock transfer review', () => {
     });
     await waitFor(() => expect(opener).toBeEnabled());
     fireEvent.click(opener);
-    const props = mockValidation.mock.calls.at(-1)?.[0];
+    const props = mockPagedValidation.mock.calls.at(-1)?.[0];
     expect(props).toMatchObject({ uid: 3, orderId: 9, transferId: 11 });
     props.returnFocus();
     expect(opener).toHaveFocus();
     fireEvent.click(
-      screen.getByRole('button', { name: 'Return from validation' }),
+      screen.getByRole('button', { name: 'Return from complete validation' }),
     );
     await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
   });
@@ -223,6 +236,48 @@ describe('Order stock transfer review', () => {
     expect(
       screen.queryByRole('button', { name: 'Return from saved validation' }),
     ).not.toBeInTheDocument();
+  });
+  it('routes schema-6 recovery to the complete writer for its original order without stripping proofs', async () => {
+    const pending = {
+      ...validationRequest(),
+      order_id: 10,
+      transfer_id: 12,
+      continuation_key: false as const,
+      review_complete_token: 'c'.repeat(64),
+    };
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue(pending);
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Resume validation request' }),
+    );
+    expect(mockPagedValidation.mock.calls.at(-1)?.[0]).toMatchObject({
+      uid: 3,
+      orderId: 10,
+      transferId: 12,
+    });
+    expect(mockSavedValidation).not.toHaveBeenCalled();
+    expect(mockValidation).not.toHaveBeenCalled();
+    expect(jest.mocked(loadStockWriteRecovery)).toHaveBeenCalledWith(3);
+  });
+  it('hands an accepted saved step to complete review explicitly, preserving its exact legacy parent', async () => {
+    const parent = { ...validationRequest(), continuation_key: false as const };
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue(parent);
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Resume validation request' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Continue complete saved validation',
+      }),
+    );
+    expect(mockPagedValidation.mock.calls.at(-1)?.[0]).toMatchObject({
+      uid: 3,
+      orderId: 9,
+      transferId: 11,
+      legacyParent: parent,
+    });
+    expect(mockValidation).not.toHaveBeenCalled();
   });
   it('opens complete confirmation review for a new request and reloads on close', async () => {
     show();

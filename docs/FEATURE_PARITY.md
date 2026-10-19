@@ -1,5 +1,23 @@
 # Bahmni workflow parity ledger
 
+## 19 October complete validation React consumer source
+
+- New validation and paged resume connect all seven fixed native APIs plus exact
+  history storage. Complete ordered input/effect pages, saved reference/prompt
+  pages, fresh editable load versions and strict persist-before-save are required.
+- Unknown acceptance, terminal decline, native next prompt, save-winning-stop and
+  stopped-child prior preparation remain distinct. Older unresolved payloads are
+  not converted; an accepted legacy prompt has an explicit complete-review handoff.
+- Validation's old 500-move/2,000-operation UI threshold is removed only for the
+  new consumer. Native authorization, lot/analytic/SMS guards remain. Prompt
+  tables reuse the existing design, and paging/errors/stop preserve focus.
+- New component: 26 cases. Six focused suites: 152 cases. Tests use SDK/storage
+  doubles, not native/browser/race acceptance. [Evidence and release gates](../runtime/billing/VALIDATION_PAGED_WRITE.md#react-complete-validation-consumer-source-19-october-2026).
+  Full Home: 1,184 cases/90 suites pass. Types and scoped lint/format pass.
+- Real matching runtime/browser/IndexedDB/visual/keyboard/concurrency/scale and
+  large physical-effect saves remain unverified. Large returns and remaining
+  Billing/product parity remain; no review reopening, build/server or deployment.
+
 ## 19 October complete validation history storage source
 
 - The same account slot stores exact eight-key requests and ordered prior native

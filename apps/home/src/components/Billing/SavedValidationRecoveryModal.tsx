@@ -17,6 +17,7 @@ import {
   loadStockValidationRecovery,
 } from './stockReservationRecovery';
 import { transferLabel as label } from './stockTransferPages';
+import { StockValidationPromptRows } from './StockValidationPromptRows';
 
 type Props = {
   uid: number;
@@ -25,6 +26,7 @@ type Props = {
   reconnect: () => void;
   returnFocus?: () => void;
   continueReview: () => void;
+  continueCompleteReview?: () => void;
 };
 type Page<T> = { page: T; readTo: number };
 
@@ -35,6 +37,7 @@ export function SavedValidationRecoveryModal({
   reconnect,
   returnFocus,
   continueReview,
+  continueCompleteReview,
 }: Props) {
   const client = useQueryClient();
   const mounted = useRef(true),
@@ -177,7 +180,7 @@ export function SavedValidationRecoveryModal({
           : !outcome.next_step ||
             outcome.next_step.kind === 'sms' ||
             !allPrompt ||
-            !legacySize
+            (!legacySize && !continueCompleteReview)
       )
         return;
       const current = await getStockValidationStepCompactStatus(request);
@@ -200,7 +203,7 @@ export function SavedValidationRecoveryModal({
       );
       if (!mounted.current) return;
       if (!finish) {
-        continueReview();
+        (continueCompleteReview ?? continueReview)();
         return;
       }
       if (await clearStockValidationRecovery(uid, request))
@@ -388,87 +391,7 @@ export function SavedValidationRecoveryModal({
                           to {prompt.page.after + prompt.page.rows.length} of{' '}
                           {prompt.page.total_count}.
                         </p>
-                        <div
-                          className={styles.tableScroll}
-                          role="region"
-                          aria-label="Saved prompt rows"
-                          tabIndex={0}
-                        >
-                          <table>
-                            <caption>
-                              Native saved prompt values, quantities in the unit
-                              shown
-                            </caption>
-                            <thead>
-                              <tr>
-                                {[
-                                  'Record',
-                                  'Quantity / selection',
-                                  'Unit',
-                                  'Batch / serial',
-                                  'Expiry (UTC)',
-                                  'Cost price',
-                                  'Sale price',
-                                  'MRP',
-                                  'Balance',
-                                  'Expiring soon',
-                                  'Warning',
-                                ].map((text) => (
-                                  <th scope="col" key={text}>
-                                    {text}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {prompt.page.rows.map((row) =>
-                                row.section === 'operations' ? (
-                                  <tr key={row.value.id}>
-                                    <td>{row.value.product_id[1]}</td>
-                                    <td>{row.value.qty_done}</td>
-                                    <td>{row.value.product_uom_id[1]}</td>
-                                    <td>
-                                      {row.value.lot_id
-                                        ? row.value.lot_id[1]
-                                        : row.value.lot_name || 'Not set'}
-                                    </td>
-                                    <td>
-                                      {row.value.expiration_date || 'Not set'}
-                                    </td>
-                                    <td>{row.value.cost_price}</td>
-                                    <td>{row.value.sale_price}</td>
-                                    <td>{row.value.mrp}</td>
-                                    <td>{row.value.balance}</td>
-                                    <td>
-                                      {row.value.is_move_line_lot_expiring_soon
-                                        ? 'Yes'
-                                        : 'No'}
-                                    </td>
-                                    <td>
-                                      {row.value.expiry_warning
-                                        ? `${row.value.expiry_warning.title}: ${row.value.expiry_warning.message}`
-                                        : 'None'}
-                                    </td>
-                                  </tr>
-                                ) : row.section === 'lots' ? (
-                                  <tr key={row.value[0]}>
-                                    <td>{row.value[1]}</td>
-                                    <td colSpan={10}>Expired batch</td>
-                                  </tr>
-                                ) : (
-                                  <tr key={row.value.transfer[0]}>
-                                    <td>{row.value.transfer[1]}</td>
-                                    <td colSpan={10}>
-                                      {row.value.selected
-                                        ? 'Selected'
-                                        : 'Not selected'}
-                                    </td>
-                                  </tr>
-                                ),
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                        <StockValidationPromptRows rows={prompt.page.rows} />
                         {prompt.page.after > 0 ? (
                           <Button
                             kind="tertiary"
@@ -508,7 +431,8 @@ export function SavedValidationRecoveryModal({
                         Read saved prompt
                       </Button>
                     )}
-                    {legacySize && outcome.next_step.kind !== 'sms' ? (
+                    {(legacySize || continueCompleteReview) &&
+                    outcome.next_step.kind !== 'sms' ? (
                       <Button
                         disabled={
                           locked || !!failure || !allPrompt || !allReferences
