@@ -16,14 +16,14 @@ from .stock_validation import _RECEIPT_TOKEN
 class StockValidationStep(models.Model):
     _inherit = 'stock.picking'
 
-    def _qorlia_step_request(self, payload):
+    def _qorlia_step_request(self, payload, allow_inventory=False):
         if not isinstance(payload, dict) or set(payload) != {
                 'order_id', 'transfer_id', 'version', 'decisions', 'review_version',
                 'request_key', 'continuation_key'}:
             raise ValidationError('Use the exact reviewed native validation step.')
         request = copy.deepcopy(payload)
         continuation = request.pop('continuation_key')
-        self._qorlia_validation_request(request)
+        self._qorlia_validation_request(request, allow_inventory=allow_inventory)
         try:
             if continuation is not False and (not isinstance(continuation, str)
                     or str(uuid.UUID(continuation)) != continuation or continuation == request['request_key']):

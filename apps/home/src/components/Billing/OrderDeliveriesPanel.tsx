@@ -127,7 +127,7 @@ function OrderTransfers({
     paged: boolean;
   } | null>(null);
   const [validation, setValidation] = useState<{
-    orderId: number;
+    orderId: number | false;
     transferId: number;
     request?: StockValidationStepRequest;
     paged?: boolean;
@@ -550,7 +550,7 @@ function OrderTransfers({
             })
           }
         />
-      ) : validation ? (
+      ) : validation && validation.orderId !== false ? (
         <StockValidationModal
           uid={uid}
           orderId={validation.orderId}

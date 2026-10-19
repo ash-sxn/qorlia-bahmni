@@ -7493,7 +7493,17 @@ export interface StockValidationStepStatus extends StockValidationStatus {
 const validationRequestKey = (value: unknown): value is string =>
   typeof value === 'string' &&
   /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value);
-function checkedValidationStepSelection(value: StockValidationStepSelection) {
+function checkedValidationStepSelection(
+  value: StockValidationStepSelection,
+): StockValidationStepSelection;
+function checkedValidationStepSelection(
+  value: PagedStockValidationStepSelection,
+  inventory: true,
+): PagedStockValidationStepSelection;
+function checkedValidationStepSelection(
+  value: PagedStockValidationStepSelection,
+  inventory = false,
+) {
   if (
     !confirmationKeys(value, [
       'order_id',
@@ -7502,6 +7512,7 @@ function checkedValidationStepSelection(value: StockValidationStepSelection) {
       'decisions',
       'continuation_key',
     ]) ||
+    (!inventory && value.order_id === false) ||
     (value.continuation_key !== false &&
       !validationRequestKey(value.continuation_key))
   )
@@ -7510,7 +7521,7 @@ function checkedValidationStepSelection(value: StockValidationStepSelection) {
   if (decisions.length !== (value.continuation_key ? 1 : 0))
     throw new Error('Review exactly one native validation step.');
   return {
-    ...checkedConfirmationSelection(value),
+    ...checkedConfirmationSelection(value, true),
     decisions,
     continuation_key: value.continuation_key,
   };
@@ -7788,9 +7799,16 @@ export async function getStockValidationStepCompactStatus(
   );
   return checkedCompactValidationReceipt(data, exact);
 }
-function checkedCompactValidationReceipt(
-  data: StockValidationStepCompactStatus,
-  exact: StockValidationStepRequest,
+function checkedCompactValidationReceipt<
+  T extends Omit<StockValidationStepCompactStatus, 'current'> & {
+    current: PagedStockValidationStatus['current'];
+  },
+>(
+  data: T,
+  exact: Pick<
+    PagedStockValidationRequest,
+    'order_id' | 'transfer_id' | 'request_key'
+  >,
 ) {
   if (
     !confirmationKeys(data, [
@@ -7866,7 +7884,7 @@ export async function getStockValidationStepPromptPage(
 }
 function checkedValidationPromptPage(
   data: StockValidationPromptPage,
-  exact: StockValidationStepRequest,
+  exact: Pick<PagedStockValidationRequest, 'transfer_id' | 'request_key'>,
   after: number,
   version: string | false,
   limit: number,
@@ -7930,7 +7948,12 @@ export async function getStockValidationStepReferencePage(
   );
 }
 
-export interface PagedStockValidationLoad extends StockConfirmationSelection {
+export interface PagedStockValidationStepSelection
+  extends Omit<StockValidationStepSelection, 'order_id'> {
+  order_id: number | false;
+}
+export interface PagedStockValidationLoad
+  extends PagedStockConfirmationSelection {
   transfer: OrderTransferSummary;
   package_count: number;
   inventory_quant_count: number;
@@ -7938,7 +7961,8 @@ export interface PagedStockValidationLoad extends StockConfirmationSelection {
   write_ready: boolean;
 }
 export interface PagedStockValidationRequest
-  extends StockValidationStepRequest {
+  extends Omit<StockValidationStepRequest, 'order_id'> {
+  order_id: number | false;
   review_complete_token: string;
 }
 export type PagedStockValidationReceipt = Omit<
@@ -7950,7 +7974,9 @@ export interface PagedStockValidationStatus {
   stopped: boolean;
   request_key: string;
   receipt: PagedStockValidationReceipt | false;
-  current: StockValidationStepCompactStatus['current'];
+  current: Omit<StockValidationStepCompactStatus['current'], 'order_id'> & {
+    order_id: number | false;
+  };
 }
 export interface PagedStockValidationPromptPage
   extends StockValidationPromptPage {
@@ -7979,10 +8005,35 @@ export function checkedPagedStockValidationRequest(
     throw new Error(
       'Use the exact completely reviewed native validation request.',
     );
-  const { review_complete_token, ...request } = value;
+  const selection = checkedValidationStepSelection(
+    {
+      order_id: value.order_id,
+      transfer_id: value.transfer_id,
+      version: value.version,
+      continuation_key: value.continuation_key,
+      decisions: value.decisions,
+    },
+    true,
+  );
+  const proof = checkedPagedStockConfirmationRequest({
+    order_id: value.order_id,
+    transfer_id: value.transfer_id,
+    version: value.version,
+    review_version: value.review_version,
+    review_complete_token: value.review_complete_token,
+    request_key: value.request_key,
+  });
+  if (selection.continuation_key === proof.request_key)
+    throw new Error('A step cannot continue its own request.');
   return {
-    ...checkedStockValidationStepRequest(request),
-    review_complete_token,
+    order_id: selection.order_id,
+    transfer_id: selection.transfer_id,
+    version: selection.version,
+    decisions: selection.decisions,
+    review_version: proof.review_version,
+    request_key: proof.request_key,
+    continuation_key: selection.continuation_key,
+    review_complete_token: proof.review_complete_token,
   };
 }
 function checkedPagedValidationStatus(
@@ -8162,7 +8213,7 @@ export async function getPagedStockValidationReferencePage(
   return { ...page, receipt_key };
 }
 export interface PagedStockValidationReview
-  extends StockValidationStepSelection {
+  extends PagedStockValidationStepSelection {
   review_version: string;
   state_after: OrderTransfer['state'];
   write_ready: boolean;
@@ -8180,10 +8231,10 @@ export interface PagedStockValidationReview
   review_complete_token: string | false;
 }
 export async function getPagedStockValidation(
-  orderId: number,
+  orderId: number | false,
   transferId: number,
 ) {
-  if (!stockId(orderId) || !stockId(transferId))
+  if (!(orderId === false || stockId(orderId)) || !stockId(transferId))
     throw new Error('Select a saved stock transfer.');
   const data = await stockCall<PagedStockValidationLoad>(
     'qorlia_validation_paged_load',
@@ -8217,13 +8268,13 @@ export async function getPagedStockValidation(
   return data;
 }
 export async function getPagedStockValidationReview(
-  selection: StockValidationStepSelection,
+  selection: PagedStockValidationStepSelection,
   after = 0,
   reviewVersion: string | false = false,
   continuationToken: string | false = false,
   limit = 50,
 ) {
-  const exact = checkedValidationStepSelection(selection);
+  const exact = checkedValidationStepSelection(selection, true);
   if (
     !stockCount(after) ||
     !Number.isSafeInteger(limit) ||

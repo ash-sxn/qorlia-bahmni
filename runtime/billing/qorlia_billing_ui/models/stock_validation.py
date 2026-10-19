@@ -298,11 +298,13 @@ class StockValidation(models.Model):
             raise UserError('Native state changed during validation preview. Reload it.')
         return result
 
-    def _qorlia_validation_request(self, payload):
+    def _qorlia_validation_request(self, payload, allow_inventory=False):
         if not isinstance(payload, dict) or set(payload) != {'order_id', 'transfer_id', 'version', 'decisions', 'review_version', 'request_key'}:
             raise ValidationError('Use the exact reviewed validation request.')
         try:
-            if (any(type(payload[name]) is not int or payload[name] <= 0 for name in ('order_id', 'transfer_id'))
+            if ((not (allow_inventory and payload['order_id'] is False)
+                    and (type(payload['order_id']) is not int or payload['order_id'] <= 0))
+                    or type(payload['transfer_id']) is not int or payload['transfer_id'] <= 0
                     or any(not isinstance(payload[name], str) or len(payload[name]) != 64 or any(c not in '0123456789abcdef'
                         for c in payload[name]) for name in ('version', 'review_version'))
                     or not isinstance(payload['decisions'], list) or len(payload['decisions']) > 16

@@ -51,10 +51,16 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
-Newest source: [global Inventory operation editing](runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-70-global-operation-editing-19-october-2026)
+Newest source: [global Inventory validation](runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-71-global-validation-19-october-2026)
+connects all seven native APIs and the existing per-step dialog/recovery without
+an order. Accepted preparation and saved parent prompts are preserved. Home
+passes 1,596 cases/102 suites; native verification and remaining gates are in the
+guide. Review stays closed; no build/server, installed upgrade or deployment.
+
+Earlier source: [global Inventory operation editing](runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-70-global-operation-editing-19-october-2026)
 connects native operation create/edit/remove and exact recovery without an order,
-reusing the same forms, eight APIs and Qorlia design components. Source-matched
-verification and remaining Inventory/browser/release gates are in the guide.
+reusing the same forms, eight APIs and Qorlia design components. The scoped
+85-case native run passes; remaining Inventory/browser/release gates are in the guide.
 Review stays closed; no build/server, installed upgrade or deployment.
 
 Earlier source: [global Inventory preparation](runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-69-global-preparation-19-october-2026)

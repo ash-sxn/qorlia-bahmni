@@ -3,7 +3,7 @@ import type {
   PagedStockValidationRequest,
   PagedStockValidationStatus,
   PagedStockValidationReview,
-  StockValidationStepSelection,
+  PagedStockValidationStepSelection,
   StockValidationPromptMetadata,
   StockValidationPromptRow,
   PagedStockValidationPromptPage,
@@ -15,7 +15,9 @@ import {
   terminalValidationReview,
 } from './stockValidationFixture';
 
-export const pagedValidationRequest = (): PagedStockValidationRequest => ({
+export const pagedValidationRequest = (): PagedStockValidationRequest & {
+  order_id: number;
+} => ({
   ...validationRequest(),
   continuation_key: false,
   review_complete_token: 'c'.repeat(64),
@@ -96,7 +98,7 @@ export function promptRows(
   });
 }
 export function pagedValidationOutcome(
-  request = pagedValidationRequest(),
+  request: PagedStockValidationRequest = pagedValidationRequest(),
   kind: 'unknown' | 'terminal' | 'prompt' | 'stopped' = 'terminal',
   metadata = promptMetadata(),
   references = 101,
@@ -133,7 +135,7 @@ export function pagedValidationOutcome(
   };
 }
 export function pagedValidationEffectPage(
-  selection: StockValidationStepSelection,
+  selection: PagedStockValidationStepSelection,
   after = 0,
   count = 101,
 ): PagedStockValidationReview {
@@ -191,7 +193,7 @@ export function pagedValidationPrompt(
   };
 }
 export function pagedValidationReferences(
-  request = pagedValidationRequest(),
+  request: PagedStockValidationRequest = pagedValidationRequest(),
   after = 0,
   count = 101,
 ): PagedStockValidationReferences {

@@ -18,6 +18,13 @@ jest.mock('../billingService', () => ({
 const mockConfirmation = jest.fn();
 const mockPreparation = jest.fn();
 const mockOperation = jest.fn();
+const mockValidation = jest.fn();
+jest.mock('../PagedStockValidationModal', () => ({
+  PagedStockValidationModal: (props: { close: () => void }) => {
+    mockValidation(props);
+    return <button onClick={props.close}>Close global validation</button>;
+  },
+}));
 jest.mock('../PagedStockOperationEditor', () => ({
   PagedStockOperationEditor: (props: { close: () => void }) => {
     mockOperation(props);
@@ -176,6 +183,27 @@ it('opens add and existing operation forms with their real move and transfer ide
   });
   expect(mockConfirmation).not.toHaveBeenCalled();
   expect(mockPreparation).not.toHaveBeenCalled();
+});
+it('opens native validation without an order and reloads Inventory on close', async () => {
+  show();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Review or recover validation' }),
+  );
+  expect(mockValidation.mock.calls.at(-1)?.[0]).toMatchObject({
+    uid: 3,
+    orderId: false,
+    transferId: 11,
+    reconnect,
+  });
+  expect(mockConfirmation).not.toHaveBeenCalled();
+  expect(mockPreparation).not.toHaveBeenCalled();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close global validation' }),
+  );
+  await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  expect(
+    screen.queryByRole('button', { name: 'Close global validation' }),
+  ).not.toBeInTheDocument();
 });
 it('does not invent a move for an orphaned operation or offer new operations on completed moves', async () => {
   detail.mockImplementation(async (_id, section) => {

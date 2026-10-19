@@ -6,11 +6,18 @@ import {
   getPagedStockValidationReferencePage,
   savePagedStockValidation,
   stopPagedStockValidation,
+  getPagedStockValidation,
+  getPagedStockValidationReview,
+  checkedStockValidationStepRequest,
   type PagedStockValidationRequest,
   type PagedStockValidationStatus,
 } from '../billingService';
 import { orderDeliveryPageFixture } from './orderDeliveryFixture';
 import { validationRequest } from './stockValidationFixture';
+import {
+  pagedValidationLoad,
+  pagedValidationEffectPage,
+} from './stockValidationPagedFixture';
 
 const key = '11111111-2222-4333-8444-555555555555',
   parent = '22222222-2222-4333-8444-555555555555';
@@ -100,8 +107,86 @@ describe('Exact complete native validation write and recovery client', () => {
   beforeEach(() => {
     global.fetch = jest.fn();
   });
+  it('uses all seven existing validation APIs without an order and keeps legacy requests strict', async () => {
+    const exact = { ...request(), order_id: false as const };
+    const selection = {
+      order_id: false as const,
+      transfer_id: 11,
+      version: exact.version,
+      continuation_key: false as const,
+      decisions: [],
+    };
+    reply({ ...pagedValidationLoad(), order_id: false });
+    await getPagedStockValidation(false, 11);
+    reply(pagedValidationEffectPage(selection));
+    await getPagedStockValidationReview(selection);
+    const response = {
+      ...state(),
+      current: { ...state().current, order_id: false as const },
+    };
+    for (const call of [
+      savePagedStockValidation,
+      getPagedStockValidationStatus,
+      stopPagedStockValidation,
+    ]) {
+      reply(response);
+      expect(await call(exact)).toEqual(response);
+    }
+    reply(prompt());
+    await getPagedStockValidationPromptPage(exact);
+    reply(refs());
+    await getPagedStockValidationReferencePage(exact);
+    const calls = (fetch as jest.Mock).mock.calls.map(
+      (call) => JSON.parse(call[1].body).params,
+    );
+    expect(calls.map((call) => call.method)).toEqual(
+      [
+        'load',
+        'review',
+        'save',
+        'status',
+        'stop',
+        'prompt_page',
+        'reference_page',
+      ].map((name) => 'qorlia_validation_paged_' + name),
+    );
+    expect(calls[0].kwargs.order_id).toBe(false);
+    for (const call of calls.slice(1))
+      expect(call.kwargs.payload.order_id).toBe(false);
+    const { review_complete_token, ...legacy } = exact;
+    expect(review_complete_token).toHaveLength(64);
+    expect(() => checkedStockValidationStepRequest(legacy as never)).toThrow();
+  });
+  it('rejects global identity lookalikes, self-continuation and swapped outcome scopes', async () => {
+    for (const order_id of [0, true, null, '', [], {}, -1]) {
+      await expect(
+        getPagedStockValidation(order_id as never, 11),
+      ).rejects.toThrow();
+      expect(() =>
+        checkedPagedStockValidationRequest({ ...request(), order_id } as never),
+      ).toThrow();
+    }
+    expect(fetch).not.toHaveBeenCalled();
+    expect(() =>
+      checkedPagedStockValidationRequest({
+        ...request(),
+        order_id: false,
+        continuation_key: key,
+        decisions: [{ kind: 'immediate', selected: true }],
+      }),
+    ).toThrow(/own request/);
+    reply(state());
+    await expect(
+      getPagedStockValidationStatus({ ...request(), order_id: false }),
+    ).rejects.toThrow();
+    reply({ ...state(), current: { ...state().current, order_id: false } });
+    await expect(getPagedStockValidationStatus(request())).rejects.toThrow();
+  });
   it('keeps all eight exact fields and uses only the five fixed write/recovery methods', async () => {
     expect(checkedPagedStockValidationRequest(request())).toEqual(request());
+    expect(JSON.stringify(checkedPagedStockValidationRequest(request()))).toBe(
+      JSON.stringify(request()),
+    );
     for (const method of [
       savePagedStockValidation,
       getPagedStockValidationStatus,

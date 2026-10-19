@@ -92,11 +92,18 @@ const deferred = <T,>() => {
   });
   return { promise, resolve };
 };
-function show(legacyParent?: StockValidationStepRequest) {
+function show(
+  legacyParent?: StockValidationStepRequest,
+  initialOrderId: number | false = 9,
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  const node = (uid = 3, orderId = 9, transferId = 11) => (
+  const node = (
+    uid = 3,
+    orderId: number | false = initialOrderId,
+    transferId = 11,
+  ) => (
     <QueryClientProvider client={client}>
       <PagedStockValidationModal
         uid={uid}
@@ -179,7 +186,7 @@ describe('Complete paged native validation consumer', () => {
     native = new Map();
     effectCount = 101;
     referenceCount = 101;
-    get.mockResolvedValue(load());
+    get.mockImplementation(async (order_id) => ({ ...load(), order_id }));
     review.mockImplementation(async (selection, after = 0) =>
       effectPage(selection, after, effectCount),
     );
@@ -283,69 +290,93 @@ describe('Complete paged native validation consumer', () => {
     expect(save).not.toHaveBeenCalled();
     expect(persist).not.toHaveBeenCalled();
   });
-  it('persists the complete proof before dispatch, blocks double clicks and reads every reference before finish', async () => {
-    const held = deferred<void>();
-    persist.mockReturnValueOnce(held.promise);
-    show();
-    await begin();
-    await advanceReview();
-    const button = screen.getByRole('button', {
-      name: 'Save reviewed native validation',
-    });
-    fireEvent.click(button);
-    fireEvent.click(button);
-    await waitFor(() => expect(persist).toHaveBeenCalledTimes(1));
-    expect(save).not.toHaveBeenCalled();
-    expect(persist.mock.calls[0]).toEqual([3, request(), undefined]);
-    disk.set(3, { request: request(), history: [] });
-    await act(async () => held.resolve());
-    await screen.findByRole('button', { name: 'Finish accepted validation' });
-    expect(save).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByRole('button', { name: 'Finish accepted validation' }),
-    ).toBeDisabled();
-    await readSaved('reference');
-    expect(
-      screen.getByText(/<img src=x onerror=alert\(1\)> \(#200\)/),
-    ).toBeInTheDocument();
-    expect(document.querySelector('img')).toBeNull();
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Finish accepted validation' }),
-    );
-    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
-    expect(clear).toHaveBeenCalledWith(3, request());
-    expect(refs.mock.calls.at(-1)).toEqual([request(), 0, 'f'.repeat(64), 50]);
-  });
-  it('keeps a lost or rejected save exact and only retries the identical stored request', async () => {
-    effectCount = 1;
-    save.mockRejectedValueOnce(
-      new BillingActionRejected('Native outcome unavailable'),
-    );
-    show();
-    await begin();
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Save reviewed native validation' }),
-    );
-    await screen.findByRole('button', {
-      name: 'Retry identical validation request',
-    });
-    await waitFor(() =>
+  it.each([9, false] as const)(
+    'persists the complete proof before dispatch, blocks double clicks and reads every reference before finish, order %s',
+    async (order_id) => {
+      const exact = { ...request(), order_id };
+      const held = deferred<void>();
+      persist.mockReturnValueOnce(held.promise);
+      const { client } = show(undefined, order_id);
+      const inventoryQueries = [
+        'inventory-transfers',
+        'inventory-transfer-load',
+        'inventory-transfer-detail',
+      ];
+      for (const key of inventoryQueries)
+        client.setQueryData(['billing', key, 3], { synthetic: true });
+      await begin();
+      await advanceReview();
+      const button = screen.getByRole('button', {
+        name: 'Save reviewed native validation',
+      });
+      fireEvent.click(button);
+      fireEvent.click(button);
+      await waitFor(() => expect(persist).toHaveBeenCalledTimes(1));
+      expect(save).not.toHaveBeenCalled();
+      expect(persist.mock.calls[0]).toEqual([3, exact, undefined]);
+      disk.set(3, { request: exact, history: [] });
+      await act(async () => held.resolve());
+      await screen.findByRole('button', { name: 'Finish accepted validation' });
+      expect(save).toHaveBeenCalledTimes(1);
       expect(
+        screen.getByRole('button', { name: 'Finish accepted validation' }),
+      ).toBeDisabled();
+      await readSaved('reference');
+      expect(
+        screen.getByText(/<img src=x onerror=alert\(1\)> \(#200\)/),
+      ).toBeInTheDocument();
+      expect(document.querySelector('img')).toBeNull();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Finish accepted validation' }),
+      );
+      await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+      expect(clear).toHaveBeenCalledWith(3, exact);
+      expect(refs.mock.calls.at(-1)).toEqual([exact, 0, 'f'.repeat(64), 50]);
+      for (const key of inventoryQueries)
+        expect(client.getQueryState(['billing', key, 3])?.isInvalidated).toBe(
+          true,
+        );
+    },
+  );
+  it.each([9, false] as const)(
+    'keeps a lost or rejected save exact and only retries the identical stored request, order %s',
+    async (order_id) => {
+      const exact = { ...request(), order_id };
+      effectCount = 1;
+      save.mockRejectedValueOnce(
+        new BillingActionRejected('Native outcome unavailable'),
+      );
+      const view = show(undefined, order_id);
+      await begin();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Save reviewed native validation' }),
+      );
+      await screen.findByRole('button', {
+        name: 'Retry identical validation request',
+      });
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', {
+            name: 'Retry identical validation request',
+          }),
+        ).toBeEnabled(),
+      );
+      expect(disk.get(3)?.request).toEqual(exact);
+      expect(clear).not.toHaveBeenCalled();
+      view.unmount();
+      show(undefined, order_id);
+      await screen.findByRole('button', {
+        name: 'Retry identical validation request',
+      });
+      fireEvent.click(
         screen.getByRole('button', {
           name: 'Retry identical validation request',
         }),
-      ).toBeEnabled(),
-    );
-    expect(disk.get(3)?.request).toEqual(request());
-    expect(clear).not.toHaveBeenCalled();
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'Retry identical validation request',
-      }),
-    );
-    await screen.findByRole('button', { name: 'Finish accepted validation' });
-    expect(save.mock.calls).toEqual([[request()], [request()]]);
-  });
+      );
+      await screen.findByRole('button', { name: 'Finish accepted validation' });
+      expect(save.mock.calls).toEqual([[exact], [exact]]);
+    },
+  );
   it('never dispatches after failed storage or unmount while the strict commit is outstanding', async () => {
     effectCount = 1;
     const held = deferred<void>();
@@ -620,7 +651,7 @@ describe('Complete paged native validation consumer', () => {
     jest.mocked(getStockValidationStepCompactStatus).mockResolvedValue({
       accepted: true,
       ...receipt,
-      current,
+      current: { ...current, order_id: parent.order_id },
     });
     jest
       .mocked(getStockValidationStepPromptPage)

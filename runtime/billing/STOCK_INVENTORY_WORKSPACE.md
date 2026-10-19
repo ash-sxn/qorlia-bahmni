@@ -2,6 +2,65 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Candidate 71 global validation, 19 October 2026
+
+Inventory details now open the existing complete transfer-validation workflow
+without a Sales order. All seven `qorlia_validation_paged_*` methods use explicit
+`order_id: false`: load, ordered prompt/effect review, save, status, saved-prompt
+pages, saved-reference pages and stop. The existing native engine handles real
+stock movement, valuation and configured accounting. No frontend quantity
+formula, fake order, new validation engine or raw native action is introduced.
+
+Only these complete APIs opt into global scope and literal false. Legacy
+validation and individual-step APIs remain order-only. Positive order scopes,
+canonical request fields/order, signatures and receipts remain unchanged. A
+continuation must still match its saved prompt, author, companies, transfer,
+purpose and order/global identity. Consumed/missing prompts are not recreated.
+The full Inventory/configuration snapshot, native permissions, effect review,
+ordered proof, locks, callbacks and actual-save comparison remain authoritative.
+
+The same Qorlia dialog and design components render each native step. An accepted
+preparation step stays saved even if a later expiry choice is declined. Exact
+requests and their complete parent history use the existing account/database-
+bound recovery envelopes. Stopping a pending child does not reverse its parent;
+the saved parent prompt and references must be recovered explicitly. Fresh
+status and complete saved pages gate continuation/retirement. Unknown or expired
+outcomes retain the original request for exact retry, not a new validation.
+
+Inventory entry and the signed-in Billing recovery notice both open the global
+validation dialog directly. The notice pins kind/transfer through banner
+refetch; finishing refreshes active Inventory lists/details as well as existing
+order queries. Legacy readers cannot consume or clear a new global request.
+
+### Candidate 71 verification
+
+The Home suite passes **1,596 cases/102 suites**, including global/legacy API
+identity boundaries across all seven calls, exact canonical request format,
+strict persistence before save, lost-response/remount/retry, complete saved
+reference review, stopped-child ancestry, direct recovery routing and Inventory
+refresh. Component/storage/transport doubles are not actual browser/IndexedDB
+acceptance. Library and actual test-source types, scoped lint, Python AST parsing
+of all 106 files, three gateway stub cases, diff checks and the
+42-document/746-link check pass. No new dependency or design system is added.
+
+A frozen **46-case native run is active**, not accepted yet: ten new global
+validation cases, ten existing complete-review cases, 14 complete-write cases
+and 12 legacy-step regressions. The new cases cover actual orderless receipt,
+delivery and internal movement, batch/prices/references, saved immediate
+preparation followed by expiry decline, native backorders, stopped child/parent
+recovery, strict false identity, order/global proof separation, stale/incomplete
+proofs, hidden moves, write denial and different-author rejection. Final result,
+matching-client replay and independent committed SQL remain pending.
+
+Remaining: global return/cancellation, native transfer create/edit/duplicate,
+orphan operations and completed-operation corrections, remaining native fields,
+chains/packages, overview/type choices, full filters/grouping/views, bulk/print,
+the wider permission/configuration matrix and whole-product parity. Current full
+regression, actual HTTP/browser/layout/IndexedDB/multi-tab/concurrency, scale and
+approved rollout remain separate gates. The source-68 974-case worker is older
+source, not validation-source acceptance. Review stays closed; no frontend build,
+server, installed upgrade, hosted tester or production deployment is included.
+
 ## Candidate 70 global operation editing, 19 October 2026
 
 Inventory move rows now open the existing detailed-operation editor for creation;
@@ -41,7 +100,23 @@ saved-reference review, original-target routing, unavailable moves and refresh.
 Component tests use SDK/storage doubles; this is not real IndexedDB or browser
 acceptance. No additional React library or separate design system was introduced.
 
-The corrected 85-case native run is still in progress. The first native run
+The corrected **85 unique native cases pass, zero failures/errors/skips**:
+ten global operation cases, all 56 existing operation-form cases, 11 global
+confirmation cases and eight preparation cases. All 106 Python hashes match
+the frozen source. All 132 guarded tables remain unchanged with mandatory
+analytics/SMS enabled; independent committed SQL counts/full-row hashes match
+the baseline. The matching actual client accepts **407 native JSON responses**
+across all eight methods, including 121 orderless responses. Replay transport
+is mocked, not HTTP/browser acceptance. Log SHA256:
+`cb67b9b13b13ca86513d0bec3530da900b97bc5b0ec2884e6cd5f219ff3e219f`.
+Client SHA256:
+`b44d14a6290f18f1462c60537bc8a9124078c0fed752d6515a6aef82d822414c`.
+The worker is terminal/removed, with readonly source, no HTTP/published ports
+and unchanged installed metadata 49. Bootstrap warnings remain, not clean-install
+or installed-upgrade proof. The separate source-68 full regression cannot
+verify this newer source.
+
+The first native run
 completed 85 cases with two fixture errors, zero assertion failures
 or skips, and all 132 guarded tables preserved. Independent post-worker committed
 SQL counts/full-row hashes match its baseline. Its internal-transfer fixture used

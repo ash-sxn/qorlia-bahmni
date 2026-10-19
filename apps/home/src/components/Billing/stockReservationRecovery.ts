@@ -77,11 +77,11 @@ export type StockValidationRecoveryRequest =
   | StockValidationStepRequest;
 export const isStockValidationStepRequest = (
   request: StockWriteRequest,
-): request is StockValidationStepRequest =>
+): request is StockValidationStepRequest | PagedStockValidationRequest =>
   Object.hasOwn(request, 'continuation_key');
 export const isStockValidationRequest = (
   request: StockWriteRequest,
-): request is StockValidationRecoveryRequest =>
+): request is StockValidationRecoveryRequest | PagedStockValidationRequest =>
   Object.hasOwn(request, 'decisions');
 export const isStockConfirmationRequest = (
   request: StockWriteRequest,

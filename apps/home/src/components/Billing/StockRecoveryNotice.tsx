@@ -5,10 +5,12 @@ import styles from './BillingPage.module.scss';
 import { OrderDeliveriesPanel } from './OrderDeliveriesPanel';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
 import { PagedStockReservationModal } from './PagedStockReservationModal';
+import { PagedStockValidationModal } from './PagedStockValidationModal';
 import { PagedStockWriteModal } from './PagedStockWriteModal';
 import {
   isPagedStockReturnRequest,
   isPagedStockCancellationRequest,
+  isPagedStockValidationRequest,
   isStockValidationRequest,
   isStockOperationRequest,
   isStockConfirmationRequest,
@@ -29,7 +31,7 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
   const [target, setTarget] = useState<{
     orderId: number | false;
     transferId: number;
-    kind: 'confirmation' | 'preparation' | 'operation';
+    kind: 'confirmation' | 'preparation' | 'operation' | 'validation';
   } | null>(null);
   const opener = useRef<HTMLButtonElement>(null);
   const retryButton = useRef<HTMLButtonElement>(null);
@@ -61,7 +63,9 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
     const Workflow =
       target.kind === 'confirmation'
         ? PagedStockConfirmationModal
-        : PagedStockReservationModal;
+        : target.kind === 'validation'
+          ? PagedStockValidationModal
+          : PagedStockReservationModal;
     const props = {
       uid,
       orderId: false as const,
@@ -152,7 +156,9 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
               ? 'confirmation'
               : isStockOperationRequest(request)
                 ? 'operation'
-                : 'preparation',
+                : isPagedStockValidationRequest(request)
+                  ? 'validation'
+                  : 'preparation',
           })
         }
       >

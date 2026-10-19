@@ -12,6 +12,7 @@ import {
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
 import { PagedStockOperationEditor } from './PagedStockOperationEditor';
 import { PagedStockReservationModal } from './PagedStockReservationModal';
+import { PagedStockValidationModal } from './PagedStockValidationModal';
 import {
   sameTransferSummary,
   formatTransferDate,
@@ -29,7 +30,11 @@ type Props = {
 export function InventoryTransferDetails(props: Props) {
   const [revision, setRevision] = useState(0);
   const [workflow, setWorkflow] = useState<
-    'confirmation' | 'preparation' | PagedStockOperationSelection | null
+    | 'confirmation'
+    | 'preparation'
+    | 'validation'
+    | PagedStockOperationSelection
+    | null
   >(null);
   const back = useRef<HTMLButtonElement>(null);
   const client = useQueryClient();
@@ -37,7 +42,9 @@ export function InventoryTransferDetails(props: Props) {
   const Workflow =
     workflow === 'preparation'
       ? PagedStockReservationModal
-      : PagedStockConfirmationModal;
+      : workflow === 'validation'
+        ? PagedStockValidationModal
+        : PagedStockConfirmationModal;
   const closeWorkflow = () => {
     setWorkflow(null);
     setRevision((value) => value + 1);
@@ -103,7 +110,7 @@ function ReadTransfer({
   transferId: number;
   reconnect: () => void;
   reload: () => void;
-  openWrite: (kind: 'confirmation' | 'preparation') => void;
+  openWrite: (kind: 'confirmation' | 'preparation' | 'validation') => void;
   openOperation: (moveId: number, operationId: number | false) => void;
 }) {
   const loaded = useQuery({
@@ -154,7 +161,7 @@ function DetailPages({
   loaded: InventoryTransferLoad;
   reconnect: () => void;
   reload: () => void;
-  openWrite: (kind: 'confirmation' | 'preparation') => void;
+  openWrite: (kind: 'confirmation' | 'preparation' | 'validation') => void;
   openOperation: (moveId: number, operationId: number | false) => void;
 }) {
   const [cursors, setCursors] = useState<Record<Section, Cursor[]>>({
@@ -321,6 +328,13 @@ function DetailPages({
         onClick={() => openWrite('preparation')}
       >
         Prepare stock or recover request
+      </Button>
+      <Button
+        kind="tertiary"
+        disabled={fetching}
+        onClick={() => openWrite('validation')}
+      >
+        Review or recover validation
       </Button>
       {sections.map((section, index) => {
         const page = queries[index].data!;

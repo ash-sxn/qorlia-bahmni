@@ -43,7 +43,7 @@ type Request = StockValidationStepRequest | PagedStockValidationRequest;
 type Status = PagedStockValidationStatus;
 type Props = {
   uid: number;
-  orderId: number;
+  orderId: number | false;
   transferId: number;
   legacyParent?: StockValidationStepRequest;
   close: () => void;
@@ -506,8 +506,8 @@ function ValidationReview({
       }
     });
   const refreshAfterResolution = async () => {
-    await Promise.all(
-      [
+    await Promise.all([
+      ...[
         'reservation-recovery',
         'order-deliveries',
         'order-transfer-details',
@@ -518,7 +518,17 @@ function ValidationReview({
           refetchType: 'none',
         }),
       ),
-    );
+      ...[
+        'inventory-transfers',
+        'inventory-transfer-load',
+        'inventory-transfer-detail',
+      ].map((key) =>
+        client.invalidateQueries({
+          queryKey: ['billing', key, uid],
+          refetchType: 'active',
+        }),
+      ),
+    ]);
     if (mounted.current) close();
   };
   const finish = () =>
@@ -616,8 +626,9 @@ function ValidationReview({
           <>
             <h3>{state.transfer.name}</h3>
             <p>
-              Order #{orderId} · Transfer #{transferId} · Current state:{' '}
-              {state.transfer.state} · Company: {label(state.transfer.company)}
+              {orderId === false ? 'Inventory' : `Order #${orderId}`} · Transfer
+              #{transferId} · Current state: {state.transfer.state} · Company:{' '}
+              {label(state.transfer.company)}
             </p>
             <p>
               From: {label(state.transfer.source)} · To:{' '}

@@ -3,10 +3,17 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Newest source: [global Inventory operation editing](STOCK_INVENTORY_WORKSPACE.md#candidate-70-global-operation-editing-19-october-2026)
+Newest source: [global Inventory validation](STOCK_INVENTORY_WORKSPACE.md#candidate-71-global-validation-19-october-2026)
+connects all seven native APIs and the existing per-step dialog/recovery without
+Sales orders. Saved preparation and parent history remain. Home passes 1,596
+cases/102 suites; source-matched native verification and remaining gates are in
+the guide. No review reopening, build/server, installed upgrade or deployment.
+
+Earlier source: [global Inventory operation editing](STOCK_INVENTORY_WORKSPACE.md#candidate-70-global-operation-editing-19-october-2026)
 connects native operation create/edit/remove, all eight existing APIs and exact
 recovery for an orderless transfer. Shared form fields, review dialog, tables,
-native permissions and proofs remain. Verification and remaining global stock,
+native permissions and proofs remain. The scoped 85-case native run passes.
+Verification and remaining global stock,
 browser/full-regression/release gates are in the guide. Nothing is deployed.
 
 Earlier source: [global Inventory preparation](STOCK_INVENTORY_WORKSPACE.md#candidate-69-global-preparation-19-october-2026)

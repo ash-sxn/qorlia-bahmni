@@ -1,11 +1,23 @@
 # Bahmni workflow parity ledger
 
+## 19 October global Inventory validation source
+
+[Candidate 71](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-71-global-validation-19-october-2026)
+connects all seven complete native validation APIs, the shared per-step Qorlia
+dialog and exact request/parent-history recovery for transfers without orders.
+Accepted preparation survives later decline; stopping a child preserves its
+parent. Legacy formats/requests stay strict. Home passes 1,596 cases/102 suites;
+source-matched native verification and remaining gates are in the guide. No
+review reopening, build/server, installed upgrade or deployment.
+
 ## 19 October global Inventory operation editing source
 
 [Candidate 70](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-70-global-operation-editing-19-october-2026)
 connects native operation forms, create/edit/remove, all eight existing APIs and
 exact durable recovery without Sales order links. It reuses the existing Qorlia
-components and native engine. Verification and remaining correction/global-stock,
+components and native engine. The scoped 85 native cases pass, preserving 132
+tables; matching-client replay accepts 407 responses with mocked transport.
+Verification and remaining correction/global-stock,
 native view/field/permission, browser and release gates are recorded in the guide.
 Review remains closed; no build/server, installed upgrade or deployment.
 

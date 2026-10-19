@@ -176,13 +176,15 @@ function database() {
   };
 }
 
-const completeValidation = (): PagedStockValidationRequest => ({
+const completeValidation = (): PagedStockValidationRequest & {
+  order_id: number;
+} => ({
   ...validationRequest(),
   continuation_key: false,
   review_complete_token: 'c'.repeat(64),
 });
 const validationEnvelope = (
-  request = completeValidation(),
+  request: PagedStockValidationRequest = completeValidation(),
   history: unknown[] = [],
 ) => ({
   schema: 6,
@@ -1191,7 +1193,7 @@ describe('Complete validation durable recovery and prior-action handoff', () => 
     global.fetch = jest.fn();
   });
   const child = (
-    parent = completeValidation(),
+    parent: PagedStockValidationRequest = completeValidation(),
     first = '22222222',
   ): PagedStockValidationRequest => ({
     ...parent,
@@ -1250,46 +1252,49 @@ describe('Complete validation durable recovery and prior-action handoff', () => 
       durability: 'strict',
     });
   });
-  it('retains all ancestors through repeated stopped-child recovery and exact retry', async () => {
-    const fake = database(),
-      root = completeValidation(),
-      next = child(root),
-      later = child(next, '33333333');
-    await persistPagedStockValidationRecovery(3, root);
-    nativeOutcome(validationOutcome(root));
-    await persistPagedStockValidationRecovery(3, next, root);
-    nativeOutcome(validationOutcome(next));
-    await persistPagedStockValidationRecovery(3, later, next);
-    expect(fake.records.get(3)).toEqual(
-      validationEnvelope(later, [root, next]),
-    );
-    await persistPagedStockValidationRecovery(3, later);
-    expect((await loadPagedStockValidationRecovery(3))?.history).toEqual([
-      root,
-      next,
-    ]);
-    nativeOutcome(validationOutcome(later, 'stopped'));
-    expect(await restoreStoppedPagedStockValidationRecovery(3, later)).toEqual(
-      next,
-    );
-    expect(fake.records.get(3)).toEqual(validationEnvelope(next, [root]));
-    const replacement = child(next, '44444444');
-    nativeOutcome(validationOutcome(next));
-    await persistPagedStockValidationRecovery(3, replacement, next);
-    nativeOutcome(validationOutcome(replacement, 'stopped'));
-    await restoreStoppedPagedStockValidationRecovery(3, replacement);
-    expect(await loadPagedStockValidationRecovery(3)).toEqual({
-      request: next,
-      history: [root],
-    });
-    expect(
-      (fetch as jest.Mock).mock.calls.every(
-        (call) =>
-          JSON.parse(call[1].body).params.method ===
-          'qorlia_validation_paged_status',
-      ),
-    ).toBe(true);
-  });
+  it.each([9, false] as const)(
+    'retains all ancestors through repeated stopped-child recovery and exact retry, order %s',
+    async (order_id) => {
+      const fake = database(),
+        root = { ...completeValidation(), order_id },
+        next = child(root),
+        later = child(next, '33333333');
+      await persistPagedStockValidationRecovery(3, root);
+      nativeOutcome(validationOutcome(root));
+      await persistPagedStockValidationRecovery(3, next, root);
+      nativeOutcome(validationOutcome(next));
+      await persistPagedStockValidationRecovery(3, later, next);
+      expect(fake.records.get(3)).toEqual(
+        validationEnvelope(later, [root, next]),
+      );
+      await persistPagedStockValidationRecovery(3, later);
+      expect((await loadPagedStockValidationRecovery(3))?.history).toEqual([
+        root,
+        next,
+      ]);
+      nativeOutcome(validationOutcome(later, 'stopped'));
+      expect(
+        await restoreStoppedPagedStockValidationRecovery(3, later),
+      ).toEqual(next);
+      expect(fake.records.get(3)).toEqual(validationEnvelope(next, [root]));
+      const replacement = child(next, '44444444');
+      nativeOutcome(validationOutcome(next));
+      await persistPagedStockValidationRecovery(3, replacement, next);
+      nativeOutcome(validationOutcome(replacement, 'stopped'));
+      await restoreStoppedPagedStockValidationRecovery(3, replacement);
+      expect(await loadPagedStockValidationRecovery(3)).toEqual({
+        request: next,
+        history: [root],
+      });
+      expect(
+        (fetch as jest.Mock).mock.calls.every(
+          (call) =>
+            JSON.parse(call[1].body).params.method ===
+            'qorlia_validation_paged_status',
+        ),
+      ).toBe(true);
+    },
+  );
   it('explicitly continues an accepted legacy step and restores its unchanged schema on stop', async () => {
     const fake = database();
     const parent = { ...validationRequest(), continuation_key: false as const };
@@ -1550,7 +1555,7 @@ describe('Complete validation durable recovery and prior-action handoff', () => 
       replaceStockValidationRecovery(
         3,
         { ...validationRequest(), continuation_key: false },
-        child(exact),
+        { ...child(exact), order_id: exact.order_id },
       ),
     ).rejects.toThrow(/complete validation recovery protocol/);
     expect(fake.factory.open).not.toHaveBeenCalled();

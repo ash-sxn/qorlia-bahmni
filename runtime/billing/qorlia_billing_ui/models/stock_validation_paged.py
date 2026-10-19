@@ -64,7 +64,7 @@ class StockValidationPaged(models.Model):
                 'order_id', 'transfer_id', 'version', 'continuation_key', 'decisions'}:
             raise ValidationError('Use the exact native validation step and its saved continuation.')
         request = dict(payload, review_version='0' * 64, request_key=str(uuid.uuid4()))
-        self._qorlia_step_request(request)
+        self._qorlia_step_request(request, allow_inventory=True)
         return copy.deepcopy(payload)
 
     @api.model
@@ -72,7 +72,7 @@ class StockValidationPaged(models.Model):
         self = self._qorlia_operation_paged_context()
         # Pin fresh ORM values, not a cache that differs after native lock-time invalidation.
         self.env.invalidate_all()
-        picking, order, scope = self._qorlia_confirmation_paged_transfer(order_id, transfer_id)
+        picking, order, scope = self._qorlia_confirmation_paged_transfer(order_id, transfer_id, inventory=True)
         reason = False
         try:
             picking._qorlia_validation_access()
@@ -102,7 +102,7 @@ class StockValidationPaged(models.Model):
 
     def _qorlia_validation_paged_preview(self, data):
         picking, _order, _scope = self._qorlia_confirmation_paged_transfer(
-            data['order_id'], data['transfer_id'], lock=True)
+            data['order_id'], data['transfer_id'], lock=True, inventory=True)
         picking._qorlia_validation_access()
         picking._qorlia_reservation_scope(lock=True, complete=True)
         current = self.qorlia_validation_paged_load(data['order_id'], data['transfer_id'])

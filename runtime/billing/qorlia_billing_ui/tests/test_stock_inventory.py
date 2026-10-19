@@ -384,6 +384,192 @@ class StockInventoryPreparationTest(StockInventoryFixture, TransactionCase):
 
 
 @tagged('post_install', '-at_install')
+class StockInventoryValidationTest(StockInventoryFixture, TransactionCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.reader.email = 'qorliaqa-inventory-validation@example.invalid'
+
+    unlinked = StockInventoryConfirmationTest.unlinked
+    api = StockInventoryConfirmationTest.api
+
+    def prepared(self, kind=None, done=None):
+        picking = self.unlinked(kind)
+        picking.action_confirm()
+        picking.action_assign()
+        self.assertEqual(picking.state, 'assigned')
+        if done is not None:
+            picking.move_line_ids.qty_done = done
+        return picking
+
+    def selection(self, picking, previous=None, decision=None):
+        loaded = self.api().qorlia_validation_paged_load(False, picking.id)
+        self.assertIs(loaded['order_id'], False)
+        return {'order_id': False, 'transfer_id': picking.id, 'version': loaded['version'],
+            'continuation_key': previous['request_key'] if previous else False,
+            'decisions': [decision] if decision else []}
+
+    def exact(self, picking, previous=None, decision=None, limit=100):
+        data = self.selection(picking, previous, decision)
+        after, version, token = 0, False, False
+        while True:
+            page = self.api().qorlia_validation_paged_review(data, after, version, token, limit)
+            self.assertIs(page['order_id'], False)
+            if page['next_after'] is False:
+                return dict(data, review_version=page['review_version'],
+                    review_complete_token=page['review_complete_token'], request_key=str(uuid.uuid4()))
+            after, version, token = page['next_after'], page['review_version'], page['continuation_token']
+
+    def test_delivery_and_internal_validation_move_real_stock_without_sales_access(self):
+        self.assertFalse(self.reader.has_group('sales_team.group_sale_salesman'))
+        for kind in (self.out_type, self.internal_type):
+            with self.subTest(operation=kind.code):
+                before = self.source_stock()
+                picking = self.prepared(kind, 5)
+                request = self.exact(picking)
+                self.assertFalse(self.api().qorlia_validation_paged_status(request)['accepted'])
+                saved = self.api().qorlia_validation_paged_save(request)
+                self.assertIs(saved['current']['order_id'], False)
+                self.assertTrue(saved['receipt']['terminal'])
+                self.assertEqual((picking.state, self.source_stock()), ('done', before - 5))
+                self.assertEqual(self.sale_line.qty_delivered, 0)
+                self.assertFalse(picking.sale_id)
+                self.assertEqual(saved, self.api().qorlia_validation_paged_save(request))
+                self.assertEqual(saved, self.api().qorlia_validation_paged_status(request))
+                self.assertEqual(saved, self.api().qorlia_validation_paged_stop(request))
+                refs = self.api().qorlia_validation_paged_reference_page(request)
+                self.assertEqual(refs['total_count'], saved['receipt']['reference_count'])
+
+    def test_receipt_retains_native_prompt_prices_batch_and_real_references(self):
+        picking = self.prepared(self.in_type, 5)
+        picking.move_line_ids.write({'lot_id': False, 'lot_name': 'QorliaQA Global validation receiving batch',
+            'expiration_date': '2027-02-01 00:00:00', 'cost_price': 2.5, 'sale_price': 5, 'mrp': 7})
+        opening = self.exact(picking)
+        accepted = self.api().qorlia_validation_paged_save(opening)
+        self.assertEqual(accepted['receipt']['next_step']['kind'], 'receipt')
+        prompt = self.api().qorlia_validation_paged_prompt_page(opening)
+        self.assertEqual(prompt['rows'][0]['value']['qty_done'], 5)
+        self.assertEqual(self.source_stock(), 10)
+        finish = self.exact(picking, opening, {'kind': 'receipt', 'confirm': True}, limit=1)
+        saved = self.api().qorlia_validation_paged_save(finish)
+        self.assertTrue(saved['receipt']['terminal'])
+        self.assertEqual(self.source_stock(), 15)
+        batch = picking.with_env(self.env).move_line_ids.lot_id
+        self.assertEqual((batch.cost_price, batch.sale_price, batch.mrp), (2.5, 5, 7))
+        refs = self.api().qorlia_validation_paged_reference_page(finish)
+        self.assertTrue(any(row['model'] == 'stock.lot' and row['id'] == batch.id for row in refs['rows']))
+        self.assertEqual(saved, self.api().qorlia_validation_paged_save(finish))
+
+    def test_immediate_preparation_survives_declining_later_expiry(self):
+        self.lot.expiration_date = '2000-01-01 00:00:00'
+        picking = self.prepared()
+        opening = self.exact(picking)
+        self.api().qorlia_validation_paged_save(opening)
+        immediate = self.exact(picking, opening, {'kind': 'immediate', 'selected': True})
+        result = self.api().qorlia_validation_paged_save(immediate)
+        self.assertEqual(result['receipt']['next_step']['kind'], 'expiry')
+        self.assertEqual((picking.move_line_ids.qty_done, self.source_stock()), (5, 10))
+        declined = self.exact(picking, immediate, {'kind': 'expiry', 'proceed': False})
+        terminal = self.api().qorlia_validation_paged_save(declined)
+        self.assertTrue(terminal['receipt']['terminal'])
+        self.assertEqual((picking.state, picking.move_line_ids.qty_done, self.source_stock()), ('assigned', 5, 10))
+
+    def test_partial_validation_creates_the_native_orderless_backorder(self):
+        picking = self.prepared(done=2)
+        opening = self.exact(picking)
+        self.api().qorlia_validation_paged_save(opening)
+        finish = self.exact(picking, opening, {'kind': 'backorder', 'selected': True})
+        self.assertTrue(self.api().qorlia_validation_paged_save(finish)['receipt']['terminal'])
+        remainder = self.env['stock.picking'].search([('backorder_id', '=', picking.id)])
+        self.assertEqual((len(remainder), sum(remainder.move_ids.mapped('product_uom_qty'))), (1, 3))
+        self.assertFalse(remainder.sale_id)
+        self.assertEqual((self.source_stock(), self.sale_line.qty_delivered), (8, 0))
+
+    def test_stopped_continuation_preserves_the_accepted_parent_prompt(self):
+        picking = self.prepared()
+        opening = self.exact(picking)
+        self.api().qorlia_validation_paged_save(opening)
+        child = self.exact(picking, opening, {'kind': 'immediate', 'selected': True})
+        stopped = self.api().qorlia_validation_paged_stop(child)
+        self.assertTrue(stopped['stopped'])
+        self.assertFalse(stopped['accepted'])
+        self.assertEqual(stopped['receipt']['request_key'], opening['request_key'])
+        self.assertEqual(stopped['receipt']['next_step']['kind'], 'immediate')
+        self.assertEqual(self.api().qorlia_validation_paged_prompt_page(child)['receipt_key'], opening['request_key'])
+        self.assertEqual(self.api().qorlia_validation_paged_reference_page(child)['receipt_key'], opening['request_key'])
+        self.assertEqual(stopped, self.api().qorlia_validation_paged_stop(child))
+        with self.assertRaises(UserError):
+            self.api().qorlia_validation_paged_save(child)
+        self.assertEqual((picking.move_line_ids.qty_done, self.source_stock()), (0, 10))
+
+    def test_global_identity_is_literal_false_and_legacy_validation_stays_strict(self):
+        picking = self.prepared()
+        for value in (0, True, None, '', [], {}, -1):
+            with self.subTest(value=value), self.assertRaises(ValidationError):
+                self.api().qorlia_validation_paged_load(value, picking.id)
+        request = self.exact(picking)
+        legacy = {key: value for key, value in request.items() if key != 'review_complete_token'}
+        with self.assertRaises(ValidationError):
+            self.api().qorlia_validation_step_save(legacy)
+        with self.assertRaises(ValidationError):
+            self.api().qorlia_validation_save({key: value for key, value in legacy.items() if key != 'continuation_key'})
+
+    def test_linked_transfer_global_and_order_proofs_cannot_be_swapped(self):
+        picking = self.prepared(done=5)
+        group = self.env['procurement.group'].create({'name': 'QorliaQA Global validation linked order',
+            'sale_id': self.order.id, 'partner_id': self.customer.id})
+        picking.with_env(self.env).group_id = group
+        picking.move_ids.with_env(self.env).write({'group_id': group.id, 'sale_line_id': self.sale_line.id})
+        loaded = self.api().qorlia_validation_paged_load(False, picking.id)
+        ordered = self.env['stock.picking'].with_user(self.user).qorlia_validation_paged_load(self.order.id, picking.id)
+        self.assertIs(loaded['order_id'], False)
+        self.assertNotEqual(loaded['version'], ordered['version'])
+        request = self.exact(picking)
+        before = self.stamp()
+        with self.assertRaises(UserError):
+            self.env['stock.picking'].with_user(self.user).qorlia_validation_paged_save(dict(request, order_id=self.order.id))
+        self.assertEqual(self.stamp(), before)
+
+    def test_changed_scope_and_incomplete_proof_cannot_validate(self):
+        picking = self.prepared(done=5)
+        request = self.exact(picking, limit=1)
+        with self.assertRaises(UserError):
+            self.api().qorlia_validation_paged_save(dict(request, review_complete_token='a' * 64))
+        picking.with_env(self.env).origin = 'QorliaQA Changed global validation source'
+        before = self.stamp()
+        with self.assertRaises(UserError):
+            self.api().qorlia_validation_paged_save(request)
+        self.assertEqual(self.stamp(), before)
+        self.assertEqual(self.source_stock(), 10)
+
+    def test_hidden_move_and_denied_transfer_writes_are_not_bypassed(self):
+        picking = self.prepared(done=5)
+        request = self.exact(picking)
+        rule = self.env['ir.rule'].create({'name': 'QorliaQA Global validation hidden move',
+            'model_id': self.env['ir.model']._get_id('stock.move'),
+            'domain_force': "[('id', '!=', %s)]" % picking.move_ids.id,
+            'perm_read': True, 'perm_write': False, 'perm_create': False, 'perm_unlink': False})
+        with self.assertRaises(AccessError):
+            self.api().qorlia_validation_paged_load(False, picking.id)
+        rule.unlink()
+        self.env['ir.rule'].create({'name': 'QorliaQA Global validation write denial',
+            'model_id': self.env['ir.model']._get_id('stock.picking'),
+            'domain_force': "[('id', '!=', %s)]" % picking.id,
+            'perm_read': False, 'perm_write': True, 'perm_create': False, 'perm_unlink': False})
+        with self.assertRaises(UserError):
+            self.api().qorlia_validation_paged_save(request)
+        with self.assertRaises(AccessError):
+            self.api().qorlia_validation_paged_stop(request)
+
+    def test_other_author_cannot_recover_the_accepted_global_receipt(self):
+        picking = self.prepared(done=5)
+        request = self.exact(picking)
+        self.api().qorlia_validation_paged_save(request)
+        with self.assertRaises(ValidationError):
+            self.env['stock.picking'].with_user(self.user).qorlia_validation_paged_status(request)
+
+
+@tagged('post_install', '-at_install')
 class StockInventoryOperationTest(StockInventoryFixture, TransactionCase):
     @classmethod
     def setUpClass(cls):

@@ -22,7 +22,7 @@ class StockValidationPagedWrite(models.Model):
                 'continuation_key', 'decisions', 'review_version', 'review_complete_token', 'request_key'}
                 or not _hash(payload['review_complete_token'])):
             raise ValidationError('Use the exact completely reviewed validation request.')
-        self._qorlia_step_request({key: value for key, value in payload.items() if key != 'review_complete_token'})
+        self._qorlia_step_request({key: value for key, value in payload.items() if key != 'review_complete_token'}, allow_inventory=True)
         request = copy.deepcopy(payload)
         return request, _digest({'purpose': _PURPOSE, 'request': request,
             'author': self.env.uid, 'companies': self.env.companies.ids})
@@ -41,7 +41,7 @@ class StockValidationPagedWrite(models.Model):
 
     def _qorlia_validation_paged_recovery(self, payload):
         request, digest = self._qorlia_validation_paged_request(payload)
-        picking, order, scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, order, scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         receipt, receipts, marker = picking._qorlia_validation_paged_receipt(request, digest)
         key, target = request['request_key'], receipt
         if marker:
@@ -133,14 +133,14 @@ class StockValidationPagedWrite(models.Model):
     def qorlia_validation_paged_save(self, payload):
         self = self._qorlia_operation_paged_context()
         request, digest = self._qorlia_validation_paged_request(payload)
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         receipt, _receipts, marker = picking._qorlia_validation_paged_receipt(request, digest)
         if receipt:
             return self.qorlia_validation_paged_status(request)
         if marker:
             raise UserError('This exact request was stopped. It cannot be applied. Recover its stopped outcome.')
         picking._qorlia_validation_paged_lock()
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         receipt, receipts, marker = picking._qorlia_validation_paged_receipt(request, digest)
         if receipt:
             return self.qorlia_validation_paged_status(request)
@@ -184,14 +184,14 @@ class StockValidationPagedWrite(models.Model):
     def qorlia_validation_paged_stop(self, payload):
         self = self._qorlia_operation_paged_context()
         request, digest = self._qorlia_validation_paged_request(payload)
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         picking.check_access_rights('write')
         picking.check_access_rule('write')
         receipt, _receipts, marker = picking._qorlia_validation_paged_receipt(request, digest)
         if receipt or marker:
             return self.qorlia_validation_paged_status(request)
         picking._qorlia_validation_paged_lock()
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         picking.check_access_rights('write')
         picking.check_access_rule('write')
         receipt, receipts, marker = picking._qorlia_validation_paged_receipt(request, digest)
