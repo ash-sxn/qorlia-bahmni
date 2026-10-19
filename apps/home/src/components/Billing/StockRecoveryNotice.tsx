@@ -5,6 +5,7 @@ import styles from './BillingPage.module.scss';
 import { OrderDeliveriesPanel } from './OrderDeliveriesPanel';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
 import { PagedStockReservationModal } from './PagedStockReservationModal';
+import { PagedStockWriteModal } from './PagedStockWriteModal';
 import {
   isPagedStockReturnRequest,
   isPagedStockCancellationRequest,
@@ -28,7 +29,7 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
   const [target, setTarget] = useState<{
     orderId: number | false;
     transferId: number;
-    kind: 'confirmation' | 'preparation';
+    kind: 'confirmation' | 'preparation' | 'operation';
   } | null>(null);
   const opener = useRef<HTMLButtonElement>(null);
   const retryButton = useRef<HTMLButtonElement>(null);
@@ -61,18 +62,21 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
       target.kind === 'confirmation'
         ? PagedStockConfirmationModal
         : PagedStockReservationModal;
-    return (
-      <Workflow
-        uid={uid}
-        orderId={false}
-        transferId={target.transferId}
-        reconnect={reconnect}
-        close={() => {
-          restoreFocus.current = true;
-          setTarget(null);
-          void saved.refetch();
-        }}
-      />
+    const props = {
+      uid,
+      orderId: false as const,
+      transferId: target.transferId,
+      reconnect,
+      close: () => {
+        restoreFocus.current = true;
+        setTarget(null);
+        void saved.refetch();
+      },
+    };
+    return target.kind === 'operation' ? (
+      <PagedStockWriteModal {...props} kind="operation" />
+    ) : (
+      <Workflow {...props} />
     );
   }
   if (target !== null)
@@ -146,7 +150,9 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
             transferId: request.transfer_id,
             kind: isStockConfirmationRequest(request)
               ? 'confirmation'
-              : 'preparation',
+              : isStockOperationRequest(request)
+                ? 'operation'
+                : 'preparation',
           })
         }
       >

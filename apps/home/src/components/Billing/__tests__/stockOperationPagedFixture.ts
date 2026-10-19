@@ -18,7 +18,9 @@ export const formRequest = () => ({
   edits: operationSelectionRequest().edits,
 });
 
-export const request = (): PagedStockOperationRequest => ({
+export const request = (): PagedStockOperationRequest & {
+  order_id: number;
+} => ({
   ...operationRequest(),
   review_complete_token: 'd'.repeat(64),
 });

@@ -11,6 +11,7 @@ import {
   getPagedStockOperationStatus,
   PagedStockOperationRequest,
   savePagedStockOperation,
+  stopPagedStockOperation,
   StockOperationSelection,
   StockOperationSelectionRequest,
 } from '../billingService';
@@ -42,6 +43,69 @@ const params = () =>
 describe('Complete paged operation API boundary', () => {
   beforeEach(() => {
     global.fetch = jest.fn();
+  });
+  it('uses all eight existing APIs for a global operation without an order', async () => {
+    const selected = { ...operationSelection(), order_id: false as const };
+    const form = { ...operationForm(), order_id: false as const };
+    const formEdits = { ...formRequest(), order_id: false as const };
+    const exact = { ...request(), order_id: false as const };
+    const outcome = {
+      ...status(),
+      current: { ...status().current, order_id: false as const },
+    };
+    reply(form);
+    expect(await getPagedStockOperationForm(selected)).toEqual(form);
+    expect(await changePagedStockOperationForm(formEdits)).toEqual(form);
+    reply({ rows: [[7, 'QorliaQA Batch']], has_more: false, offset: 0 });
+    await getPagedStockOperationChoices(formEdits, 'lot_id');
+    reply({ ...review(), order_id: false, form });
+    await getPagedStockOperationReview({
+      ...operationSelectionRequest(),
+      order_id: false,
+    });
+    reply(outcome);
+    expect(await savePagedStockOperation(exact)).toEqual(outcome);
+    expect(await getPagedStockOperationStatus(exact)).toEqual(outcome);
+    reply(references());
+    await getPagedStockOperationReferences(exact);
+    reply({ request_key: exact.request_key, accepted: true, stopped: false });
+    await stopPagedStockOperation(exact);
+    expect(params().map((p) => p.method)).toEqual(
+      [
+        'load',
+        'onchange',
+        'choices',
+        'review',
+        'save',
+        'status',
+        'references',
+        'stop',
+      ].map((name) => 'qorlia_operation_paged_' + name),
+    );
+    for (const call of params().slice(4))
+      expect(call.kwargs.payload).toEqual(exact);
+  });
+  it('rejects false lookalikes and mismatched global/order forms and receipts', async () => {
+    for (const order_id of [0, true, null, '', [], {}, -1]) {
+      await expect(
+        getPagedStockOperationForm({
+          ...operationSelection(),
+          order_id,
+        } as never),
+      ).rejects.toThrow();
+      expect(() =>
+        checkedPagedStockOperationRequest({ ...request(), order_id } as never),
+      ).toThrow();
+    }
+    expect(fetch).not.toHaveBeenCalled();
+    reply(operationForm());
+    await expect(
+      getPagedStockOperationForm({ ...operationSelection(), order_id: false }),
+    ).rejects.toThrow();
+    reply(status());
+    await expect(
+      getPagedStockOperationStatus({ ...request(), order_id: false }),
+    ).rejects.toThrow();
   });
   it('uses seven named APIs, existing form shape and exact completion-proof payloads', async () => {
     reply(operationForm());

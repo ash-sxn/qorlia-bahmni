@@ -18,9 +18,9 @@ import {
   stopPagedStockOperation,
   getStockOperationForm,
   previewStockOperation,
-  type StockOperationForm,
-  type StockOperationSelection,
-  type StockOperationSelectionRequest,
+  type PagedStockOperationForm,
+  type PagedStockOperationSelection,
+  type PagedStockOperationSelectionRequest,
   type PagedStockOperationReview,
 } from '../billingService';
 import { PagedStockOperationEditor } from '../PagedStockOperationEditor';
@@ -83,16 +83,18 @@ const get = jest.mocked(getPagedStockOperationForm),
   persist = jest.mocked(persistPagedStockWriteRecovery),
   clear = jest.mocked(clearPagedStockWriteRecovery);
 let disk: PagedStockWriteRequest | null,
-  nativeForm: StockOperationForm,
+  nativeForm: PagedStockOperationForm,
   saved: boolean;
 const close = jest.fn(),
   reconnect = jest.fn(),
   returnFocus = jest.fn();
-const show = (selection = operationSelection()) => {
+const show = (
+  selection: PagedStockOperationSelection = operationSelection(),
+) => {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  const panel = (uid: number, selected: StockOperationSelection) => (
+  const panel = (uid: number, selected: PagedStockOperationSelection) => (
     <QueryClientProvider client={client}>
       <PagedStockOperationEditor
         uid={uid}
@@ -159,6 +161,10 @@ const submit = async () => {
 };
 const result = () => ({
   ...status(saved),
+  current: {
+    ...status(saved).current,
+    order_id: disk?.order_id ?? nativeForm.order_id,
+  },
   request_key: disk?.request_key ?? request().request_key,
   action:
     disk && 'action' in disk && disk.action === 'delete'
@@ -170,7 +176,7 @@ const result = () => ({
       : (false as const),
 });
 const page = (
-  selection: StockOperationSelectionRequest,
+  selection: PagedStockOperationSelectionRequest,
   after = 0,
   limit = 50,
 ): PagedStockOperationReview => {
@@ -252,15 +258,25 @@ describe('Complete paged operation editor and native request recovery', () => {
     });
   });
 
-  it.each(['create', 'edit', 'delete'] as const)(
-    'completes every effect page for %s, pins the exact selection and persists before the native save',
-    async (mode) => {
+  it.each(
+    (['create', 'edit', 'delete'] as const).flatMap((mode) =>
+      ([9, false] as const).map((order_id) => ({ mode, order_id })),
+    ),
+  )(
+    'completes every effect page for $mode with order $order_id, pins selection and persists before save',
+    async ({ mode, order_id }) => {
       const selection = {
         ...operationSelection(),
+        order_id,
         operation_id: mode === 'create' ? (false as const) : 13,
       };
       nativeForm = { ...nativeForm, ...selection };
       show(selection);
+      expect(
+        await screen.findByText(
+          order_id === false ? /Inventory · Transfer/ : /Order #9 · Transfer/,
+        ),
+      ).toBeInTheDocument();
       if (mode === 'edit') await edit();
       await startReview(mode === 'delete' ? 'delete' : 'save');
       expect(
@@ -500,80 +516,94 @@ describe('Complete paged operation editor and native request recovery', () => {
     expect(save).not.toHaveBeenCalled();
     expect(disk).toBeNull();
   });
-  it.each([
-    new Error('Response lost'),
-    new BillingActionRejected('Native action rejected'),
-    new BillingSessionExpired(),
-  ])('retains the exact action after a failed save: %s', async (error) => {
-    save.mockRejectedValueOnce(error);
-    const view = show();
-    await edit();
-    await startReview();
-    await complete();
-    await submit();
-    expect(disk).toEqual(request());
-    expect(clear).not.toHaveBeenCalled();
-    view.unmount();
-    show();
-    await screen.findByRole('button', {
-      name: /Retry identical operation request$/,
-    });
-    fireEvent.click(
-      screen.getByRole('button', {
+  it.each(
+    [
+      new Error('Response lost'),
+      new BillingActionRejected('Native action rejected'),
+      new BillingSessionExpired(),
+    ].flatMap((error) =>
+      ([9, false] as const).map((order_id) => ({ error, order_id })),
+    ),
+  )(
+    'retains the exact action after a failed save: $error, order $order_id',
+    async ({ error, order_id }) => {
+      const selection = { ...operationSelection(), order_id };
+      const exact = { ...request(), order_id };
+      nativeForm = { ...nativeForm, order_id };
+      save.mockRejectedValueOnce(error);
+      const view = show(selection);
+      await edit();
+      await startReview();
+      await complete();
+      await submit();
+      expect(disk).toEqual(exact);
+      expect(clear).not.toHaveBeenCalled();
+      view.unmount();
+      show(selection);
+      await screen.findByRole('button', {
         name: /Retry identical operation request$/,
-      }),
-    );
-    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
-    expect(save.mock.calls[1][0]).toEqual(request());
-    expect(crypto.randomUUID).toHaveBeenCalledTimes(1);
-  });
-  it('recovers an accepted receipt only after every pinned reference page and a fresh status', async () => {
-    disk = request();
-    saved = true;
-    check.mockImplementation(async () => ({
-      ...result(),
-      reference_count: 101,
-    }));
-    refs.mockImplementation(async (_exact, after = 0, version = false) => ({
-      ...references(),
-      version: version || 'e'.repeat(64),
-      after,
-      total_count: 101,
-      next_after: after + 50 < 101 ? after + 50 : false,
-      rows: Array.from({ length: Math.min(50, 101 - after) }, (_, i) => ({
-        key: `new:stock.move.line:${String(after + i).padStart(3, '0')}`,
-        model: 'stock.move.line',
-        id: 101 + after + i,
-        name: `QA Operation ${after + i}`,
-        available: true,
-      })),
-    }));
-    show();
-    const finish = await screen.findByRole('button', {
-      name: 'Finish and reload transfers',
-    });
-    expect(finish).toBeDisabled();
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Read saved references' }),
-    );
-    await screen.findByText('Saved reference page 1');
-    for (let page = 2; page <= 3; page++) {
+      });
       fireEvent.click(
-        screen.getByRole('button', { name: 'Next saved references' }),
+        screen.getByRole('button', {
+          name: /Retry identical operation request$/,
+        }),
       );
-      await screen.findByText(`Saved reference page ${page}`);
-    }
-    expect(refs.mock.calls.map((call) => call.slice(1))).toEqual([
-      [0, false, 50],
-      [50, 'e'.repeat(64), 50],
-      [100, 'e'.repeat(64), 50],
-    ]);
-    fireEvent.click(finish);
-    await waitFor(() => expect(clear).toHaveBeenCalledWith(3, request()));
-    expect(check).toHaveBeenCalledTimes(2);
-    expect(close).toHaveBeenCalledTimes(1);
-    expect(get).not.toHaveBeenCalled();
-  });
+      await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+      expect(save.mock.calls[1][0]).toEqual(exact);
+      expect(crypto.randomUUID).toHaveBeenCalledTimes(1);
+    },
+  );
+  it.each([9, false] as const)(
+    'recovers an accepted receipt only after every pinned reference page and a fresh status, order %s',
+    async (order_id) => {
+      const exact = { ...request(), order_id };
+      disk = exact;
+      saved = true;
+      check.mockImplementation(async () => ({
+        ...result(),
+        reference_count: 101,
+      }));
+      refs.mockImplementation(async (_exact, after = 0, version = false) => ({
+        ...references(),
+        version: version || 'e'.repeat(64),
+        after,
+        total_count: 101,
+        next_after: after + 50 < 101 ? after + 50 : false,
+        rows: Array.from({ length: Math.min(50, 101 - after) }, (_, i) => ({
+          key: `new:stock.move.line:${String(after + i).padStart(3, '0')}`,
+          model: 'stock.move.line',
+          id: 101 + after + i,
+          name: `QA Operation ${after + i}`,
+          available: true,
+        })),
+      }));
+      show();
+      const finish = await screen.findByRole('button', {
+        name: 'Finish and reload transfers',
+      });
+      expect(finish).toBeDisabled();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Read saved references' }),
+      );
+      await screen.findByText('Saved reference page 1');
+      for (let page = 2; page <= 3; page++) {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Next saved references' }),
+        );
+        await screen.findByText(`Saved reference page ${page}`);
+      }
+      expect(refs.mock.calls.map((call) => call.slice(1))).toEqual([
+        [0, false, 50],
+        [50, 'e'.repeat(64), 50],
+        [100, 'e'.repeat(64), 50],
+      ]);
+      fireEvent.click(finish);
+      await waitFor(() => expect(clear).toHaveBeenCalledWith(3, exact));
+      expect(check).toHaveBeenCalledTimes(2);
+      expect(close).toHaveBeenCalledTimes(1);
+      expect(get).not.toHaveBeenCalled();
+    },
+  );
   it('keeps recovery if the final accepted status is unavailable', async () => {
     disk = request();
     saved = true;
@@ -680,7 +710,7 @@ describe('Complete paged operation editor and native request recovery', () => {
     expect(save).not.toHaveBeenCalled();
   });
   it('ignores a late native onchange after account identity changes', async () => {
-    const pending = deferred<StockOperationForm>();
+    const pending = deferred<PagedStockOperationForm>();
     change.mockReturnValueOnce(pending.promise);
     const view = show();
     const input = await screen.findByRole('spinbutton', {

@@ -2,6 +2,63 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Candidate 70 global operation editing, 19 October 2026
+
+Inventory move rows now open the existing detailed-operation editor for creation;
+existing operation rows open the same editor for inspection, editing or removal.
+The selection uses the real transfer, move and operation identifiers, with explicit
+`order_id: false`. It neither invents an order nor requires a Sales role. The
+global form keeps that requested identity even if the native transfer happens to
+have a Sales link. Order/global versions and receipts cannot be interchanged.
+Legacy operation methods still require their original positive order identity.
+
+All eight existing `qorlia_operation_paged_*` methods are connected: load,
+onchange, choices, ordered effect review, save, status, references and stop.
+Native form defaults, visibility/readonly rules, units, batch/expiry, location,
+package/owner and Bahmni pricing fields reuse the existing implementation.
+Native onchanges and choice domains remain authoritative. Model, field, record,
+company and related-record permissions, complete stock/configuration snapshots,
+effect proofs, locks and actual-save comparison remain in force. This is native
+operation recording, not physical transfer validation or a payment.
+
+The existing Qorlia form, effect review, dialog, tables and design tokens are
+reused. Full ordered review and exact schema-8 persistence precede save. The
+Billing notice opens an original global operation request directly in recovery,
+without loading a fresh form or routing to Sales. The target stays pinned while
+the recovery banner refetches. Finishing requires every saved-reference page and
+fresh status before clearing the exact request. Lost saves/session expiry retain
+the request for exact retry, not a new operation. Inventory list/details refresh
+when the workflow closes. No dependency, schema field, raw-action gateway route,
+permission grant, custom `sudo` or second operation engine is added.
+
+### Candidate 70 verification
+
+Home passes **1,589 cases/102 suites**. Library and actual test-source types,
+scoped lint, three gateway stub cases and the 42-document/744-link check pass.
+Coverage includes all eight client calls, strict global/legacy identities,
+create/edit/delete review and persistence, lost-save/session recovery, complete
+saved-reference review, original-target routing, unavailable moves and refresh.
+Component tests use SDK/storage doubles; this is not real IndexedDB or browser
+acceptance. No additional React library or separate design system was introduced.
+
+The corrected 85-case native run is still in progress. The first native run
+completed 85 cases with two fixture errors, zero assertion failures
+or skips, and all 132 guarded tables preserved. Independent post-worker committed
+SQL counts/full-row hashes match its baseline. Its internal-transfer fixture used
+an inactive native output location; the corrected fixture creates a synthetic
+active internal destination instead of weakening the domain. The hidden-move
+test now supplies the captured real identifier rather than reading it through
+the rule that intentionally hides it. The failed run remains failed evidence.
+
+Remaining: orphaned operations without moves and completed/cancelled-operation
+corrections are not editable through this form. Global validation, returns and
+cancellation, native transfer create/edit/duplicate, remaining fields, chains,
+packages, overview/type choices, full filters/grouping/alternate views, bulk/print
+and the broader role/configuration matrix remain. Source-matched full regression,
+actual HTTP/browser/layout/IndexedDB/multi-tab/concurrency, representative scale
+and approved rollout are separate gates. Review stays closed; no frontend build,
+server, installed upgrade, hosted tester or production deployment is included.
+
 ## Candidate 69 global preparation, 19 October 2026
 
 Inventory details now open the same complete preparation dialog for all four
@@ -37,10 +94,18 @@ exact storage, no-resave recovery, Inventory entry/refresh and workflow routing.
 The first 57-case native run finished with one failed receipt-fixture expectation,
 zero errors/skips and all 132 guarded tables preserved. Independent post-worker
 committed SQL counts/full-row hashes also match its baseline. This failed run
-is retained. A corrected **57-case source-matched run is now in progress**,
+is retained. The corrected **57 unique native cases pass, zero failures/errors/skips**,
 including eight global preparation cases, 11 global confirmation regressions
-and all 38 existing preparation cases. Its final outcome remains unverified. The
-candidate-68 974-case full worker is older-source evidence, not acceptance of
+and all 38 existing preparation cases. All 106 Python hashes match the frozen
+source; all 132 guarded tables remain unchanged with mandatory analytics/SMS
+enabled. Independent post-worker committed SQL counts/full-row hashes match
+the baseline. The matching actual client accepts 309 captured native responses
+across all six APIs, including 135 orderless responses; transport is mocked.
+Log SHA256: `fb188a8ce8b8cbec20eee6aa963e34c997eca734e9a380d45de20520148e23ad`.
+Client SHA256: `3951b6028a1c11240c4d75a33c4b6d40c51d91cc3bd090fd930e944503bcc71f`.
+The readonly worker is terminal, with no HTTP/published ports and unchanged
+installed metadata 49. Bootstrap warnings remain, not clean-install proof.
+The candidate-68 974-case full worker is older-source evidence, not acceptance of
 this increment. Actual HTTP/browser/layout/IndexedDB/multi-tab/concurrency,
 scale and rollout remain separate gates. Review stays closed; no build/server,
 installed upgrade, hosted tester or production deployment.

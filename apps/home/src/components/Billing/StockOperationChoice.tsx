@@ -7,7 +7,7 @@ import {
   BillingSessionExpired,
   getPagedStockOperationChoices,
   getStockOperationChoices,
-  StockOperationFormRequest,
+  PagedStockOperationFormRequest,
   stockOperationRelationFields,
 } from './billingService';
 
@@ -24,7 +24,7 @@ export function StockOperationChoice({
   protocol = 'legacy',
 }: {
   uid: number;
-  request: StockOperationFormRequest;
+  request: PagedStockOperationFormRequest;
   field: (typeof stockOperationRelationFields)[number];
   label: string;
   value: number | false;
@@ -49,10 +49,20 @@ export function StockOperationChoice({
       term,
       offset,
     ],
-    queryFn: () =>
-      (protocol === 'complete'
-        ? getPagedStockOperationChoices
-        : getStockOperationChoices)(request, field, term, offset),
+    queryFn: () => {
+      if (protocol === 'complete')
+        return getPagedStockOperationChoices(request, field, term, offset);
+      if (request.order_id === false)
+        throw new Error(
+          'Legacy stock choices require their original charge order.',
+        );
+      return getStockOperationChoices(
+        { ...request, order_id: request.order_id },
+        field,
+        term,
+        offset,
+      );
+    },
     enabled: !disabled,
     retry: false,
     refetchOnWindowFocus: false,

@@ -91,7 +91,7 @@ export const isStockConfirmationRequest = (
   !isPagedStockReturnRequest(request);
 export const isStockOperationRequest = (
   request: StockWriteRequest,
-): request is StockOperationRequest =>
+): request is StockOperationRequest | PagedStockOperationRequest =>
   'action' in request &&
   (request.action === 'save' || request.action === 'delete');
 export const isPagedStockWriteRequest = (

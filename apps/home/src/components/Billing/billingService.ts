@@ -4025,6 +4025,22 @@ export interface StockOperationSelection {
   move_id: number;
   operation_id: number | false;
 }
+export interface PagedStockOperationSelection
+  extends Omit<StockOperationSelection, 'order_id'> {
+  order_id: number | false;
+}
+export interface PagedStockOperationFormRequest
+  extends Omit<StockOperationFormRequest, 'order_id'> {
+  order_id: number | false;
+}
+export interface PagedStockOperationForm
+  extends Omit<StockOperationForm, 'order_id'> {
+  order_id: number | false;
+}
+export interface PagedStockOperationSelectionRequest
+  extends PagedStockOperationFormRequest {
+  action: 'save' | 'delete';
+}
 export interface StockOperationEdit {
   field: StockOperationField;
   value: number | string | false;
@@ -4051,10 +4067,20 @@ export interface StockOperationForm extends StockOperationSelection {
   write_ready: boolean;
   can_delete: boolean;
 }
-function checkedOperationSelection(value: StockOperationSelection) {
+function checkedOperationSelection(
+  value: StockOperationSelection,
+): StockOperationSelection;
+function checkedOperationSelection(
+  value: PagedStockOperationSelection,
+  inventory: true,
+): PagedStockOperationSelection;
+function checkedOperationSelection(
+  value: PagedStockOperationSelection,
+  inventory = false,
+) {
   if (
     !value ||
-    !stockId(value.order_id) ||
+    !(stockId(value.order_id) || (inventory && value.order_id === false)) ||
     !stockId(value.transfer_id) ||
     !stockId(value.move_id) ||
     (value.operation_id !== false && !stockId(value.operation_id))
@@ -4080,9 +4106,20 @@ function validOperationValue(field: StockOperationField, value: unknown) {
         /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)))
   );
 }
-function checkedOperationRequest(value: StockOperationFormRequest) {
-  const selection = checkedOperationSelection(value);
+function checkedOperationRequest(
+  value: StockOperationFormRequest,
+): StockOperationFormRequest;
+function checkedOperationRequest(
+  value: PagedStockOperationFormRequest,
+  inventory: true,
+): PagedStockOperationFormRequest;
+function checkedOperationRequest(
+  value: PagedStockOperationFormRequest,
+  inventory = false,
+) {
+  const selection = checkedOperationSelection(value, true);
   if (
+    (!inventory && selection.order_id === false) ||
     !stockVersion(value.version) ||
     !Array.isArray(value.edits) ||
     value.edits.length > 100 ||
@@ -4106,9 +4143,9 @@ function checkedOperationRequest(value: StockOperationFormRequest) {
     })),
   };
 }
-function checkedOperationForm(
-  data: StockOperationForm,
-  selection: StockOperationSelection,
+function checkedOperationForm<T extends PagedStockOperationForm>(
+  data: T,
+  selection: PagedStockOperationSelection,
 ) {
   if (
     !data ||
@@ -4192,12 +4229,16 @@ export async function changeStockOperationForm(
 }
 async function stockOperationChoices(
   method: 'qorlia_operation_choices' | 'qorlia_operation_paged_choices',
-  request: StockOperationFormRequest,
+  request: PagedStockOperationFormRequest,
   field: (typeof stockOperationRelationFields)[number],
   search = '',
   offset = 0,
 ) {
-  const exact = checkedOperationRequest(request);
+  const exact = checkedOperationRequest(request, true);
+  if (method === 'qorlia_operation_choices' && exact.order_id === false)
+    throw new Error(
+      'Legacy stock choices require their original charge order.',
+    );
   if (
     method === 'qorlia_operation_paged_choices' &&
     !confirmationKeys(request, Object.keys(exact))
@@ -4247,7 +4288,7 @@ export async function getStockOperationChoices(
 }
 
 export async function getPagedStockOperationChoices(
-  request: StockOperationFormRequest,
+  request: PagedStockOperationFormRequest,
   field: (typeof stockOperationRelationFields)[number],
   search = '',
   offset = 0,
@@ -4291,9 +4332,20 @@ export interface StockOperationStatus {
   operation_id: number | false;
   current: StockReservationLoad;
 }
-function checkedOperationAction(value: StockOperationSelectionRequest) {
-  const exact = checkedOperationRequest(value);
+function checkedOperationAction(
+  value: StockOperationSelectionRequest,
+): StockOperationSelectionRequest;
+function checkedOperationAction(
+  value: PagedStockOperationSelectionRequest,
+  inventory: true,
+): PagedStockOperationSelectionRequest;
+function checkedOperationAction(
+  value: PagedStockOperationSelectionRequest,
+  inventory = false,
+) {
+  const exact = checkedOperationRequest(value, true);
   if (
+    (!inventory && exact.order_id === false) ||
     !['save', 'delete'].includes(value.action) ||
     (value.action === 'delete' && (!value.operation_id || value.edits.length))
   )
@@ -5318,8 +5370,8 @@ function checkedStockReferencePage(
 }
 
 export interface PagedStockOperationReview
-  extends StockOperationSelectionRequest {
-  form: StockOperationForm;
+  extends PagedStockOperationSelectionRequest {
+  form: PagedStockOperationForm;
   review_version: string;
   state_after: string;
   operation_key: number | string | false;
@@ -5331,7 +5383,9 @@ export interface PagedStockOperationReview
   continuation_token: string | false;
   review_complete_token: string | false;
 }
-export interface PagedStockOperationRequest extends StockOperationRequest {
+export interface PagedStockOperationRequest
+  extends Omit<StockOperationRequest, 'order_id'> {
+  order_id: number | false;
   review_complete_token: string;
 }
 export interface PagedStockOperationStatus
@@ -5339,7 +5393,7 @@ export interface PagedStockOperationStatus
   state_after: string | false;
   reference_count: number;
   current: {
-    order_id: number;
+    order_id: number | false;
     transfer_id: number;
     version: string;
     transfer: OrderTransferSummary;
@@ -5348,28 +5402,31 @@ export interface PagedStockOperationStatus
 const operationPreparationStates = ['draft', ...confirmationStates];
 
 export async function getPagedStockOperationForm(
-  selection: StockOperationSelection,
+  selection: PagedStockOperationSelection,
 ) {
-  const exact = checkedOperationSelection(selection);
+  const exact = checkedOperationSelection(selection, true);
   if (!confirmationKeys(selection, Object.keys(exact)))
     throw new Error('Use only the selected native stock operation.');
   return checkedOperationForm(
-    await stockCall<StockOperationForm>('qorlia_operation_paged_load', exact),
+    await stockCall<PagedStockOperationForm>(
+      'qorlia_operation_paged_load',
+      exact,
+    ),
     exact,
   );
 }
 export async function changePagedStockOperationForm(
-  request: StockOperationFormRequest,
+  request: PagedStockOperationFormRequest,
 ) {
-  const exact = checkedOperationRequest(request);
+  const exact = checkedOperationRequest(request, true);
   if (!confirmationKeys(request, Object.keys(exact)))
     throw new Error('Use only the exact native operation form edits.');
   const form = checkedOperationForm(
-    await stockCall<StockOperationForm>(
+    await stockCall<PagedStockOperationForm>(
       'qorlia_operation_paged_onchange',
       exact,
     ),
-    checkedOperationSelection(exact),
+    checkedOperationSelection(exact, true),
   );
   if (form.version !== exact.version)
     throw new Error('The stock form version changed during onchange.');
@@ -5394,17 +5451,30 @@ export function checkedPagedStockOperationRequest(
     !stockVersion(request.review_complete_token)
   )
     throw new Error('Use the exact completely reviewed operation request.');
-  const { review_complete_token, ...legacy } = request;
-  return { ...checkedStockOperationRequest(legacy), review_complete_token };
+  const exact = checkedOperationAction(request, true);
+  const proof = checkedPagedStockConfirmationRequest({
+    order_id: exact.order_id,
+    transfer_id: exact.transfer_id,
+    version: exact.version,
+    review_version: request.review_version,
+    review_complete_token: request.review_complete_token,
+    request_key: request.request_key,
+  });
+  return {
+    ...exact,
+    review_version: proof.review_version,
+    review_complete_token: proof.review_complete_token,
+    request_key: proof.request_key,
+  };
 }
 export async function getPagedStockOperationReview(
-  selection: StockOperationSelectionRequest,
+  selection: PagedStockOperationSelectionRequest,
   after = 0,
   reviewVersion: string | false = false,
   continuationToken: string | false = false,
   limit = 50,
 ) {
-  const exact = checkedOperationAction(selection);
+  const exact = checkedOperationAction(selection, true);
   if (
     !confirmationKeys(selection, Object.keys(exact)) ||
     !stockCount(after) ||
@@ -5464,7 +5534,7 @@ export async function getPagedStockOperationReview(
     !validConfirmationEffects(data.effects)
   )
     throw new Error('Invalid paged stock operation review. Review it again.');
-  checkedOperationForm(data.form, checkedOperationSelection(exact));
+  checkedOperationForm(data.form, checkedOperationSelection(exact, true));
   if (
     data.form.version !== exact.version ||
     (exact.action === 'save' ? !data.form.write_ready : !data.form.can_delete)
@@ -7593,7 +7663,9 @@ export interface StockValidationStepCompactStatus {
   request_key: string;
   state_after: OrderTransfer['state'] | false;
   reference_count: number;
-  current: PagedStockOperationStatus['current'];
+  current: Omit<PagedStockOperationStatus['current'], 'order_id'> & {
+    order_id: number;
+  };
   next_step: StockValidationPromptMetadata | false;
   prompt_count: number;
   prompt_version: string | false;

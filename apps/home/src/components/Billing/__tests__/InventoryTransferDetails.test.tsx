@@ -17,6 +17,13 @@ jest.mock('../billingService', () => ({
 }));
 const mockConfirmation = jest.fn();
 const mockPreparation = jest.fn();
+const mockOperation = jest.fn();
+jest.mock('../PagedStockOperationEditor', () => ({
+  PagedStockOperationEditor: (props: { close: () => void }) => {
+    mockOperation(props);
+    return <button onClick={props.close}>Close global operation</button>;
+  },
+}));
 jest.mock('../PagedStockReservationModal', () => ({
   PagedStockReservationModal: (props: { close: () => void }) => {
     mockPreparation(props);
@@ -127,12 +134,68 @@ it('loads the independent transfer and both pinned sections, with shared read-on
     screen.queryByRole('columnheader', { name: 'Order item' }),
   ).not.toBeInTheDocument();
   expect(
-    screen.queryByRole('button', { name: /save|edit|add operation/i }),
+    screen.queryByRole('button', { name: /^save|^validate|^cancel/i }),
   ).not.toBeInTheDocument();
   expect(
     screen.getByRole('button', { name: 'Review or recover confirmation' }),
   ).toBeEnabled();
   expect(await axe(document.body)).toHaveNoViolations();
+});
+it('opens add and existing operation forms with their real move and transfer identities', async () => {
+  const moves = inventoryDetail('moves'),
+    operations = inventoryDetail('operations');
+  if (moves.section !== 'moves' || operations.section !== 'operations')
+    throw new Error('Expected native section fixtures');
+  show();
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `Add operation for move #${moves.rows[0].id}`,
+    }),
+  );
+  expect(mockOperation.mock.calls.at(-1)?.[0]).toMatchObject({
+    uid: 3,
+    selection: {
+      order_id: false,
+      transfer_id: 11,
+      move_id: moves.rows[0].id,
+      operation_id: false,
+    },
+  });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close global operation' }),
+  );
+  const row = operations.rows[0];
+  fireEvent.click(
+    await screen.findByRole('button', { name: `Open operation #${row.id}` }),
+  );
+  expect(mockOperation.mock.calls.at(-1)?.[0].selection).toEqual({
+    order_id: false,
+    transfer_id: 11,
+    move_id: row.move_id,
+    operation_id: row.id,
+  });
+  expect(mockConfirmation).not.toHaveBeenCalled();
+  expect(mockPreparation).not.toHaveBeenCalled();
+});
+it('does not invent a move for an orphaned operation or offer new operations on completed moves', async () => {
+  detail.mockImplementation(async (_id, section) => {
+    const page = inventoryDetail(section);
+    return page.section === 'operations'
+      ? {
+          ...page,
+          rows: page.rows.map((row) => ({ ...row, move_id: false as const })),
+        }
+      : {
+          ...page,
+          rows: page.rows.map((row) => ({ ...row, state: 'done' as const })),
+        };
+  });
+  show();
+  expect(await screen.findByText('No linked move')).toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: /^Open operation/ }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^Add operation/ })).toBeDisabled();
 });
 it('opens the existing confirmation consumer without an order and reloads details after close', async () => {
   show();

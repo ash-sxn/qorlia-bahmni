@@ -77,11 +77,11 @@ export type PagedStockWriteModalProps = {
 };
 type Props = (
   | (Omit<PagedStockWriteModalProps, 'orderId'> & {
-      kind: 'confirmation' | 'preparation';
+      kind: 'confirmation' | 'preparation' | 'operation';
       orderId: number | false;
     })
   | (PagedStockWriteModalProps & {
-      kind: 'operation' | 'cancellation';
+      kind: 'cancellation';
     })
 ) & {
   initialFailure?: Error | null;
@@ -232,7 +232,8 @@ function StockWriteReview({
       if (
         orderId === false &&
         kind !== 'confirmation' &&
-        kind !== 'preparation'
+        kind !== 'preparation' &&
+        kind !== 'operation'
       )
         throw new Error(
           'This stock workflow still requires its original charge order.',

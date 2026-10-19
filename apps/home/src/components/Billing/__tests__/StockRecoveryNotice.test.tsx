@@ -16,6 +16,7 @@ import { request as cancellationRequest } from './stockCancellationPagedFixture'
 import { confirmationRequest } from './stockConfirmationFixture';
 import { request as pagedConfirmationRequest } from './stockConfirmationPagedFixture';
 import { operationRequest } from './stockOperationFixture';
+import { request as pagedOperationRequest } from './stockOperationPagedFixture';
 import { stockRequest } from './stockReservationFixture';
 import { request as preparationRequest } from './stockReservationPagedFixture';
 import { returnRequest } from './stockReturnPagedFixture';
@@ -29,6 +30,13 @@ jest.mock('../stockReservationRecovery', () => ({
 const mockPanel = jest.fn();
 const mockGlobalConfirmation = jest.fn();
 const mockGlobalPreparation = jest.fn();
+const mockGlobalOperation = jest.fn();
+jest.mock('../PagedStockWriteModal', () => ({
+  PagedStockWriteModal: (props: { close: () => void }) => {
+    mockGlobalOperation(props);
+    return <button onClick={props.close}>Close global operation</button>;
+  },
+}));
 jest.mock('../PagedStockReservationModal', () => ({
   PagedStockReservationModal: (props: { close: () => void }) => {
     mockGlobalPreparation(props);
@@ -166,6 +174,35 @@ it('pins a global preparation target through banner clearing and never routes it
   ).toBeInTheDocument();
   fireEvent.click(
     screen.getByRole('button', { name: 'Close global preparation' }),
+  );
+  await waitFor(() => expect(fallback).toHaveBeenCalled());
+});
+it('opens global operation recovery directly and pins its kind through banner clearing', async () => {
+  disk = { ...pagedOperationRequest(), order_id: false };
+  const { client } = show();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Open saved stock workflow' }),
+  );
+  expect(mockGlobalOperation.mock.calls.at(-1)?.[0]).toMatchObject({
+    uid: 3,
+    orderId: false,
+    transferId: 11,
+    kind: 'operation',
+  });
+  expect(mockPanel).not.toHaveBeenCalled();
+  expect(mockGlobalConfirmation).not.toHaveBeenCalled();
+  expect(mockGlobalPreparation).not.toHaveBeenCalled();
+  disk = null;
+  await act(async () => {
+    await client.invalidateQueries({
+      queryKey: ['billing', 'reservation-recovery', 3],
+    });
+  });
+  expect(
+    screen.getByRole('button', { name: 'Close global operation' }),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close global operation' }),
   );
   await waitFor(() => expect(fallback).toHaveBeenCalled());
 });

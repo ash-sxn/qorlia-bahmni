@@ -16,7 +16,11 @@ jest.mock('../billingService', () => ({
 const get = jest.mocked(getStockOperationChoices),
   change = jest.fn(),
   reconnect = jest.fn();
-const show = (disabled = false, protocol: 'legacy' | 'complete' = 'legacy') =>
+const show = (
+  disabled = false,
+  protocol: 'legacy' | 'complete' = 'legacy',
+  orderId: number | false = 9,
+) =>
   render(
     <QueryClientProvider
       client={
@@ -25,7 +29,7 @@ const show = (disabled = false, protocol: 'legacy' | 'complete' = 'legacy') =>
     >
       <StockOperationChoice
         uid={3}
-        request={operationRequest()}
+        request={{ ...operationRequest(), order_id: orderId }}
         field="lot_id"
         label="Batch"
         value={6}
@@ -56,6 +60,26 @@ describe('Native operation relation choices with house ComboBox', () => {
       has_more: true,
       offset: 0,
     });
+  });
+  it('uses the native complete choice route for an orderless form', async () => {
+    show(false, 'complete', false);
+    await waitFor(() =>
+      expect(getPagedStockOperationChoices).toHaveBeenCalledWith(
+        { ...operationRequest(), order_id: false },
+        'lot_id',
+        '',
+        0,
+      ),
+    );
+    expect(get).not.toHaveBeenCalled();
+  });
+  it('rejects an orderless request in the legacy choice component before any API call', async () => {
+    show(false, 'legacy', false);
+    await screen.findByText(
+      'Legacy stock choices require their original charge order.',
+    );
+    expect(get).not.toHaveBeenCalled();
+    expect(getPagedStockOperationChoices).not.toHaveBeenCalled();
   });
   it('uses complete form choice search and pagination without calling the legacy endpoint', async () => {
     show(false, 'complete');

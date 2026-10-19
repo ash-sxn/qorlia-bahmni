@@ -7,8 +7,10 @@ import {
   getInventoryTransfer,
   getInventoryTransferDetailPage,
   InventoryTransferLoad,
+  PagedStockOperationSelection,
 } from './billingService';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
+import { PagedStockOperationEditor } from './PagedStockOperationEditor';
 import { PagedStockReservationModal } from './PagedStockReservationModal';
 import {
   sameTransferSummary,
@@ -27,7 +29,7 @@ type Props = {
 export function InventoryTransferDetails(props: Props) {
   const [revision, setRevision] = useState(0);
   const [workflow, setWorkflow] = useState<
-    'confirmation' | 'preparation' | null
+    'confirmation' | 'preparation' | PagedStockOperationSelection | null
   >(null);
   const back = useRef<HTMLButtonElement>(null);
   const client = useQueryClient();
@@ -36,6 +38,16 @@ export function InventoryTransferDetails(props: Props) {
     workflow === 'preparation'
       ? PagedStockReservationModal
       : PagedStockConfirmationModal;
+  const closeWorkflow = () => {
+    setWorkflow(null);
+    setRevision((value) => value + 1);
+    void client.invalidateQueries({
+      queryKey: ['billing', 'inventory-transfers', props.uid],
+    });
+    void client.invalidateQueries({
+      queryKey: ['billing', 'reservation-recovery', props.uid],
+    });
+  };
   return (
     <section className={styles.card} aria-label="Inventory transfer details">
       <Button ref={back} kind="tertiary" onClick={props.close}>
@@ -47,25 +59,32 @@ export function InventoryTransferDetails(props: Props) {
         transferId={props.transferId}
         reconnect={props.reconnect}
         openWrite={setWorkflow}
+        openOperation={(move_id, operation_id) =>
+          setWorkflow({
+            order_id: false,
+            transfer_id: props.transferId,
+            move_id,
+            operation_id,
+          })
+        }
         reload={() => setRevision((value) => value + 1)}
       />
-      {workflow ? (
+      {typeof workflow === 'string' ? (
         <Workflow
           uid={props.uid}
           orderId={false}
           transferId={props.transferId}
           reconnect={props.reconnect}
           returnFocus={returnFocus}
-          close={() => {
-            setWorkflow(null);
-            setRevision((value) => value + 1);
-            void client.invalidateQueries({
-              queryKey: ['billing', 'inventory-transfers', props.uid],
-            });
-            void client.invalidateQueries({
-              queryKey: ['billing', 'reservation-recovery', props.uid],
-            });
-          }}
+          close={closeWorkflow}
+        />
+      ) : workflow ? (
+        <PagedStockOperationEditor
+          uid={props.uid}
+          selection={workflow}
+          close={closeWorkflow}
+          reconnect={props.reconnect}
+          returnFocus={returnFocus}
         />
       ) : null}
     </section>
@@ -78,12 +97,14 @@ function ReadTransfer({
   reconnect,
   reload,
   openWrite,
+  openOperation,
 }: {
   uid: number;
   transferId: number;
   reconnect: () => void;
   reload: () => void;
   openWrite: (kind: 'confirmation' | 'preparation') => void;
+  openOperation: (moveId: number, operationId: number | false) => void;
 }) {
   const loaded = useQuery({
     queryKey: ['billing', 'inventory-transfer-load', uid, transferId],
@@ -113,6 +134,7 @@ function ReadTransfer({
       reconnect={reconnect}
       reload={reload}
       openWrite={openWrite}
+      openOperation={openOperation}
     />
   );
 }
@@ -126,12 +148,14 @@ function DetailPages({
   reconnect,
   reload,
   openWrite,
+  openOperation,
 }: {
   uid: number;
   loaded: InventoryTransferLoad;
   reconnect: () => void;
   reload: () => void;
   openWrite: (kind: 'confirmation' | 'preparation') => void;
+  openOperation: (moveId: number, operationId: number | false) => void;
 }) {
   const [cursors, setCursors] = useState<Record<Section, Cursor[]>>({
     moves: [{ after: 0, position: 0 }],
@@ -364,9 +388,38 @@ function DetailPages({
             </div>
             {fetching ? null : page.rows.length ? (
               page.section === 'moves' ? (
-                <StockMoveTable rows={page.rows} />
+                <StockMoveTable
+                  rows={page.rows}
+                  actions={(move) => (
+                    <Button
+                      kind="tertiary"
+                      disabled={
+                        fetching || ['done', 'cancel'].includes(move.state)
+                      }
+                      onClick={() => openOperation(move.id, false)}
+                    >
+                      Add operation for move #{move.id}
+                    </Button>
+                  )}
+                />
               ) : (
-                <StockOperationTable rows={page.rows} />
+                <StockOperationTable
+                  rows={page.rows}
+                  actions={(line) => {
+                    const moveId = line.move_id;
+                    return moveId ? (
+                      <Button
+                        kind="tertiary"
+                        disabled={fetching}
+                        onClick={() => openOperation(moveId, line.id)}
+                      >
+                        Open operation #{line.id}
+                      </Button>
+                    ) : (
+                      <span>No linked move</span>
+                    );
+                  }}
+                />
               )
             ) : (
               <p>No {name} are recorded in this transfer.</p>

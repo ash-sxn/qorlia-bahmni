@@ -116,7 +116,9 @@ function OrderTransfers({
     paged: boolean;
   } | null>(null);
   const [operation, setOperation] = useState<{
-    selection: StockOperationSelection;
+    selection: Omit<StockOperationSelection, 'order_id'> & {
+      order_id: number | false;
+    };
     paged: boolean;
   } | null>(null);
   const [confirmation, setConfirmation] = useState<{
@@ -566,11 +568,14 @@ function OrderTransfers({
           reconnect={reconnect}
           returnFocus={restoreConfirmationFocus}
         />
-      ) : operation ? (
+      ) : operation && operation.selection.order_id !== false ? (
         <StockOperationEditor
           key={`${uid}:${operation.selection.order_id}:${operation.selection.transfer_id}:${operation.selection.move_id}:${operation.selection.operation_id}`}
           uid={uid}
-          selection={operation.selection}
+          selection={{
+            ...operation.selection,
+            order_id: operation.selection.order_id,
+          }}
           close={reloadTransfers}
           reconnect={reconnect}
         />

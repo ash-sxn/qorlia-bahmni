@@ -57,13 +57,15 @@ class StockOperationEdit(models.Model):
         except (AccessError, UserError):
             return False
 
-    def _qorlia_operation_request(self, payload, receipt=False):
+    def _qorlia_operation_request(self, payload, receipt=False, allow_inventory=False):
         names = {'order_id', 'transfer_id', 'move_id', 'operation_id', 'version', 'edits', 'action'}
         if receipt:
             names |= {'review_version', 'request_key'}
         if not isinstance(payload, dict) or set(payload) != names:
             raise ValidationError('Use an exact reviewed stock operation request.')
-        if (any(type(payload[name]) is not int or payload[name] <= 0 for name in ('order_id', 'transfer_id', 'move_id'))
+        if ((not (allow_inventory and payload['order_id'] is False)
+                and (type(payload['order_id']) is not int or payload['order_id'] <= 0))
+                or any(type(payload[name]) is not int or payload[name] <= 0 for name in ('transfer_id', 'move_id'))
                 or payload['operation_id'] is not False and (type(payload['operation_id']) is not int or payload['operation_id'] <= 0)
                 or not isinstance(payload['action'], str) or payload['action'] not in ('save', 'delete')
                 or not isinstance(payload['edits'], list) or len(payload['edits']) > 100

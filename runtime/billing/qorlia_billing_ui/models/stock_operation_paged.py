@@ -52,13 +52,13 @@ class StockOperationPaged(models.Model):
     def qorlia_operation_paged_load(self, order_id, transfer_id, move_id, operation_id=False):
         self = self._qorlia_operation_paged_context()
         source = self._qorlia_operation_source(order_id, transfer_id, move_id, operation_id, complete_inventory=True)
-        return self._qorlia_operation_paged_ready(self._qorlia_operation_load_source(source))
+        return self._qorlia_operation_paged_ready(self._qorlia_operation_load_source(source, order_id=order_id))
 
     @api.model
     def qorlia_operation_paged_onchange(self, order_id, transfer_id, move_id, version, edits, operation_id=False):
         self = self._qorlia_operation_paged_context()
         source = self._qorlia_operation_source(order_id, transfer_id, move_id, operation_id, complete_inventory=True)
-        return self._qorlia_operation_paged_ready(self._qorlia_operation_onchange_source(source, version, edits))
+        return self._qorlia_operation_paged_ready(self._qorlia_operation_onchange_source(source, version, edits, order_id=order_id))
 
     @api.model
     def qorlia_operation_paged_choices(self, order_id, transfer_id, move_id, version, edits, field, search='', offset=0, operation_id=False):
@@ -90,7 +90,7 @@ class StockOperationPaged(models.Model):
 
     def _qorlia_operation_paged_preview(self, data):
         picking, _order, _scope = self._qorlia_confirmation_paged_transfer(
-            data['order_id'], data['transfer_id'], lock=True)
+            data['order_id'], data['transfer_id'], lock=True, inventory=True)
         picking._qorlia_reservation_scope(lock=True, complete=True)
         selection = {key: data[key] for key in ('order_id', 'transfer_id', 'move_id', 'operation_id')}
         form = self.qorlia_operation_paged_onchange(**selection, version=data['version'], edits=data['edits'])
@@ -118,7 +118,7 @@ class StockOperationPaged(models.Model):
     @api.model
     def qorlia_operation_paged_review(self, payload, after=0, review_version=False, continuation_token=False, limit=50):
         self = self._qorlia_operation_paged_context()
-        data = self._qorlia_operation_request(payload)
+        data = self._qorlia_operation_request(payload, allow_inventory=True)
         if (type(after) is not int or after < 0 or type(limit) is not int or not 1 <= limit <= 100
                 or (after == 0 and (review_version is not False or continuation_token is not False))
                 or (after > 0 and (not _hash(review_version) or not _hash(continuation_token)))):
@@ -144,7 +144,7 @@ class StockOperationPaged(models.Model):
         if not isinstance(payload, dict) or 'review_complete_token' not in payload or not _hash(payload['review_complete_token']):
             raise ValidationError('Complete every operation review page before saving.')
         data = self._qorlia_operation_request({key: value for key, value in payload.items()
-            if key != 'review_complete_token'}, receipt=True)
+            if key != 'review_complete_token'}, receipt=True, allow_inventory=True)
         data['review_complete_token'] = payload['review_complete_token']
         return data, _digest({'purpose': _PURPOSE, 'request': data,
             'author': self.env.uid, 'companies': self.env.companies.ids})
@@ -160,7 +160,7 @@ class StockOperationPaged(models.Model):
     def qorlia_operation_paged_stop(self, payload):
         self = self._qorlia_operation_paged_context()
         request, digest = self._qorlia_operation_paged_request(payload)
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         return picking._qorlia_paged_stop(request, digest, _PURPOSE, 'qorlia_operation_receipts',
             'qorlia_operation_receipt_token', _RECEIPT_TOKEN)
 
@@ -168,8 +168,8 @@ class StockOperationPaged(models.Model):
     def qorlia_operation_paged_status(self, payload):
         self = self._qorlia_operation_paged_context()
         request, digest = self._qorlia_operation_paged_request(payload)
-        picking, order, scope = self.env['sale.order']._qorlia_delivery_transfer_scope(
-            request['order_id'], request['transfer_id'])
+        picking, order, scope = self._qorlia_confirmation_paged_transfer(
+            request['order_id'], request['transfer_id'], inventory=True)
         receipt = picking._qorlia_operation_paged_receipt(request, digest)
         self.env.cr.execute('SELECT (SELECT count(*) FROM stock_move WHERE picking_id = %s), '
             '(SELECT count(*) FROM stock_move_line WHERE picking_id = %s)', [picking.id, picking.id])
@@ -187,8 +187,8 @@ class StockOperationPaged(models.Model):
                 or not (version is False or _hash(version)) or after and version is False):
             raise ValidationError('Use a bounded operation reference page and its original version.')
         request, digest = self._qorlia_operation_paged_request(payload)
-        picking, _order, scope = self.env['sale.order']._qorlia_delivery_transfer_scope(
-            request['order_id'], request['transfer_id'])
+        picking, _order, scope = self._qorlia_confirmation_paged_transfer(
+            request['order_id'], request['transfer_id'], inventory=True)
         receipt = picking._qorlia_operation_paged_receipt(request, digest)
         if not receipt:
             raise UserError('This operation has not been accepted. Check the original request status.')
@@ -207,16 +207,16 @@ class StockOperationPaged(models.Model):
     def qorlia_operation_paged_save(self, payload):
         self = self._qorlia_operation_paged_context()
         request, digest = self._qorlia_operation_paged_request(payload)
-        picking, _order, _scope = self.env['sale.order']._qorlia_delivery_transfer_scope(
-            request['order_id'], request['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(
+            request['order_id'], request['transfer_id'], inventory=True)
         if picking._qorlia_operation_paged_receipt(request, digest):
             return self.qorlia_operation_paged_status(request)
         self.env.cr.flush()
         for table in picking._qorlia_operation_paged_tables():
             self.env.cr.execute(sql.SQL('LOCK TABLE {} IN SHARE ROW EXCLUSIVE MODE').format(sql.Identifier(table)))
         self.env.invalidate_all()
-        picking, _order, _scope = self.env['sale.order']._qorlia_delivery_transfer_scope(
-            request['order_id'], request['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(
+            request['order_id'], request['transfer_id'], inventory=True)
         if picking._qorlia_operation_paged_receipt(request, digest):
             return self.qorlia_operation_paged_status(request)
         data = {key: value for key, value in request.items()

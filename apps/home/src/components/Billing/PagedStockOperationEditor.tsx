@@ -13,8 +13,8 @@ import {
   type PagedStockOperationReview,
   type StockOperationEdit,
   type StockOperationField,
-  type StockOperationForm,
-  type StockOperationSelection,
+  type PagedStockOperationForm,
+  type PagedStockOperationSelection,
 } from './billingService';
 import { PagedStockWriteModal } from './PagedStockWriteModal';
 import { StockConfirmationEffects } from './StockConfirmationEffects';
@@ -30,7 +30,7 @@ import {
 
 type Props = {
   uid: number;
-  selection: StockOperationSelection;
+  selection: PagedStockOperationSelection;
   close: () => void;
   reconnect: () => void;
   returnFocus?: () => void;
@@ -58,7 +58,7 @@ function OperationForm({
     busyRef = useRef(false);
   const heading = useRef<HTMLHeadingElement | null>(null);
   const [busy, setBusy] = useState(false);
-  const [view, setView] = useState<StockOperationForm | null>(null);
+  const [view, setView] = useState<PagedStockOperationForm | null>(null);
   const [edits, setEdits] = useState<StockOperationEdit[]>([]);
   const [local, setLocal] = useState<
     Partial<Record<StockOperationField, string>>
@@ -341,8 +341,10 @@ function OperationForm({
           <>
             <h2>{form.product ? form.product[1] : 'Stock operation'}</h2>
             <p>
-              Order #{form.order_id} · Transfer #{form.transfer_id} · Move #
-              {form.move_id} ·{' '}
+              {form.order_id === false
+                ? 'Inventory'
+                : `Order #${form.order_id}`}{' '}
+              · Transfer #{form.transfer_id} · Move #{form.move_id} ·{' '}
               {form.operation_id
                 ? `Operation #${form.operation_id}`
                 : 'New operation'}{' '}

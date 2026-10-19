@@ -2,8 +2,8 @@ import { TextInput } from '@bahmni/design-system';
 import styles from './BillingPage.module.scss';
 import {
   StockOperationField,
-  StockOperationForm,
-  StockOperationFormRequest,
+  PagedStockOperationForm,
+  PagedStockOperationFormRequest,
   stockOperationFields,
   stockOperationNumberFields,
   stockOperationRelationFields,
@@ -61,8 +61,8 @@ export function StockOperationFields({
   reconnect,
 }: {
   uid: number;
-  form: StockOperationForm;
-  request: StockOperationFormRequest;
+  form: PagedStockOperationForm;
+  request: PagedStockOperationFormRequest;
   local: Partial<Record<StockOperationField, string>>;
   disabled: boolean;
   protocol: 'legacy' | 'complete';

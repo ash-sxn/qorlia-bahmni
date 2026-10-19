@@ -27,7 +27,7 @@ class StockOperationForm(models.Model):
             raise ValidationError('Select a native stock move and operation.')
         if not self.env.user.has_group('stock.group_stock_user'):
             raise AccessError('Stock operation forms require the native Stock User role.')
-        picking, _order, scope = self.env['sale.order']._qorlia_delivery_transfer_scope(order_id, transfer_id)
+        picking, _order, scope = self._qorlia_confirmation_paged_transfer(order_id, transfer_id, inventory=complete_inventory)
         inventory = picking._qorlia_reservation_scope(complete=complete_inventory)
         packages = picking._qorlia_reservation_package_graph()
         move = self.env['stock.move'].browse(move_id).exists()
@@ -36,7 +36,7 @@ class StockOperationForm(models.Model):
             records.check_access_rights('read')
             records.check_access_rule('read')
         if not move or move.picking_id != picking:
-            raise ValidationError('This move does not belong to the selected order transfer.')
+            raise ValidationError('This move does not belong to the selected stock transfer.')
         if operation_id and (not line or line.picking_id != picking or line.move_id != move):
             raise ValidationError('This operation does not belong to the selected move and transfer.')
         line.check_field_access_rights('read', OPERATION_FIELDS + IDENTITY_FIELDS + ('reserved_uom_qty', 'balance'))
@@ -109,7 +109,7 @@ class StockOperationForm(models.Model):
                 rules[name]['readonly'] = True
         return rules, reason
 
-    def _qorlia_operation_snapshot(self, source, form, warning=False):
+    def _qorlia_operation_snapshot(self, source, form, warning=False, order_id=None):
         picking, move, line, model, identity, values, groups, version = source
         labels = {}
         for name in OPERATION_FIELDS:
@@ -120,7 +120,7 @@ class StockOperationForm(models.Model):
         oversized = len(picking.move_ids) > 500 or len(picking.move_line_ids) > 2000
         if oversized and not reason:
             reason = 'This form can be inspected, but saving needs complete paged operation effects and recovery.'
-        return {'order_id': picking.sale_id.id, 'transfer_id': picking.id, 'move_id': move.id,
+        return {'order_id': picking.sale_id.id if order_id is None else order_id, 'transfer_id': picking.id, 'move_id': move.id,
             'operation_id': line.id or False, 'version': version, 'product': _label(move.product_id),
             'state': move.state, 'tracking': move.product_id.tracking,
             'values': self.env['sale.order']._qorlia_read_fields(form, OPERATION_FIELDS),
@@ -134,11 +134,11 @@ class StockOperationForm(models.Model):
         source = self._qorlia_operation_source(order_id, transfer_id, move_id, operation_id)
         return self._qorlia_operation_load_source(source)
 
-    def _qorlia_operation_load_source(self, source):
+    def _qorlia_operation_load_source(self, source, order_id=None):
         _picking, _move, line, model, identity, values, _groups, _version = source
-        return self._qorlia_operation_snapshot(source, model.new({**identity, **values}, origin=line if line else None))
+        return self._qorlia_operation_snapshot(source, model.new({**identity, **values}, origin=line if line else None), order_id=order_id)
 
-    def _qorlia_operation_form(self, source, version, edits):
+    def _qorlia_operation_form(self, source, version, edits, order_id=None):
         picking, move, line, model, identity, values, groups, current_version = source
         if not isinstance(version, str) or version != current_version:
             raise UserError('The transfer, operation or its configuration changed. Reload the stock form.')
@@ -170,7 +170,7 @@ class StockOperationForm(models.Model):
         form = model.new({**identity, **values}, origin=line if line else None)
         form._check_company()
         self._qorlia_operation_domains(picking, move, values)
-        return self._qorlia_operation_snapshot(source, form, warning)
+        return self._qorlia_operation_snapshot(source, form, warning, order_id=order_id)
 
     def _qorlia_operation_domain(self, picking, move, field, values):
         company = ['|', ('company_id', '=', False), ('company_id', '=', picking.company_id.id)]
@@ -205,7 +205,7 @@ class StockOperationForm(models.Model):
         source = self._qorlia_operation_source(order_id, transfer_id, move_id, operation_id)
         return self._qorlia_operation_onchange_source(source, version, edits)
 
-    def _qorlia_operation_onchange_source(self, source, version, edits):
+    def _qorlia_operation_onchange_source(self, source, version, edits, order_id=None):
         # Native onchange hooks may evolve. Always discard writes and transaction callbacks.
         cr = self.env.cr
         cr.flush()
@@ -214,7 +214,7 @@ class StockOperationForm(models.Model):
             for name in callbacks:
                 setattr(cr, name, tools.Callbacks())
             with closing(cr.savepoint()):
-                result = self._qorlia_operation_form(source, version, edits)
+                result = self._qorlia_operation_form(source, version, edits, order_id=order_id)
                 cr.flush()
             return result
         finally:
@@ -232,7 +232,7 @@ class StockOperationForm(models.Model):
                 or offset > 100000 or not isinstance(field, str) or field not in OPERATION_FIELDS):
             raise ValidationError('Use a supported stock field and search page.')
         source = self._qorlia_operation_source(order_id, transfer_id, move_id, operation_id, complete_inventory=complete_inventory)
-        view = self._qorlia_operation_onchange_source(source, version, edits)
+        view = self._qorlia_operation_onchange_source(source, version, edits, order_id=order_id if complete_inventory else None)
         if view['rules'][field]['readonly']:
             raise AccessError('This stock field is hidden or read-only.')
         picking, move, *_rest = self._qorlia_operation_source(order_id, transfer_id, move_id, operation_id, complete_inventory=complete_inventory)
