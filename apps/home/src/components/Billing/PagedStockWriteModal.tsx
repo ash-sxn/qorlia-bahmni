@@ -75,15 +75,9 @@ export type PagedStockWriteModalProps = {
   reconnect: () => void;
   returnFocus?: () => void;
 };
-type Props = (
-  | (Omit<PagedStockWriteModalProps, 'orderId'> & {
-      kind: 'confirmation' | 'preparation' | 'operation';
-      orderId: number | false;
-    })
-  | (PagedStockWriteModalProps & {
-      kind: 'cancellation';
-    })
-) & {
+type Props = Omit<PagedStockWriteModalProps, 'orderId'> & {
+  kind: 'confirmation' | 'preparation' | 'operation' | 'cancellation';
+  orderId: number | false;
   initialFailure?: Error | null;
 };
 type Request =
@@ -229,15 +223,6 @@ function StockWriteReview({
   const loaded = useQuery({
     queryKey: ['billing', query, uid, orderId, transferId],
     queryFn: async () => {
-      if (
-        orderId === false &&
-        kind !== 'confirmation' &&
-        kind !== 'preparation' &&
-        kind !== 'operation'
-      )
-        throw new Error(
-          'This stock workflow still requires its original charge order.',
-        );
       const request = await (kind === 'cancellation'
         ? loadPagedStockCancellationRecovery(uid)
         : loadPagedStockWriteRecovery(uid));
@@ -395,17 +380,10 @@ function StockWriteReview({
         transfer_id: writable.transfer_id,
         version: writable.version,
       };
-      const linkedSelection = () => {
-        if (selection.order_id === false)
-          throw new Error(
-            'This stock action requires its original charge order.',
-          );
-        return { ...selection, order_id: selection.order_id };
-      };
       const page =
         kind === 'cancellation'
           ? await getPagedStockCancellationReview(
-              { ...linkedSelection(), action: 'cancel_transfer' },
+              { ...selection, action: 'cancel_transfer' },
               cursor.after,
               cursor.version,
               cursor.token,

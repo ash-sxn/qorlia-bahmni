@@ -369,6 +369,7 @@ const cancellationEnvelope = (request = completeCancellation(), uid = 3) => ({
 function cancellationOutcome(
   outcome: 'accepted' | 'stopped' | 'unknown' = 'accepted',
   count = 0,
+  orderId: number | false = 9,
 ) {
   const accepted = outcome === 'accepted';
   const status: PagedStockCancellationStatus = {
@@ -378,7 +379,7 @@ function cancellationOutcome(
     state_after: accepted ? 'cancel' : false,
     reference_count: accepted ? count : 0,
     current: {
-      order_id: 9,
+      order_id: orderId,
       transfer_id: 11,
       version: 'd'.repeat(64),
       transfer: {
@@ -440,6 +441,20 @@ function cancellationOutcome(
 }
 
 describe('Complete native cancellation durable recovery', () => {
+  it('keeps an unknown global cancellation and clears only its exact accepted outcome', async () => {
+    const fake = database(),
+      exact = { ...completeCancellation(), order_id: false as const };
+    cancellationOutcome('unknown', 0, false);
+    await persistPagedStockCancellationRecovery(3, exact);
+    await expect(clearPagedStockCancellationRecovery(3, exact)).rejects.toThrow(
+      /unknown/,
+    );
+    expect(fake.records.get(3)).toEqual(cancellationEnvelope(exact));
+    cancellationOutcome('accepted', 0, false);
+    await clearPagedStockCancellationRecovery(3, exact);
+    expect(fake.records.has(3)).toBe(false);
+    expect(await loadPagedStockCancellationRecovery(3)).toBeNull();
+  });
   it('retains references that no longer match the version reviewed by the UI', async () => {
     const fake = database();
     fake.records.set(3, cancellationEnvelope());
@@ -456,32 +471,36 @@ describe('Complete native cancellation durable recovery', () => {
   beforeEach(() => {
     global.fetch = jest.fn();
   });
-  it('stores exact schema-8 cancellation in the existing strict account slot without a native write', async () => {
-    const fake = database(),
-      exact = completeCancellation();
-    cancellationOutcome();
-    await persistPagedStockCancellationRecovery(3, exact);
-    expect(fake.records.get(3)).toEqual(cancellationEnvelope());
-    expect(await loadPagedStockCancellationRecovery(3)).toEqual(exact);
-    expect(await loadStockWriteRecovery(3)).toEqual(exact);
-    expect(isPagedStockCancellationRequest(exact)).toBe(true);
-    expect(isPagedStockWriteRequest(exact)).toBe(false);
-    expect(isStockConfirmationRequest(exact)).toBe(false);
-    expect(fake.factory.open).toHaveBeenCalledWith(
-      'qorlia.billing.stock-reservation-recovery',
-      1,
-    );
-    expect(fake.db.transaction).toHaveBeenCalledWith('pending', 'readwrite', {
-      durability: 'strict',
-    });
-    exact.review_complete_token = 'f'.repeat(64);
-    expect(fake.records.get(3)).toEqual(cancellationEnvelope());
-    expect(
-      (fetch as jest.Mock).mock.calls.every((call) =>
-        call[0].endsWith('/web/session/get_session_info'),
-      ),
-    ).toBe(true);
-  });
+  it.each([9, false] as const)(
+    'stores exact schema-8 cancellation in the existing strict account slot without a native write, order %s',
+    async (order_id) => {
+      const fake = database(),
+        exact = { ...completeCancellation(), order_id };
+      cancellationOutcome('accepted', 0, order_id);
+      await persistPagedStockCancellationRecovery(3, exact);
+      const stored = cancellationEnvelope({ ...exact });
+      expect(fake.records.get(3)).toEqual(stored);
+      expect(await loadPagedStockCancellationRecovery(3)).toEqual(exact);
+      expect(await loadStockWriteRecovery(3)).toEqual(exact);
+      expect(isPagedStockCancellationRequest(exact)).toBe(true);
+      expect(isPagedStockWriteRequest(exact)).toBe(false);
+      expect(isStockConfirmationRequest(exact)).toBe(false);
+      expect(fake.factory.open).toHaveBeenCalledWith(
+        'qorlia.billing.stock-reservation-recovery',
+        1,
+      );
+      expect(fake.db.transaction).toHaveBeenCalledWith('pending', 'readwrite', {
+        durability: 'strict',
+      });
+      exact.review_complete_token = 'f'.repeat(64);
+      expect(fake.records.get(3)).toEqual(stored);
+      expect(
+        (fetch as jest.Mock).mock.calls.every((call) =>
+          call[0].endsWith('/web/session/get_session_info'),
+        ),
+      ).toBe(true);
+    },
+  );
   it('waits for commit and rechecks the original account after storage', async () => {
     const fake = database(),
       state = cancellationOutcome();

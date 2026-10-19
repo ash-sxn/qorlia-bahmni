@@ -76,7 +76,7 @@ const deferred = <T,>() => {
   });
   return { promise, resolve };
 };
-function show() {
+function show(orderId: number | false = 9) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -84,7 +84,7 @@ function show() {
     <QueryClientProvider client={client}>
       <PagedStockCancellationModal
         uid={uid}
-        orderId={9}
+        orderId={orderId}
         transferId={11}
         close={close}
         reconnect={reconnect}
@@ -122,13 +122,24 @@ beforeEach(() => {
   disk = new Map();
   effectCount = 101;
   referenceCount = 0;
-  get.mockResolvedValue(load());
-  preview.mockImplementation(async (_selection, after = 0) =>
-    review(after, effectCount),
-  );
-  check.mockImplementation(async () => status('accepted', referenceCount));
-  save.mockImplementation(async () => status('accepted', referenceCount));
-  stop.mockImplementation(async () => status('stopped'));
+  get.mockImplementation(async (order_id) => ({ ...load(), order_id }));
+  preview.mockImplementation(async (selection, after = 0) => ({
+    ...review(after, effectCount),
+    order_id: selection.order_id,
+  }));
+  const scopedStatus = (
+    exact: PagedStockCancellationRequest,
+    outcome: 'accepted' | 'stopped',
+  ) => {
+    const response = status(outcome, referenceCount);
+    return {
+      ...response,
+      current: { ...response.current, order_id: exact.order_id },
+    };
+  };
+  check.mockImplementation(async (exact) => scopedStatus(exact, 'accepted'));
+  save.mockImplementation(async (exact) => scopedStatus(exact, 'accepted'));
+  stop.mockImplementation(async (exact) => scopedStatus(exact, 'stopped'));
   refs.mockImplementation(async (_request, after = 0) =>
     references(after, referenceCount),
   );
@@ -146,58 +157,66 @@ beforeEach(() => {
   });
 });
 
-it('reviews complete effects with correct cancellation labels, focus and native large counts before an explicit destructive save', async () => {
-  show();
-  await begin();
-  expect(screen.getByText(/501 stock moves/)).toHaveTextContent(
-    '2001 detailed operations',
-  );
-  expect(
-    screen.getByRole('heading', { name: 'Cancellation effect page 1' }),
-  ).toHaveFocus();
-  expect(
-    screen
-      .getByRole('region', { name: 'Reviewed cancellation effects' })
-      .querySelectorAll('details'),
-  ).toHaveLength(50);
-  expect(
-    screen.getByText(/Analytic item: 0 created, 0 changed, 1 removed/),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByRole('button', { name: /Cancel reviewed transfer/ }),
-  ).toBeDisabled();
-  expect(crypto.randomUUID).not.toHaveBeenCalled();
-  expect(save).not.toHaveBeenCalled();
-  for (const page of [2, 3]) {
+it.each([9, false] as const)(
+  'reviews complete effects with correct cancellation labels, focus and native large counts before an explicit destructive save, order %s',
+  async (order_id) => {
+    const exact = { ...request(), order_id };
+    show(order_id);
+    await begin();
+    expect(screen.getByText(/501 stock moves/)).toHaveTextContent(
+      '2001 detailed operations',
+    );
+    expect(
+      screen.getByRole('heading', { name: 'Cancellation effect page 1' }),
+    ).toHaveFocus();
+    expect(
+      screen
+        .getByRole('region', { name: 'Reviewed cancellation effects' })
+        .querySelectorAll('details'),
+    ).toHaveLength(50);
+    expect(
+      screen.getByText(/Analytic item: 0 created, 0 changed, 1 removed/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Cancel reviewed transfer/ }),
+    ).toBeDisabled();
+    expect(crypto.randomUUID).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+    for (const page of [2, 3]) {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Review next cancellation effects',
+        }),
+      );
+      await screen.findByRole('heading', {
+        name: `Cancellation effect page ${page}`,
+      });
+    }
+    expect(preview.mock.calls.map((call) => call.slice(1))).toEqual([
+      [0, false, false, 50],
+      [50, 'b'.repeat(64), 'c'.repeat(64), 50],
+      [100, 'b'.repeat(64), 'c'.repeat(64), 50],
+    ]);
+    expect(
+      preview.mock.calls.every((call) => call[0].action === 'cancel_transfer'),
+    ).toBe(true);
     fireEvent.click(
-      screen.getByRole('button', { name: 'Review next cancellation effects' }),
+      screen.getByRole('button', { name: /Cancel reviewed transfer/ }),
     );
     await screen.findByRole('heading', {
-      name: `Cancellation effect page ${page}`,
+      name: 'Accepted cancellation: cancel',
     });
-  }
-  expect(preview.mock.calls.map((call) => call.slice(1))).toEqual([
-    [0, false, false, 50],
-    [50, 'b'.repeat(64), 'c'.repeat(64), 50],
-    [100, 'b'.repeat(64), 'c'.repeat(64), 50],
-  ]);
-  expect(
-    preview.mock.calls.every((call) => call[0].action === 'cancel_transfer'),
-  ).toBe(true);
-  fireEvent.click(
-    screen.getByRole('button', { name: /Cancel reviewed transfer/ }),
-  );
-  await screen.findByRole('heading', { name: 'Accepted cancellation: cancel' });
-  expect(persist).toHaveBeenCalledWith(3, request());
-  expect(save).toHaveBeenCalledWith(request());
-  expect(persist.mock.invocationCallOrder[0]).toBeLessThan(
-    save.mock.invocationCallOrder[0],
-  );
-  expect(crypto.randomUUID).toHaveBeenCalledTimes(1);
-  expect(getPagedStockConfirmation).not.toHaveBeenCalled();
-  expect(getPagedStockReservation).not.toHaveBeenCalled();
-  expect(fetch).not.toHaveBeenCalled();
-});
+    expect(persist).toHaveBeenCalledWith(3, exact);
+    expect(save).toHaveBeenCalledWith(exact);
+    expect(persist.mock.invocationCallOrder[0]).toBeLessThan(
+      save.mock.invocationCallOrder[0],
+    );
+    expect(crypto.randomUUID).toHaveBeenCalledTimes(1);
+    expect(getPagedStockConfirmation).not.toHaveBeenCalled();
+    expect(getPagedStockReservation).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  },
+);
 it('honours native unavailability without creating a cancellation request', async () => {
   get.mockResolvedValue({
     ...load(),
@@ -288,35 +307,45 @@ it('waits for strict persistence and blocks duplicate dispatch and close during 
   await screen.findByRole('heading', { name: 'Accepted cancellation: cancel' });
   expect(save).toHaveBeenCalledTimes(1);
 });
-it('keeps a lost save across remount and retries only the original request, never automatically', async () => {
-  effectCount = 1;
-  save.mockRejectedValueOnce(new Error('Cancellation response lost'));
-  const first = show();
-  await complete();
-  fireEvent.click(
-    screen.getByRole('button', { name: /Cancel reviewed transfer/ }),
-  );
-  await screen.findByText('Cancellation response lost');
-  expect(disk.get(3)).toEqual(request());
-  first.unmount();
-  get.mockClear();
-  check.mockResolvedValueOnce(status('unknown'));
-  show();
-  await screen.findByRole('button', {
-    name: /Retry identical cancellation request/,
-  });
-  expect(get).not.toHaveBeenCalled();
-  expect(save).toHaveBeenCalledTimes(1);
-  fireEvent.click(
-    screen.getByRole('button', {
+it.each([9, false] as const)(
+  'keeps a lost save across remount and retries only the original request, never automatically, order %s',
+  async (order_id) => {
+    const exact = { ...request(), order_id };
+    effectCount = 1;
+    save.mockRejectedValueOnce(new Error('Cancellation response lost'));
+    const first = show(order_id);
+    await complete();
+    fireEvent.click(
+      screen.getByRole('button', { name: /Cancel reviewed transfer/ }),
+    );
+    await screen.findByText('Cancellation response lost');
+    expect(disk.get(3)).toEqual(exact);
+    first.unmount();
+    get.mockClear();
+    const unknown = status('unknown');
+    check.mockResolvedValueOnce({
+      ...unknown,
+      current: { ...unknown.current, order_id },
+    });
+    show(order_id);
+    await screen.findByRole('button', {
       name: /Retry identical cancellation request/,
-    }),
-  );
-  await screen.findByRole('heading', { name: 'Accepted cancellation: cancel' });
-  expect(save).toHaveBeenLastCalledWith(request());
-  expect(crypto.randomUUID).toHaveBeenCalledTimes(1);
-  expect(clear).not.toHaveBeenCalled();
-});
+    });
+    expect(get).not.toHaveBeenCalled();
+    expect(save).toHaveBeenCalledTimes(1);
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /Retry identical cancellation request/,
+      }),
+    );
+    await screen.findByRole('heading', {
+      name: 'Accepted cancellation: cancel',
+    });
+    expect(save).toHaveBeenLastCalledWith(exact);
+    expect(crypto.randomUUID).toHaveBeenCalledTimes(1);
+    expect(clear).not.toHaveBeenCalled();
+  },
+);
 it.each([
   new BillingActionRejected('Cancellation denied'),
   new BillingSessionExpired(),
@@ -393,46 +422,50 @@ it('does not reinterpret an ordinary text value as a private analytic reference'
   expect(screen.getByText('private:account.analytic.line')).toBeInTheDocument();
   expect(save).not.toHaveBeenCalled();
 });
-it('reads all saved references, preserves their UI pin through durable retirement and renders markup as text', async () => {
-  disk.set(3, request());
-  referenceCount = 101;
-  const { container } = show();
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Read saved references' }),
-  );
-  await screen.findByRole('heading', { name: 'Saved reference page 1' });
-  expect(
-    screen.getByRole('heading', { name: 'Saved reference page 1' }),
-  ).toHaveFocus();
-  expect(
-    within(
-      screen.getByRole('region', { name: 'Saved cancellation references' }),
-    ).getAllByRole('listitem'),
-  ).toHaveLength(50);
-  expect(container.querySelector('img')).toBeNull();
-  expect(
-    screen.getByRole('button', { name: 'Finish and reload transfers' }),
-  ).toBeDisabled();
-  for (const page of [2, 3]) {
+it.each([9, false] as const)(
+  'reads all saved references, preserves their UI pin through durable retirement and renders markup as text, order %s',
+  async (order_id) => {
+    const exact = { ...request(), order_id };
+    disk.set(3, exact);
+    referenceCount = 101;
+    const { container } = show(order_id);
     fireEvent.click(
-      screen.getByRole('button', { name: 'Next saved references' }),
+      await screen.findByRole('button', { name: 'Read saved references' }),
     );
-    await screen.findByRole('heading', {
-      name: `Saved reference page ${page}`,
-    });
-  }
-  expect(refs.mock.calls).toEqual([
-    [request(), 0, false, 50],
-    [request(), 50, 'e'.repeat(64), 50],
-    [request(), 100, 'e'.repeat(64), 50],
-  ]);
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Finish and reload transfers' }),
-  );
-  await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
-  expect(clear).toHaveBeenCalledWith(3, request(), 'e'.repeat(64));
-  expect(disk.has(3)).toBe(false);
-});
+    await screen.findByRole('heading', { name: 'Saved reference page 1' });
+    expect(
+      screen.getByRole('heading', { name: 'Saved reference page 1' }),
+    ).toHaveFocus();
+    expect(
+      within(
+        screen.getByRole('region', { name: 'Saved cancellation references' }),
+      ).getAllByRole('listitem'),
+    ).toHaveLength(50);
+    expect(container.querySelector('img')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Finish and reload transfers' }),
+    ).toBeDisabled();
+    for (const page of [2, 3]) {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Next saved references' }),
+      );
+      await screen.findByRole('heading', {
+        name: `Saved reference page ${page}`,
+      });
+    }
+    expect(refs.mock.calls).toEqual([
+      [exact, 0, false, 50],
+      [exact, 50, 'e'.repeat(64), 50],
+      [exact, 100, 'e'.repeat(64), 50],
+    ]);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Finish and reload transfers' }),
+    );
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(clear).toHaveBeenCalledWith(3, exact, 'e'.repeat(64));
+    expect(disk.has(3)).toBe(false);
+  },
+);
 it('keeps pending recovery after reference, final status or retirement failure', async () => {
   disk.set(3, request());
   referenceCount = 1;

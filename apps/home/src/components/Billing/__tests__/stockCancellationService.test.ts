@@ -109,6 +109,57 @@ beforeEach(() => {
   global.fetch = jest.fn();
 });
 
+it('uses all six fixed cancellation APIs for an orderless transfer', async () => {
+  const exact = { ...request(), order_id: false as const };
+  const selected = { ...selection(), order_id: false as const };
+  reply({ ...loaded(), order_id: false });
+  await getPagedStockCancellation(false, 11);
+  reply({ ...review(), order_id: false });
+  await getPagedStockCancellationReview(selected);
+  const result = {
+    ...outcome(),
+    current: { ...outcome().current, order_id: false as const },
+  };
+  for (const call of [
+    savePagedStockCancellation,
+    getPagedStockCancellationStatus,
+    stopPagedStockCancellation,
+  ]) {
+    reply(result);
+    expect(await call(exact)).toEqual(result);
+  }
+  reply(references());
+  await getPagedStockCancellationReferences(exact);
+  const calls = jest
+    .mocked(fetch)
+    .mock.calls.map((call) => JSON.parse(call[1]!.body as string).params);
+  expect(calls.map((call) => call.method)).toEqual(
+    ['load', 'review', 'save', 'status', 'stop', 'references'].map(
+      (name) => 'qorlia_cancellation_paged_' + name,
+    ),
+  );
+  expect(calls[0].kwargs).toEqual({ order_id: false, transfer_id: 11 });
+  for (const call of calls.slice(1))
+    expect(call.kwargs.payload.order_id).toBe(false);
+});
+it('rejects orderless lookalikes and changed global/order response scopes', async () => {
+  for (const order_id of [0, true, null, '', [], {}, -1]) {
+    await expect(
+      getPagedStockCancellation(order_id as never, 11),
+    ).rejects.toThrow();
+    expect(() =>
+      checkedPagedStockCancellationRequest({ ...request(), order_id } as never),
+    ).toThrow();
+  }
+  expect(fetch).not.toHaveBeenCalled();
+  reply(outcome());
+  await expect(
+    getPagedStockCancellationStatus({ ...request(), order_id: false }),
+  ).rejects.toThrow();
+  reply({ ...outcome(), current: { ...outcome().current, order_id: false } });
+  await expect(getPagedStockCancellationStatus(request())).rejects.toThrow();
+});
+
 it('loads compact native cancellation state including large counts and native unavailability', async () => {
   reply(loaded());
   expect(await getPagedStockCancellation(9, 11)).toEqual(loaded());

@@ -1,9 +1,14 @@
 # New-team handover: Qorlia engineering
 
-Newest source: [global Inventory validation](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-71-global-validation-19-october-2026)
+Newest source: [global Inventory cancellation](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-72-global-cancellation-19-october-2026)
+connects six native APIs and shared Qorlia review/recovery without Sales orders.
+Home passes 1,605 cases/102 suites; native checking and remaining scope are in
+the guide. Starter-task bases, closed review and deployment status stay unchanged.
+
+Earlier source: [global Inventory validation](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-71-global-validation-19-october-2026)
 connects seven native APIs and the shared per-step dialog/recovery without Sales
 orders. Accepted preparation and parent history stay intact. Home passes 1,596
-cases/102 suites; native verification and remaining gates are in the guide.
+cases/102 suites and 46 native cases pass; remaining gates are in the guide.
 Starter-task bases, closed review access and deployment status are unchanged.
 
 Earlier source: [global Inventory operation editing](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-70-global-operation-editing-19-october-2026)

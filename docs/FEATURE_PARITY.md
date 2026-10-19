@@ -1,5 +1,14 @@
 # Bahmni workflow parity ledger
 
+## 19 October global Inventory cancellation source
+
+[Candidate 72](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-72-global-cancellation-19-october-2026)
+connects all six complete native cancellation APIs and the shared Qorlia dialog,
+strict account/database storage and exact recovery without Sales orders. Native
+reservation release, retained recorded quantities and private-analytic safeguards
+remain. Home passes 1,605 cases/102 suites; native verification and remaining
+Inventory/runtime/release gates are in the guide. Nothing is deployed.
+
 ## 19 October global Inventory validation source
 
 [Candidate 71](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-71-global-validation-19-october-2026)
@@ -7,7 +16,8 @@ connects all seven complete native validation APIs, the shared per-step Qorlia
 dialog and exact request/parent-history recovery for transfers without orders.
 Accepted preparation survives later decline; stopping a child preserves its
 parent. Legacy formats/requests stay strict. Home passes 1,596 cases/102 suites;
-source-matched native verification and remaining gates are in the guide. No
+46 native cases pass with 132-table preservation and 383 matching-client native
+responses using mocked transport. Remaining gates are in the guide. No
 review reopening, build/server, installed upgrade or deployment.
 
 ## 19 October global Inventory operation editing source

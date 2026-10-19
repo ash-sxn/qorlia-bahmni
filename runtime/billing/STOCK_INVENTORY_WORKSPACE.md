@@ -2,6 +2,54 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Candidate 72 global cancellation, 19 October 2026
+
+Inventory details now open the existing complete cancellation dialog for a
+transfer without a Sales order. The same six `qorlia_cancellation_paged_*` APIs
+accept literal `order_id: false`: load, ordered effect review, exact save/status,
+saved-reference pages and pending-request stop. No order is invented or attached.
+Positive order requests and the existing cancellation purpose/digests remain;
+other legacy stock protocols are not made global. No new engine, raw action,
+schema field, permission grant, dependency or separate design system is added.
+
+The native engine remains responsible for reservation release, retained recorded
+done quantities, sibling-aware downstream cancellation and permitted private
+analytic deletion. Physical stock and protected financial/configuration guards,
+native permissions, full review proofs, locking, callback rollback and actual-save
+comparison remain. Cancelling an unfinished transfer is not physical receipt,
+invoice cancellation or refund. Stopping a pending request only records its exact
+stopped outcome and cannot reverse an accepted cancellation.
+
+The shared Qorlia review dialog retains complete ordered effects, an explicitly
+destructive save label, exact schema-8 account/database persistence and original
+request recovery. Unknown/lost/expired outcomes remain recoverable; no new nonce
+or automatic repeat is substituted. All saved references and fresh status gate
+retirement. Inventory entry, existing transfer resume and the signed-in Billing
+notice use actual transfer identity; the global notice pins cancellation kind
+through a cleared-banner refetch. Existing Inventory refresh/focus paths remain.
+
+Home passes **1,605 cases/102 suites**. Library and actual test-source types,
+scoped lint, Python AST parsing of 106 files, three gateway stub cases and diff
+checks pass. Coverage includes all six global client calls, false/lookalike and
+response-scope rejection, complete destructive review/persistence, lost-save
+remount/exact retry, full reference retirement, strict global storage/unknown
+outcome preservation and direct Inventory/notice routing. Component/storage and
+transport doubles are not browser/IndexedDB or hosted acceptance.
+
+A frozen **49-case native run is active**, not accepted yet: nine new global
+cancellation cases plus all 40 existing direct-native, API and mixed-state
+matrix cases. Final result, source-matched client replay and independent committed
+SQL remain pending. It uses readonly source, no HTTP/published ports and unchanged
+installed metadata 49. The older source-68 full worker cannot accept this source.
+
+Remaining: global returns, native transfer create/edit/duplicate, orphan and
+completed-operation corrections, remaining fields/chains/packages, overview/type
+choices, full filters/grouping/views, bulk/print, wider permissions/configuration,
+current full regression, actual HTTP/browser/layout/IndexedDB/multi-tab/
+concurrency, representative scale and approved rollout. Whole-product parity is
+not complete. Review stays closed; no build/server, installed upgrade, hosted
+tester or production deployment is included.
+
 ## Candidate 71 global validation, 19 October 2026
 
 Inventory details now open the existing complete transfer-validation workflow
@@ -43,14 +91,22 @@ acceptance. Library and actual test-source types, scoped lint, Python AST parsin
 of all 106 files, three gateway stub cases, diff checks and the
 42-document/746-link check pass. No new dependency or design system is added.
 
-A corrected frozen **46-case native run is active**, not accepted yet: ten new global
+A corrected frozen **46 unique native cases pass, zero failures/errors/skips**: ten new global
 validation cases, ten existing complete-review cases, 14 complete-write cases
 and 12 legacy-step regressions. The new cases cover actual orderless receipt,
 delivery and internal movement, batch/prices/references, saved immediate
 preparation followed by expiry decline, native backorders, stopped child/parent
 recovery, strict false identity, order/global proof separation, stale/incomplete
-proofs, hidden moves, write denial and different-author rejection. Final result,
-matching-client replay and independent committed SQL remain pending.
+proofs, hidden moves, write denial and different-author rejection. All 106 Python
+hashes match the frozen source. All 132 guarded tables remain unchanged with
+mandatory analytics/SMS enabled; independent committed SQL counts/full-row hashes
+match the baseline. The matching client accepts **383 native JSON responses**
+across all seven methods, including 143 orderless responses; transport is mocked.
+Log SHA256: `9bbcc5ae8a298ef6393b28d1b89ed1d0aecf610f31b33734c5cc0df2ff0e910d`.
+Client SHA256: `07d956891cea0e1ff25eb5342db69114906794e54b6da7c4584dd2bfe4c9acf9`.
+The readonly no-HTTP worker is terminal/removed, with no published ports and
+unchanged installed metadata 49. Bootstrap warnings remain; this does not prove
+a clean installation, installed upgrade, actual HTTP/browser or release.
 
 The first native run completed 46 cases with one failed internal-transfer test
 expectation, zero errors/skips and all 132 guarded tables unchanged. Independent

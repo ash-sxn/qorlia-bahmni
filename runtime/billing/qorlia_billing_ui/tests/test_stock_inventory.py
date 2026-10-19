@@ -7,6 +7,9 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 from .test_stock_validation_contract import StockValidationFixture
+from . import test_stock_cancellation as cancellation_contract
+from . import test_stock_cancellation_contract as cancellation_native
+from . import test_stock_cancellation_matrix as cancellation_matrix
 
 
 class StockInventoryFixture(StockValidationFixture):
@@ -381,6 +384,152 @@ class StockInventoryPreparationTest(StockInventoryFixture, TransactionCase):
             self.env['stock.picking'].with_user(self.user).qorlia_reservation_paged_status(request)
         with self.assertRaises(ValidationError):
             self.api().qorlia_reservation_paged_status(dict(request, action='unreserve'))
+
+
+@tagged('post_install', '-at_install')
+class StockInventoryCancellationTest(StockInventoryFixture, TransactionCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.reader.email = 'qorliaqa-inventory-cancellation@example.invalid'
+
+    unlinked = StockInventoryConfirmationTest.unlinked
+    api = StockInventoryConfirmationTest.api
+    reviewed = cancellation_contract.StockCancellationAPITest.reviewed
+    chain = cancellation_native.StockCancellationContractTest.chain
+    deny = cancellation_matrix.StockCancellationMatrixTest.deny
+    analytic = cancellation_matrix.StockCancellationMatrixTest.analytic
+
+    def selection(self, picking):
+        loaded = self.api().qorlia_cancellation_paged_load(False, picking.id)
+        self.assertIs(loaded['order_id'], False)
+        return {key: loaded[key] for key in ('order_id', 'transfer_id', 'version')} | {'action': 'cancel_transfer'}
+
+    def prepared(self, kind=None, done=0):
+        picking = self.unlinked(kind)
+        picking.action_confirm()
+        picking.action_assign()
+        picking.move_line_ids.qty_done = done
+        return picking
+
+    def test_all_three_transfer_types_cancel_without_sales_and_keep_physical_quantities(self):
+        self.assertFalse(self.reader.has_group('sales_team.group_sale_salesman'))
+        for kind in (self.in_type, self.out_type, self.internal_type):
+            for stage in ('draft', 'confirmed', 'assigned'):
+                with self.subTest(operation=kind.code, stage=stage):
+                    picking = self.unlinked(kind)
+                    if stage != 'draft':
+                        picking.action_confirm()
+                    if stage == 'assigned':
+                        picking.action_assign()
+                        picking.move_line_ids.qty_done = 2
+                    request, pages = self.reviewed(picking, limit=1)
+                    self.assertIs(pages[0]['order_id'], False)
+                    self.assertFalse(self.api().qorlia_cancellation_paged_status(request)['accepted'])
+                    saved = self.api().qorlia_cancellation_paged_save(request)
+                    self.assertTrue(saved['accepted'])
+                    self.assertIs(saved['current']['order_id'], False)
+                    self.assertEqual((picking.state, self.source_stock(), self.sale_line.qty_delivered), ('cancel', 10, 0))
+                    self.assertFalse(picking.sale_id)
+                    self.assertEqual(sum(picking.move_line_ids.mapped('qty_done')), 2 if stage == 'assigned' else 0)
+                    self.assertEqual(saved, self.api().qorlia_cancellation_paged_save(request))
+                    self.assertEqual(saved, self.api().qorlia_cancellation_paged_status(request))
+                    self.assertEqual(saved, self.api().qorlia_cancellation_paged_stop(request))
+                    refs = self.api().qorlia_cancellation_paged_references(request)
+                    self.assertEqual(refs['total_count'], saved['reference_count'])
+
+    def test_empty_transfer_cancels_without_inventing_a_move_or_order(self):
+        picking = self.empty().with_user(self.reader)
+        request, _pages = self.reviewed(picking)
+        self.assertTrue(self.api().qorlia_cancellation_paged_save(request)['accepted'])
+        self.assertEqual(picking.state, 'cancel')
+        self.assertFalse(picking.move_ids)
+        self.assertFalse(picking.sale_id)
+
+    def test_global_chain_cancellation_keeps_sibling_origin_semantics(self):
+        first, sibling, successor = self.chain(sibling=True)
+        all_pickings = (first | sibling | successor).with_env(self.env)
+        all_pickings.move_ids.sale_line_id = False
+        first, sibling, successor = (record.with_user(self.reader) for record in (first, sibling, successor))
+        request, _pages = self.reviewed(first)
+        self.api().qorlia_cancellation_paged_save(request)
+        self.assertNotEqual(successor.state, 'cancel')
+        request, _pages = self.reviewed(sibling)
+        self.api().qorlia_cancellation_paged_save(request)
+        self.assertEqual(successor.state, 'cancel')
+        self.assertEqual((self.source_stock(), self.sale_line.qty_delivered), (10, 0))
+
+    def test_stop_records_only_the_original_request_and_cannot_cancel_later(self):
+        picking = self.prepared()
+        request, _pages = self.reviewed(picking)
+        state = picking.state
+        stopped = self.api().qorlia_cancellation_paged_stop(request)
+        self.assertTrue(stopped['stopped'])
+        self.assertFalse(stopped['accepted'])
+        self.assertEqual(picking.state, state)
+        self.assertEqual(stopped, self.api().qorlia_cancellation_paged_stop(request))
+        with self.assertRaises(UserError):
+            self.api().qorlia_cancellation_paged_save(request)
+        self.assertEqual(self.source_stock(), 10)
+
+    def test_literal_false_not_lookalikes_or_other_action_families(self):
+        picking = self.prepared()
+        data = self.selection(picking)
+        for value in (0, True, None, '', [], {}, -1):
+            with self.subTest(value=value), self.assertRaises(ValidationError):
+                self.api().qorlia_cancellation_paged_load(value, picking.id)
+            with self.subTest(value=value), self.assertRaises(ValidationError):
+                self.api().qorlia_cancellation_paged_review(dict(data, order_id=value))
+        with self.assertRaises(ValidationError):
+            self.api().qorlia_cancellation_paged_review(dict(data, action='unreserve'))
+
+    def test_stale_scope_and_wrong_completion_proof_cannot_cancel(self):
+        picking = self.prepared()
+        request, _pages = self.reviewed(picking, limit=1)
+        with self.assertRaises(UserError):
+            self.api().qorlia_cancellation_paged_save(dict(request, review_complete_token='a' * 64))
+        picking.with_env(self.env).origin = 'QorliaQA Changed global cancellation source'
+        before = self.stamp()
+        with self.assertRaises(UserError):
+            self.api().qorlia_cancellation_paged_save(request)
+        self.assertEqual(self.stamp(), before)
+
+    def test_global_receipt_cannot_be_recovered_by_another_author_or_order_scope(self):
+        picking = self.prepared()
+        request, _pages = self.reviewed(picking)
+        self.api().qorlia_cancellation_paged_save(request)
+        with self.assertRaises(ValidationError):
+            self.env['stock.picking'].with_user(self.user).qorlia_cancellation_paged_status(request)
+        with self.assertRaises(ValidationError):
+            self.env['stock.picking'].with_user(self.user).qorlia_cancellation_paged_status(dict(request, order_id=self.order.id))
+
+    def test_hidden_move_and_write_denial_preserve_the_transfer(self):
+        picking = self.prepared()
+        request, _pages = self.reviewed(picking)
+        rule = self.deny('stock.move', picking.move_ids.id, 'read')
+        with self.assertRaises(AccessError):
+            self.api().qorlia_cancellation_paged_load(False, picking.id)
+        rule.unlink()
+        self.deny('stock.picking', picking.id, 'write')
+        with self.assertRaises(AccessError):
+            self.api().qorlia_cancellation_paged_save(request)
+        with self.assertRaises(AccessError):
+            self.api().qorlia_cancellation_paged_stop(request)
+        self.assertEqual(picking.state, 'assigned')
+
+    def test_native_private_analytic_deletion_stays_private_without_a_sales_role(self):
+        self.reader.write({'groups_id': [(4, self.env.ref('account.group_account_manager').id)]})
+        self.assertFalse(self.reader.has_group('sales_team.group_sale_salesman'))
+        picking = self.prepared()
+        entry = self.analytic(picking)
+        self.deny('account.analytic.line', entry.id, 'read')
+        request, pages = self.reviewed(picking)
+        self.assertTrue(any(page['effects']['private_effect_counts'].get('account.analytic.line', {}).get('deleted') == 1 for page in pages))
+        for page in pages:
+            self.assertNotIn('account.analytic.line', page['effects']['schema'])
+        self.assertTrue(self.api().qorlia_cancellation_paged_save(request)['accepted'])
+        self.assertFalse(entry.exists())
+        self.assertEqual(self.source_stock(), 10)
 
 
 @tagged('post_install', '-at_install')

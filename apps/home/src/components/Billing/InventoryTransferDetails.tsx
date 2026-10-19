@@ -9,6 +9,7 @@ import {
   InventoryTransferLoad,
   PagedStockOperationSelection,
 } from './billingService';
+import { PagedStockCancellationModal } from './PagedStockCancellationModal';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
 import { PagedStockOperationEditor } from './PagedStockOperationEditor';
 import { PagedStockReservationModal } from './PagedStockReservationModal';
@@ -33,6 +34,7 @@ export function InventoryTransferDetails(props: Props) {
     | 'confirmation'
     | 'preparation'
     | 'validation'
+    | 'cancellation'
     | PagedStockOperationSelection
     | null
   >(null);
@@ -44,7 +46,9 @@ export function InventoryTransferDetails(props: Props) {
       ? PagedStockReservationModal
       : workflow === 'validation'
         ? PagedStockValidationModal
-        : PagedStockConfirmationModal;
+        : workflow === 'cancellation'
+          ? PagedStockCancellationModal
+          : PagedStockConfirmationModal;
   const closeWorkflow = () => {
     setWorkflow(null);
     setRevision((value) => value + 1);
@@ -110,7 +114,9 @@ function ReadTransfer({
   transferId: number;
   reconnect: () => void;
   reload: () => void;
-  openWrite: (kind: 'confirmation' | 'preparation' | 'validation') => void;
+  openWrite: (
+    kind: 'confirmation' | 'preparation' | 'validation' | 'cancellation',
+  ) => void;
   openOperation: (moveId: number, operationId: number | false) => void;
 }) {
   const loaded = useQuery({
@@ -161,7 +167,9 @@ function DetailPages({
   loaded: InventoryTransferLoad;
   reconnect: () => void;
   reload: () => void;
-  openWrite: (kind: 'confirmation' | 'preparation' | 'validation') => void;
+  openWrite: (
+    kind: 'confirmation' | 'preparation' | 'validation' | 'cancellation',
+  ) => void;
   openOperation: (moveId: number, operationId: number | false) => void;
 }) {
   const [cursors, setCursors] = useState<Record<Section, Cursor[]>>({
@@ -335,6 +343,13 @@ function DetailPages({
         onClick={() => openWrite('validation')}
       >
         Review or recover validation
+      </Button>
+      <Button
+        kind="tertiary"
+        disabled={fetching}
+        onClick={() => openWrite('cancellation')}
+      >
+        Review or recover cancellation
       </Button>
       {sections.map((section, index) => {
         const page = queries[index].data!;

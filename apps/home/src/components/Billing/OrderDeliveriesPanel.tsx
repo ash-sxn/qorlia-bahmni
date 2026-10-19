@@ -107,7 +107,7 @@ function OrderTransfers({
     transferId: number;
   } | null>(null);
   const [cancellation, setCancellation] = useState<{
-    orderId: number;
+    orderId: number | false;
     transferId: number;
   } | null>(null);
   const [reservation, setReservation] = useState<{

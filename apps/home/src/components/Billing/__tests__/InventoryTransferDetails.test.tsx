@@ -19,6 +19,13 @@ const mockConfirmation = jest.fn();
 const mockPreparation = jest.fn();
 const mockOperation = jest.fn();
 const mockValidation = jest.fn();
+const mockCancellation = jest.fn();
+jest.mock('../PagedStockCancellationModal', () => ({
+  PagedStockCancellationModal: (props: { close: () => void }) => {
+    mockCancellation(props);
+    return <button onClick={props.close}>Close global cancellation</button>;
+  },
+}));
 jest.mock('../PagedStockValidationModal', () => ({
   PagedStockValidationModal: (props: { close: () => void }) => {
     mockValidation(props);
@@ -204,6 +211,26 @@ it('opens native validation without an order and reloads Inventory on close', as
   expect(
     screen.queryByRole('button', { name: 'Close global validation' }),
   ).not.toBeInTheDocument();
+});
+it('opens complete cancellation without an order and reloads Inventory after close', async () => {
+  show();
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: 'Review or recover cancellation',
+    }),
+  );
+  expect(mockCancellation.mock.calls.at(-1)?.[0]).toMatchObject({
+    uid: 3,
+    orderId: false,
+    transferId: 11,
+    reconnect,
+  });
+  expect(mockValidation).not.toHaveBeenCalled();
+  expect(mockConfirmation).not.toHaveBeenCalled();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close global cancellation' }),
+  );
+  await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
 });
 it('does not invent a move for an orphaned operation or offer new operations on completed moves', async () => {
   detail.mockImplementation(async (_id, section) => {

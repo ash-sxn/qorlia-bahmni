@@ -32,6 +32,13 @@ const mockGlobalConfirmation = jest.fn();
 const mockGlobalPreparation = jest.fn();
 const mockGlobalOperation = jest.fn();
 const mockGlobalValidation = jest.fn();
+const mockGlobalCancellation = jest.fn();
+jest.mock('../PagedStockCancellationModal', () => ({
+  PagedStockCancellationModal: (props: { close: () => void }) => {
+    mockGlobalCancellation(props);
+    return <button onClick={props.close}>Close global cancellation</button>;
+  },
+}));
 jest.mock('../PagedStockValidationModal', () => ({
   PagedStockValidationModal: (props: { close: () => void }) => {
     mockGlobalValidation(props);
@@ -252,6 +259,36 @@ const cases: [string, () => StockWriteRequest][] = [
   ['Transfer confirmation', confirmationRequest],
   ['Stock preparation', stockRequest],
 ];
+it('opens a global cancellation directly and pins it while its cleared banner refetches', async () => {
+  disk = { ...cancellationRequest(), order_id: false };
+  const { client } = show();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Open saved stock workflow' }),
+  );
+  expect(mockGlobalCancellation.mock.calls.at(-1)?.[0]).toMatchObject({
+    uid: 3,
+    orderId: false,
+    transferId: 11,
+    reconnect,
+  });
+  expect(mockPanel).not.toHaveBeenCalled();
+  expect(mockGlobalOperation).not.toHaveBeenCalled();
+  expect(mockGlobalValidation).not.toHaveBeenCalled();
+  expect(mockGlobalConfirmation).not.toHaveBeenCalled();
+  disk = null;
+  await act(async () => {
+    await client.invalidateQueries({
+      queryKey: ['billing', 'reservation-recovery', 3],
+    });
+  });
+  expect(
+    screen.getByRole('button', { name: 'Close global cancellation' }),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close global cancellation' }),
+  );
+  await waitFor(() => expect(fallback).toHaveBeenCalled());
+});
 it.each(cases)(
   'recognises %s without changing its stored protocol or exposing the request key',
   async (kind, request) => {

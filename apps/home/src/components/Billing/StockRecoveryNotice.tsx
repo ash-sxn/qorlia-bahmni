@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import styles from './BillingPage.module.scss';
 import { OrderDeliveriesPanel } from './OrderDeliveriesPanel';
+import { PagedStockCancellationModal } from './PagedStockCancellationModal';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
 import { PagedStockReservationModal } from './PagedStockReservationModal';
 import { PagedStockValidationModal } from './PagedStockValidationModal';
@@ -31,7 +32,12 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
   const [target, setTarget] = useState<{
     orderId: number | false;
     transferId: number;
-    kind: 'confirmation' | 'preparation' | 'operation' | 'validation';
+    kind:
+      | 'confirmation'
+      | 'preparation'
+      | 'operation'
+      | 'validation'
+      | 'cancellation';
   } | null>(null);
   const opener = useRef<HTMLButtonElement>(null);
   const retryButton = useRef<HTMLButtonElement>(null);
@@ -65,7 +71,9 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
         ? PagedStockConfirmationModal
         : target.kind === 'validation'
           ? PagedStockValidationModal
-          : PagedStockReservationModal;
+          : target.kind === 'cancellation'
+            ? PagedStockCancellationModal
+            : PagedStockReservationModal;
     const props = {
       uid,
       orderId: false as const,
@@ -158,7 +166,9 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
                 ? 'operation'
                 : isPagedStockValidationRequest(request)
                   ? 'validation'
-                  : 'preparation',
+                  : isPagedStockCancellationRequest(request)
+                    ? 'cancellation'
+                    : 'preparation',
           })
         }
       >

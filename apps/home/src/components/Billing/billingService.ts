@@ -6502,10 +6502,12 @@ export const getStockReturnStatus = (request: StockReturnRequest) =>
   returnRequest('qorlia_return_status', request);
 
 export type StockReturnMetadata = Omit<StockReturnForm, 'lines'>;
-export interface StockCancellationSelection extends StockConfirmationSelection {
+export interface StockCancellationSelection
+  extends PagedStockConfirmationSelection {
   action: 'cancel_transfer';
 }
-export interface PagedStockCancellationLoad extends StockConfirmationSelection {
+export interface PagedStockCancellationLoad
+  extends PagedStockConfirmationSelection {
   transfer: OrderTransferSummary;
   reason: string | false;
   write_ready: boolean;
@@ -6534,7 +6536,7 @@ export interface PagedStockCancellationStatus {
   request_key: string;
   state_after: OrderTransfer['state'] | false;
   reference_count: number;
-  current: StockValidationStepCompactStatus['current'];
+  current: PagedStockOperationStatus['current'];
 }
 function checkedCancellationSelection(
   value: StockCancellationSelection,
@@ -6549,7 +6551,10 @@ function checkedCancellationSelection(
     value.action !== 'cancel_transfer'
   )
     throw new Error('Use the exact native transfer cancellation selection.');
-  return { ...checkedConfirmationSelection(value), action: 'cancel_transfer' };
+  return {
+    ...checkedConfirmationSelection(value, true),
+    action: 'cancel_transfer',
+  };
 }
 export function checkedPagedStockCancellationRequest(
   value: PagedStockCancellationRequest,
@@ -6580,10 +6585,10 @@ export function checkedPagedStockCancellationRequest(
   };
 }
 export async function getPagedStockCancellation(
-  orderId: number,
+  orderId: number | false,
   transferId: number,
 ) {
-  if (!stockId(orderId) || !stockId(transferId))
+  if (!(orderId === false || stockId(orderId)) || !stockId(transferId))
     throw new Error('Select a saved stock transfer.');
   const data = await stockCall<PagedStockCancellationLoad>(
     'qorlia_cancellation_paged_load',

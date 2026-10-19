@@ -35,7 +35,7 @@ class StockCancellation(models.Model):
     def qorlia_cancellation_paged_load(self, order_id, transfer_id):
         self = self._qorlia_operation_paged_context()
         self.env.invalidate_all()
-        picking, order, scope = self._qorlia_confirmation_paged_transfer(order_id, transfer_id)
+        picking, order, scope = self._qorlia_confirmation_paged_transfer(order_id, transfer_id, inventory=True)
         reason = False
         try:
             picking._qorlia_cancellation_access()
@@ -56,7 +56,8 @@ class StockCancellation(models.Model):
 
     def _qorlia_cancellation_selection(self, data):
         if (not isinstance(data, dict) or set(data) != {'order_id', 'transfer_id', 'version', 'action'}
-                or any(type(data[name]) is not int or data[name] <= 0 for name in ('order_id', 'transfer_id'))
+                or (data['order_id'] is not False and (type(data['order_id']) is not int or data['order_id'] <= 0))
+                or type(data['transfer_id']) is not int or data['transfer_id'] <= 0
                 or not _hash(data['version']) or data['action'] != _ACTION):
             raise ValidationError('Use the exact native transfer cancellation selection.')
         return dict(data)
@@ -115,10 +116,10 @@ class StockCancellation(models.Model):
             {'review_version': reviewed, 'position': position}, {}, False)
 
     def _qorlia_cancellation_preview(self, data):
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(data['order_id'], data['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(data['order_id'], data['transfer_id'], inventory=True)
         picking._qorlia_cancellation_access()
         picking._qorlia_return_paged_lock()
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(data['order_id'], data['transfer_id'], lock=True)
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(data['order_id'], data['transfer_id'], lock=True, inventory=True)
         current = self.qorlia_cancellation_paged_load(data['order_id'], data['transfer_id'])
         if current['version'] != data['version']:
             raise UserError('The transfer, inventory or native configuration changed. Reload it.')
@@ -171,7 +172,7 @@ class StockCancellation(models.Model):
 
     def _qorlia_cancellation_recovery(self, payload):
         request, digest = self._qorlia_cancellation_request(payload)
-        picking, order, scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, order, scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         receipt, receipts = picking._qorlia_validation_receipt(request, digest)
         marker = receipts.get('stop:%s:%s' % (self.env.uid, request['request_key']))
         if receipt and (receipt.get('kind') != _PURPOSE or receipt.get('companies') != self.env.companies.ids
