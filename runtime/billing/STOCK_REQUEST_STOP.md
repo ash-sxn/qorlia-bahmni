@@ -90,8 +90,12 @@ Account/order/transfer identity changes discard late UI results and retain the
 old account's recovery record. Duplicate dispatch uses the existing busy lock.
 The existing controls/design tokens and bounded page rendering are preserved.
 
-Operation and reservation clients/storage support the new native stop methods;
-their complete paged React consumers still need migration. Legacy pending
+The later [19 October preparation source](STOCK_RESERVATION_PAGING.md#react-preparation-consumer-source-19-october-2026)
+uses this same inline stop/recovery path through the shared dialog, retaining
+all 25 confirmation cases and adding 24 preparation cases. Home passes 970 cases
+in 83 suites. This is SDK/storage-double evidence, not browser acceptance.
+The operation client/storage supports stop but its complete React consumer still
+needs migration. Legacy pending
 requests retain their original contracts and do not gain this stop action.
 
 ## Evidence and release gates
@@ -213,5 +217,5 @@ separate scope.
   source-58 830-case full regression does not establish those runtime states.
 - Actual protected-gateway/browser/IndexedDB durability, keyboard/narrow layout,
   multi-tab and reconnect fault acceptance remain open behind owner approval.
-- Remaining paged operation/preparation consumers, large validation/return flows,
+- Remaining paged operation consumer, large validation/return flows,
   performance under realistic hospital load and full Billing/product parity remain.

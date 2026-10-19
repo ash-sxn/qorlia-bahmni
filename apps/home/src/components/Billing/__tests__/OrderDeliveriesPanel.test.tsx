@@ -20,6 +20,7 @@ import {
 } from './orderDeliveryFixture';
 import { confirmationRequest } from './stockConfirmationFixture';
 import { operationRequest, operationSelection } from './stockOperationFixture';
+import { stockRequest } from './stockReservationFixture';
 import { validationRequest } from './stockValidationFixture';
 
 jest.mock('../stockReservationRecovery', () => ({
@@ -29,6 +30,16 @@ jest.mock('../stockReservationRecovery', () => ({
 const mockEditor = jest.fn();
 const mockConfirmation = jest.fn();
 const mockPagedConfirmation = jest.fn();
+const mockPagedReservation = jest.fn();
+const mockLegacyReservation = jest.fn();
+jest.mock('../PagedStockReservationModal', () => ({
+  PagedStockReservationModal: (props: { close: () => void }) => {
+    mockPagedReservation(props);
+    return (
+      <button onClick={props.close}>Return from complete preparation</button>
+    );
+  },
+}));
 jest.mock('../PagedStockConfirmationModal', () => ({
   PagedStockConfirmationModal: (props: { close: () => void }) => {
     mockPagedConfirmation(props);
@@ -57,9 +68,10 @@ jest.mock('../StockOperationEditor', () => ({
   },
 }));
 jest.mock('../StockReservationModal', () => ({
-  StockReservationModal: ({ close }: { close: () => void }) => (
-    <button onClick={close}>Return from reservation</button>
-  ),
+  StockReservationModal: (props: { close: () => void }) => {
+    mockLegacyReservation(props);
+    return <button onClick={props.close}>Return from reservation</button>;
+  },
 }));
 
 jest.mock('../billingService', () => ({
@@ -321,11 +333,18 @@ describe('Order stock transfer review', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Review stock preparation' }),
     );
+    const props = mockPagedReservation.mock.calls.at(-1)?.[0];
+    expect(props).toMatchObject({ uid: 3, orderId: 9, transferId: 11 });
+    props.returnFocus();
+    expect(
+      screen.getByRole('button', { name: 'Review stock preparation' }),
+    ).toHaveFocus();
+    expect(mockLegacyReservation).not.toHaveBeenCalled();
     const refreshed = orderDeliveryFixture();
     refreshed.rows[0].moves[0].reserved = 12;
     fixture = refreshed;
     fireEvent.click(
-      screen.getByRole('button', { name: 'Return from reservation' }),
+      screen.getByRole('button', { name: 'Return from complete preparation' }),
     );
     await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
     const table = await screen.findByRole('table', {
@@ -335,6 +354,43 @@ describe('Order stock transfer review', () => {
       expect(within(table).getAllByText('12')).toHaveLength(2),
     );
   });
+  it.each([false, true])(
+    'resumes preparation with its original order and protocol (paged: %s)',
+    async (paged) => {
+      jest.mocked(loadStockWriteRecovery).mockResolvedValue({
+        ...stockRequest(),
+        order_id: 10,
+        transfer_id: 12,
+        ...(paged ? { review_complete_token: 'd'.repeat(64) } : {}),
+      });
+      show();
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Resume reservation request',
+        }),
+      );
+      const called = paged ? mockPagedReservation : mockLegacyReservation;
+      expect(called.mock.calls.at(-1)?.[0]).toMatchObject({
+        uid: 3,
+        orderId: 10,
+        transferId: 12,
+      });
+      expect(
+        paged ? mockLegacyReservation : mockPagedReservation,
+      ).not.toHaveBeenCalled();
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: paged
+            ? 'Return from complete preparation'
+            : 'Return from reservation',
+        }),
+      );
+      await openTransfer();
+      expect(
+        screen.getByRole('button', { name: 'Review stock preparation' }),
+      ).toBeDisabled();
+    },
+  );
   it('opens new and saved operations with their exact move identities, then reloads saved values', async () => {
     show();
     await openTransfer();

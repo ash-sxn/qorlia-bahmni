@@ -301,16 +301,17 @@ describe('Native transfer summary and detail paging consumers', () => {
       ...Array.from({ length: 40 }, (_, index) => 40050 + index * 50),
     ]);
     expect(
-      screen.getByText(/Confirmation uses complete paged review/),
+      screen.getByText(
+        /Confirmation and preparation use complete paged review/,
+      ),
     ).toBeInTheDocument();
-    for (const name of [
-      'Review transfer validation',
-      'Review stock preparation',
-      'Edit operation #42001',
-    ])
+    for (const name of ['Review transfer validation', 'Edit operation #42001'])
       expect(screen.getByRole('button', { name })).toBeDisabled();
     expect(
       screen.getByRole('button', { name: 'Review transfer confirmation' }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Review stock preparation' }),
     ).toBeEnabled();
     expect(mockOperation).not.toHaveBeenCalled();
   }, 30000);

@@ -426,6 +426,7 @@ describe('Complete paged confirmation consumer', () => {
     disk.set(3, request());
     const view = show();
     await screen.findByRole('button', { name: 'Read saved references' });
+    expect(screen.getByText(/2 package operations/)).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole('button', { name: 'Read saved references' }),
     );

@@ -1,5 +1,19 @@
 # Qorlia React frontend backend readiness
 
+## Complete preparation consumer source (19 October 2026)
+
+All four preparation actions now use the existing complete paged native clients
+and schema-5 recovery from transfer details. The shared confirmation/preparation
+dialog separates fresh writable loads from compact recovery, preserves exact
+actions/nonces/proofs, reads every effect/reference page and connects native stop.
+Legacy pending routes remain; only preparation's old transfer-size UI lock is
+removed. Home passes 970 cases/83 suites, including 24 new preparation cases and
+the preserved 25 confirmation cases. Types, scoped lint/format/diff and three
+gateway unit cases pass. No native/schema/gateway change, build/server, review
+reopening, upgrade or deployment. Actual gateway/browser/IndexedDB acceptance,
+paged operation editing, large validation/returns and full parity remain. See
+[the consumer and evidence scope](../runtime/billing/STOCK_RESERVATION_PAGING.md#react-preparation-consumer-source-19-october-2026).
+
 ## Native stock save-stop HTTP races (18 October 2026)
 
 Actual client/native HTTP passes save-first and stop-first for confirmation,

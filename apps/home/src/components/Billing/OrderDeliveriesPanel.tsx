@@ -13,6 +13,7 @@ import {
 } from './billingService';
 import { OrderTransferDetails } from './OrderTransferDetails';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
+import { PagedStockReservationModal } from './PagedStockReservationModal';
 import { StockConfirmationModal } from './StockConfirmationModal';
 import { StockOperationEditor } from './StockOperationEditor';
 import { StockReservationModal } from './StockReservationModal';
@@ -58,6 +59,7 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
   const [reservation, setReservation] = useState<{
     orderId: number;
     transferId: number;
+    paged: boolean;
   } | null>(null);
   const [operation, setOperation] = useState<StockOperationSelection | null>(
     null,
@@ -181,11 +183,14 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
                   move_id: pending.move_id,
                   operation_id: pending.operation_id,
                 });
-              else
+              else {
+                confirmationOpener.current = event.currentTarget;
                 setReservation({
                   orderId: pending.order_id,
                   transferId: pending.transfer_id,
+                  paged: isPagedStockWriteRequest(pending),
                 });
+              }
             }}
           >
             {isStockValidationRequest(recovery.data)
@@ -336,7 +341,10 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
                 confirmationOpener.current = event.currentTarget;
                 setConfirmation({ orderId, transferId, paged: true });
               }}
-              reservation={() => setReservation({ orderId, transferId })}
+              reservation={(event) => {
+                confirmationOpener.current = event.currentTarget;
+                setReservation({ orderId, transferId, paged: true });
+              }}
               operation={setOperation}
               reload={refresh}
               reconnect={reconnect}
@@ -344,7 +352,16 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
           )}
         </>
       ) : null}
-      {reservation ? (
+      {reservation?.paged ? (
+        <PagedStockReservationModal
+          uid={uid}
+          orderId={reservation.orderId}
+          transferId={reservation.transferId}
+          close={reloadTransfers}
+          reconnect={reconnect}
+          returnFocus={restoreConfirmationFocus}
+        />
+      ) : reservation ? (
         <StockReservationModal
           key={`${uid}:${reservation.orderId}:${reservation.transferId}`}
           uid={uid}

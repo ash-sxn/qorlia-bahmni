@@ -1,5 +1,45 @@
 # Complete paged stock reservation actions
 
+## React preparation consumer source, 19 October 2026
+
+New preparation actions from transfer details now open the
+[paged preparation dialog](../../apps/home/src/components/Billing/PagedStockReservationModal.tsx).
+Its [shared confirmation/preparation implementation](../../apps/home/src/components/Billing/PagedStockWriteModal.tsx)
+connects the existing load, sequential review, save, status, references and
+exact-request stop clients. Native code, API shapes, storage schema, gateway
+allowlist and installed module version are unchanged by this UI increment.
+
+- All four native actions remain distinct. Fresh load readiness and each native
+  disabled reason control entry; a compact recovery summary is never promoted
+  into a new editable load. Package counts appear only when supplied.
+- Effects render 50 records per page. Every sequential page and terminal proof
+  is required before constructing one nonce and committing the exact request to
+  schema-5 storage, before HTTP dispatch. Backward review retains the original
+  action/version/proofs. Failed or changed pages cannot be saved.
+- Rejection, expiry, response loss and navigation retain the original action,
+  scope, proof and nonce. Retry never generates another nonce. Accepted references
+  have their own pinned pages; all must be read and a fresh accepted status checked
+  before exact clear and authoritative reload. Stop requires explicit confirmation
+  and a matching acknowledgment; accepted actions recover their receipt instead.
+- The transfer panel resumes paged or legacy preparation in its original dialog,
+  including off-page original orders/transfers. Legacy pending requests are not
+  converted or overwritten. Only preparation's legacy transfer-size UI lock is
+  removed; validation/operation-editor caps, pending locks and native permissions
+  remain. [All writers must support stop before rollout](STOCK_REQUEST_STOP.md#remaining-release-gates).
+
+The final Home suite passes **970 tests in 83 suites**, including 24 preparation
+dialog cases, the preserved 25 confirmation cases and two new parent-routing cases.
+Coverage includes 101 effects/references, bounded rendering, four exact actions,
+strict persistence, identity changes, failures, stop/acceptance races and legacy
+dispatch. Library/focused source-test types, scoped lint/format/diff, three gateway
+unit cases and contributor links pass. These are JSDOM tests with SDK/storage
+doubles, not native screen, real IndexedDB, gateway or browser acceptance.
+
+The earlier native HTTP evidence below keeps its separate scope. No frontend
+build/server, browser review, expired-gate reopening, installed upgrade, public
+tunnel or tester/production deployment is included. Paged operation editing,
+large validation/returns and full Billing/product parity remain unfinished.
+
 ## Candidate 55, 16 October 2026
 
 Later source candidate: [candidate 56's complete inventory scope](STOCK_INVENTORY_SCOPE.md)
@@ -117,8 +157,10 @@ of quantities already entered; a client must not manually zero rows instead.
   load, review, save, status and references. This replay mocks transport; it is
   not HTTP, gateway or browser acceptance.
 
-The React reservation dialog and recovery consumers still use the older
-protocol. The shared [storage slot supports completed requests](STOCK_RECOVERY.md),
+At this candidate-55 checkpoint, the React reservation dialog and recovery
+consumers still used the older protocol. The later React source checkpoint above
+supersedes that consumer gap, not the remaining runtime acceptance gates.
+The shared [storage slot supports completed requests](STOCK_RECOVERY.md),
 but adding storage/SDK support does not migrate a consumer. The operator review gate
 stays closed. The native HTTP evidence below does not claim a frontend build,
 browser test, protected-gateway acceptance, tester/public deployment or source-55

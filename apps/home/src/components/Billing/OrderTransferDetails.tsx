@@ -25,7 +25,7 @@ type Props = {
   stockLocked: boolean;
   validation: MouseEventHandler<HTMLButtonElement>;
   confirmation: MouseEventHandler<HTMLButtonElement>;
-  reservation: () => void;
+  reservation: MouseEventHandler<HTMLButtonElement>;
   operation: (selection: StockOperationSelection) => void;
   reload: () => void;
   reconnect: () => void;
@@ -183,7 +183,7 @@ function TransferDetails({
       </p>
     );
   const transfer = movePage.transfer;
-  // shortcut: Validation/preparation/editing stay capped until their paged consumers are connected.
+  // shortcut: Validation/editing stay capped until their paged consumers are connected.
   const legacyLimit =
     transfer.move_count > 500 || transfer.operation_count > 2000;
   const locked = stockLocked || legacyLimit || fetching;
@@ -202,14 +202,18 @@ function TransferDetails({
       >
         Review transfer confirmation
       </Button>
-      <Button kind="tertiary" disabled={locked} onClick={reservation}>
+      <Button
+        kind="tertiary"
+        disabled={stockLocked || fetching}
+        onClick={reservation}
+      >
         Review stock preparation
       </Button>
       {legacyLimit ? (
         <p>
-          All details can be read in pages. Confirmation uses complete paged
-          review. Validation, preparation and operation editing for this larger
-          transfer are not connected to this screen yet.
+          All details can be read in pages. Confirmation and preparation use
+          complete paged review. Validation and operation editing for this
+          larger transfer are not connected to this screen yet.
         </p>
       ) : null}
       <p>

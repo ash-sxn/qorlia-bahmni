@@ -71,14 +71,16 @@ function display(
 
 export function StockConfirmationEffects({
   effects,
+  workflow = 'confirmation',
 }: {
   effects: Effects | StockValidationEffects;
+  workflow?: 'confirmation' | 'preparation';
 }) {
   const validation = 'private_effect_counts' in effects;
   const privateCounts = validation
     ? effects.private_effect_counts
     : effects.private_audit_counts;
-  const action = validation ? 'validation' : 'confirmation';
+  const action = validation ? 'validation' : workflow;
   return (
     <section
       className={styles.review}

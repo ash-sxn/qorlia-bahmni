@@ -3,6 +3,16 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest consumer source, 19 October: [complete preparation review](STOCK_RESERVATION_PAGING.md#react-preparation-consumer-source-19-october-2026)
+connects all four actions, terminal-proof save, exact schema-5 recovery,
+pinned references and explicit stop. Confirmation retains its wrapper and shares
+the review/recovery core. Older pending requests retain their original dialogs.
+Home passes 970 cases/83 suites, with 24 preparation and 25 confirmation component
+cases. Types, scoped lint/format/diff and three gateway unit cases pass. This is
+SDK/storage-double evidence, not actual browser/IndexedDB/gateway acceptance.
+Native contracts and installed versions are unchanged; no build/server, review
+reopening or deployment. Paged operation editing and large validation/returns remain.
+
 Candidate 58 adds [exact pending stock-request stop](STOCK_REQUEST_STOP.md) to
 three fixed native/client/source-gateway APIs and the paged confirmation dialog.
 It never reverses an accepted action. Exact server acknowledgment precedes

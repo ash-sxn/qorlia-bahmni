@@ -22,12 +22,8 @@ import {
   persistStockReservationRecovery,
 } from './stockReservationRecovery';
 
-const labels = {
-  assign: 'Check availability and reserve',
-  unreserve: 'Unreserve stock',
-  set_quantities: 'Set recorded quantities from reservations',
-  clear_quantities: 'Clear matching recorded quantities',
-};
+import { stockPreparationLabels as labels } from './stockTransferPages';
+
 const label = (relation: [number, string] | false) =>
   relation ? relation[1] : 'Not set';
 

@@ -1,5 +1,23 @@
 # Bahmni workflow parity ledger
 
+## 19 October complete preparation consumer source
+
+- Transfer details routes new preparation to all four complete paged native
+  actions. Shared confirmation/preparation logic retains sequential effect
+  review, terminal-proof persistence before dispatch, exact status/retry/stop,
+  pinned references and fresh accepted status before clearing. Recovery summaries
+  remain read-only. Older pending requests retain original scope and protocols.
+- Only preparation's legacy transfer-size UI lock is removed. Native readiness,
+  permissions and shared pending locks remain; operation/validation caps remain.
+- Home passes 970 cases/83 suites: 24 preparation cases, the preserved 25
+  confirmation cases and two new parent-routing cases. Types, scoped lint/format/
+  diff, three gateway unit cases and contributor links pass. This is JSDOM with
+  SDK/storage doubles, not actual browser/native screen/gateway/IndexedDB evidence.
+- No native/API/schema/gateway change, frontend build/server, review reopening,
+  installed upgrade, tunnel or deployment. Paged operation editing, large
+  validation/returns and full Billing/product parity remain. Read
+  [the consumer contract](../runtime/billing/STOCK_RESERVATION_PAGING.md#react-preparation-consumer-source-19-october-2026).
+
 ## 18 October native HTTP save-stop race verification
 
 - The actual typed client passes both competing orderings for confirmation,

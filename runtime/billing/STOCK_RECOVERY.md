@@ -1,5 +1,18 @@
 # Stock write recovery storage
 
+## Consumer checkpoint, 19 October 2026
+
+Both [confirmation](STOCK_CONFIRMATION_PAGING.md#shared-confirmation-and-preparation-source-19-october-2026)
+and [preparation](STOCK_RESERVATION_PAGING.md#react-preparation-consumer-source-19-october-2026)
+now use completed paged requests in source, with original-kind routing, strict
+commit before save, exact retry/stop and complete accepted-reference recovery.
+The new shared dialog does not invent writable state from a compact recovery
+summary. Legacy pending dialogs, schemas and slot exclusion remain unchanged.
+Home passes 970 cases/83 suites. Actual browser/IndexedDB/gateway acceptance and
+the paged operation consumer remain open. No review gate, build/server or
+deployment is included. The dated storage checkpoint below retains its original
+evidence scope; it is not a claim that later consumers are still unmigrated.
+
 ## Complete-review storage integration, 16 October 2026
 
 The existing IndexedDB slot now accepts exact completed paged confirmation,
@@ -94,8 +107,9 @@ scoped lint/format and diff checks pass. Tests use the existing IndexedDB double
 not a real browser or multi-tab fault test. Earlier native HTTP and JSON replay
 evidence keeps its separate scope.
 
-The remaining operation/preparation dialogs, pending routing and pagination still
-need integration with these exports. No frontend build, browser review, expired
+At this storage checkpoint, operation/preparation dialogs, pending routing and
+pagination still needed integration. The later consumer checkpoint above records
+preparation's source integration; operation remains. No frontend build, browser review, expired
 gate reopening, protected-host upgrade or public/tester/production deployment is
 included. Real IndexedDB durability/concurrency and save/reload/expiry/storage-
 failure flows remain acceptance gates.

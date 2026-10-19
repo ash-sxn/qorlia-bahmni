@@ -13,6 +13,12 @@ export const transferStates = {
   done: 'Done',
   cancel: 'Cancelled',
 };
+export const stockPreparationLabels = {
+  assign: 'Check availability and reserve',
+  unreserve: 'Unreserve stock',
+  set_quantities: 'Set recorded quantities from reservations',
+  clear_quantities: 'Clear matching recorded quantities',
+};
 export const transferLabel = (relation: [number, string] | false) =>
   relation ? relation[1] : 'Not set';
 

@@ -2,6 +2,21 @@
 
 [Billing guide](README.md) · [Existing confirmation](STOCK_CONFIRMATION.md) · [Detail reads](STOCK_TRANSFER_DETAILS.md)
 
+## Shared confirmation and preparation source, 19 October 2026
+
+The public confirmation wrapper now delegates to
+[the shared paged write dialog](../../apps/home/src/components/Billing/PagedStockWriteModal.tsx),
+also used by [the preparation consumer](STOCK_RESERVATION_PAGING.md#react-preparation-consumer-source-19-october-2026).
+The confirmation protocol, exact recovery and 25 component cases are preserved.
+The shared implementation keeps fresh writable loads separate from compact
+recovery summaries, retains strict persistence-before-HTTP, complete effect and
+reference paging, exact retry/stop and identity/focus boundaries. No native or
+gateway contract changes. Home passes 970 cases/83 suites; types and scoped
+source checks pass. This does not establish actual browser/storage/gateway
+acceptance or deploy a UI. The dated source checkpoint below describes its
+original scope; preparation's size-lock/consumer gap is superseded by the later
+linked increment. Operation editing and large validation/return flows remain.
+
 ## React confirmation consumer source, 16 October 2026
 
 New confirmations from the order-transfer panel now open
