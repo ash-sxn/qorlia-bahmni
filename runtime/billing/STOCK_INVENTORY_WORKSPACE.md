@@ -36,7 +36,7 @@ the actual return (including global recovery entered from Sales). Library and ac
 AST parses and three gateway stub cases pass. Component, storage and transport
 doubles are not actual browser/IndexedDB or hosted acceptance.
 
-A frozen **49-case native run is active**, not accepted: eight new global
+A corrected frozen **49-case native run is active**, not accepted: eight new global
 cases plus all 41 existing native return-form, complete-review and complete-write
 cases. It includes all three operation types without Sales access, native
 defaults/destinations, exact recovery/stop, false-versus-lookalike identities,
@@ -44,6 +44,16 @@ stale/incomplete proofs, denied records/writes and creation followed by global
 validation. Final native results, matching-client replay and independent SQL
 comparison remain pending. Source is readonly, HTTP/published ports disabled,
 and installed metadata stays 49 on a separate synthetic database copy.
+
+The first run completed 49 cases with one failed role-fixture assertion, zero
+errors/skips and all 132 guards preserved with mandatory analytics/SMS.
+Independent committed SQL counts/full-row hashes also match the baseline. The
+test removed the multi-location group directly, but native implied membership
+still granted it, so location search was correctly allowed. The corrected
+synthetic fixture follows the existing native test: remove the implied links,
+remove membership, and assert the role is actually absent before testing denial.
+No product permission, native group configuration outside the rolled-back test,
+or expected denial is weakened. The original failed run/source remain retained.
 
 The corrected cancellation rerun below passes 49 unique cases, with all 106
 Python hashes matching, 132 guarded tables preserved and independent committed

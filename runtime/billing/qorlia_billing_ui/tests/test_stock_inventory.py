@@ -1274,7 +1274,10 @@ class StockInventoryReturnTest(StockInventoryFixture, TransactionCase):
         self.assertIs(location['order_id'], False)
         self.assertIn(native['location'], location['rows'])
         self.assertEqual(before, self.stamp())
-        self.reader.groups_id = [(3, self.env.ref('stock.group_stock_multi_locations').id)]
+        role = self.env.ref('stock.group_stock_multi_locations')
+        self.env['res.groups'].search([('implied_ids', 'in', role.ids)]).write({'implied_ids': [(3, role.id)]})
+        self.reader.groups_id = [(3, role.id)]
+        self.assertFalse(self.reader.has_group('stock.group_stock_multi_locations'))
         data = self.selection(picking)
         with self.assertRaises(AccessError):
             self.api().qorlia_return_paged_locations(False, picking.id, data['version'])
