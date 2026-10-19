@@ -33,6 +33,7 @@ import {
   review,
   status,
   references,
+  privateAnalyticReview,
 } from './stockCancellationPagedFixture';
 
 jest.mock('../billingService', () => ({
@@ -374,6 +375,24 @@ it('does not drop or convert another pending stock purpose', async () => {
   expect(check).not.toHaveBeenCalled();
   expect(save).not.toHaveBeenCalled();
 });
+it('does not reinterpret an ordinary text value as a private analytic reference', async () => {
+  effectCount = 1;
+  const page = privateAnalyticReview();
+  page.effects.schema['stock.move'].note = {
+    label: 'Note',
+    type: 'char',
+    relation: false,
+  };
+  page.effects.updated['stock.move'][0].before.note =
+    'private:account.analytic.line';
+  page.effects.updated['stock.move'][0].after.note = 'QorliaQA changed note';
+  preview.mockResolvedValueOnce(page);
+  show();
+  await complete();
+  expect(screen.getByText('Private analytic item')).toBeInTheDocument();
+  expect(screen.getByText('private:account.analytic.line')).toBeInTheDocument();
+  expect(save).not.toHaveBeenCalled();
+});
 it('reads all saved references, preserves their UI pin through durable retirement and renders markup as text', async () => {
   disk.set(3, request());
   referenceCount = 101;
@@ -629,4 +648,15 @@ it('provides labelled modal/effects and keyboard-accessible record summaries', a
   show();
   await complete();
   expect(await axe(document.body)).toHaveNoViolations();
+});
+it('labels a private deleted analytic link without displaying its opaque token as a native identifier', async () => {
+  effectCount = 1;
+  preview.mockResolvedValueOnce(privateAnalyticReview());
+  show();
+  await complete();
+  expect(screen.getByText('Private analytic item')).toBeInTheDocument();
+  expect(
+    screen.queryByText('private:account.analytic.line'),
+  ).not.toBeInTheDocument();
+  expect(save).not.toHaveBeenCalled();
 });

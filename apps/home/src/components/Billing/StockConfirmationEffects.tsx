@@ -52,6 +52,12 @@ function display(
     return value ? 'Yes' : 'No';
   if (value === null || value === false) return 'Not set';
   if (
+    type === 'many2one' &&
+    relation === 'account.analytic.line' &&
+    value === 'private:account.analytic.line'
+  )
+    return 'Private analytic item';
+  if (
     typeof value === 'string' &&
     value.startsWith('new:') &&
     (relation || type === 'many2one_reference')

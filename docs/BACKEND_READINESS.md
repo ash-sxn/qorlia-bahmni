@@ -1,5 +1,19 @@
 # Qorlia React frontend backend readiness
 
+## Private analytic cancellation and mixed native states (19 October 2026)
+
+[Candidate 65](../runtime/billing/STOCK_CANCELLATION.md#candidate-65-private-analytic-reference-and-mixed-state-coverage)
+fixes a reproduced cancellation parity gap: native deletion may be allowed even
+when a read rule hides the linked analytic entry. Public effects describe the
+private item without an identifier/name; the exact relationship remains signed
+server-side. Unlink denial still rejects. Other stock protocols retain strict
+dependency checks. Home passes 1,505 cases/98 suites, types and scoped lint/format.
+Forty native cases preserve 132 tables with 104 matching Python files;
+actual-client replay accepts 213 native responses with transport mocked.
+Independent committed-table SQL also agrees. Native evidence and remaining gates are maintained in the contract,
+separately from HTTP/browser/IndexedDB, global inventory and release acceptance.
+Review access remains closed; no frontend build/server or deployment.
+
 ## Complete cancellation React consumer (19 October 2026)
 
 The [shared native-review consumer](../runtime/billing/STOCK_CANCELLATION.md#react-complete-cancellation-consumer-source-19-october-2026)

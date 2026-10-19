@@ -12,6 +12,70 @@ from the transfer workspace and signed-in Billing notice in source. Actual
 runtime/browser and broader parity acceptance remain unfinished. Do not
 label the full stock workflow complete or reinterpret Stop to fill this gap.
 
+## Candidate 65 private analytic reference and mixed-state coverage
+
+The first nine-case native permission/mixed-state matrix against candidate 64
+passed eight cases and errored on one legitimate cancellation. Native Odoo
+allowed the stock/accounting actor to unlink a move's analytic entry even when a
+read rule hid that entry. Our review adapter instead rejected the visible move's
+unreadable dependency. That failed run preserved all 132 guarded tables; it is
+retained as a diagnostic, not passing acceptance.
+
+Candidate 65 changes only that cancellation projection. When native cancellation
+actually deletes the hidden `account.analytic.line` and clears the surviving
+move's `analytic_account_line_id`, the review uses an opaque private-reference
+marker. It does not publish the analytic identifier or name, pretend the original
+value was unset, grant a role, or bypass native unlink rules. The exact hidden
+move/entry relationship is included in the server-only signed witness, so
+swapping two private relationships cannot be accepted merely because their
+public projections and deleted-entry set are equal. Other confirmation,
+validation and return callers retain strict dependency handling by default.
+
+The matching cancellation client accepts this marker only in that exact
+many-to-one field's before value, with a cleared after value and a positive
+private analytic deletion count. Wrong targets, fields, models, relation types,
+created/deleted-row placement, retained references and other protocols reject it.
+The shared renderer says **Private analytic item**, while ordinary text values
+remain literal text. Schema-8 recovery, exact request keys and the cancellation
+protocol purpose remain unchanged; this is not permission to migrate or replay
+older requests.
+
+The new ten-case matrix compares real native cancellation with adapter behavior:
+done nonscrapped rejection; completed scrap plus ordinary unfinished stock;
+scrap-only native Done aggregation; move-write, operation-unlink and
+analytic-unlink denial; permitted private analytic deletion; a hidden-link swap
+between preview and save; noninternal rejection; and loss of transfer read access
+after acceptance. It retains physical stock, protected finance, complete review
+proofs and receipt guards.
+
+The corrected isolated candidate-65 run passes **40 unique native cases, zero
+failures/errors/skips**: the existing 30 direct/API cases plus the new ten-case
+matrix. All 104 Python source hashes match the frozen package. All 132 guarded
+tables remain unchanged after rollback, with mandatory analytics and SMS enabled.
+After the worker exits, independent read-only SQL row counts/full-row digests
+also match their committed pre-worker baseline for all 132 tables.
+
+The matching actual client accepts **213 native JSON responses across all six
+methods**, including private-reference pages; only replay transport is mocked.
+The log SHA256 is `ff5b5865bb11fe3846dc285a7f86bdd4343aa9d450a7592a5789c1fe5c6248e3`;
+the tested client SHA256 is `15dbb0f6da558566b9da6182ffd8a9333967f0a5b448e68b1280ad59257e9291`.
+The final Home suite passes **1,505 cases/98 suites**, including 64 cancellation
+client cases and 23 cancellation-dialog cases. Focused source/test types,
+library types, scoped lint and formatting pass. The two new positive client/UI
+cases failed before the implementation; negative/context and literal-text cases
+also pass after it. Contributor checks pass for 41 documents/721 local links.
+
+The worker uses a readonly source mount, `--no-http`, no published ports and
+installed metadata 49. It does not upgrade the running addon or expose a new
+review endpoint. Existing pandas-bootstrap/wkhtmltopdf warnings remain recorded;
+this is not a clean-install result. The separate 928-case candidate-64 regression
+is still running on its earlier immutable source/database copy at this checkpoint,
+not acceptance of candidate 65. Do not sum overlapping native case counts.
+Actual HTTP/browser, deployment, global inventory scope, broader
+role/configuration coverage, scale and whole-product parity remain separate gates.
+
+## Initial native source audit
+
 The installed image source was inspected read-only while the candidate-63 return
 regression continued on its own frozen mount. The database module inventory was
 read in an explicitly read-only transaction: `stock`, `stock_account`,

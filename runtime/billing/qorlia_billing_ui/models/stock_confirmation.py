@@ -135,7 +135,8 @@ class StockConfirmation(models.Model):
         return result, visible, links
 
     def _qorlia_confirmation_effects(self, before, after, model_names=GRAPH_MODELS,
-            private_models=AUDIT_MODELS, private_counts_key='private_audit_counts', assigned_fields=None):
+            private_models=AUDIT_MODELS, private_counts_key='private_audit_counts', assigned_fields=None,
+            private_analytic_deletions=False):
         old, old_visible, old_links = before
         new, new_visible, new_links = after
         assigned_fields = assigned_fields or {}
@@ -180,6 +181,16 @@ class StockConfirmation(models.Model):
                         if field.comodel_name in rows and target in rows[field.comodel_name]:
                             visible = old_visible[field.comodel_name] if rows is old else new_visible[field.comodel_name]
                             if target not in visible:
+                                if (private_analytic_deletions and rows is old and name == 'stock.move'
+                                        and field_name == 'analytic_account_line_id' and field.type == 'many2one'
+                                        and field.comodel_name == 'account.analytic.line'
+                                        and field.comodel_name in private_models
+                                        and target not in new[field.comodel_name]
+                                        and identifier in new[name] and not new[name][identifier].get(field_name)):
+                                    # Bind the hidden relationship, not just the set of deleted private entries.
+                                    private_audit.setdefault('__private_analytic_references', []).append({
+                                        'model': name, 'record': identifier, 'field': field_name, 'target': target})
+                                    return 'private:account.analytic.line'
                                 raise AccessError('A confirmation dependency is not readable by this account.')
                             # Deleted graph records still have their original, permission-checked name.
                             label = rows[field.comodel_name][target].get('name')

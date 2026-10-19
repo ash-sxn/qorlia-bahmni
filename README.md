@@ -51,7 +51,16 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
-Latest UI source: [complete transfer cancellation](runtime/billing/STOCK_CANCELLATION.md#react-complete-cancellation-consumer-source-19-october-2026)
+Newest cancellation source: [candidate-65 private analytic reference and mixed-state coverage](runtime/billing/STOCK_CANCELLATION.md#candidate-65-private-analytic-reference-and-mixed-state-coverage)
+preserves a legitimate native cancellation of an unreadable analytic entry,
+without exposing its identity or relaxing native permissions. Exact hidden
+relationships remain server-signed. Home passes 1,505 cases/98 suites; source/test
+types and scoped lint/format pass. Forty native cases preserve 132 tables with
+104 matching Python hashes; actual-client replay accepts 213 responses with
+transport mocked. Native results and remaining runtime, browser,
+global-inventory and release gates are recorded in that guide. Review stays closed.
+
+Earlier UI source: [complete transfer cancellation](runtime/billing/STOCK_CANCELLATION.md#react-complete-cancellation-consumer-source-19-october-2026)
 connects ordered native review, explicit cancellation, schema-8 durable recovery,
 exact retry/status/stop, all saved references and original-transfer resume from
 signed-in Billing. It reuses the shared Qorlia dialog, preserves all older stock
@@ -188,7 +197,7 @@ installed upgrade or actual concurrent HTTP/browser acceptance.
 - [Paged reservation actions](runtime/billing/STOCK_RESERVATION_PAGING.md): complete effects and compact recovery for native availability, unreserve and quantity preparation.
 - [Stock recovery storage](runtime/billing/STOCK_RECOVERY.md): exact completed-request persistence, older-envelope compatibility and remaining browser integration gates.
 - [Stop pending stock requests](runtime/billing/STOCK_REQUEST_STOP.md): exact author-bound native stop, confirmation UI recovery and separate concurrency/rollout release gates.
-- [Native transfer cancellation](runtime/billing/STOCK_CANCELLATION.md): installed source audit, direct native contract cases and the separate cancellation API/UI still to implement.
+- [Native transfer cancellation](runtime/billing/STOCK_CANCELLATION.md): native audit, complete API/UI source, exact recovery, private-reference/mixed-state contracts and remaining runtime/release gates.
 - [Complete reservation inventory scope](runtime/billing/STOCK_INVENTORY_SCOPE.md): checked stock paging and legacy compatibility, with scoped native evidence and remaining UI gates.
 - [Large-transfer confirmation candidate](runtime/billing/STOCK_CONFIRMATION_PAGING.md): native paged review/save contract, distinct from released UI and tester capabilities.
 - [Large confirmation HTTP verification](runtime/billing/STOCK_CONFIRMATION_PAGING.md#large-native-http-and-recovery-checkpoint-16-october-2026): complete 501-move/2,001-operation saves and generated-reference recovery, with explicit remaining gateway/UI/scale limits.

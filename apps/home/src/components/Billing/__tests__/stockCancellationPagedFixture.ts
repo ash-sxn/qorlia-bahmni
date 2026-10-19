@@ -107,3 +107,40 @@ export const references = (
     .sort((a, b) => (a.key < b.key ? -1 : 1))
     .slice(after, after + 50),
 });
+
+export function privateAnalyticReview(
+  page = review(0, 1),
+): PagedStockCancellationReview {
+  const rows = page.effects.updated['stock.move'];
+  return {
+    ...page,
+    effects: {
+      ...page.effects,
+      schema: {
+        ...page.effects.schema,
+        'stock.move': {
+          ...page.effects.schema['stock.move'],
+          analytic_account_line_id: {
+            label: 'Analytic item',
+            type: 'many2one',
+            relation: 'account.analytic.line',
+          },
+        },
+      },
+      updated: {
+        ...page.effects.updated,
+        'stock.move': [
+          {
+            ...rows[0],
+            before: {
+              ...rows[0].before,
+              analytic_account_line_id: 'private:account.analytic.line',
+            },
+            after: { ...rows[0].after, analytic_account_line_id: false },
+          },
+          ...rows.slice(1),
+        ],
+      },
+    },
+  };
+}

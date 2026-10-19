@@ -48,4 +48,5 @@ from . import test_stock_return_paged_write
 from . import test_stock_return_paged_lifecycle
 from . import test_stock_cancellation_contract
 from . import test_stock_cancellation
+from . import test_stock_cancellation_matrix
 from . import test_stock_request_stop

@@ -4413,6 +4413,7 @@ function validConfirmationEffects(
   data: StockConfirmationEffects,
   validation = false,
   returnCreation = false,
+  cancellation = false,
 ): boolean {
   const allowedModels = validation ? validationModels : confirmationModels;
   if (
@@ -4459,16 +4460,23 @@ function validConfirmationEffects(
       )
     )
       return false;
-    const values = (row: unknown) =>
+    const values = (row: unknown, privateAnalyticBefore = false) =>
       confirmationObject(row) &&
       Object.entries(row).every(
         ([key, value]) =>
           Object.hasOwn(schema, key) &&
-          validConfirmationField(
-            value as ConfirmationValue,
-            schema[key],
-            allowedModels,
-          ),
+          ((privateAnalyticBefore &&
+            model === 'stock.move' &&
+            key === 'analytic_account_line_id' &&
+            schema[key].type === 'many2one' &&
+            schema[key].relation === 'account.analytic.line' &&
+            value === 'private:account.analytic.line' &&
+            data.private_audit_counts['account.analytic.line']?.deleted > 0) ||
+            validConfirmationField(
+              value as ConfirmationValue,
+              schema[key],
+              allowedModels,
+            )),
       );
     const created = data.created[model],
       updated = data.updated[model],
@@ -4510,7 +4518,10 @@ function validConfirmationEffects(
               : []),
           ]) &&
           stockId(row.id) &&
-          values(row.before) &&
+          values(
+            row.before,
+            cancellation && row.after?.analytic_account_line_id === false,
+          ) &&
           values(row.after) &&
           (!Object.hasOwn(row, 'assigned_on_save') ||
             (validation &&
@@ -5743,6 +5754,7 @@ export function checkedStockValidationRequest(
 function validValidationEffects(
   data: StockValidationEffects,
   returnCreation = false,
+  cancellation = false,
 ): boolean {
   return (
     confirmationKeys(data, [
@@ -5764,6 +5776,7 @@ function validValidationEffects(
       },
       true,
       returnCreation,
+      cancellation,
     )
   );
 }
@@ -6262,7 +6275,7 @@ export async function getPagedStockCancellationReview(
     data.after !== after ||
     !stockCount(data.total_count) ||
     after > data.total_count ||
-    !validValidationEffects(data.effects)
+    !validValidationEffects(data.effects, false, true)
   )
     throw new Error(
       'Invalid native cancellation review. Review from the start.',

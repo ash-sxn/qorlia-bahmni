@@ -1,5 +1,23 @@
 # Bahmni workflow parity ledger
 
+## 19 October private analytic cancellation and mixed native states
+
+- [Candidate 65](../runtime/billing/STOCK_CANCELLATION.md#candidate-65-private-analytic-reference-and-mixed-state-coverage)
+  corrects a reproduced native-compatible cancellation blocked by an unreadable
+  analytic dependency. The public review says Private analytic item; identifiers,
+  names and the exact move/entry witness remain private. Swapping hidden links
+  must reject even if visible effects and private deleted-entry sets are equal.
+- Only the exact cancelled move's cleared analytic relation permits this marker.
+  Native read/write/unlink checks, physical/financial guards, exact receipts and
+  schema-8 recovery remain. Other stock protocols retain strict dependency checks.
+- Home passes 1,505 cases/98 suites, source/test types and scoped lint/format.
+  Forty native cases preserve 132 tables with 104 matching Python files;
+  actual-client replay accepts 213 responses with transport mocked. Independent
+  committed-table SQL agrees. The matrix covers genuine scrap aggregation and denied/hidden records;
+  its evidence and remaining gates are in the contract. This does not prove
+  runtime HTTP/browser, every role/configuration, global inventory, scale,
+  deployment or whole-product parity. Review remains closed.
+
 ## 19 October complete cancellation React and durable recovery source
 
 - [The consumer](../runtime/billing/STOCK_CANCELLATION.md#react-complete-cancellation-consumer-source-19-october-2026)

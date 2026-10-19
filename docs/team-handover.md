@@ -1,5 +1,15 @@
 # New-team handover: Qorlia engineering
 
+Newest cancellation source: [private analytic references and mixed native states](../runtime/billing/STOCK_CANCELLATION.md#candidate-65-private-analytic-reference-and-mixed-state-coverage).
+Candidate 65 preserves legitimate native hidden-entry deletion with an explicit
+private-item display and a server-only signed relationship. It does not grant
+permissions, expose the entry, or change older recovery requests. Home passes
+1,505 cases/98 suites, source/test types and scoped lint/format. Forty native cases
+preserve 132 tables with 104 matching Python files; actual-client replay accepts
+213 responses with transport mocked. Independent committed-table SQL agrees. Native evidence
+and remaining HTTP/browser/release gates are separate in the contract. This does
+not change contributor task bases, reopen Billing review, or deploy anything.
+
 Newest UI source: [complete cancellation workflow](../runtime/billing/STOCK_CANCELLATION.md#react-complete-cancellation-consumer-source-19-october-2026)
 adds the matching shared review dialog, schema-8 recovery and original-transfer
 resume from signed-in Billing. Save and stop check the actual account and strict

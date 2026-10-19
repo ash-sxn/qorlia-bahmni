@@ -100,7 +100,7 @@ class StockCancellation(models.Model):
             raise UserError('Cancellation changed physical stock. Nothing was saved.')
         effects, private = self._qorlia_confirmation_effects(before, after, VALIDATION_MODELS,
             private_models=AUDIT_MODELS | set(FINANCIAL_MODELS) | {'account.full.reconcile', 'account.analytic.line'},
-            private_counts_key='private_effect_counts')
+            private_counts_key='private_effect_counts', private_analytic_deletions=True)
         references = {'new:%s:%s' % (name, index): {'model': name, 'id': identifier}
             for name in VALIDATION_MODELS if name not in AUDIT_MODELS
             for index, identifier in enumerate(sorted(set(after[0][name]) - set(before[0][name])))}

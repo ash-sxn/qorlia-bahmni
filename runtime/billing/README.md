@@ -3,7 +3,16 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest UI source: [complete native cancellation consumer](STOCK_CANCELLATION.md#react-complete-cancellation-consumer-source-19-october-2026)
+Newest cancellation source: [candidate-65 private analytic reference and mixed-state coverage](STOCK_CANCELLATION.md#candidate-65-private-analytic-reference-and-mixed-state-coverage)
+corrects a native-compatible hidden analytic deletion without granting access or
+publishing the hidden entry. Its exact relationship remains in the server-only
+signed witness. Home passes 1,505 cases/98 suites, source/test types and scoped
+lint/format. Forty native cases preserve all 132 tables with 104 matching Python
+hashes; actual-client replay accepts 213 native responses with transport mocked.
+Native evidence and remaining runtime/browser/release gates are
+separate in the guide. No installed upgrade or review reopening is included.
+
+Earlier UI source: [complete native cancellation consumer](STOCK_CANCELLATION.md#react-complete-cancellation-consumer-source-19-october-2026)
 uses schema-8 exact recovery in the same account slot, complete ordered native
 review, explicit cancellation, exact status/retry/stop, pinned saved references
 and transfer/landing-page resume. The existing Qorlia review dialog and all older

@@ -6,6 +6,7 @@ import {
   getPagedStockCancellationReview,
   getPagedStockCancellationReferences,
   getPagedStockCancellationStatus,
+  getPagedStockValidationReview,
   savePagedStockCancellation,
   stopPagedStockCancellation,
   checkedPagedStockConfirmationRequest,
@@ -15,6 +16,8 @@ import {
   type StockCancellationSelection,
 } from '../billingService';
 import { orderDeliveryPageFixture } from './orderDeliveryFixture';
+import { privateAnalyticReview } from './stockCancellationPagedFixture';
+import { pagedValidationEffectPage } from './stockValidationPagedFixture';
 
 const selection = (): StockCancellationSelection => ({
   order_id: 9,
@@ -323,6 +326,97 @@ it.each([
   await expect(getPagedStockCancellationReferences(request())).rejects.toThrow(
     /Invalid/,
   );
+});
+it('keeps a deleted private analytic reference explicit, never converting it to a missing value or identifier', async () => {
+  const page = privateAnalyticReview();
+  reply(page);
+  const data = await getPagedStockCancellationReview(selection());
+  expect(data).toEqual(page);
+  expect(
+    data.effects.updated['stock.move'][0].before.analytic_account_line_id,
+  ).toBe('private:account.analytic.line');
+  expect(
+    data.effects.updated['stock.move'][0].after.analytic_account_line_id,
+  ).toBe(false);
+});
+it.each([
+  'target',
+  'identifier',
+  'field',
+  'model',
+  'counts',
+  'multiplicity',
+  'after',
+  'retained',
+  'relation',
+  'created',
+  'deleted',
+])(
+  'rejects a private cancellation reference outside its native deletion context: %s',
+  async (kind) => {
+    const page = privateAnalyticReview();
+    const schema = page.effects.schema['stock.move'];
+    const row = page.effects.updated['stock.move'][0];
+    if (kind === 'target')
+      row.before.analytic_account_line_id = 'private:res.users';
+    if (kind === 'identifier')
+      row.before.analytic_account_line_id = 'private:account.analytic.line:1';
+    if (kind === 'field') {
+      schema.wrong_field = schema.analytic_account_line_id;
+      row.before.wrong_field = row.before.analytic_account_line_id;
+    }
+    if (kind === 'model') {
+      page.effects.schema['stock.picking'] = schema;
+      page.effects.created['stock.picking'] =
+        page.effects.created['stock.move'];
+      page.effects.updated['stock.picking'] =
+        page.effects.updated['stock.move'];
+      page.effects.deleted['stock.picking'] =
+        page.effects.deleted['stock.move'];
+      delete page.effects.schema['stock.move'];
+      delete page.effects.created['stock.move'];
+      delete page.effects.updated['stock.move'];
+      delete page.effects.deleted['stock.move'];
+    }
+    if (kind === 'counts') page.effects.private_effect_counts = {};
+    if (kind === 'after')
+      row.after.analytic_account_line_id = row.before.analytic_account_line_id;
+    if (kind === 'retained') row.after.analytic_account_line_id = 10;
+    if (kind === 'relation')
+      schema.analytic_account_line_id.relation = 'res.users';
+    if (kind === 'created') {
+      page.effects.updated['stock.move'] = [];
+      page.effects.created['stock.move'] = [
+        { key: 'new:stock.move:0', values: row.before, assigned_on_save: [] },
+      ];
+    }
+    if (kind === 'deleted') {
+      page.effects.updated['stock.move'] = [];
+      page.effects.deleted['stock.move'] = [{ id: row.id, values: row.before }];
+    }
+    if (kind === 'multiplicity') {
+      schema.analytic_account_line_id.type = 'many2many';
+      row.before.analytic_account_line_id = ['private:account.analytic.line'];
+      row.after.analytic_account_line_id = [];
+    }
+    reply(page);
+    await expect(getPagedStockCancellationReview(selection())).rejects.toThrow(
+      /Invalid/,
+    );
+  },
+);
+it('does not permit cancellation-only private reference markers through the validation protocol', async () => {
+  const input = {
+    order_id: selection().order_id,
+    transfer_id: selection().transfer_id,
+    version: selection().version,
+    decisions: [],
+    continuation_key: false as const,
+  };
+  const page = pagedValidationEffectPage(input, 0, 1);
+  page.effects = privateAnalyticReview().effects;
+  reply(page);
+  await expect(getPagedStockValidationReview(input)).rejects.toThrow(/Invalid/);
 });
 it('preserves native session expiry, rejection and unknown transport errors', async () => {
   jest.mocked(fetch).mockResolvedValue({
