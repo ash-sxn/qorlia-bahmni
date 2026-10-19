@@ -55,7 +55,8 @@ class StockReturnPagedWrite(models.Model):
 
     def _qorlia_return_paged_recovery(self, payload):
         request, digest = self._qorlia_return_paged_request(payload)
-        picking, order, scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, order, scope = self._qorlia_confirmation_paged_transfer(
+            request['order_id'], request['transfer_id'], inventory=True)
         receipt, receipts, marker = picking._qorlia_return_paged_receipt(request, digest)
         return request, digest, picking, order, scope, receipt, receipts, marker
 

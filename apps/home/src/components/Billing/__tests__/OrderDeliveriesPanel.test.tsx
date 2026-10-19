@@ -64,6 +64,17 @@ const mockValidation = jest.fn();
 const mockPagedValidation = jest.fn();
 const mockPagedReturn = jest.fn();
 const mockPagedCancellation = jest.fn();
+const mockInventoryDetails = jest.fn();
+jest.mock('../InventoryTransferDetails', () => ({
+  InventoryTransferDetails: (props: { close: () => void }) => {
+    mockInventoryDetails(props);
+    return (
+      <button onClick={props.close}>
+        Back from returned Inventory transfer
+      </button>
+    );
+  },
+}));
 jest.mock('../PagedStockCancellationModal', () => ({
   PagedStockCancellationModal: (props: { close: () => void }) => {
     mockPagedCancellation(props);
@@ -182,6 +193,32 @@ const openTransfer = async () => {
   });
 };
 describe('Order stock transfer review', () => {
+  it('recovers a global return encountered from Sales and routes its actual created transfer to Inventory', async () => {
+    jest
+      .mocked(loadStockWriteRecovery)
+      .mockResolvedValue({ ...returnRequest(), order_id: false });
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Resume return request' }),
+    );
+    const props = mockPagedReturn.mock.calls.at(-1)![0];
+    expect(props).toMatchObject({ uid: 3, orderId: false, transferId: 11 });
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue(null);
+    act(() => props.openTransfer(false, 19));
+    expect(mockInventoryDetails.mock.calls.at(-1)![0]).toMatchObject({
+      uid: 3,
+      transferId: 19,
+    });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Back from returned Inventory transfer',
+      }),
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'Order stock transfers' }),
+    ).toBeInTheDocument();
+    for (const call of get.mock.calls) expect(call[0]).toBe(9);
+  });
   it.each(['draft', 'waiting', 'confirmed', 'assigned'] as const)(
     'opens reviewed native cancellation for %s transfers with focus restoration and refresh',
     async (state) => {

@@ -13,6 +13,7 @@ import { PagedStockCancellationModal } from './PagedStockCancellationModal';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
 import { PagedStockOperationEditor } from './PagedStockOperationEditor';
 import { PagedStockReservationModal } from './PagedStockReservationModal';
+import { PagedStockReturnModal } from './PagedStockReturnModal';
 import { PagedStockValidationModal } from './PagedStockValidationModal';
 import {
   sameTransferSummary,
@@ -29,12 +30,34 @@ type Props = {
   reconnect: () => void;
 };
 export function InventoryTransferDetails(props: Props) {
+  return (
+    <InventoryTransferWorkspace
+      key={`${props.uid}:${props.transferId}`}
+      {...props}
+    />
+  );
+}
+function InventoryTransferWorkspace(props: Props) {
+  const [transferId, setTransferId] = useState(props.transferId);
+  return (
+    <TransferDetails
+      key={transferId}
+      {...props}
+      transferId={transferId}
+      openTransfer={setTransferId}
+    />
+  );
+}
+function TransferDetails(
+  props: Props & { openTransfer: (transferId: number) => void },
+) {
   const [revision, setRevision] = useState(0);
   const [workflow, setWorkflow] = useState<
     | 'confirmation'
     | 'preparation'
     | 'validation'
     | 'cancellation'
+    | 'return'
     | PagedStockOperationSelection
     | null
   >(null);
@@ -80,7 +103,19 @@ export function InventoryTransferDetails(props: Props) {
         }
         reload={() => setRevision((value) => value + 1)}
       />
-      {typeof workflow === 'string' ? (
+      {workflow === 'return' ? (
+        <PagedStockReturnModal
+          uid={props.uid}
+          orderId={false}
+          transferId={props.transferId}
+          reconnect={props.reconnect}
+          returnFocus={returnFocus}
+          close={closeWorkflow}
+          openTransfer={(_orderId, transferId) =>
+            props.openTransfer(transferId)
+          }
+        />
+      ) : typeof workflow === 'string' ? (
         <Workflow
           uid={props.uid}
           orderId={false}
@@ -115,7 +150,12 @@ function ReadTransfer({
   reconnect: () => void;
   reload: () => void;
   openWrite: (
-    kind: 'confirmation' | 'preparation' | 'validation' | 'cancellation',
+    kind:
+      | 'confirmation'
+      | 'preparation'
+      | 'validation'
+      | 'cancellation'
+      | 'return',
   ) => void;
   openOperation: (moveId: number, operationId: number | false) => void;
 }) {
@@ -168,7 +208,12 @@ function DetailPages({
   reconnect: () => void;
   reload: () => void;
   openWrite: (
-    kind: 'confirmation' | 'preparation' | 'validation' | 'cancellation',
+    kind:
+      | 'confirmation'
+      | 'preparation'
+      | 'validation'
+      | 'cancellation'
+      | 'return',
   ) => void;
   openOperation: (moveId: number, operationId: number | false) => void;
 }) {
@@ -350,6 +395,13 @@ function DetailPages({
         onClick={() => openWrite('cancellation')}
       >
         Review or recover cancellation
+      </Button>
+      <Button
+        kind="tertiary"
+        disabled={fetching}
+        onClick={() => openWrite('return')}
+      >
+        Create or recover return
       </Button>
       {sections.map((section, index) => {
         const page = queries[index].data!;

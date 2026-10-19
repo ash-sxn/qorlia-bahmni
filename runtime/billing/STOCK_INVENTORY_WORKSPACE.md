@@ -2,6 +2,68 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Candidate 73 global returns, 20 October 2026
+
+Inventory details and the signed-in recovery notice now open the existing
+complete return workflow without a Sales order. All eight
+`qorlia_return_paged_*` methods accept literal `order_id: false`: load, original
+line pages, role-controlled destination search, ordered review, save, status,
+saved references and pending-request stop. No dummy order, new return engine,
+schema, dependency, privilege grant or alternative design system is added.
+Legacy return APIs remain order-only. Positive-order request fields, canonical
+order, purposes, signatures and recovery envelopes remain unchanged.
+
+The installed native return form still supplies moves, base units, quantities,
+destination domain, chained-move warning and quantity-update flags. The same
+native wizard creates the actual linked return transfer. Creation does not
+validate it, move physical stock, create a credit note or refund money.
+Complete effect review, native rights/company scope, locks, callback rollback,
+financial/configuration guards and comparison with actual saved effects remain.
+
+The existing Qorlia dialog keeps exact schema-7 account/database recovery,
+strict persistence before save, unknown/lost/expired outcome handling, identical
+retry and explicit stop. Complete saved references and fresh status gate
+retirement. Opening the real created transfer routes to Inventory when global,
+or the order workspace when linked. The global notice pins its return target
+through banner clearing; created-transfer navigation resets the detail scope.
+Inventory lists/details are invalidated through the existing query cache.
+
+Home passes **1,613 cases/102 suites**, including literal false across all eight
+calls, malformed and mixed-scope rejection, unchanged strict legacy checks,
+global complete creation/reference review, original unknown retry, durable
+schema-7 recovery with 101 references, Inventory entry/refresh and navigation to
+the actual return (including global recovery entered from Sales). Library and actual test-source types, scoped lint, 106 Python
+AST parses and three gateway stub cases pass. Component, storage and transport
+doubles are not actual browser/IndexedDB or hosted acceptance.
+
+A frozen **49-case native run is active**, not accepted: eight new global
+cases plus all 41 existing native return-form, complete-review and complete-write
+cases. It includes all three operation types without Sales access, native
+defaults/destinations, exact recovery/stop, false-versus-lookalike identities,
+stale/incomplete proofs, denied records/writes and creation followed by global
+validation. Final native results, matching-client replay and independent SQL
+comparison remain pending. Source is readonly, HTTP/published ports disabled,
+and installed metadata stays 49 on a separate synthetic database copy.
+
+The corrected cancellation rerun below is also active. The older source-68 full
+run is now independently verified: **974 unique cases, zero failures/errors/
+skips**, 106 matching Python hashes and all 132 guarded tables preserved with
+mandatory analytics/SMS. The matching frozen client accepts 322 native JSON
+responses, including 96 global responses, across all six confirmation methods
+with transport mocked. Independent committed SQL counts/full-row hashes match
+the original baseline. Log SHA256:
+`33d82e34c011ec1323e014564e5ded3b138c4f8a0211236045f0362025e13128`.
+That proof does not accept candidates 69 to 73 or actual HTTP/browser behavior.
+
+Remaining: native transfer create/edit/duplicate, orphan/completed-operation
+corrections, remaining native fields/chains/packages, overview/type choices,
+full filters/grouping/views, bulk/print and wider permissions/configuration.
+Current full regression, actual HTTP/browser/layout/IndexedDB/multi-tab/
+concurrency, representative scale and approved rollout remain separate gates.
+Whole Billing and whole-product parity are not complete. Billing review stays
+closed; no frontend build/server, persistent upgrade, hosted tester or production
+deployment is included.
+
 ## Candidate 72 global cancellation, 19 October 2026
 
 Inventory details now open the existing complete cancellation dialog for a
@@ -36,11 +98,17 @@ remount/exact retry, full reference retirement, strict global storage/unknown
 outcome preservation and direct Inventory/notice routing. Component/storage and
 transport doubles are not browser/IndexedDB or hosted acceptance.
 
-A frozen **49-case native run is active**, not accepted yet: nine new global
-cancellation cases plus all 40 existing direct-native, API and mixed-state
-matrix cases. Final result, source-matched client replay and independent committed
-SQL remain pending. It uses readonly source, no HTTP/published ports and unchanged
-installed metadata 49. The older source-68 full worker cannot accept this source.
+The first frozen **49-case native run completed with one test error**, zero
+failures/skips and all 132 guards preserved with mandatory analytics/SMS.
+Independent committed SQL counts/full-row hashes match the baseline. A negative
+test correctly reached the existing native rejection that an unlinked transfer
+does not belong to a Sales order, but expected `ValidationError` instead of
+the native `UserError`. The corrected test asserts that exact rejection text;
+product permissions, scope checks and errors are unchanged. The failed log and
+immutable source are retained. A fresh matching 49-case rerun is active, not
+accepted yet. Final result, source-matched replay and independent SQL are pending.
+Both runs use readonly source, no HTTP/published ports and installed metadata 49.
+The older source-68 full result does not accept this source.
 
 Remaining: global returns, native transfer create/edit/duplicate, orphan and
 completed-operation corrections, remaining fields/chains/packages, overview/type
@@ -311,10 +379,17 @@ Source/test and library types, scoped lint, three gateway stub cases and
 readonly source, no HTTP/published ports and unchanged installed metadata 49.
 Bootstrap warnings remain. This is not clean-install or installed-upgrade proof.
 
-A new **974-case full-addon worker is running** on a separate synthetic copy
-using this same immutable candidate-68 source. Its planned unique case count and
-no-HTTP/no-published-port configuration are verified, not its final outcome.
-The completed 938-case candidate-65 proof is older-source evidence only.
+The **974-case full-addon worker completed**, zero failures/errors/skips, on
+its separate synthetic copy using immutable candidate-68 source. All 106 Python
+hashes match; all 132 guards remain with mandatory analytics/SMS. The frozen
+client accepts 322 native responses across all six methods, 96 global, with
+transport mocked. Independent repeatable-read committed SQL counts/full-row
+hashes match the original baseline (snapshot SHA256
+`f9d44c1e2f42b39c08ae1c6d639f5ac88392a22592cb609e1adcbb1096765a32`).
+Full-run log SHA256:
+`33d82e34c011ec1323e014564e5ded3b138c4f8a0211236045f0362025e13128`.
+The worker is terminal/removed. This does not accept subsequent source or actual
+HTTP/browser/release behavior. The 938-case candidate-65 proof is older evidence.
 
 Still required: global reservation/preparation, operation editing, validation,
 returns/cancellation and their durable UI/recovery; native create/edit, remaining

@@ -82,15 +82,19 @@ const deferred = <T,>() => {
   });
   return { promise, resolve };
 };
-function show() {
+function show(orderId: number | false = 9) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  const node = (uid = 3, orderId = 9, transferId = 11) => (
+  const node = (
+    uid = 3,
+    targetOrderId: number | false = orderId,
+    transferId = 11,
+  ) => (
     <QueryClientProvider client={client}>
       <PagedStockReturnModal
         uid={uid}
-        orderId={orderId}
+        orderId={targetOrderId}
         transferId={transferId}
         close={close}
         reconnect={reconnect}
@@ -150,9 +154,12 @@ beforeEach(() => {
   clear.mockImplementation(async () => {
     disk = null;
   });
-  load.mockImplementation(async () => returnLoad(count));
-  lines.mockImplementation(async (_selection, after = 0) => ({
-    ...returnSelection(),
+  load.mockImplementation(async (orderId) => ({
+    ...returnLoad(count),
+    order_id: orderId,
+  }));
+  lines.mockImplementation(async (selection, after = 0) => ({
+    ...selection,
     form: returnMetadata(),
     after,
     total_count: count,
@@ -165,8 +172,9 @@ beforeEach(() => {
     returnReview(selection, after, effects),
   );
   status.mockImplementation(async () => copy(native));
-  save.mockImplementation(async () => {
+  save.mockImplementation(async (request) => {
     native = returnOutcome();
+    native.current.order_id = request.order_id;
     return copy(native);
   });
   stop.mockImplementation(async () => {
@@ -183,23 +191,27 @@ beforeEach(() => {
   });
 });
 
-it('reviews native units and hidden rules, commits recovery before save, then opens the actual created transfer', async () => {
-  show();
-  await create();
-  expect(persist).toHaveBeenCalledWith(3, returnRequest());
-  expect(save).toHaveBeenCalledWith(returnRequest());
-  expect(persist.mock.invocationCallOrder[0]).toBeLessThan(
-    save.mock.invocationCallOrder[0],
-  );
-  expect(screen.getByText(/does not receive goods/)).toBeInTheDocument();
-  expect(
-    screen.getByRole('button', { name: 'Open created transfer for receipt' }),
-  ).toBeDisabled();
-  await click('Read saved return references');
-  await click('Open created transfer for receipt');
-  expect(clear).toHaveBeenCalledWith(3, returnRequest());
-  expect(openTransfer).toHaveBeenCalledWith(9, 19);
-});
+it.each([9, false] as const)(
+  'reviews native units, commits recovery before save, then opens the created transfer for order %s',
+  async (orderId) => {
+    const exact = { ...returnRequest(), order_id: orderId };
+    show(orderId);
+    await create();
+    expect(persist).toHaveBeenCalledWith(3, exact);
+    expect(save).toHaveBeenCalledWith(exact);
+    expect(persist.mock.invocationCallOrder[0]).toBeLessThan(
+      save.mock.invocationCallOrder[0],
+    );
+    expect(screen.getByText(/does not receive goods/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Open created transfer for receipt' }),
+    ).toBeDisabled();
+    await click('Read saved return references');
+    await click('Open created transfer for receipt');
+    expect(clear).toHaveBeenCalledWith(3, exact);
+    expect(openTransfer).toHaveBeenCalledWith(orderId, 19);
+  },
+);
 
 it('requires every original page and every line/effect review page, without the old 500-item cap', async () => {
   count = 501;
@@ -374,17 +386,24 @@ it.each(['transport', 'rejected', 'expired'])(
   },
 );
 
-it('resumes an unknown request, checks fresh native status, and retries only its exact original payload', async () => {
-  disk = returnRequest();
-  show();
-  await screen.findByText(/No accepted or stopped outcome/);
-  expect(load).not.toHaveBeenCalled();
-  expect(save).not.toHaveBeenCalled();
-  await click('Retry identical return request');
-  expect(status).toHaveBeenCalledTimes(2);
-  expect(save).toHaveBeenCalledWith(returnRequest());
-  expect(crypto.randomUUID).not.toHaveBeenCalled();
-});
+it.each([9, false] as const)(
+  'resumes an unknown request for order %s and retries only its exact original payload',
+  async (orderId) => {
+    disk = { ...returnRequest(), order_id: orderId };
+    native.current.order_id = orderId;
+    show(orderId);
+    await screen.findByText(/No accepted or stopped outcome/);
+    expect(load).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+    await click('Retry identical return request');
+    expect(status).toHaveBeenCalledTimes(2);
+    expect(save).toHaveBeenCalledWith({
+      ...returnRequest(),
+      order_id: orderId,
+    });
+    expect(crypto.randomUUID).not.toHaveBeenCalled();
+  },
+);
 
 it('does not replay a retry when fresh status reports acceptance', async () => {
   disk = returnRequest();

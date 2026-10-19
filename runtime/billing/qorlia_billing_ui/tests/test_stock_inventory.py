@@ -10,6 +10,8 @@ from .test_stock_validation_contract import StockValidationFixture
 from . import test_stock_cancellation as cancellation_contract
 from . import test_stock_cancellation_contract as cancellation_native
 from . import test_stock_cancellation_matrix as cancellation_matrix
+from . import test_stock_return_paged as return_review
+from . import test_stock_return_paged_write as return_write
 
 
 class StockInventoryFixture(StockValidationFixture):
@@ -500,7 +502,7 @@ class StockInventoryCancellationTest(StockInventoryFixture, TransactionCase):
         self.api().qorlia_cancellation_paged_save(request)
         with self.assertRaises(ValidationError):
             self.env['stock.picking'].with_user(self.user).qorlia_cancellation_paged_status(request)
-        with self.assertRaises(ValidationError):
+        with self.assertRaisesRegex(UserError, 'no longer linked'):
             self.env['stock.picking'].with_user(self.user).qorlia_cancellation_paged_status(dict(request, order_id=self.order.id))
 
     def test_hidden_move_and_write_denial_preserve_the_transfer(self):
@@ -1186,3 +1188,188 @@ class StockInventoryDetailTest(StockInventoryFixture, TransactionCase):
             self.load(picking, actor=actor)
         with self.assertRaises(AccessError):
             self.detail(picking, actor=actor)
+
+
+@tagged('post_install', '-at_install')
+class StockInventoryReturnTest(StockInventoryFixture, TransactionCase):
+    unlinked = StockInventoryConfirmationTest.unlinked
+    api = StockInventoryConfirmationTest.api
+    pages = return_review.StockReturnPagedTest.pages
+    references = return_write.StockReturnPagedWriteTest.references
+    receipts = return_write.StockReturnPagedWriteTest.receipts
+    deny = StockInventoryDetailTest.deny
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.reader.email = 'qorliaqa-inventory-return@example.invalid'
+
+    def delivered(self, kind=None):
+        # Native completion is fixture setup; every return API runs as the stock-only reader.
+        picking = self.unlinked(kind or self.out_type)
+        picking.action_confirm()
+        picking.action_assign()
+        picking.move_line_ids.write({'qty_done': 5, 'lot_id': self.lot.id})
+        action = picking.button_validate()
+        if isinstance(action, dict):
+            self.assertEqual(action['res_model'], 'stock.picking.validate.wizard')
+            wizard = self.env[action['res_model']].with_user(self.reader).with_context(action['context']).create({})
+            action = wizard.btn_confirm()
+        self.assertIs(action, True)
+        self.assertEqual(picking.state, 'done')
+        self.assertFalse(picking.sale_id)
+        return picking
+
+    def selection(self, picking, lines=None):
+        loaded = self.api().qorlia_return_paged_load(False, picking.id)
+        self.assertIs(loaded['order_id'], False)
+        return {'order_id': False, 'transfer_id': picking.id, 'version': loaded['version'],
+            'location_id': loaded['form']['location'][0],
+            'lines': lines if lines is not None else [{'move_id': picking.move_ids.id, 'quantity': 2}]}
+
+    def request(self, picking, lines=None):
+        data = self.selection(picking, lines)
+        last = self.pages(picking, data)[-1]
+        return dict(data, review_version=last['review_version'],
+            review_complete_token=last['review_complete_token'], request_key=str(uuid.uuid4()))
+
+    def test_all_three_native_operation_types_create_one_real_return_without_sales_access(self):
+        self.assertFalse(self.reader.has_group('sales_team.group_sale_salesman'))
+        for kind in (self.in_type, self.out_type, self.internal_type):
+            with self.subTest(operation=kind.code):
+                picking = self.delivered(kind)
+                stock = self.source_stock()
+                finance = picking._qorlia_confirmation_stamp(['account_move', 'account_payment', 'stock_valuation_layer'])
+                request = self.request(picking)
+                self.assertFalse(self.api().qorlia_return_paged_status(request)['accepted'])
+                result = self.api().qorlia_return_paged_save(request)
+                self.assertTrue(result['accepted'])
+                self.assertIs(result['current']['order_id'], False)
+                returned = self.env['stock.picking'].browse(result['return_transfer']['id'])
+                self.assertEqual(returned.move_ids.origin_returned_move_id, picking.move_ids)
+                self.assertEqual(returned.move_ids.product_uom_qty, 2)
+                self.assertNotIn(returned.state, ('done', 'cancel'))
+                self.assertFalse(returned.sale_id)
+                self.assertEqual(self.source_stock(), stock)
+                self.assertEqual(self.sale_line.qty_delivered, 0)
+                self.assertEqual(finance, picking._qorlia_confirmation_stamp(list(finance)))
+                self.assertEqual(result, self.api().qorlia_return_paged_save(request))
+                self.assertEqual(result, self.api().qorlia_return_paged_status(request))
+                self.assertEqual(result, self.api().qorlia_return_paged_stop(request))
+                self.assertEqual(len(self.receipts(picking)), 1)
+                self.assertEqual(result['reference_count'], len(self.references(picking, request, 1)))
+
+    def test_native_defaults_and_role_controlled_location_search_keep_global_identity(self):
+        self.reader.groups_id = [(4, self.env.ref('stock.group_stock_multi_locations').id)]
+        picking = self.delivered()
+        data = self.selection(picking)
+        before = self.stamp()
+        loaded = self.api().qorlia_return_paged_load(False, picking.id)
+        page = self.api().qorlia_return_paged_lines(False, picking.id, data['version'])
+        native = picking._qorlia_return_snapshot(picking._qorlia_return_form())
+        self.assertEqual(page['rows'], native['lines'])
+        self.assertIs(page['order_id'], False)
+        self.assertEqual(loaded['form']['location'], native['location'])
+        location = self.api().qorlia_return_paged_locations(False, picking.id, data['version'])
+        self.assertIs(location['order_id'], False)
+        self.assertIn(native['location'], location['rows'])
+        self.assertEqual(before, self.stamp())
+        self.reader.groups_id = [(3, self.env.ref('stock.group_stock_multi_locations').id)]
+        data = self.selection(picking)
+        with self.assertRaises(AccessError):
+            self.api().qorlia_return_paged_locations(False, picking.id, data['version'])
+
+    def test_literal_false_is_not_zero_and_legacy_return_apis_stay_order_scoped(self):
+        picking = self.delivered()
+        data = self.selection(picking)
+        for invalid in (0, True, None, '', 'false', -1, 1.5):
+            with self.assertRaises(ValidationError):
+                self.api().qorlia_return_paged_load(invalid, picking.id)
+            with self.assertRaises(ValidationError):
+                self.api().qorlia_return_paged_review(dict(data, order_id=invalid))
+        with self.assertRaises(ValidationError):
+            self.api().qorlia_return_load(False, picking.id)
+
+    def test_stale_selection_and_incomplete_proof_do_not_create_returns(self):
+        picking = self.delivered()
+        request = self.request(picking)
+        before = self.stamp()
+        with self.assertRaises(UserError):
+            self.api().qorlia_return_paged_save(dict(request, review_complete_token='0' * 64))
+        self.assertEqual(before, self.stamp())
+        self.env['stock.quant']._update_available_quantity(self.product, self.warehouse.lot_stock_id, 1, lot_id=self.lot)
+        before = self.stamp()
+        with self.assertRaises(UserError):
+            self.api().qorlia_return_paged_save(request)
+        self.assertEqual(before, self.stamp())
+
+    def test_exact_stop_preserves_stock_and_prevents_later_creation(self):
+        picking = self.delivered()
+        request = self.request(picking)
+        before = picking._qorlia_paged_stop_stamp(picking._qorlia_return_paged_tables(), 'qorlia_validation_receipts')
+        stopped = self.api().qorlia_return_paged_stop(request)
+        self.assertTrue(stopped['stopped'])
+        self.assertIs(stopped['current']['order_id'], False)
+        self.assertEqual(stopped, self.api().qorlia_return_paged_status(request))
+        self.assertEqual(stopped, self.api().qorlia_return_paged_stop(request))
+        with self.assertRaises(UserError):
+            self.api().qorlia_return_paged_save(request)
+        self.assertEqual(before, picking._qorlia_paged_stop_stamp(picking._qorlia_return_paged_tables(), 'qorlia_validation_receipts'))
+
+    def test_global_receipt_cannot_be_recovered_by_another_author_or_order_scope(self):
+        picking = self.delivered()
+        request = self.request(picking)
+        self.api().qorlia_return_paged_save(request)
+        with self.assertRaises(ValidationError):
+            self.env['stock.picking'].with_user(self.user).qorlia_return_paged_status(request)
+        with self.assertRaises(UserError):
+            self.env['stock.picking'].with_user(self.user).qorlia_return_paged_status(dict(request, order_id=self.order.id))
+
+    def test_hidden_source_move_and_denied_writes_cannot_be_bypassed(self):
+        picking = self.delivered()
+        request = self.request(picking)
+        move_id = picking.move_ids.id
+        rule = self.deny('stock.move', move_id)
+        before = self.stamp()
+        with self.assertRaises(AccessError):
+            self.api().qorlia_return_paged_load(False, picking.id)
+        with self.assertRaises(AccessError):
+            self.api().qorlia_return_paged_save(request)
+        self.assertEqual(before, self.stamp())
+        rule.unlink()
+        self.env['ir.rule'].create({'name': 'QorliaQA Return denied write',
+            'model_id': self.env['ir.model']._get_id('stock.picking'), 'domain_force': "[('id', '!=', %s)]" % picking.id,
+            'perm_read': False, 'perm_write': True, 'perm_create': False, 'perm_unlink': False})
+        loaded = self.api().qorlia_return_paged_load(False, picking.id)
+        self.assertFalse(loaded['write_ready'])
+        self.assertTrue(loaded['reason'])
+        with self.assertRaises(AccessError):
+            self.api().qorlia_return_paged_stop(request)
+
+    def test_created_return_can_use_the_global_validation_workflow(self):
+        picking = self.delivered()
+        saved = self.api().qorlia_return_paged_save(self.request(picking))
+        returned = self.env['stock.picking'].with_user(self.reader).browse(saved['return_transfer']['id'])
+        returned.move_line_ids.write({'qty_done': 2, 'lot_id': self.lot.id})
+        parent = None
+        for _step in range(3):
+            loaded = self.api().qorlia_validation_paged_load(False, returned.id)
+            selection = {'order_id': False, 'transfer_id': returned.id, 'version': loaded['version'],
+                'continuation_key': parent['request_key'] if parent else False,
+                'decisions': [{'kind': 'receipt', 'confirm': True}] if parent else []}
+            after, version, token = 0, False, False
+            while True:
+                page = self.api().qorlia_validation_paged_review(selection, after, version, token, 100)
+                if page['next_after'] is False:
+                    break
+                after, version, token = page['next_after'], page['review_version'], page['continuation_token']
+            parent = dict(selection, review_version=page['review_version'],
+                review_complete_token=page['review_complete_token'], request_key=str(uuid.uuid4()))
+            result = self.api().qorlia_validation_paged_save(parent)
+            if result['receipt']['terminal']:
+                break
+            self.assertEqual(result['receipt']['next_step']['kind'], 'receipt')
+        self.assertTrue(result['receipt']['terminal'])
+        self.assertEqual(returned.state, 'done')
+        self.assertEqual(self.source_stock(), 7)
+        self.assertEqual(self.sale_line.qty_delivered, 0)

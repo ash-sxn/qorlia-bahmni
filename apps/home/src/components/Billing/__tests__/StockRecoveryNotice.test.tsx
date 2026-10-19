@@ -33,6 +33,32 @@ const mockGlobalPreparation = jest.fn();
 const mockGlobalOperation = jest.fn();
 const mockGlobalValidation = jest.fn();
 const mockGlobalCancellation = jest.fn();
+const mockGlobalReturn = jest.fn();
+const mockInventoryDetail = jest.fn();
+jest.mock('../InventoryTransferDetails', () => ({
+  InventoryTransferDetails: (props: { close: () => void }) => {
+    mockInventoryDetail(props);
+    return (
+      <button onClick={props.close}>Close recovered Inventory transfer</button>
+    );
+  },
+}));
+jest.mock('../PagedStockReturnModal', () => ({
+  PagedStockReturnModal: (props: {
+    close: () => void;
+    openTransfer: (order: false, transfer: number) => void;
+  }) => {
+    mockGlobalReturn(props);
+    return (
+      <>
+        <button onClick={props.close}>Close global return</button>
+        <button onClick={() => props.openTransfer(false, 19)}>
+          Open created global return
+        </button>
+      </>
+    );
+  },
+}));
 jest.mock('../PagedStockCancellationModal', () => ({
   PagedStockCancellationModal: (props: { close: () => void }) => {
     mockGlobalCancellation(props);
@@ -110,6 +136,37 @@ beforeEach(() => {
   disk = returnRequest();
   load.mockImplementation(async () => disk);
   global.fetch = jest.fn();
+});
+it('pins global return recovery and opens the real returned transfer without going through Sales', async () => {
+  disk = { ...returnRequest(), order_id: false };
+  const view = show();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Open saved stock workflow' }),
+  );
+  expect(mockGlobalReturn.mock.calls.at(-1)![0]).toEqual(
+    expect.objectContaining({ uid: 3, orderId: false, transferId: 11 }),
+  );
+  disk = null;
+  await act(async () => {
+    await view.client.invalidateQueries({
+      queryKey: ['billing', 'reservation-recovery', 3],
+    });
+  });
+  expect(
+    screen.getByRole('button', { name: 'Open created global return' }),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Open created global return' }),
+  );
+  expect(mockInventoryDetail.mock.calls.at(-1)![0]).toEqual(
+    expect.objectContaining({ uid: 3, transferId: 19 }),
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close recovered Inventory transfer' }),
+  );
+  await waitFor(() => expect(fallback).toHaveBeenCalled());
+  expect(mockPanel).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
 });
 it('opens a saved global confirmation directly without routing through a sales order', async () => {
   disk = { ...pagedConfirmationRequest(), order_id: false };

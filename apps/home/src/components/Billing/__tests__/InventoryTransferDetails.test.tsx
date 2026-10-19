@@ -20,6 +20,23 @@ const mockPreparation = jest.fn();
 const mockOperation = jest.fn();
 const mockValidation = jest.fn();
 const mockCancellation = jest.fn();
+const mockReturn = jest.fn();
+jest.mock('../PagedStockReturnModal', () => ({
+  PagedStockReturnModal: (props: {
+    close: () => void;
+    openTransfer: (order: false, transfer: number) => void;
+  }) => {
+    mockReturn(props);
+    return (
+      <>
+        <button onClick={props.close}>Close global return</button>
+        <button onClick={() => props.openTransfer(false, 19)}>
+          Open actual global return
+        </button>
+      </>
+    );
+  },
+}));
 jest.mock('../PagedStockCancellationModal', () => ({
   PagedStockCancellationModal: (props: { close: () => void }) => {
     mockCancellation(props);
@@ -117,6 +134,49 @@ beforeEach(() => {
   detail
     .mockReset()
     .mockImplementation(async (_id, section) => inventoryDetail(section));
+});
+it('opens a return without a dummy order and follows the actual created Inventory transfer', async () => {
+  load.mockImplementation(async (id) => {
+    const loaded = inventoryLoad();
+    return {
+      ...loaded,
+      transfer: { ...loaded.transfer, id, name: `QA/TRANSFER/${id}` },
+    };
+  });
+  detail.mockImplementation(async (id, section) => {
+    const page = inventoryDetail(section);
+    return {
+      ...page,
+      transfer: { ...page.transfer, id, name: `QA/TRANSFER/${id}` },
+    };
+  });
+  show();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Create or recover return' }),
+  );
+  expect(mockReturn.mock.calls.at(-1)![0]).toEqual(
+    expect.objectContaining({ uid: 3, orderId: false, transferId: 11 }),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Close global return' }));
+  await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Create or recover return' }),
+    ).toBeEnabled(),
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Create or recover return' }),
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Open actual global return' }),
+  );
+  expect(
+    await screen.findByRole('heading', { name: 'QA/TRANSFER/19' }),
+  ).toBeInTheDocument();
+  expect(load).toHaveBeenLastCalledWith(19);
+  expect(
+    screen.queryByRole('button', { name: 'Close global return' }),
+  ).not.toBeInTheDocument();
 });
 it('loads the independent transfer and both pinned sections, with shared read-only quantity and batch tables', async () => {
   show();

@@ -5,7 +5,7 @@ import {
   BillingSessionExpired,
   getPagedStockReturnLocations,
   type PagedStockReturnLocations,
-  type StockConfirmationSelection,
+  type PagedStockConfirmationSelection,
 } from './billingService';
 
 export function StockReturnLocation({
@@ -14,7 +14,7 @@ export function StockReturnLocation({
   change,
   reconnect,
 }: {
-  selection: StockConfirmationSelection;
+  selection: PagedStockConfirmationSelection;
   disabled: boolean;
   change: (location: [number, string]) => void;
   reconnect: () => void;

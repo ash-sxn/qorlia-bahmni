@@ -71,8 +71,8 @@ export function InventoryTransfersPanel({
       </h2>
       <p>
         Find receipts, deliveries and internal transfers, including transfers
-        without a charge order. This list is read-only; stock actions and the
-        remaining native inventory views are still being integrated.
+        without a charge order. Open a transfer to review its stock actions.
+        Other native inventory views are still being integrated.
       </p>
       <form
         className={styles.toolbar}

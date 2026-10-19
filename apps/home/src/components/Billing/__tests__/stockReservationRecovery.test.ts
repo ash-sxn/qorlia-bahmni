@@ -266,6 +266,7 @@ const returnEnvelope = (request = completeReturn(), uid = 3) => ({
 function returnOutcome(
   outcome: 'accepted' | 'stopped' | 'unknown' = 'accepted',
   count = 2,
+  orderId: number | false = 9,
 ) {
   const accepted = outcome === 'accepted';
   const status: PagedStockReturnStatus = {
@@ -283,7 +284,7 @@ function returnOutcome(
       : false,
     reference_count: accepted ? count : 0,
     current: {
-      order_id: 9,
+      order_id: orderId,
       transfer_id: 11,
       version: 'd'.repeat(64),
       transfer: {
@@ -822,6 +823,26 @@ describe('Complete native cancellation durable recovery', () => {
 describe('Complete native return durable recovery', () => {
   beforeEach(() => {
     global.fetch = jest.fn();
+  });
+
+  it('retains an unknown global schema-7 request and retires it only after complete accepted references', async () => {
+    const fake = database(),
+      exact = { ...completeReturn(), order_id: false as const };
+    await persistPagedStockReturnRecovery(3, exact);
+    expect(fake.records.get(3)).toEqual(returnEnvelope(exact));
+    expect(await loadStockWriteRecovery(3)).toEqual(exact);
+    returnOutcome('unknown', 2, false);
+    await expect(clearPagedStockReturnRecovery(3, exact)).rejects.toThrow(
+      /outcome is unknown/,
+    );
+    expect(await loadPagedStockReturnRecovery(3)).toEqual(exact);
+    returnOutcome('accepted', 101, false);
+    await clearPagedStockReturnRecovery(3, exact);
+    expect(fake.records.size).toBe(0);
+    for (const [, options] of (fetch as jest.Mock).mock.calls.filter(
+      ([route]) => route.includes('/qorlia_return_paged_'),
+    ))
+      expect(JSON.parse(options.body).params.kwargs.payload).toEqual(exact);
   });
 
   it('stores exact eight-key requests in schema 7 using the same account slot and no network write', async () => {

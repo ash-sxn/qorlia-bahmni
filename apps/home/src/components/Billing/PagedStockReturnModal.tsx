@@ -18,7 +18,7 @@ import {
   type PagedStockReturnRequest,
   type PagedStockReturnStatus,
   type PagedStockConfirmationReferences,
-  type StockReturnSelection,
+  type PagedStockReturnSelection,
 } from './billingService';
 import {
   confirmationModelLabel,
@@ -34,12 +34,12 @@ import { transferStates } from './stockTransferPages';
 
 type Props = {
   uid: number;
-  orderId: number;
+  orderId: number | false;
   transferId: number;
   close: () => void;
   reconnect: () => void;
   returnFocus?: () => void;
-  openTransfer: (orderId: number, transferId: number) => void;
+  openTransfer: (orderId: number | false, transferId: number) => void;
 };
 type Draft = {
   load: PagedStockReturnLoad;
@@ -57,7 +57,7 @@ type Session = {
   error: Error | null;
 };
 type Review = {
-  selection: StockReturnSelection;
+  selection: PagedStockReturnSelection;
   page: PagedStockReturnReview;
   pageNumber: number;
 };
@@ -352,7 +352,7 @@ function ReturnWorkflow({
         draft.rows.length !== draft.load.line_count
       )
         return;
-      const selection: StockReturnSelection = review?.selection ?? {
+      const selection: PagedStockReturnSelection = review?.selection ?? {
         ...selectionOf(draft.load),
         location_id: draft.location[0],
         lines: draft.rows
@@ -558,6 +558,8 @@ function ReturnWorkflow({
           'order-deliveries',
           'order-transfer-details',
           'charge-lines',
+          'inventory-transfers',
+          'inventory-transfer-load',
         ].map((key) =>
           client.invalidateQueries({
             queryKey: ['billing', key, uid],

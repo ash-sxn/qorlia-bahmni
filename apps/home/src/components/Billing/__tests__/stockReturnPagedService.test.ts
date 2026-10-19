@@ -121,6 +121,53 @@ describe('Complete native return read and rollback review client', () => {
     global.fetch = jest.fn();
   });
 
+  it('keeps the explicit global identity in all four return readers and rejects lookalikes or mixed scope', async () => {
+    const globalBase = { ...base(), order_id: false as const };
+    reply({ ...loaded(), order_id: false });
+    expect((await getPagedStockReturn(false, 11)).order_id).toBe(false);
+    reply({ ...lines(), order_id: false });
+    expect((await getPagedStockReturnLines(globalBase)).order_id).toBe(false);
+    reply({ ...locations(), order_id: false });
+    expect(
+      (await getPagedStockReturnLocations(globalBase, 'QA')).order_id,
+    ).toBe(false);
+    reply({ ...reviewed(), order_id: false });
+    expect(
+      (await getPagedStockReturnReview({ ...selection(), order_id: false }))
+        .order_id,
+    ).toBe(false);
+    for (const [route, options] of (fetch as jest.Mock).mock.calls) {
+      const args = JSON.parse(options.body).params.kwargs;
+      expect(route).toContain('/qorlia_return_paged_');
+      expect(args.payload?.order_id ?? args.order_id).toBe(false);
+    }
+    (fetch as jest.Mock).mockClear();
+    for (const invalid of [0, true, null, undefined, '', 'false', -1]) {
+      await expect(
+        getPagedStockReturn(invalid as number, 11),
+      ).rejects.toThrow();
+      await expect(
+        getPagedStockReturnReview({
+          ...selection(),
+          order_id: invalid as number,
+        }),
+      ).rejects.toThrow();
+    }
+    await expect(
+      previewStockReturn({
+        ...selection(),
+        order_id: false as unknown as number,
+      }),
+    ).rejects.toThrow();
+    expect(fetch).not.toHaveBeenCalled();
+    reply(loaded());
+    await expect(getPagedStockReturn(false, 11)).rejects.toThrow();
+    reply(reviewed());
+    await expect(
+      getPagedStockReturnReview({ ...selection(), order_id: false }),
+    ).rejects.toThrow();
+  });
+
   it('uses four fixed read/review APIs with pinned versions and exact payloads', async () => {
     reply(loaded());
     expect(await getPagedStockReturn(9, 11)).toEqual(loaded());

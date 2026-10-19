@@ -1,5 +1,17 @@
 # Bahmni workflow parity ledger
 
+## 20 October global Inventory returns source
+
+[Candidate 73](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-73-global-returns-20-october-2026)
+connects all eight complete native return APIs and shared Qorlia form/review,
+schema-7 recovery and actual-created-transfer navigation without Sales orders.
+Creation is not physical validation or a financial refund. Home passes 1,613
+cases/102 suites; the native return run and corrected cancellation rerun are
+active, not accepted yet. The older source-68 full result is independently
+verified at 974 cases, with 132 guards and 322 matching-client responses using
+mocked transport. Source-specific evidence and outstanding parity/runtime gates
+are in the guide. No review reopening, build/server or deployment.
+
 ## 19 October global Inventory cancellation source
 
 [Candidate 72](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-72-global-cancellation-19-october-2026)

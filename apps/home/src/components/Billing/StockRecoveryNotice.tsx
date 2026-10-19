@@ -2,10 +2,12 @@ import { Button } from '@bahmni/design-system';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import styles from './BillingPage.module.scss';
+import { InventoryTransferDetails } from './InventoryTransferDetails';
 import { OrderDeliveriesPanel } from './OrderDeliveriesPanel';
 import { PagedStockCancellationModal } from './PagedStockCancellationModal';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
 import { PagedStockReservationModal } from './PagedStockReservationModal';
+import { PagedStockReturnModal } from './PagedStockReturnModal';
 import { PagedStockValidationModal } from './PagedStockValidationModal';
 import { PagedStockWriteModal } from './PagedStockWriteModal';
 import {
@@ -37,7 +39,9 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
       | 'preparation'
       | 'operation'
       | 'validation'
-      | 'cancellation';
+      | 'cancellation'
+      | 'return'
+      | 'details';
   } | null>(null);
   const opener = useRef<HTMLButtonElement>(null);
   const retryButton = useRef<HTMLButtonElement>(null);
@@ -66,6 +70,19 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
     focusFallback,
   ]);
   if (target?.orderId === false) {
+    if (target.kind === 'details')
+      return (
+        <InventoryTransferDetails
+          uid={uid}
+          transferId={target.transferId}
+          reconnect={reconnect}
+          close={() => {
+            restoreFocus.current = true;
+            setTarget(null);
+            void saved.refetch();
+          }}
+        />
+      );
     const Workflow =
       target.kind === 'confirmation'
         ? PagedStockConfirmationModal
@@ -85,7 +102,14 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
         void saved.refetch();
       },
     };
-    return target.kind === 'operation' ? (
+    return target.kind === 'return' ? (
+      <PagedStockReturnModal
+        {...props}
+        openTransfer={(_orderId, transferId) =>
+          setTarget({ orderId: false, transferId, kind: 'details' })
+        }
+      />
+    ) : target.kind === 'operation' ? (
       <PagedStockWriteModal {...props} kind="operation" />
     ) : (
       <Workflow {...props} />
@@ -168,7 +192,9 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
                   ? 'validation'
                   : isPagedStockCancellationRequest(request)
                     ? 'cancellation'
-                    : 'preparation',
+                    : isPagedStockReturnRequest(request)
+                      ? 'return'
+                      : 'preparation',
           })
         }
       >

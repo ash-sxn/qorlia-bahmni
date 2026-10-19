@@ -1,6 +1,14 @@
 # New-team handover: Qorlia engineering
 
-Newest source: [global Inventory cancellation](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-72-global-cancellation-19-october-2026)
+Newest source: [global Inventory returns](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-73-global-returns-20-october-2026)
+connects eight native APIs, shared Qorlia form/review/recovery and the actual
+created Inventory transfer without a Sales order. Creation is separate from
+validation/refund. Home passes 1,613 cases/102 suites; return/cancellation native
+verification and remaining scope are in the guide. Older source-68 full
+regression passes 974 cases, not acceptance of the current source. Starter-task
+bases, closed review access, installed runtime and deployment remain unchanged.
+
+Earlier source: [global Inventory cancellation](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-72-global-cancellation-19-october-2026)
 connects six native APIs and shared Qorlia review/recovery without Sales orders.
 Home passes 1,605 cases/102 suites; native checking and remaining scope are in
 the guide. Starter-task bases, closed review and deployment status stay unchanged.

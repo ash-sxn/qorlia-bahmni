@@ -6242,9 +6242,19 @@ function validReturnForm(data: StockReturnForm): boolean {
 }
 function checkedReturnSelection(
   value: StockReturnSelection,
+  complete?: false,
+): StockReturnSelection;
+function checkedReturnSelection(
+  value: PagedStockReturnSelection,
+  complete: true,
+): PagedStockReturnSelection;
+function checkedReturnSelection(
+  value: PagedStockReturnSelection,
   complete = false,
-): StockReturnSelection {
-  const base = checkedConfirmationSelection(value);
+): PagedStockReturnSelection {
+  const base = complete
+    ? checkedConfirmationSelection(value, true)
+    : checkedConfirmationSelection(value as StockReturnSelection);
   if (
     !confirmationKeys(value, [
       'order_id',
@@ -6777,28 +6787,33 @@ export async function getPagedStockCancellationReferences(
   );
 }
 
-export interface PagedStockReturnLoad extends StockConfirmationSelection {
+export interface PagedStockReturnSelection
+  extends Omit<StockReturnSelection, 'order_id'> {
+  order_id: number | false;
+}
+export interface PagedStockReturnLoad extends PagedStockConfirmationSelection {
   transfer: OrderTransferSummary;
   form: StockReturnMetadata | false;
   line_count: number;
   reason: string | false;
   write_ready: boolean;
 }
-export interface PagedStockReturnLines extends StockConfirmationSelection {
+export interface PagedStockReturnLines extends PagedStockConfirmationSelection {
   form: StockReturnMetadata;
   after: number;
   total_count: number;
   next_after: number | false;
   rows: StockReturnForm['lines'];
 }
-export interface PagedStockReturnLocations extends StockConfirmationSelection {
+export interface PagedStockReturnLocations
+  extends PagedStockConfirmationSelection {
   query: string;
   after: number;
   rows: Exclude<Relation, false>[];
   next_after: number | false;
 }
 export interface PagedStockReturnReview
-  extends Omit<StockReturnSelection, 'lines'> {
+  extends Omit<PagedStockReturnSelection, 'lines'> {
   form: StockReturnMetadata;
   line_count: number;
   return_state: StockReturnReview['return_state'];
@@ -6824,11 +6839,11 @@ function validReturnMetadata(data: StockReturnMetadata): boolean {
   );
 }
 function checkedReturnPage(
-  selection: StockConfirmationSelection,
+  selection: PagedStockConfirmationSelection,
   after: number,
   limit: number,
 ) {
-  const exact = checkedConfirmationSelection(selection);
+  const exact = checkedConfirmationSelection(selection, true);
   if (
     !confirmationKeys(selection, ['order_id', 'transfer_id', 'version']) ||
     !stockCount(after) ||
@@ -6841,8 +6856,11 @@ function checkedReturnPage(
     );
   return exact;
 }
-export async function getPagedStockReturn(orderId: number, transferId: number) {
-  if (!stockId(orderId) || !stockId(transferId))
+export async function getPagedStockReturn(
+  orderId: number | false,
+  transferId: number,
+) {
+  if (!(stockId(orderId) || orderId === false) || !stockId(transferId))
     throw new Error('Select a saved stock transfer.');
   const data = await stockCall<PagedStockReturnLoad>(
     'qorlia_return_paged_load',
@@ -6883,7 +6901,7 @@ export async function getPagedStockReturn(orderId: number, transferId: number) {
   return data;
 }
 export async function getPagedStockReturnLines(
-  selection: StockConfirmationSelection,
+  selection: PagedStockConfirmationSelection,
   after = 0,
   limit = 50,
 ) {
@@ -6928,7 +6946,7 @@ export async function getPagedStockReturnLines(
   return data;
 }
 export async function getPagedStockReturnLocations(
-  selection: StockConfirmationSelection,
+  selection: PagedStockConfirmationSelection,
   query = '',
   after = 0,
   limit = 25,
@@ -6980,7 +6998,7 @@ export async function getPagedStockReturnLocations(
   return data;
 }
 export async function getPagedStockReturnReview(
-  selection: StockReturnSelection,
+  selection: PagedStockReturnSelection,
   after = 0,
   reviewVersion: string | false = false,
   continuationToken: string | false = false,
@@ -7086,7 +7104,7 @@ export async function getPagedStockReturnReview(
     );
   return data;
 }
-export interface PagedStockReturnRequest extends StockReturnSelection {
+export interface PagedStockReturnRequest extends PagedStockReturnSelection {
   review_version: string;
   review_complete_token: string;
   request_key: string;
@@ -7098,7 +7116,7 @@ export interface PagedStockReturnStatus {
   state_after: StockReturnReview['return_state'] | false;
   return_transfer: StockReturnStatus['return_transfer'];
   reference_count: number;
-  current: StockValidationStepCompactStatus['current'];
+  current: PagedStockOperationStatus['current'];
 }
 export function checkedPagedStockReturnRequest(
   value: PagedStockReturnRequest,
@@ -7120,11 +7138,12 @@ export function checkedPagedStockReturnRequest(
   const { review_version, review_complete_token, request_key, ...selection } =
     value;
   const data = checkedReturnSelection(selection, true);
-  checkedStockConfirmationRequest({
+  checkedPagedStockConfirmationRequest({
     order_id: data.order_id,
     transfer_id: data.transfer_id,
     version: data.version,
     review_version,
+    review_complete_token,
     request_key,
   });
   return { ...data, review_version, review_complete_token, request_key };

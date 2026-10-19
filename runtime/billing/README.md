@@ -3,7 +3,15 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Newest source: [global Inventory cancellation](STOCK_INVENTORY_WORKSPACE.md#candidate-72-global-cancellation-19-october-2026)
+Newest source: [global Inventory returns](STOCK_INVENTORY_WORKSPACE.md#candidate-73-global-returns-20-october-2026)
+connects all eight complete native APIs and shared Qorlia form/review/recovery
+without Sales orders. It opens the actual created return in Inventory, without
+confusing creation with physical validation or refund. Home passes 1,613
+cases/102 suites; native return/cancellation verification and remaining scope are
+in the guide. Older source-68 full regression passes 974 cases, not current-source
+acceptance. No review reopening, build/server, installed upgrade or deployment.
+
+Earlier source: [global Inventory cancellation](STOCK_INVENTORY_WORKSPACE.md#candidate-72-global-cancellation-19-october-2026)
 connects all six native cancellation APIs and shared review/recovery without
 Sales orders. Home passes 1,605 cases/102 suites; source-matched native checking
 and remaining gates are in the guide. No review reopening or deployment.

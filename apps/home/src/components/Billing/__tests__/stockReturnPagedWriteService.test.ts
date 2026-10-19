@@ -96,6 +96,42 @@ describe('Complete native return creation, recovery and retirement client', () =
     global.fetch = jest.fn();
   });
 
+  it('preserves global identity through save, status, references and stop, without relaxing legacy requests', async () => {
+    const exact = { ...request(), order_id: false as const };
+    const result = {
+      ...accepted(),
+      current: { ...current(), order_id: false as const },
+    };
+    for (const call of [
+      savePagedStockReturn,
+      getPagedStockReturnStatus,
+      stopPagedStockReturn,
+    ]) {
+      reply(result);
+      expect(await call(exact)).toEqual(result);
+    }
+    reply(references());
+    expect(await getPagedStockReturnReferences(exact)).toEqual(references());
+    for (const [, options] of (fetch as jest.Mock).mock.calls)
+      expect(JSON.parse(options.body).params.kwargs.payload).toEqual(exact);
+    const { review_complete_token: _proof, ...legacy } = exact;
+    expect(_proof).toHaveLength(64);
+    expect(() =>
+      checkedStockReturnRequest(
+        legacy as unknown as Parameters<typeof checkedStockReturnRequest>[0],
+      ),
+    ).toThrow();
+    for (const invalid of [0, true, null, undefined, 'false'])
+      expect(() =>
+        checkedPagedStockReturnRequest({
+          ...exact,
+          order_id: invalid as number,
+        }),
+      ).toThrow();
+    reply(accepted());
+    await expect(getPagedStockReturnStatus(exact)).rejects.toThrow();
+  });
+
   it.each(cases)(
     'sends the exact eight-key request to fixed $name and validates compact accepted recovery',
     async ({ name, call }) => {
@@ -217,10 +253,14 @@ describe('Complete native return creation, recovery and retirement client', () =
     expect(exact.lines).not.toBe(data.lines);
     data.lines[500].quantity = 9;
     expect(exact.lines[500].quantity).toBe(1);
-    expect(() => checkedStockReturnRequest(exact)).toThrow();
+    expect(() =>
+      checkedStockReturnRequest({ ...exact, order_id: 9 }),
+    ).toThrow();
     const { review_complete_token, ...legacy } = exact;
     expect(review_complete_token).toHaveLength(64);
-    expect(() => checkedStockReturnRequest(legacy)).toThrow();
+    expect(() =>
+      checkedStockReturnRequest({ ...legacy, order_id: 9 }),
+    ).toThrow();
   });
 
   it.each([

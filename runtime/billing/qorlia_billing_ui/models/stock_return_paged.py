@@ -23,7 +23,7 @@ class StockReturnPaged(models.Model):
 
     def _qorlia_return_paged_source(self, order_id, transfer_id):
         self.env.invalidate_all()
-        picking, order, scope = self._qorlia_confirmation_paged_transfer(order_id, transfer_id)
+        picking, order, scope = self._qorlia_confirmation_paged_transfer(order_id, transfer_id, inventory=True)
         form, reason = False, False
         try:
             picking._qorlia_return_paged_access()
@@ -90,8 +90,9 @@ class StockReturnPaged(models.Model):
 
     def _qorlia_return_paged_selection(self, payload):
         if (not isinstance(payload, dict) or set(payload) != {'order_id', 'transfer_id', 'version', 'location_id', 'lines'}
+                or not (payload['order_id'] is False or type(payload['order_id']) is int and payload['order_id'] > 0)
                 or any(type(payload[key]) is not int or payload[key] <= 0
-                    for key in ('order_id', 'transfer_id', 'location_id'))
+                    for key in ('transfer_id', 'location_id'))
                 or not _hash(payload['version']) or not isinstance(payload['lines'], list)):
             raise ValidationError('Use the exact native return selection and its original version.')
         seen = set()
@@ -126,7 +127,8 @@ class StockReturnPaged(models.Model):
             {'review_version': review, 'position': position}, {}, False)
 
     def _qorlia_return_paged_preview(self, data):
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(data['order_id'], data['transfer_id'], lock=True)
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(
+            data['order_id'], data['transfer_id'], lock=True, inventory=True)
         picking._qorlia_reservation_scope(lock=True, complete=True)
         picking, loaded, _original = self._qorlia_return_paged_source(data['order_id'], data['transfer_id'])
         if loaded['version'] != data['version'] or loaded['reason']:

@@ -12,6 +12,7 @@ import {
   StockOperationSelection,
   StockValidationStepRequest,
 } from './billingService';
+import { InventoryTransferDetails } from './InventoryTransferDetails';
 import { OrderTransferDetails } from './OrderTransferDetails';
 import { PagedStockCancellationModal } from './PagedStockCancellationModal';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
@@ -55,14 +56,23 @@ export function OrderDeliveriesPanel(props: Props) {
 }
 function OrderTransferWorkspace(props: Props) {
   const [target, setTarget] = useState({
-    orderId: props.orderId,
+    orderId: props.orderId as number | false,
     transferId: null as number | null,
   });
+  if (target.orderId === false && target.transferId !== null)
+    return (
+      <InventoryTransferDetails
+        uid={props.uid}
+        transferId={target.transferId}
+        reconnect={props.reconnect}
+        close={() => setTarget({ orderId: props.orderId, transferId: null })}
+      />
+    );
   return (
     <OrderTransfers
       key={`${props.uid}:${target.orderId}:${target.transferId ?? ''}`}
       {...props}
-      orderId={target.orderId}
+      orderId={target.orderId as number}
       initialTransferId={target.transferId}
       openTransfer={(orderId, transferId) => setTarget({ orderId, transferId })}
     />
@@ -78,7 +88,7 @@ function OrderTransfers({
   reconnect,
 }: Props & {
   initialTransferId: number | null;
-  openTransfer: (orderId: number, transferId: number) => void;
+  openTransfer: (orderId: number | false, transferId: number) => void;
 }) {
   const client = useQueryClient();
   const heading = useRef<HTMLHeadingElement>(null);
@@ -103,7 +113,7 @@ function OrderTransfers({
     initialTransferId,
   );
   const [stockReturn, setStockReturn] = useState<{
-    orderId: number;
+    orderId: number | false;
     transferId: number;
   } | null>(null);
   const [cancellation, setCancellation] = useState<{

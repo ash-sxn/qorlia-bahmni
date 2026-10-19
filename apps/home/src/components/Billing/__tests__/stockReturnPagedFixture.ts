@@ -4,7 +4,7 @@ import type {
   PagedStockReturnReview,
   PagedStockReturnStatus,
   PagedStockConfirmationReferences,
-  StockReturnSelection,
+  PagedStockReturnSelection,
   StockValidationEffects,
 } from '../billingService';
 import { orderDeliveryPageFixture } from './orderDeliveryFixture';
@@ -48,7 +48,7 @@ export const returnRequest = (): PagedStockReturnRequest => ({
   request_key: '11111111-2222-4333-8444-555555555555',
 });
 export function returnReview(
-  selection: StockReturnSelection,
+  selection: PagedStockReturnSelection,
   after = 0,
   effectCount = 1,
 ): PagedStockReturnReview {
