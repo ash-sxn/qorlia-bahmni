@@ -3,10 +3,16 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest [React saved-step recovery reader](VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026)
+connects the transfer resume path to compact status and complete saved prompt/
+reference pages, with exact durable terminal clear. Small continuations return
+explicitly to the original native writer; large validation writes remain open.
+This source is not a runtime release or browser/storage acceptance.
+
 Candidate 59 adds [compact saved-validation recovery](VALIDATION_RECOVERY_PAGING.md):
 three fixed read-only native/client/source-gateway APIs for original step receipts,
 saved native prompt pages and business-reference pages. It does not change old
-payloads, enable large validation writes or migrate the React dialog. Home passes
+payloads or enable large validation writes. Its backend checkpoint passes
 1,049 cases/86 suites; native evidence and remaining gates are recorded separately.
 No installed upgrade, review reopening, build/server or deployment.
 

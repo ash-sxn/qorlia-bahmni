@@ -2,10 +2,65 @@
 
 [Billing guide](README.md) · [Native validation steps](STOCK_VALIDATION.md) · [Recovery storage](STOCK_RECOVERY.md)
 
+## React saved-step reader source, 19 October 2026
+
+The transfer panel now routes existing validation-step requests to
+[SavedValidationRecoveryModal](../../apps/home/src/components/Billing/SavedValidationRecoveryModal.tsx).
+It verifies the stored account/request before reading the compact native status,
+then shows saved prompt and business-reference rows in pinned 50-row pages.
+It does not call the capped editable load merely to show an accepted receipt.
+The same house modal, buttons, cards and keyboard-scrollable tables are used.
+
+The reader preserves all native receipt units, quantities, lot/expiry values,
+prices, balance, expiry-soon flag and warning text. Warning markup remains plain
+escaped text. Immediate/backorder selections and expiry lots are displayed as
+saved values, not actions that process a partial prompt. Missing/consumed
+prompts, unknown acceptance and accepted-but-incomplete delivery stay distinct.
+
+Every reference page must be visited before finishing a terminal accepted step.
+The reader rechecks the original accepted state/count, terminal state, prompt
+snapshot and current scope, then validates the pinned references again before
+awaiting exact durable clear. Changed receipts/pages/storage, failed clear,
+session expiry and closing a nonterminal prompt preserve recovery. No new nonce,
+automatic save, generic wizard call or prompt recreation is introduced.
+
+For a small transfer only, an explicit continuation after all prompt/reference
+pages returns to the original validation-step dialog. That dialog loads its own
+editable version and performs native preview/review/save as before. The compact
+scope version is never passed to a writer. Unknown small requests can explicitly
+open the original identical-request recovery, without dispatching a write from
+this reader. SMS blocking is retained. Large-transfer validation/retry remains
+unavailable; the reader does not remove the existing 500-move/2,000-operation
+write limits. Atomic pending requests and new validation still use their original
+dialog. Other pending kinds cannot be silently converted.
+
+The full Home suite passes **1,073 cases in 87 suites**. The focused reader,
+transfer routing/paging and original validation UI run passes 88 cases, including
+23 new reader cases and one additional continuation-routing case. Coverage includes
+large summary counts, 101 prompt rows, 101 references,
+bounded pinned navigation, unavailable labels, escaped warning text, keyboard
+focus/axe, complete-page gating, terminal declined choices, changed outcomes,
+strict clear completion/failure, storage/account mismatch, expired sessions,
+missing prompts, native choice kinds, SMS and late unmounted responses. Source
+types and scoped lint pass. The library and focused actual-source/test typechecks
+pass, including the new test source. The first two direct Jest attempts stopped
+before test collection on its TypeScript config-loader settings. A command-local
+`TS_NODE_SKIP_PROJECT=true` plus CommonJS/node loader override runs the actual
+project Jest config without modifying project configuration. No application build
+is substituted for tests. Unit service/storage doubles are used; this is not
+browser, IndexedDB, HTTP, installed-upgrade or hosted-tester acceptance. The native
+evidence below belongs to the unchanged candidate-59 reader APIs, whose 91 Python
+hashes also match committed backend source `47eca8e9`.
+
+Still required: complete large validation load/review/save, request retirement/
+continuation handling, actual browser/storage/gateway/runtime verification,
+large returns, broader Billing and full-product parity. Review access remains
+closed; no frontend build/server, tunnel or deployment is included.
+
 ## Candidate 59, 19 October 2026
 
-This source adds three read-only APIs for existing, exact seven-key validation-step
-requests. It does not add a larger validation writer, migrate the React dialog,
+This backend checkpoint adds three read-only APIs for existing, exact seven-key validation-step
+requests. It does not add a larger validation writer, migrate the write dialog,
 alter old request/storage schemas or upgrade a running installation. The old
 load/preview/save/status APIs and size guards remain unchanged.
 
@@ -129,7 +184,8 @@ suite), `validation-recovery59-r3-native-tests-20261019.log`,
 no-HTTP diagnostic exits zero and its one-off container is removed. Native
 bootstrap warnings remain in the logs; no dependency-install acceptance is claimed.
 
-Remaining: React prompt/reference/recovery migration,
+At the backend checkpoint, remaining work included React prompt/reference/recovery migration
+(now partially connected by the separate reader above),
 complete large validation review/save, request retirement/continuation handling,
 actual HTTP/protected gateway/browser/IndexedDB acceptance, installed upgrade,
 broader roles/configuration/performance, returns and full Billing/product parity.

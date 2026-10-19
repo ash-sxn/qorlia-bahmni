@@ -1,5 +1,18 @@
 # Qorlia React frontend backend readiness
 
+## Saved validation recovery consumer source (19 October 2026)
+
+The transfer resume path now uses compact native status plus complete pinned
+saved-prompt/reference pages, without loading the capped editable transfer graph.
+All reference pages and a fresh exact terminal outcome are required before durable
+clear. Small continuations explicitly return to the original writer's editable
+load/review, not the compact scope version. Unknown/missing/consumed outcomes,
+SMS blocking, old requests and large-write limits remain distinct. The focused
+reader/routing/original validation UI run passes 88 cases; types and scoped lint
+pass. [Evidence and remaining gates](../runtime/billing/VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026).
+Full Home suite: 1,073 cases/87 suites pass. No browser/IndexedDB/runtime
+acceptance, review reopening, build/server or deployment.
+
 ## Compact saved-validation recovery candidate 59 (19 October 2026)
 
 Three read-only APIs/typed clients/source routes recover original step receipts

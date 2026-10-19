@@ -10,11 +10,13 @@ import {
   BillingSessionExpired,
   getOrderDeliveryPage,
   StockOperationSelection,
+  StockValidationStepRequest,
 } from './billingService';
 import { OrderTransferDetails } from './OrderTransferDetails';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
 import { PagedStockOperationEditor } from './PagedStockOperationEditor';
 import { PagedStockReservationModal } from './PagedStockReservationModal';
+import { SavedValidationRecoveryModal } from './SavedValidationRecoveryModal';
 import { StockConfirmationModal } from './StockConfirmationModal';
 import { StockOperationEditor } from './StockOperationEditor';
 import { StockReservationModal } from './StockReservationModal';
@@ -22,6 +24,7 @@ import {
   isStockOperationRequest,
   isStockConfirmationRequest,
   isStockValidationRequest,
+  isStockValidationStepRequest,
   isPagedStockWriteRequest,
   loadStockWriteRecovery,
 } from './stockReservationRecovery';
@@ -74,6 +77,7 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
   const [validation, setValidation] = useState<{
     orderId: number;
     transferId: number;
+    request?: StockValidationStepRequest;
   } | null>(null);
   const recovery = useQuery({
     queryKey: ['billing', 'reservation-recovery', uid],
@@ -170,6 +174,9 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
                 setValidation({
                   orderId: pending.order_id,
                   transferId: pending.transfer_id,
+                  request: isStockValidationStepRequest(pending)
+                    ? pending
+                    : undefined,
                 });
               } else if (isStockConfirmationRequest(pending)) {
                 confirmationOpener.current = event.currentTarget;
@@ -399,7 +406,22 @@ function OrderTransfers({ uid, orderId, close, reconnect }: Props) {
           returnFocus={restoreConfirmationFocus}
         />
       ) : null}
-      {validation ? (
+      {validation?.request ? (
+        <SavedValidationRecoveryModal
+          key={`${uid}:${validation.request.request_key}`}
+          uid={uid}
+          request={validation.request}
+          close={reloadTransfers}
+          reconnect={reconnect}
+          returnFocus={restoreConfirmationFocus}
+          continueReview={() =>
+            setValidation({
+              orderId: validation.orderId,
+              transferId: validation.transferId,
+            })
+          }
+        />
+      ) : validation ? (
         <StockValidationModal
           uid={uid}
           orderId={validation.orderId}

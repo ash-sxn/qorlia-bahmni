@@ -1,5 +1,11 @@
 # New-team handover: Qorlia engineering
 
+Latest consumer: [saved validation recovery reader](../runtime/billing/VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026)
+connects the transfer resume route to compact native receipt status and complete
+saved prompt/reference pages. It does not enable large validation writes or
+reopen review access. Evidence and remaining gates are separate in that guide;
+starter-task bases remain unchanged.
+
 Latest backend/client candidate: [compact saved-validation recovery](../runtime/billing/VALIDATION_RECOVERY_PAGING.md)
 adds three read-only receipt/prompt/reference APIs while preserving original
 validation-step requests and all older write contracts. It is a prerequisite,

@@ -58,6 +58,23 @@ jest.mock('../PagedStockConfirmationModal', () => ({
   },
 }));
 const mockValidation = jest.fn();
+const mockSavedValidation = jest.fn();
+jest.mock('../SavedValidationRecoveryModal', () => ({
+  SavedValidationRecoveryModal: (props: {
+    close: () => void;
+    continueReview: () => void;
+  }) => {
+    mockSavedValidation(props);
+    return (
+      <>
+        <button onClick={props.close}>Return from saved validation</button>
+        <button onClick={props.continueReview}>
+          Continue saved validation
+        </button>
+      </>
+    );
+  },
+}));
 jest.mock('../StockValidationModal', () => ({
   StockValidationModal: (props: { close: () => void }) => {
     mockValidation(props);
@@ -152,13 +169,27 @@ describe('Order stock transfer review', () => {
           name: 'Resume validation request',
         }),
       );
-      expect(mockValidation.mock.calls.at(-1)?.[0]).toMatchObject({
-        uid: 3,
-        orderId: 10,
-        transferId: 12,
-      });
+      const reader = step ? mockSavedValidation : mockValidation;
+      expect(reader.mock.calls.at(-1)?.[0]).toMatchObject(
+        step
+          ? {
+              uid: 3,
+              request: {
+                ...validationRequest(),
+                order_id: 10,
+                transfer_id: 12,
+                continuation_key: false,
+              },
+            }
+          : { uid: 3, orderId: 10, transferId: 12 },
+      );
+      expect(mockValidation).toHaveBeenCalledTimes(step ? 0 : 1);
       fireEvent.click(
-        screen.getByRole('button', { name: 'Return from validation' }),
+        screen.getByRole('button', {
+          name: step
+            ? 'Return from saved validation'
+            : 'Return from validation',
+        }),
       );
       await openTransfer();
       for (const name of [
@@ -170,6 +201,29 @@ describe('Order stock transfer review', () => {
         expect(screen.getByRole('button', { name })).toBeDisabled();
     },
   );
+  it('hands an explicitly continued saved step to the original writer without changing its scope', async () => {
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue({
+      ...validationRequest(),
+      order_id: 10,
+      transfer_id: 12,
+      continuation_key: false,
+    });
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Resume validation request' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Continue saved validation' }),
+    );
+    expect(mockValidation.mock.calls.at(-1)?.[0]).toMatchObject({
+      uid: 3,
+      orderId: 10,
+      transferId: 12,
+    });
+    expect(
+      screen.queryByRole('button', { name: 'Return from saved validation' }),
+    ).not.toBeInTheDocument();
+  });
   it('opens complete confirmation review for a new request and reloads on close', async () => {
     show();
     await openTransfer();

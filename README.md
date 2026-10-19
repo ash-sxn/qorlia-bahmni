@@ -51,10 +51,18 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
-The latest backend/client source is [candidate-59 saved-validation recovery](runtime/billing/VALIDATION_RECOVERY_PAGING.md).
+The latest UI source connects [saved-validation recovery](runtime/billing/VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026)
+to the transfer resume path. It reads complete saved prompts and references in
+pinned pages without the capped editable graph, rechecks terminal receipts before
+durable clear, and explicitly hands small continuations to the original writer.
+Large validation writes and live/browser acceptance remain unfinished. Review
+access stays closed. Home passes 1,073 cases in 87 suites; types and scoped lint
+pass. This is source-only, not an installed or hosted update.
+
+The backend/client checkpoint is [candidate-59 saved-validation recovery](runtime/billing/VALIDATION_RECOVERY_PAGING.md).
 It adds compact exact-receipt status and paged saved-prompt/reference readers,
 preserving the original validation-step payload. Home passes 1,049 cases/86 suites.
-This is not a larger validation writer, a migrated React consumer or a runtime
+That backend checkpoint was not a larger validation writer, a React consumer or a runtime
 release. The scoped native run passes 23 cases with 130-table preservation and
 91 matching Python hashes; the client accepts 27 captured native responses with
 mocked replay transport. Remaining consumer/write/runtime gates are tracked in

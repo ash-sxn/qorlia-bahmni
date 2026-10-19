@@ -1,5 +1,19 @@
 # Bahmni workflow parity ledger
 
+## 19 October saved validation recovery reader source
+
+- Existing step requests now resume through compact receipt status and complete
+  pinned prompt/reference pages instead of the capped full graph. Native values,
+  unknown acceptance, missing prompts and incomplete deliveries remain explicit.
+- Terminal clear requires all reference pages, a fresh matching native outcome,
+  pinned-reference revalidation and strict exact storage commit. Small prompt
+  continuations hand off explicitly to the original editable native workflow;
+  no compact read version is used for a save. Large-write limits remain.
+- Full Home suite: 1,073 cases/87 suites pass. Focused reader/routing/original validation UI: 88 cases pass; types and scoped
+  lint pass. [Contract and evidence](../runtime/billing/VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026).
+  Browser/IndexedDB/gateway/runtime, complete large validation/returns and whole
+  product parity remain. Review gate closed; no build/server/deployment.
+
 ## 19 October compact saved-validation recovery candidate 59
 
 - Adds three named read-only native/client/source-gateway methods for original

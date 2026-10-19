@@ -1,5 +1,14 @@
 # Stock write recovery storage
 
+## Saved validation reader source, 19 October 2026
+
+The [saved validation reader](VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026)
+now reads compact exact step status and complete pinned prompt/reference pages
+from the transfer resume route. It retains the existing schema-4 request, does
+not fabricate an editable version and clears only an exact fresh terminal receipt
+after all reference pages and durable storage commit. Large validation writes,
+request retirement, real browser/storage/gateway acceptance and release remain.
+
 ## Consumer checkpoint, 19 October 2026
 
 The later [operation editor](STOCK_OPERATION_PAGING.md#react-operation-consumer-source-19-october-2026)
