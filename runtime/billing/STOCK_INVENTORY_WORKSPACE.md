@@ -2,6 +2,17 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Candidate 76 pinned native new-transfer drafts, 20 October 2026
+
+[The draft contract](STOCK_INVENTORY_FORM.md#candidate-76-pinned-new-transfer-drafts-20-october-2026)
+adds signed native defaults, ordered new-header onchange and relation search on
+the edited form. Native warnings, selection rules, dynamic domains, child-field
+specifications and clock defaults remain native. Its 58-case check passes with
+110 matching Python hashes, 132 preserved guard tables, unchanged independent
+committed SQL and 76 native JSON responses. This is not client/React/HTTP proof.
+This is not saved-transfer editing, reviewed creation, duplication, recovery or
+a React editor. Source APIs remain blocked and Billing review stays closed.
+
 ## Candidate 75 native form presentation and choices, 20 October 2026
 
 [The form contract](STOCK_INVENTORY_FORM.md) now preserves separate conditional

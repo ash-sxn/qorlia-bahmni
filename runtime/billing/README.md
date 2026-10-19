@@ -3,7 +3,13 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Newest backend source: [native transfer form presentation and relation searches](STOCK_INVENTORY_FORM.md)
+Newest backend source: [pinned native new-transfer drafts](STOCK_INVENTORY_FORM.md#candidate-76-pinned-new-transfer-drafts-20-october-2026)
+adds signed native defaults, ordered new-header onchange and edited relation
+searches. Its 58-case native check passes. No create/edit/save/recovery or
+React editor is accepted yet. The gateway keeps these APIs blocked, review
+stays closed, and no build/server, installed upgrade or deployment is included.
+
+Earlier source: [native transfer form presentation and relation searches](STOCK_INVENTORY_FORM.md#candidate-75-native-presentation-and-relation-choices-20-october-2026)
 preserves conditional labels, field/ancestor rules, widgets and native searches
 on unedited forms. This is not a finished React editor or create/edit/save
 workflow. Its 45-case native check passes; the source gateway blocks both

@@ -2,6 +2,107 @@
 
 [README](../../README.md) · [Billing](README.md) · [Inventory workspace](STOCK_INVENTORY_WORKSPACE.md)
 
+## Candidate 76 pinned new-transfer drafts, 20 October 2026
+
+This source adds the native **new, unsaved transfer** form lifecycle. It does
+not yet edit an existing transfer, create a record, duplicate, save or authorize
+release. Three source APIs remain blocked from the review gateway:
+
+| Native method on `stock.picking` | Purpose |
+| --- | --- |
+| `qorlia_inventory_draft_load(picking_type_id=False)` | Read native initial defaults once and return their signed seed and form. |
+| `qorlia_inventory_draft_onchange(seed, edits)` | Authenticate that original seed and replay the ordered scalar-field edits. |
+| `qorlia_inventory_draft_choices(seed, edits, node, search='', offset=0)` | Replay first, then search the selected relation using the edited form's domains/context. |
+
+The installed merged form and native `_onchange_spec` define the actual onchange
+chain, including native child-field specifications. No frontend stock engine,
+default generator or reference sequence is introduced. Initial scheduled dates
+remain pinned while the clock moves; replay does not call fresh default/onchange
+initialization and silently replace them. Date/child-command values use Odoo's
+own JSON serializer before signing, so a browser round trip has the same basis.
+
+The seed is signed native JSON, **not encrypted data or save authorization**.
+It can contain native initial child defaults; do not log it to public analytics
+or paste it into GitHub. Its purpose/version binds the database, actor, active
+companies, groups, sanitized native action context, merged view/field/spec,
+server/user calendar day and 132-table configuration/data snapshot. A changed
+scope or seed must reload, not silently rebase. Caller default contexts cannot
+choose another company or operation type. The selected type must pass the
+existing native active/type/company/read checks; opening requires create rights.
+
+Each edit is exactly `{node, value}`, where `node` is the zero-based occurrence
+in that form's root layout. Up to 100 edits are replayed in order; conditions and
+field permissions are checked again at each step. Hidden, readonly, collection
+and unsupported fields cannot be changed through this scalar path. Native
+selection/finite numeric/relation checks, exact date/UTC date-time formats,
+active-company boundaries, default-type context, warnings and cleared values
+remain. Intermediate company inconsistencies are not rejected before the user
+can complete the remaining edits; native final company validation belongs in
+the future save review, as in the native form. Native-length notes are not
+artificially capped at the older generic helper's 10,000-character limit.
+The signed seed must be finite JSON no larger than two million serialized
+characters; the finite edit ledger has the same size boundary. Larger native
+forms need a paged contract, not truncation.
+
+Native onchange-supplied domains persist across the ledger. Edited relation
+searches combine them with the view-domain-or-model fallback as the installed
+modern relation model does. Selected relation values are checked against the
+current native domain, name-search eligibility and record access, not just
+accepted because they are IDs.
+Python expressions remain server-side installed metadata, not caller code.
+
+Load/onchange responses are `read_only: true`, `write_ready: false`. They contain
+the original seed/version, exact accepted edit ledger, current domains and the
+reconstructed native presentation/values. Choice responses identify the same
+original version/ledger and exact relation page. A form read version is still
+not a save proof. All three methods use the shared rollback-only callback and
+132-table boundary; unexpected stored writes are rejected and rolled back.
+
+The corrected **58 unique native cases pass with zero failures/errors/skips**:
+13 new draft cases plus the prior 45 form/list/detail cases. All 110 Python
+source hashes match the frozen package. All 132 guarded tables are preserved,
+mandatory analytics/SMS remain enabled and installed metadata remains 49.
+Independent committed SQL counts/full-row hashes match the pre-run baseline.
+An independent checker verifies 76 native JSON responses, including 20 signed
+draft loads, 18 ordered onchange results and one edited-form choice page. No
+records are created by these APIs. Log SHA256:
+`6a8cf2823e331fcf3fb235b8180b4b56f434e2abfd01d06187a36b5304a3b24e`.
+The worker is terminal/removed, with readonly source, no HTTP or published ports.
+Bootstrap warnings remain; this is not clean-install or installed-upgrade proof.
+
+Earlier packages and logs are retained. The first
+run is retained with 15 errors (including subtest errors), zero assertion
+failures/skips and all guards/independent committed SQL unchanged. Native Python
+date objects in the returned seed were not JSON serializable by the capture
+boundary. Source now normalizes native responses with Odoo's JSON date serializer
+before signing and tests the seed's browser-style JSON round trip. The two later
+57-case runs retained two fixture errors, then one fixture assertion failure,
+respectively. They flushed with all guards and independent SQL unchanged. The
+fixtures now distinguish immutable identity rejection from field-access denial,
+normalize the native Form helper's datetime/string representations, and switch
+back to an outgoing type before editing its visible shipping policy. Native
+hidden/readonly rules were not loosened. Source also checks custom native
+name-search eligibility, rejects malformed selection containers cleanly, and
+adds native cross-company intermediate-state/long-note comparisons. An executed
+58-case run retained one fixture error, all guards and unchanged independent
+SQL: the fixture selected a company-specific contact before selecting an
+operation type, so the native company domain correctly excluded it. The final
+fixture first selects that company's type, then follows the native transition;
+no relation/domain rule is loosened. Three temporary
+gateway stub checks pass and explicitly keep all five unfinished form/draft
+methods blocked. No React/client/HTTP/browser acceptance is implied.
+
+Existing-transfer onchange must preserve and review its native linked-move
+writes rather than pass through this new-record-only path. Reviewed create/edit/
+duplicate effects, actual-save comparison, exact durable recovery, child editors,
+typed client/React UI, complete role/configuration and scale/concurrency checks
+remain. The source-74 full regression is separate and does not accept this
+source. No schema/dependency/permission grant, persistent addon upgrade,
+frontend build/server, review reopening, tunnel or deployment is included.
+The current ledger reconstructs the full native presentation and broad read
+fingerprints repeatedly. Profile and reduce repeated work using the pinned
+basis without weakening callback/guard checks before hospital-scale use.
+
 ## Candidate 75, native presentation and relation choices, 20 October 2026
 
 The form reader now preserves separate conditional label nodes, each root

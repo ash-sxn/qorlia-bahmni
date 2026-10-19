@@ -1,5 +1,18 @@
 # Bahmni workflow parity ledger
 
+## 20 October pinned native new-transfer draft source
+
+[Candidate 76](../runtime/billing/STOCK_INVENTORY_FORM.md#candidate-76-pinned-new-transfer-drafts-20-october-2026)
+adds signed native defaults, ordered new-header onchange and edited relation
+searches. Its 58-case native verification passes with 110 matching Python
+hashes, 132 preserved tables, unchanged independent SQL and 76 native JSON
+responses, not client/React/HTTP acceptance. Native warnings, dynamic
+domains, role/context boundaries and clock defaults are retained, not replaced
+by client calculations. This is not a reviewed create/edit/duplicate writer,
+save proof, durable recovery or React editor. Source APIs stay blocked, and
+Billing review/deployment remains closed. The older full source-74 regression
+does not accept this source.
+
 ## 20 October native transfer presentation and relation choices source
 
 [Candidate 75](../runtime/billing/STOCK_INVENTORY_FORM.md) preserves conditional

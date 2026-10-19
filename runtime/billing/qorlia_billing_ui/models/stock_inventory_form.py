@@ -83,7 +83,7 @@ class StockInventoryForm(models.Model):
                 model = model.with_context(default_picking_type_id=kind.id)
         return model, picking, scope
 
-    def _qorlia_inventory_form_snapshot(self, transfer_id, picking_type_id):
+    def _qorlia_inventory_form_snapshot(self, transfer_id, picking_type_id, form_override=None, warning_override=False):
         model, picking, scope = self._qorlia_inventory_form_source(transfer_id, picking_type_id)
         view = model.get_view(view_id=self.env.ref('stock.view_picking_form').id, view_type='form')
         root = etree.fromstring(view['arch'])
@@ -95,7 +95,9 @@ class StockInventoryForm(models.Model):
         scalars = [name for name in names if name != 'id' and metadata[name]['type'] in _SCALARS]
         model.check_field_access_rights('read', scalars)
         warning = False
-        if picking:
+        if form_override is not None:
+            form, warning = form_override, warning_override
+        elif picking:
             form = picking
         else:
             # The installed default/onchange chain owns locations, shipping policy and responsibility.
@@ -189,11 +191,12 @@ class StockInventoryForm(models.Model):
         return self._qorlia_inventory_form_read(lambda: self._qorlia_inventory_form_snapshot(transfer_id, picking_type_id))
 
     def _qorlia_inventory_form_choices(self, transfer_id, picking_type_id, node, search, offset):
-        if (type(node) is not int or node < 0 or not isinstance(search, str) or len(search) > 200
-                or type(offset) is not int or offset < 0 or offset > 100000):
-            raise ValidationError('Choose a native relation field and bounded search page.')
         view = self._qorlia_inventory_form_snapshot(transfer_id, picking_type_id)
-        if node >= len(view['layout']):
+        model, _picking, _scope = self._qorlia_inventory_form_source(transfer_id, picking_type_id)
+        return self._qorlia_inventory_choices_for_view(model, view, node, search, offset)
+
+    def _qorlia_inventory_relation(self, model, view, node, domains=None):
+        if type(node) is not int or not 0 <= node < len(view['layout']):
             raise ValidationError('This field node is not part of the native transfer form.')
         row = view['layout'][node]
         field = view['fields'][row['field']]
@@ -201,31 +204,39 @@ class StockInventoryForm(models.Model):
             raise ValidationError('Choose a native transfer relation field.')
         if not row['rules']['visible'] or row['rules']['readonly']:
             raise AccessError('This native relation field is hidden or read-only.')
-        values = view['values']
-        model, _picking, _scope = self._qorlia_inventory_form_source(transfer_id, picking_type_id)
         context = dict(model.env.context)
-        evaluation = {**values, **context, 'uid': self.env.uid, 'context': context,
-            'active_model': self._name, 'active_id': transfer_id, 'active_ids': [transfer_id] if transfer_id else []}
-        # Native web _getDomain uses the view override, otherwise the model domain, not their intersection.
+        evaluation = {**view['values'], **context, 'uid': self.env.uid, 'context': context,
+            'active_model': self._name, 'active_id': view['transfer_id'],
+            'active_ids': [view['transfer_id']] if view['transfer_id'] else []}
+        # The native modern form intersects onchange domains with the view-or-model domain.
         domain = row['domain'] if row['domain'] is not False else field.get('domain', [])
         domain = safe_eval(domain, evaluation) if isinstance(domain, str) else domain
-        if not isinstance(domain, (list, tuple)):
+        changed_domain = (domains or {}).get(row['field'], [])
+        changed_domain = safe_eval(changed_domain, evaluation) if isinstance(changed_domain, str) else changed_domain
+        if not isinstance(domain, (list, tuple)) or not isinstance(changed_domain, (list, tuple)):
             raise UserError('The native relation domain is not supported. Nothing was searched.')
+        domain = expression.AND([domain, changed_domain])
         if row['context']:
             field_context = safe_eval(row['context'], evaluation)
             if not isinstance(field_context, dict):
                 raise UserError('The native relation context is not supported. Nothing was searched.')
             context.update(field_context)
-        # A field context cannot widen the authenticated company boundary.
         context['allowed_company_ids'] = self.env.companies.ids
-        model = self.env[field['relation']].with_context(context)
-        model.check_access_rights('read')
-        model.check_field_access_rights('read', ['display_name'])
+        relation = self.env[field['relation']].with_context(context)
+        relation.check_access_rights('read')
+        relation.check_field_access_rights('read', ['display_name'])
+        return row, relation, domain
+
+    def _qorlia_inventory_choices_for_view(self, model, view, node, search, offset, domains=None):
+        if (type(node) is not int or node < 0 or not isinstance(search, str) or len(search) > 200
+                or type(offset) is not int or offset < 0 or offset > 100000):
+            raise ValidationError('Choose a native relation field and bounded search page.')
+        row, relation, domain = self._qorlia_inventory_relation(model, view, node, domains)
         # shortcut: native name_search has no offset; preserve native ordering by fetching its bounded prefix.
-        matches = model.name_search(name=search, args=domain, operator='ilike', limit=offset + 26)
-        records = model.browse([item[0] for item in matches[offset:offset + 26]])
+        matches = relation.name_search(name=search, args=domain, operator='ilike', limit=offset + 26)
+        records = relation.browse([item[0] for item in matches[offset:offset + 26]])
         records.check_access_rule('read')
-        return {'read_only': True, 'transfer_id': transfer_id, 'picking_type_id': picking_type_id,
+        return {'read_only': True, 'transfer_id': view['transfer_id'], 'picking_type_id': view['picking_type_id'],
             'form_version': view['version'], 'node': node, 'field': row['field'], 'offset': offset,
             'rows': [_label(record) for record in records[:25]], 'has_more': len(records) > 25}
 

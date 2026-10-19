@@ -204,7 +204,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
   const inventoryMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_inventory.py'), 'utf8')
     .matchAll(/^    def (qorlia_inventory_\w+)\(/gm)].map(match => match[1]);
   assert.deepEqual(inventoryMethods.sort(), ['qorlia_inventory_transfers', 'qorlia_inventory_transfer_load', 'qorlia_inventory_transfer_detail_page'].sort(), 'Only the named inventory readers are exposed, not raw stock searches or writes.');
-  for (const method of ['qorlia_return_paged_unknown', 'qorlia_return_paged_preview', '_qorlia_return_paged_preview', 'qorlia_inventory_form_load', 'qorlia_inventory_form_choices', 'qorlia_inventory_unknown', 'search_read'])
+  for (const method of ['qorlia_return_paged_unknown', 'qorlia_return_paged_preview', '_qorlia_return_paged_preview', 'qorlia_inventory_form_load', 'qorlia_inventory_form_choices', 'qorlia_inventory_draft_load', 'qorlia_inventory_draft_onchange', 'qorlia_inventory_draft_choices', 'qorlia_inventory_unknown', 'search_read'])
     assert.equal((await rpc(`/web/dataset/call_kw/stock.picking/${method}`, allCookies,
       {model:'stock.picking',method,args:[],kwargs:{}})).status,404);
   for (const [model, method] of [['stock.picking', 'action_cancel'], ['stock.move', '_action_cancel'],
