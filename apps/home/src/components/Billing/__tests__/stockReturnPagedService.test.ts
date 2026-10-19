@@ -42,7 +42,7 @@ const loaded = (): PagedStockReturnLoad => ({
   form: metadata(),
   line_count: 501,
   reason: false,
-  write_ready: false,
+  write_ready: true,
 });
 const lines = (): PagedStockReturnLines => ({
   ...base(),
@@ -88,7 +88,7 @@ const reviewed = (): PagedStockReturnReview => ({
   form: metadata(),
   line_count: 1,
   return_state: 'assigned',
-  write_ready: false,
+  write_ready: true,
   review_version: 'b'.repeat(64),
   after: 0,
   total_count: 2,
@@ -121,7 +121,7 @@ describe('Complete native return read and rollback review client', () => {
     global.fetch = jest.fn();
   });
 
-  it('uses four named APIs with pinned versions, exact payloads and no new write method', async () => {
+  it('uses four fixed read/review APIs with pinned versions and exact payloads', async () => {
     reply(loaded());
     expect(await getPagedStockReturn(9, 11)).toEqual(loaded());
     reply(lines());
@@ -150,11 +150,12 @@ describe('Complete native return read and rollback review client', () => {
     });
   });
 
-  it('preserves a native unavailable form without interpreting the missing writer as readiness', async () => {
+  it('preserves a native unavailable form with write readiness disabled', async () => {
     const data = {
       ...loaded(),
       form: false,
       line_count: 0,
+      write_ready: false,
       reason: 'Only completed transfers can be returned.',
     };
     reply(data);
@@ -162,7 +163,7 @@ describe('Complete native return read and rollback review client', () => {
   });
 
   it.each([
-    { write_ready: true },
+    { write_ready: false },
     { reason: 'Unavailable with a form' },
     { form: false },
     { line_count: 502 },
@@ -275,7 +276,7 @@ describe('Complete native return read and rollback review client', () => {
     );
   });
 
-  it('reviews 501 selected rows before effects, without echoing the entire selection or enabling a writer', async () => {
+  it('reviews 501 selected rows before effects without echoing the entire selection', async () => {
     const exact = {
       ...selection(),
       lines: Array.from({ length: 501 }, (_, index) => ({
@@ -325,7 +326,7 @@ describe('Complete native return read and rollback review client', () => {
     { total_count: 3 },
     { line_count: 0 },
     { effect_count: 0 },
-    { write_ready: true },
+    { write_ready: false },
     { return_state: 'done' },
     { line_rows: [] },
     { line_rows: [line(13)] },

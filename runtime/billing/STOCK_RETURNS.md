@@ -1,5 +1,10 @@
 # Native stock returns
 
+Current [complete native creation/recovery source](RETURN_PAGED_WRITE.md)
+connects the matching full-review writer and compact recovery/stop/reference
+protocol without the older graph/selection caps. This is not a React return
+consumer, runtime upgrade or complete Billing acceptance.
+
 Later [complete form/review source](RETURN_PAGED.md) adds compact native load,
 all original form-line pages, pinned location search and sequential rollback
 review beyond the old graph cap. It deliberately has no new writer/UI yet and

@@ -3,6 +3,16 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Candidate 63 source: [complete return creation/recovery](RETURN_PAGED_WRITE.md)
+adds exact full-review save, compact accepted/stopped/unknown recovery, saved
+reference paging and stop through the protected native receipt mechanism.
+Load/review now reflect native write readiness. The matching durable schema-7
+store preserves exact requests and requires full references/acknowledgment before
+retirement. React and actual runtime/release acceptance remain next. Home passes
+1,313 cases/92 suites, including 71 storage cases. The scoped native run passes
+88 cases with 132-table preservation and 99 matching Python files. Client replay
+accepts 155 native responses with mocked transport, not runtime acceptance.
+
 Candidate 62: [complete return form and review](RETURN_PAGED.md) adds four fixed
 native/client/source-gateway APIs beyond the old editable graph cap. Original
 units, quantity defaults, location role/domain and chained effects remain native.

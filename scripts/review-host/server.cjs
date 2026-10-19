@@ -94,7 +94,7 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
       ...['compact_status', 'prompt_page', 'reference_page'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_validation_step_${action}`),
       ...['load', 'review', 'save', 'status', 'stop', 'prompt_page', 'reference_page'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_validation_paged_${action}`),
       ...['load', 'locations', 'preview', 'save', 'status'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_return_${action}`),
-      ...['load', 'lines', 'locations', 'review'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_return_paged_${action}`),
+      ...['load', 'lines', 'locations', 'review', 'save', 'status', 'stop', 'references'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_return_paged_${action}`),
       ...['load', 'choices', 'preview', 'save', 'status'].map((action) => `/web/dataset/call_kw/sale.order/qorlia_advance_${action}`),
       ...['load', 'post'].map((action) => `/web/dataset/call_kw/account.move/qorlia_invoice_workflow_${action}`),
       ...['load', 'preview', 'save', 'choices'].map((action) => `/web/dataset/call_kw/account.move/qorlia_invoice_draft_${action}`),
@@ -140,12 +140,14 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
       next();
     } catch { res.status(503).json({ error: 'Hospital session verification is unavailable.' }); }
   }, (req, res, next) => {
-    // Only named atomic file uploads/recovery need the larger bound; authentication runs first.
+    // Larger bodies stay limited to named uploads or complete return selections, after authentication.
     const upload = ['/web/dataset/call_kw/account.move/qorlia_invoice_note',
       '/web/dataset/call_kw/account.move/qorlia_invoice_note_status',
       '/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_attachment_save',
       '/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_attachment_status'].includes(req.path);
-    express.json({ limit: upload ? '15mb' : '32kb' })(req, res, next);
+    const completeReturn = ['review', 'save', 'status', 'stop', 'references'].some(action =>
+      req.path === `/web/dataset/call_kw/stock.picking/qorlia_return_paged_${action}`);
+    express.json({ limit: upload ? '15mb' : completeReturn ? '1mb' : '32kb' })(req, res, next);
   }, (req, res, next) => {
     // Expose only named adapter actions, never raw financial create/write/confirm calls.
     const params = req.body?.params;

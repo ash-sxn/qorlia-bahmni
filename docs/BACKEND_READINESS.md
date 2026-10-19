@@ -1,5 +1,19 @@
 # Qorlia React frontend backend readiness
 
+## Complete return creation and recovery source (19 October 2026)
+
+The [candidate-63 protocol](../runtime/billing/RETURN_PAGED_WRITE.md) adds exact
+save, compact accepted/stopped/unknown status, all saved reference pages and stop.
+Complete review proof and matching actual native effects precede protected
+acceptance; an accepted creation is never undone by stop. Earlier protocols and
+their payloads are unchanged. The dedicated schema-7 store now persists exact
+requests and gates retirement on all references, fresh native outcomes and account
+identity. Generic resume/older dialogs reject that kind until the React return
+consumer is connected. Home passes 1,313 cases/92 suites, including 71 storage
+cases. Native: 88 cases, 132-table preservation and 99 matching Python files.
+Client replay: 155 native responses with mocked transport. Actual browser/storage,
+runtime, concurrency, payload/scale and release acceptance remain unfinished.
+
 ## Complete return form and review source (19 October 2026)
 
 Four named [native and typed-client APIs](../runtime/billing/RETURN_PAGED.md)

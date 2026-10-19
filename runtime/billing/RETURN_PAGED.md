@@ -2,6 +2,12 @@
 
 [Billing](README.md) · [Native return audit](STOCK_RETURNS.md) · [Workflow ledger](../../docs/FEATURE_PARITY.md)
 
+Later [candidate-63 creation/recovery source](RETURN_PAGED_WRITE.md) adds the
+matching writer, saved references and explicit stop. False-readiness and
+missing-writer statements below describe the candidate-62 checkpoint, not the
+newer source. Candidate 63 also has dedicated durable recovery storage; its React
+return consumer remains unfinished.
+
 ## Candidate 62 source, 19 October 2026
 
 Four fixed APIs reconstruct and review the full installed native return form

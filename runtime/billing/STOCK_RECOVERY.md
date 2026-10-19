@@ -1,5 +1,18 @@
 # Stock write recovery storage
 
+## Complete return storage source, 19 October 2026
+
+[Candidate-63 return recovery](RETURN_PAGED_WRITE.md#durable-request-storage-source-19-october-2026)
+now has exact database/account-bound schema 7 in the same pending slot. It keeps
+all eight native request fields and requires complete accepted-reference reads
+or exact stopped acknowledgment before clearing. Native UID/database, outcome
+and reference versions are rechecked; failed/changed reads or commits retain the
+request. Older typed readers/clearers and generic resume remain fail-closed until
+the dedicated React return consumer is connected. No old pending request/history
+is converted. Storage has 71 unit cases, including 24 new return cases; full Home
+has 1,313 cases/92 suites. This is storage-double source evidence, not actual
+browser/IndexedDB/multi-tab or release acceptance. No review reopening or build.
+
 ## Later React validation integration, 19 October 2026
 
 The [complete validation dialog and resume routing](VALIDATION_PAGED_WRITE.md#react-complete-validation-consumer-source-19-october-2026)

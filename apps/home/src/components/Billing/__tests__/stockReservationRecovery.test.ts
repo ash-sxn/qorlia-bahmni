@@ -2,6 +2,8 @@ import {
   StockReservationRequest,
   PagedStockValidationRequest,
   PagedStockValidationStatus,
+  PagedStockReturnRequest,
+  PagedStockReturnStatus,
 } from '../billingService';
 import {
   clearStockReservationRecovery,
@@ -29,6 +31,11 @@ import {
   restoreStoppedPagedStockValidationRecovery,
   clearPagedStockValidationRecovery,
   isPagedStockValidationRequest,
+  isPagedStockReturnRequest,
+  isStockConfirmationRequest,
+  loadPagedStockReturnRecovery,
+  persistPagedStockReturnRecovery,
+  clearPagedStockReturnRecovery,
 } from '../stockReservationRecovery';
 import { orderDeliveryPageFixture } from './orderDeliveryFixture';
 import { confirmationRequest } from './stockConfirmationFixture';
@@ -205,6 +212,502 @@ function nativeOutcome(value: unknown) {
     json: async () => ({ result: value }),
   });
 }
+
+const completeReturn = (): PagedStockReturnRequest => ({
+  order_id: 9,
+  transfer_id: 11,
+  version: 'a'.repeat(64),
+  location_id: 3,
+  lines: [{ move_id: 12, quantity: 2 }],
+  review_version: 'b'.repeat(64),
+  review_complete_token: 'c'.repeat(64),
+  request_key: '11111111-2222-4333-8444-555555555555',
+});
+const returnEnvelope = (request = completeReturn(), uid = 3) => ({
+  schema: 7,
+  kind: 'paged_return',
+  database: billingDatabase,
+  uid,
+  request,
+});
+function returnOutcome(
+  outcome: 'accepted' | 'stopped' | 'unknown' = 'accepted',
+  count = 2,
+) {
+  const accepted = outcome === 'accepted';
+  const status: PagedStockReturnStatus = {
+    accepted,
+    stopped: outcome === 'stopped',
+    request_key: completeReturn().request_key,
+    state_after: accepted ? 'assigned' : false,
+    return_transfer: accepted
+      ? {
+          model: 'stock.picking',
+          id: 19,
+          name: 'QA/RETURN/19',
+          available: true,
+        }
+      : false,
+    reference_count: accepted ? count : 0,
+    current: {
+      order_id: 9,
+      transfer_id: 11,
+      version: 'd'.repeat(64),
+      transfer: {
+        ...orderDeliveryPageFixture().rows[0],
+        state: 'done',
+        move_count: 501,
+        operation_count: 2001,
+      },
+    },
+  };
+  const rows = Array.from({ length: count - 1 }, (_, index) => ({
+    key: `new:stock.move:${index}`,
+    model: 'stock.move',
+    id: 100 + index,
+    name: 'QA Return item',
+    available: true as boolean,
+  }))
+    .concat([
+      {
+        key: 'new:stock.picking:0',
+        model: 'stock.picking',
+        id: 19,
+        name: 'QA/RETURN/19',
+        available: true,
+      },
+    ])
+    .sort((left, right) => (left.key < right.key ? -1 : 1));
+  const state = {
+    status,
+    rows,
+    version: 'e'.repeat(64),
+    session: { uid: 3, db: billingDatabase },
+  };
+  (fetch as jest.Mock).mockImplementation(async (route, options) => {
+    let result: unknown;
+    if (route.endsWith('/web/session/get_session_info')) result = state.session;
+    else {
+      const { method, kwargs } = JSON.parse(options.body).params;
+      if (method === 'qorlia_return_paged_status') result = state.status;
+      else if (method === 'qorlia_return_paged_references') {
+        if (kwargs.version !== false && kwargs.version !== state.version)
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              error: {
+                data: {
+                  name: 'odoo.exceptions.UserError',
+                  arguments: ['Return references changed'],
+                },
+              },
+            }),
+          };
+        const { after, limit } = kwargs;
+        result = {
+          request_key: completeReturn().request_key,
+          version: state.version,
+          after,
+          total_count: state.rows.length,
+          rows: state.rows.slice(after, after + limit),
+          next_after: after + limit < state.rows.length ? after + limit : false,
+        };
+      } else throw new Error(`Unexpected return recovery method: ${method}`);
+    }
+    const body = JSON.stringify({ result });
+    return { ok: true, status: 200, json: async () => JSON.parse(body) };
+  });
+  return state;
+}
+
+describe('Complete native return durable recovery', () => {
+  beforeEach(() => {
+    global.fetch = jest.fn();
+  });
+
+  it('stores exact eight-key requests in schema 7 using the same account slot and no network write', async () => {
+    const fake = database(),
+      exact = completeReturn();
+    exact.lines = Array.from({ length: 501 }, (_, index) => ({
+      move_id: index + 1,
+      quantity: 1,
+    }));
+    await persistPagedStockReturnRecovery(3, exact);
+    expect(fake.records.get(3)).toEqual(returnEnvelope(exact));
+    expect(await loadPagedStockReturnRecovery(3)).toEqual(exact);
+    expect(isPagedStockReturnRequest(exact)).toBe(true);
+    expect(isStockConfirmationRequest(exact)).toBe(false);
+    expect(isPagedStockWriteRequest(exact)).toBe(false);
+    expect(fake.factory.open).toHaveBeenCalledWith(
+      'qorlia.billing.stock-reservation-recovery',
+      1,
+    );
+    expect(fake.db.transaction).toHaveBeenCalledWith('pending', 'readwrite', {
+      durability: 'strict',
+    });
+    exact.lines[500].quantity = 9;
+    expect((await loadPagedStockReturnRecovery(3))!.lines[500].quantity).toBe(
+      1,
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('waits for strict commit before allowing a new return save to proceed', async () => {
+    const fake = database();
+    fake.hold();
+    let resolved = false;
+    const saving = persistPagedStockReturnRecovery(3, completeReturn()).then(
+      () => {
+        resolved = true;
+      },
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(resolved).toBe(false);
+    expect(fake.records.size).toBe(0);
+    fake.commit();
+    await saving;
+    expect(fake.records.get(3)).toEqual(returnEnvelope());
+  });
+
+  it('allows only the identical pending request and separates Billing accounts', async () => {
+    const fake = database();
+    await persistPagedStockReturnRecovery(3, completeReturn());
+    await persistPagedStockReturnRecovery(3, completeReturn());
+    for (const change of [
+      { request_key: '22222222-2222-4333-8444-555555555555' },
+      { review_complete_token: 'd'.repeat(64) },
+      { location_id: 4 },
+      { lines: [{ move_id: 12, quantity: 3 }] },
+    ])
+      await expect(
+        persistPagedStockReturnRecovery(3, { ...completeReturn(), ...change }),
+      ).rejects.toThrow(/Another stock request/);
+    expect(fake.records.get(3)).toEqual(returnEnvelope());
+    await persistPagedStockReturnRecovery(4, completeReturn());
+    expect(fake.records.get(4)).toEqual(returnEnvelope(completeReturn(), 4));
+  });
+
+  it('keeps return requests intact and rejects every older reader/clearer instead of converting their protocol', async () => {
+    const fake = database();
+    await persistPagedStockReturnRecovery(3, completeReturn());
+    for (const load of [
+      loadStockWriteRecovery,
+      loadStockReservationRecovery,
+      loadStockOperationRecovery,
+      loadStockConfirmationRecovery,
+      loadStockValidationRecovery,
+      loadPagedStockWriteRecovery,
+      loadPagedStockValidationRecovery,
+    ])
+      await expect(load(3)).rejects.toThrow(
+        /return request|Another stock request/,
+      );
+    for (const clear of [
+      () => clearStockReservationRecovery(3, request()),
+      () => clearStockOperationRecovery(3, operationRequest()),
+      () => clearStockConfirmationRecovery(3, confirmationRequest()),
+      () => clearStockValidationRecovery(3, validationRequest()),
+      () => clearPagedStockWriteRecovery(3, pagedRequests[0][1]),
+    ]) {
+      await expect(clear()).rejects.toThrow(/return request/);
+      expect(fake.records.get(3)).toEqual(returnEnvelope());
+    }
+    for (const persist of [
+      () => persistStockReservationRecovery(3, request()),
+      () => persistStockOperationRecovery(3, operationRequest()),
+      () => persistStockConfirmationRecovery(3, confirmationRequest()),
+      () => persistStockValidationRecovery(3, validationRequest()),
+      () => persistPagedStockWriteRecovery(3, pagedRequests[0][1]),
+      () => persistPagedStockValidationRecovery(3, completeValidation()),
+    ])
+      await expect(persist()).rejects.toThrow(/Another stock request/);
+    nativeOutcome(validationOutcome(completeValidation(), 'terminal'));
+    await expect(
+      clearPagedStockValidationRecovery(3, completeValidation()),
+    ).rejects.toThrow(/return request/);
+    expect(fake.records.get(3)).toEqual(returnEnvelope());
+  });
+
+  it('does not overwrite older requests or prior-action validation history', async () => {
+    const fake = database();
+    const older = [
+      { schema: 1, uid: 3, request: request() },
+      {
+        schema: 2,
+        kind: 'confirmation',
+        uid: 3,
+        request: confirmationRequest(),
+      },
+      {
+        schema: 5,
+        kind: pagedRequests[0][0],
+        database: billingDatabase,
+        uid: 3,
+        request: pagedRequests[0][1],
+      },
+      validationEnvelope(),
+    ];
+    for (const value of older) {
+      fake.records.set(3, value);
+      await expect(loadPagedStockReturnRecovery(3)).rejects.toThrow(
+        /Another stock request/,
+      );
+      await expect(
+        persistPagedStockReturnRecovery(3, completeReturn()),
+      ).rejects.toThrow(/Another stock request/);
+      expect(fake.records.get(3)).toEqual(value);
+    }
+  });
+
+  it.each([
+    { schema: 6 },
+    { kind: 'paged_confirmation' },
+    { database: 'another-database' },
+    { uid: 4 },
+    { history: [] },
+    { request: { ...completeReturn(), context: {} } },
+    { request: { ...completeReturn(), review_complete_token: false } },
+    {
+      request: {
+        ...completeReturn(),
+        lines: [{ move_id: 12, quantity: Infinity }],
+      },
+    },
+  ])(
+    'retains malformed/foreign return envelopes without storage migration: %j',
+    async (change) => {
+      const fake = database(),
+        value = { ...returnEnvelope(), ...change };
+      fake.records.set(3, value);
+      await expect(loadPagedStockReturnRecovery(3)).rejects.toThrow();
+      await expect(
+        persistPagedStockReturnRecovery(3, completeReturn()),
+      ).rejects.toThrow();
+      await expect(
+        clearPagedStockReturnRecovery(3, completeReturn()),
+      ).rejects.toThrow();
+      expect(fake.records.get(3)).toEqual(value);
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects proof-stripped, duplicate and malformed new requests before opening storage', async () => {
+    const fake = database();
+    for (const change of [
+      { context: {} },
+      { review_complete_token: false },
+      { location_id: 0 },
+      { lines: [{ move_id: 12, quantity: NaN }] },
+      { lines: [...completeReturn().lines, ...completeReturn().lines] },
+    ])
+      await expect(
+        persistPagedStockReturnRecovery(3, {
+          ...completeReturn(),
+          ...change,
+        } as PagedStockReturnRequest),
+      ).rejects.toThrow();
+    await expect(
+      persistPagedStockReturnRecovery(0, completeReturn()),
+    ).rejects.toThrow();
+    expect(fake.factory.open).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('never clears an unknown return outcome or a failed native status read', async () => {
+    const fake = database();
+    await persistPagedStockReturnRecovery(3, completeReturn());
+    returnOutcome('unknown');
+    await expect(
+      clearPagedStockReturnRecovery(3, completeReturn()),
+    ).rejects.toThrow(/outcome is unknown/);
+    expect(fake.records.get(3)).toEqual(returnEnvelope());
+    (fetch as jest.Mock).mockRejectedValue(new Error('Native unavailable'));
+    await expect(
+      clearPagedStockReturnRecovery(3, completeReturn()),
+    ).rejects.toThrow(/Native unavailable/);
+    expect(fake.records.get(3)).toEqual(returnEnvelope());
+  });
+
+  it('retires accepted creation only after all 101 pinned references, a final read and fresh account checks', async () => {
+    const fake = database();
+    await persistPagedStockReturnRecovery(3, completeReturn());
+    returnOutcome('accepted', 101);
+    await clearPagedStockReturnRecovery(3, completeReturn());
+    expect(fake.records.size).toBe(0);
+    const calls = (fetch as jest.Mock).mock.calls;
+    const pages = calls
+      .filter((call) => call[0].endsWith('/qorlia_return_paged_references'))
+      .map((call) => JSON.parse(call[1].body).params.kwargs);
+    expect(pages.map((page) => [page.after, page.limit])).toEqual([
+      [0, 50],
+      [50, 50],
+      [100, 50],
+      [0, 1],
+    ]);
+    expect(pages.map((page) => page.version)).toEqual([
+      false,
+      'e'.repeat(64),
+      'e'.repeat(64),
+      'e'.repeat(64),
+    ]);
+    expect(
+      calls.filter((call) => call[0].endsWith('/qorlia_return_paged_status')),
+    ).toHaveLength(2);
+    expect(
+      calls.filter((call) => call[0].endsWith('/web/session/get_session_info')),
+    ).toHaveLength(2);
+    expect(
+      calls.some((call) => /qorlia_return_paged_(save|stop)$/.test(call[0])),
+    ).toBe(false);
+  });
+
+  it('retires only an explicitly stopped exact request without pretending a return was created', async () => {
+    const fake = database();
+    await persistPagedStockReturnRecovery(3, completeReturn());
+    returnOutcome('stopped');
+    await clearPagedStockReturnRecovery(3, completeReturn());
+    expect(fake.records.size).toBe(0);
+    expect(
+      (fetch as jest.Mock).mock.calls.filter((call) =>
+        call[0].endsWith('/qorlia_return_paged_references'),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it('requires the saved return reference and every page, not only the receipt count', async () => {
+    const fake = database();
+    await persistPagedStockReturnRecovery(3, completeReturn());
+    const state = returnOutcome();
+    state.rows[1].id = 99;
+    await expect(
+      clearPagedStockReturnRecovery(3, completeReturn()),
+    ).rejects.toThrow(/saved return reference was not read/);
+    expect(fake.records.get(3)).toEqual(returnEnvelope());
+  });
+
+  it('rejects overlapping reference pages across boundaries and keeps the exact request', async () => {
+    const fake = database();
+    await persistPagedStockReturnRecovery(3, completeReturn());
+    const state = returnOutcome('accepted', 101);
+    const native = (fetch as jest.Mock).getMockImplementation()!;
+    (fetch as jest.Mock).mockImplementation(async (route, options) => {
+      const response = await native(route, options);
+      if (
+        route.endsWith('/qorlia_return_paged_references') &&
+        JSON.parse(options.body).params.kwargs.after === 50
+      ) {
+        const body = await response.json();
+        body.result.rows = state.rows.slice(0, 50);
+        return { ...response, json: async () => body };
+      }
+      return response;
+    });
+    await expect(
+      clearPagedStockReturnRecovery(3, completeReturn()),
+    ).rejects.toThrow(/pages overlap/);
+    expect(fake.records.get(3)).toEqual(returnEnvelope());
+  });
+
+  it('retains pending state when references change after their last page or the final status changes', async () => {
+    const fake = database();
+    await persistPagedStockReturnRecovery(3, completeReturn());
+    for (const mode of ['reference', 'status']) {
+      const state = returnOutcome(),
+        native = (fetch as jest.Mock).getMockImplementation()!;
+      let statuses = 0;
+      (fetch as jest.Mock).mockImplementation(async (route, options) => {
+        if (route.endsWith('/qorlia_return_paged_status') && ++statuses === 2) {
+          if (mode === 'reference') state.version = 'f'.repeat(64);
+          else state.status.current.version = 'f'.repeat(64);
+        }
+        return native(route, options);
+      });
+      await expect(
+        clearPagedStockReturnRecovery(3, completeReturn()),
+      ).rejects.toThrow(/references changed|outcome changed/);
+      expect(fake.records.get(3)).toEqual(returnEnvelope());
+    }
+  });
+
+  it('does not retire another account/database or lose a request when the account changes during recovery', async () => {
+    const fake = database();
+    await persistPagedStockReturnRecovery(3, completeReturn());
+    for (const session of [
+      { uid: 4, db: billingDatabase },
+      { uid: 3, db: 'another-database' },
+    ]) {
+      const state = returnOutcome();
+      state.session = session;
+      await expect(
+        clearPagedStockReturnRecovery(3, completeReturn()),
+      ).rejects.toThrow(/original Billing account/);
+      expect(fake.records.get(3)).toEqual(returnEnvelope());
+    }
+    const state = returnOutcome(),
+      native = (fetch as jest.Mock).getMockImplementation()!;
+    let sessions = 0;
+    (fetch as jest.Mock).mockImplementation(async (route, options) => {
+      if (route.endsWith('/web/session/get_session_info') && ++sessions === 2)
+        state.session.uid = 4;
+      return native(route, options);
+    });
+    await expect(
+      clearPagedStockReturnRecovery(3, completeReturn()),
+    ).rejects.toThrow(/original Billing account/);
+    expect(fake.records.get(3)).toEqual(returnEnvelope());
+  });
+
+  it('preserves a different request that appears before the final durable clear', async () => {
+    const fake = database();
+    await persistPagedStockReturnRecovery(3, completeReturn());
+    returnOutcome();
+    const native = (fetch as jest.Mock).getMockImplementation()!;
+    const newer = { schema: 1, uid: 3, request: request() };
+    let sessions = 0;
+    (fetch as jest.Mock).mockImplementation(async (route, options) => {
+      if (route.endsWith('/web/session/get_session_info') && ++sessions === 2)
+        fake.records.set(3, newer);
+      return native(route, options);
+    });
+    await expect(
+      clearPagedStockReturnRecovery(3, completeReturn()),
+    ).rejects.toThrow(/pending stock request changed/);
+    expect(fake.records.get(3)).toEqual(newer);
+  });
+
+  it('retains a known accepted request if the deletion commit fails, and never replaces on a failed put', async () => {
+    const fake = database();
+    await persistPagedStockReturnRecovery(3, completeReturn());
+    returnOutcome();
+    fake.fail();
+    await expect(
+      clearPagedStockReturnRecovery(3, completeReturn()),
+    ).rejects.toThrow(/could not be committed/);
+    expect(fake.records.get(3)).toEqual(returnEnvelope());
+    const empty = database();
+    empty.fail();
+    await expect(
+      persistPagedStockReturnRecovery(3, completeReturn()),
+    ).rejects.toThrow(/could not be committed/);
+    expect(empty.records.size).toBe(0);
+  });
+
+  it('does not contact native services to clear a missing or different local request', async () => {
+    const fake = database();
+    await expect(
+      clearPagedStockReturnRecovery(3, completeReturn()),
+    ).rejects.toThrow(/not stored/);
+    await persistPagedStockReturnRecovery(3, completeReturn());
+    await expect(
+      clearPagedStockReturnRecovery(3, { ...completeReturn(), location_id: 4 }),
+    ).rejects.toThrow(/request changed/);
+    expect(fake.records.get(3)).toEqual(returnEnvelope());
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});
 
 describe('Complete validation durable recovery and prior-action handoff', () => {
   beforeEach(() => {

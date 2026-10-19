@@ -1,5 +1,23 @@
 # Bahmni workflow parity ledger
 
+## 19 October complete return creation and recovery source
+
+- [Eight fixed native/client/source-gateway APIs](../runtime/billing/RETURN_PAGED_WRITE.md)
+  include complete-review save, exact compact status, all saved reference pages
+  and explicit stop. The same protected receipt field is reused with a separate
+  protocol purpose; old payloads/receipts are not converted.
+- Load/review reflect native write availability. Save checks complete proof and
+  actual effects, while stop cannot reverse an accepted native creation. Creation
+  remains separate from physically receiving goods or issuing a refund.
+- Schema-7 return storage is added in the same account slot. Strict persistence,
+  complete pinned references, fresh exact status and UID/database checks gate
+  retirement. Older readers/clearers and generic dispatch remain fail-closed
+  until the React return consumer is connected. Prior requests/history remain.
+- Home: 1,313 cases/92 suites, with 71 storage cases. Native: 88 cases, 132-table
+  preservation and 99 matching source files. Actual-client replay: 155 responses
+  with mocked transport. React, actual runtime/browser/storage/race/scale/release
+  gates remain. No review reopening, build/server, upgrade or deployment.
+
 ## 19 October complete return form and review source
 
 - Four fixed APIs and typed clients cover compact native defaults, all original

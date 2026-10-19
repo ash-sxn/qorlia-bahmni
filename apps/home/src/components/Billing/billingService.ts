@@ -4979,7 +4979,12 @@ function checkedStockReferencePage(
   after: number,
   version: string | false,
   limit: number,
-  kind: 'confirmation' | 'operation' | 'reservation' | 'validation step',
+  kind:
+    | 'confirmation'
+    | 'operation'
+    | 'reservation'
+    | 'validation step'
+    | 'return',
 ) {
   if (
     !confirmationKeys(data, [
@@ -5002,7 +5007,7 @@ function checkedStockReferencePage(
       (row, index) =>
         confirmationKeys(row, ['key', 'model', 'id', 'name', 'available']) &&
         typeof row.key === 'string' &&
-        (kind === 'validation step'
+        (kind === 'validation step' || kind === 'return'
           ? validValidationReference(row.key, row)
           : validConfirmationReference(row.key, row)) &&
         (!index || row.key > data.rows[index - 1].key),
@@ -6101,7 +6106,7 @@ export interface PagedStockReturnLoad extends StockConfirmationSelection {
   form: StockReturnMetadata | false;
   line_count: number;
   reason: string | false;
-  write_ready: false;
+  write_ready: boolean;
 }
 export interface PagedStockReturnLines extends StockConfirmationSelection {
   form: StockReturnMetadata;
@@ -6121,7 +6126,7 @@ export interface PagedStockReturnReview
   form: StockReturnMetadata;
   line_count: number;
   return_state: StockReturnReview['return_state'];
-  write_ready: false;
+  write_ready: true;
   review_version: string;
   after: number;
   total_count: number;
@@ -6188,7 +6193,8 @@ export async function getPagedStockReturn(orderId: number, transferId: number) {
     data.transfer.id !== transferId ||
     !stockCount(data.line_count) ||
     data.line_count > data.transfer.move_count ||
-    data.write_ready !== false ||
+    typeof data.write_ready !== 'boolean' ||
+    data.write_ready !== (data.form !== false) ||
     (data.form === false
       ? data.line_count !== 0 || typeof data.reason !== 'string' || !data.reason
       : !validReturnMetadata(data.form) ||
@@ -6375,7 +6381,7 @@ export async function getPagedStockReturnReview(
     !['draft', 'waiting', 'confirmed', 'assigned'].includes(
       data.return_state,
     ) ||
-    data.write_ready !== false ||
+    data.write_ready !== true ||
     !stockVersion(data.review_version) ||
     (reviewVersion !== false && data.review_version !== reviewVersion) ||
     !validValidationEffects(data.effects, true)
@@ -6403,6 +6409,145 @@ export async function getPagedStockReturnReview(
       'Incomplete native return review page or proof. Review every page in order.',
     );
   return data;
+}
+export interface PagedStockReturnRequest extends StockReturnSelection {
+  review_version: string;
+  review_complete_token: string;
+  request_key: string;
+}
+export interface PagedStockReturnStatus {
+  accepted: boolean;
+  stopped: boolean;
+  request_key: string;
+  state_after: StockReturnReview['return_state'] | false;
+  return_transfer: StockReturnStatus['return_transfer'];
+  reference_count: number;
+  current: StockValidationStepCompactStatus['current'];
+}
+export function checkedPagedStockReturnRequest(
+  value: PagedStockReturnRequest,
+): PagedStockReturnRequest {
+  if (
+    !confirmationKeys(value, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'location_id',
+      'lines',
+      'review_version',
+      'review_complete_token',
+      'request_key',
+    ]) ||
+    !stockVersion(value.review_complete_token)
+  )
+    throw new Error('Use the exact completely reviewed native return request.');
+  const { review_version, review_complete_token, request_key, ...selection } =
+    value;
+  const data = checkedReturnSelection(selection, true);
+  checkedStockConfirmationRequest({
+    order_id: data.order_id,
+    transfer_id: data.transfer_id,
+    version: data.version,
+    review_version,
+    request_key,
+  });
+  return { ...data, review_version, review_complete_token, request_key };
+}
+async function pagedReturnRequest(
+  method: string,
+  request: PagedStockReturnRequest,
+) {
+  const exact = checkedPagedStockReturnRequest(request);
+  const data = await stockCall<PagedStockReturnStatus>(method, {
+    payload: exact,
+  });
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'stopped',
+      'request_key',
+      'state_after',
+      'return_transfer',
+      'reference_count',
+      'current',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    typeof data.stopped !== 'boolean' ||
+    (data.accepted && data.stopped) ||
+    data.request_key !== exact.request_key ||
+    !stockCount(data.reference_count) ||
+    (data.accepted
+      ? !['draft', 'waiting', 'confirmed', 'assigned'].includes(
+          String(data.state_after),
+        ) ||
+        data.reference_count < 1 ||
+        !data.return_transfer ||
+        !confirmationKeys(data.return_transfer, [
+          'model',
+          'id',
+          'name',
+          'available',
+        ]) ||
+        data.return_transfer.model !== 'stock.picking' ||
+        !validValidationReference('new:stock.picking:0', data.return_transfer)
+      : data.state_after !== false ||
+        data.return_transfer !== false ||
+        data.reference_count !== 0) ||
+    !confirmationKeys(data.current, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'transfer',
+    ]) ||
+    data.current.order_id !== exact.order_id ||
+    data.current.transfer_id !== exact.transfer_id ||
+    !stockVersion(data.current.version) ||
+    !validTransferSummary(data.current.transfer) ||
+    data.current.transfer.id !== exact.transfer_id
+  )
+    throw new Error(
+      'Invalid native return outcome. Keep the exact recovery request.',
+    );
+  if (
+    (method === 'qorlia_return_paged_save' && !data.accepted) ||
+    (method === 'qorlia_return_paged_stop' && !data.accepted && !data.stopped)
+  )
+    throw new Error(
+      'The native return outcome is not acknowledged. Keep the exact recovery request.',
+    );
+  return data;
+}
+export const savePagedStockReturn = (request: PagedStockReturnRequest) =>
+  pagedReturnRequest('qorlia_return_paged_save', request);
+export const getPagedStockReturnStatus = (request: PagedStockReturnRequest) =>
+  pagedReturnRequest('qorlia_return_paged_status', request);
+export const stopPagedStockReturn = (request: PagedStockReturnRequest) =>
+  pagedReturnRequest('qorlia_return_paged_stop', request);
+export async function getPagedStockReturnReferences(
+  request: PagedStockReturnRequest,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedPagedStockReturnRequest(request);
+  validationRecoveryPageParameters(after, version, limit);
+  const data = await stockCall<PagedStockConfirmationReferences>(
+    'qorlia_return_paged_references',
+    {
+      payload: exact,
+      after,
+      version,
+      limit,
+    },
+  );
+  return checkedStockReferencePage(
+    data,
+    exact.request_key,
+    after,
+    version,
+    limit,
+    'return',
+  );
 }
 function validValidationStep(
   data: StockValidationStep,

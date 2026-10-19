@@ -26,6 +26,7 @@ class StockReturnPaged(models.Model):
         picking, order, scope = self._qorlia_confirmation_paged_transfer(order_id, transfer_id)
         form, reason = False, False
         try:
+            picking._qorlia_return_paged_access()
             form = picking._qorlia_return_snapshot(picking._qorlia_return_form())
             form['lines'].sort(key=lambda row: row['move_id'])
         except (AccessError, UserError) as error:
@@ -39,7 +40,7 @@ class StockReturnPaged(models.Model):
             picking._qorlia_confirmation_stamp(picking._qorlia_return_paged_tables()))
         return picking, {'order_id': order.id, 'transfer_id': picking.id, 'version': version,
             'transfer': header, 'form': {key: value for key, value in form.items() if key != 'lines'} if form else False,
-            'line_count': len(form['lines']) if form else 0, 'reason': reason, 'write_ready': False}, form
+            'line_count': len(form['lines']) if form else 0, 'reason': reason, 'write_ready': bool(form)}, form
 
     @api.model
     def qorlia_return_paged_load(self, order_id, transfer_id):
@@ -159,7 +160,7 @@ class StockReturnPaged(models.Model):
         more = end < count
         return {**{key: value for key, value in data.items() if key != 'lines'},
             'form': {key: value for key, value in form.items() if key != 'lines'},
-            'line_count': len(form['lines']), 'return_state': native[2], 'write_ready': False,
+            'line_count': len(form['lines']), 'return_state': native[2], 'write_ready': True,
             'review_version': reviewed, 'after': after, 'total_count': count, 'effect_count': len(effects),
             'next_after': end if more else False, 'line_rows': form['lines'][after:min(end, len(form['lines']))],
             'effects': _effect_page(native[0], effects[max(0, after - len(form['lines'])):max(0, end - len(form['lines']))],

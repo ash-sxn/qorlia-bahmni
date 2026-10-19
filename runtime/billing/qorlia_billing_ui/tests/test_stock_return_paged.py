@@ -31,7 +31,7 @@ class StockReturnPagedTest(StockValidationFixture, TransactionCase):
         while True:
             page = picking.qorlia_return_paged_review(data, after, version, token, limit)
             pages.append(page)
-            self.assertFalse(page['write_ready'])
+            self.assertTrue(page['write_ready'])
             self.assertNotIn('lines', page)
             self.assertEqual(len(page['line_rows']) + len(_effect_rows(page['effects'])),
                 min(limit, page['total_count'] - after))
@@ -54,7 +54,7 @@ class StockReturnPagedTest(StockValidationFixture, TransactionCase):
         loaded = picking.qorlia_return_paged_load(self.order.id, picking.id)
         self.assertNotIn('graph', loaded)
         self.assertNotIn('lines', loaded['form'])
-        self.assertFalse(loaded['write_ready'])
+        self.assertTrue(loaded['write_ready'])
         self.assertFalse(loaded['reason'])
         self.assertEqual(loaded['line_count'], 1)
         page = picking.qorlia_return_paged_lines(self.order.id, picking.id, loaded['version'])
@@ -65,7 +65,7 @@ class StockReturnPagedTest(StockValidationFixture, TransactionCase):
         self.assertEqual(loaded['form']['location'][0], native.location_id.id)
         self.assertEqual(before, picking._qorlia_confirmation_stamp(tables))
 
-    def test_501_native_completed_moves_and_selected_return_rows_have_complete_paging(self):
+    def large_delivered(self):
         picking = self.picking(quantity=1)
         picking.group_id = self.env['procurement.group'].create({'name': 'QorliaQA Complete return group',
             'sale_id': self.order.id, 'partner_id': self.customer.id})
@@ -84,6 +84,10 @@ class StockReturnPagedTest(StockValidationFixture, TransactionCase):
         self.assertIs(picking.button_validate(), True)
         self.assertEqual(self.sale_line.qty_delivered, 501)
         self.assertEqual(picking.sale_id, self.order)
+        return picking, original
+
+    def test_501_native_completed_moves_and_selected_return_rows_have_complete_paging(self):
+        picking, original = self.large_delivered()
         loaded = picking.qorlia_return_paged_load(self.order.id, picking.id)
         self.assertEqual(loaded['line_count'], 501)
         self.assertEqual(loaded['transfer']['move_count'], 501)
@@ -219,7 +223,7 @@ class StockReturnPagedTest(StockValidationFixture, TransactionCase):
                 picking.qorlia_return_paged_lines(self.order.id, picking.id, data['version'], **kwargs)
         loaded = picking.with_context(complete_inventory=True, write_ready=True).qorlia_return_paged_load(self.order.id, picking.id)
         self.assertEqual(loaded['version'], data['version'])
-        self.assertFalse(loaded['write_ready'])
+        self.assertTrue(loaded['write_ready'])
 
     def test_uncompleted_transfer_retains_native_reason_without_writable_form(self):
         picking = self.prepared()

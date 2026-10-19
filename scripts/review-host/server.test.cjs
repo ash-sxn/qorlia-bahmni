@@ -193,11 +193,11 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     .matchAll(/^    def (qorlia_return_\w+)\(/gm)].map(match => match[1]);
   assert.deepEqual([...returnMethods].sort(), ['load', 'locations', 'preview', 'save', 'status'].map(action => `qorlia_return_${action}`).sort(),
     'Only five named return APIs are covered, without raw wizard creation or client contexts.');
-  const pagedReturnMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_return_paged.py'), 'utf8')
-    .matchAll(/^    def (qorlia_return_paged_\w+)\(/gm)].map(match => match[1]);
-  assert.deepEqual([...pagedReturnMethods].sort(), ['load', 'lines', 'locations', 'review'].map(action => `qorlia_return_paged_${action}`).sort(),
-    'Only four fixed complete return readers/review routes are covered, not the future writer.');
-  for (const method of ['qorlia_return_paged_save', 'qorlia_return_paged_status', '_qorlia_return_paged_preview'])
+  const pagedReturnMethods = ['stock_return_paged.py', 'stock_return_paged_write.py'].flatMap(name => [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models', name), 'utf8')
+    .matchAll(/^    def (qorlia_return_paged_\w+)\(/gm)].map(match => match[1]));
+  assert.deepEqual([...pagedReturnMethods].sort(), ['load', 'lines', 'locations', 'review', 'save', 'status', 'stop', 'references'].map(action => `qorlia_return_paged_${action}`).sort(),
+    'Only eight fixed native return routes are covered, never generic wizard access.');
+  for (const method of ['qorlia_return_paged_unknown', 'qorlia_return_paged_preview', '_qorlia_return_paged_preview'])
     assert.equal((await rpc(`/web/dataset/call_kw/stock.picking/${method}`, allCookies,
       {model:'stock.picking',method,args:[],kwargs:{}})).status,404);
   for (const [model, method] of [['stock.picking', 'button_validate'], ['stock.immediate.transfer', 'process'],
@@ -239,10 +239,18 @@ test('review gate protects UI, clinical API and named Billing actions with isola
       assert.equal((await rpc(path, allCookies, {...params, ...change})).status, 400);
     assert.equal((await rpc(path, allCookies, params, 'write')).status, 400);
     const isUpload = ['qorlia_checkpoint_attachment_save', 'qorlia_checkpoint_attachment_status'].includes(method);
-    assert.equal((await rpc(path, allCookies, { ...params, kwargs: { payload: 'x'.repeat(40000) } })).status, isUpload ? 200 : 400);
-    if (isUpload) {
+    const completeReturn = ['review', 'save', 'status', 'stop', 'references'].some(action => method === `qorlia_return_paged_${action}`);
+    assert.equal((await rpc(path, allCookies, { ...params, kwargs: { payload: 'x'.repeat(40000) } })).status, isUpload || completeReturn ? 200 : 400);
+    if (isUpload || completeReturn) {
       assert.equal((await rpc(path, cookie, { ...params, kwargs: { payload: 'x'.repeat(40000) } })).status, 401);
-      assert.equal((await rpc(path, allCookies, { ...params, kwargs: { payload: 'x'.repeat(16 * 1024 * 1024) } })).status, 400);
+      assert.equal((await rpc(path, allCookies, { ...params, kwargs: { payload: 'x'.repeat((isUpload ? 16 : 2) * 1024 * 1024) } })).status, 400);
+    }
+    if (completeReturn) {
+      const payload = {order_id: 1,transfer_id: 1,version: 'a'.repeat(64),location_id: 1,
+        lines: Array.from({length: 5001}, (_, index) => ({move_id: index + 1,quantity: 1}))};
+      assert(Buffer.byteLength(JSON.stringify(payload)) > 32768);
+      assert.equal((await rpc(path, allCookies, {...params,kwargs:{payload}})).status,200,
+        'A complete 5,001-line selection reaches the authenticated stub, not a real native write.');
     }
     assert.equal((await request(`/openmrs/qorlia-billing-api${path}`, { headers: { Cookie: allCookies } })).status, 404);
     assert.equal((await request(`/openmrs/qorlia-billing-api${path}`, { method: 'POST',

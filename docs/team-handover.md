@@ -1,5 +1,16 @@
 # New-team handover: Qorlia engineering
 
+Current backend/client source: [complete return creation/recovery](../runtime/billing/RETURN_PAGED_WRITE.md)
+adds exact full-review save and compact accepted/stopped/unknown recovery, saved
+references and stop without undoing accepted work. Native creation is not receipt
+or refund. The matching dedicated schema-7 store retains exact pending requests
+and checks all references/outcomes/account identity before retirement. Generic
+resume and older typed dialogs reject returns until the new React consumer is
+connected. Home passes 1,313 cases/92 suites; 88 scoped native cases preserve 132
+tables and match 99 source files. Client replay accepts 155 responses with mocked
+transport. This does not change starter-task bases, prove real browser/storage/
+concurrency acceptance or reopen the closed Billing review gate.
+
 Latest backend/client source: [complete return form and review](../runtime/billing/RETURN_PAGED.md)
 adds four fixed native APIs without a new writer, recovery schema or React return
 editor. Readiness stays false, and native creation is not receipt/refund. Read
