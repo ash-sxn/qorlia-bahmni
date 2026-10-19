@@ -3643,14 +3643,7 @@ export async function getInventoryNativeFormChoices(
   offset = 0,
 ): Promise<InventoryFormChoices> {
   checkedInventoryFormIdentity(transferId, pickingTypeId);
-  if (
-    !stockCount(node) ||
-    typeof search !== 'string' ||
-    search.length > 200 ||
-    !stockCount(offset) ||
-    offset > 100000
-  )
-    throw new Error('Choose a native field and bounded relation search.');
+  checkedInventoryFormSearch(node, search, offset);
   const data = await stockCall<InventoryFormChoices>(
     'qorlia_inventory_form_choices',
     {
@@ -3661,6 +3654,35 @@ export async function getInventoryNativeFormChoices(
       offset,
     },
   );
+  return checkedInventoryFormChoices(
+    data,
+    transferId,
+    pickingTypeId,
+    node,
+    offset,
+  );
+}
+function checkedInventoryFormSearch(
+  node: number,
+  search: string,
+  offset: number,
+) {
+  if (
+    !stockCount(node) ||
+    typeof search !== 'string' ||
+    search.length > 200 ||
+    !stockCount(offset) ||
+    offset > 100000
+  )
+    throw new Error('Choose a native field and bounded relation search.');
+}
+function checkedInventoryFormChoices(
+  data: InventoryFormChoices,
+  transferId: number | false,
+  pickingTypeId: number | false,
+  node: number,
+  offset: number,
+) {
   if (
     !confirmationKeys(data, [
       'read_only',
@@ -3690,6 +3712,368 @@ export async function getInventoryNativeFormChoices(
   )
     throw new Error(
       'Invalid native relation choices. Reload the transfer form.',
+    );
+  return data;
+}
+export interface InventoryHeaderEdit {
+  node: number;
+  value: string | number | boolean;
+}
+export interface InventoryDraftSeed {
+  picking_type_id: number | false;
+  version: string;
+  signature: string;
+  values: Record<string, ConfirmationValue>;
+  domains: Record<string, ConfirmationValue>;
+  warning: Record<string, ConfirmationValue> | false;
+}
+export interface InventoryDraftForm {
+  read_only: true;
+  write_ready: false;
+  version: string;
+  seed: InventoryDraftSeed;
+  edits: InventoryHeaderEdit[];
+  domains: Record<string, ConfirmationValue>;
+  form: InventoryNativeForm;
+}
+export interface InventoryDraftChoices {
+  version: string;
+  edits: InventoryHeaderEdit[];
+  page: InventoryFormChoices;
+}
+function checkedInventoryHeaderEdits(edits: InventoryHeaderEdit[]) {
+  if (
+    !Array.isArray(edits) ||
+    edits.length > 100 ||
+    !edits.every(
+      (edit) =>
+        confirmationKeys(edit, ['node', 'value']) &&
+        stockCount(edit.node) &&
+        (typeof edit.value === 'string' ||
+          typeof edit.value === 'boolean' ||
+          (typeof edit.value === 'number' && Number.isFinite(edit.value))),
+    ) ||
+    JSON.stringify(edits).length > 2_000_000
+  )
+    throw new Error('Use a bounded ordered native header edit ledger.');
+  return edits.map((edit) => ({ ...edit }));
+}
+function validInventoryDraftSeed(seed: InventoryDraftSeed) {
+  return (
+    confirmationKeys(seed, [
+      'picking_type_id',
+      'version',
+      'signature',
+      'values',
+      'domains',
+      'warning',
+    ]) &&
+    (seed.picking_type_id === false || stockId(seed.picking_type_id)) &&
+    stockVersion(seed.version) &&
+    stockVersion(seed.signature) &&
+    confirmationObject(seed.values) &&
+    confirmationObject(seed.domains) &&
+    (seed.warning === false || confirmationObject(seed.warning)) &&
+    validConfirmationValue(seed) &&
+    JSON.stringify(seed).length <= 2_000_000
+  );
+}
+function checkedInventoryDraftSeed(
+  seed: InventoryDraftSeed,
+): InventoryDraftSeed {
+  if (!validInventoryDraftSeed(seed))
+    throw new Error('Reload the original signed native transfer defaults.');
+  return JSON.parse(JSON.stringify(seed));
+}
+function checkedInventoryDraftForm(
+  data: InventoryDraftForm,
+  pickingTypeId: number | false,
+  edits: InventoryHeaderEdit[],
+  seed?: InventoryDraftSeed,
+) {
+  if (
+    !confirmationKeys(data, [
+      'read_only',
+      'write_ready',
+      'version',
+      'seed',
+      'edits',
+      'domains',
+      'form',
+    ]) ||
+    data.read_only !== true ||
+    data.write_ready !== false ||
+    !validInventoryDraftSeed(data.seed) ||
+    data.version !== data.seed.version ||
+    data.seed.picking_type_id !== pickingTypeId ||
+    (seed && JSON.stringify(data.seed) !== JSON.stringify(seed)) ||
+    JSON.stringify(data.edits) !== JSON.stringify(edits) ||
+    !confirmationObject(data.domains) ||
+    !validConfirmationValue(data.domains) ||
+    !validInventoryForm(data.form, false, pickingTypeId)
+  )
+    throw new Error(
+      'Invalid native transfer draft. Reload the signed defaults.',
+    );
+  return data;
+}
+export async function getInventoryDraftForm(
+  pickingTypeId: number | false = false,
+): Promise<InventoryDraftForm> {
+  checkedInventoryFormIdentity(false, pickingTypeId);
+  return checkedInventoryDraftForm(
+    await stockCall<InventoryDraftForm>('qorlia_inventory_draft_load', {
+      picking_type_id: pickingTypeId,
+    }),
+    pickingTypeId,
+    [],
+  );
+}
+export async function previewInventoryDraftForm(
+  seed: InventoryDraftSeed,
+  edits: InventoryHeaderEdit[],
+): Promise<InventoryDraftForm> {
+  const exact = checkedInventoryDraftSeed(seed),
+    ledger = checkedInventoryHeaderEdits(edits);
+  return checkedInventoryDraftForm(
+    await stockCall<InventoryDraftForm>('qorlia_inventory_draft_onchange', {
+      seed: exact,
+      edits: ledger,
+    }),
+    exact.picking_type_id,
+    ledger,
+    exact,
+  );
+}
+export async function getInventoryDraftFormChoices(
+  seed: InventoryDraftSeed,
+  edits: InventoryHeaderEdit[],
+  node: number,
+  search = '',
+  offset = 0,
+): Promise<InventoryDraftChoices> {
+  const exact = checkedInventoryDraftSeed(seed),
+    ledger = checkedInventoryHeaderEdits(edits);
+  checkedInventoryFormSearch(node, search, offset);
+  const data = await stockCall<InventoryDraftChoices>(
+    'qorlia_inventory_draft_choices',
+    {
+      seed: exact,
+      edits: ledger,
+      node,
+      search,
+      offset,
+    },
+  );
+  if (
+    !confirmationKeys(data, ['version', 'edits', 'page']) ||
+    data.version !== exact.version ||
+    JSON.stringify(data.edits) !== JSON.stringify(ledger)
+  )
+    throw new Error('Invalid native draft relation search.');
+  checkedInventoryFormChoices(
+    data.page,
+    false,
+    exact.picking_type_id,
+    node,
+    offset,
+  );
+  return data;
+}
+export interface InventoryStoredForm {
+  read_only: true;
+  write_ready: false;
+  transfer_id: number;
+  version: string;
+  form: InventoryNativeForm;
+}
+export interface InventoryStoredSelection {
+  transfer_id: number;
+  version: string;
+  edits: InventoryHeaderEdit[];
+}
+export interface InventoryStoredPreview extends InventoryStoredForm {
+  edits: InventoryHeaderEdit[];
+  effect_version: string;
+  effect_count: number;
+  domains: Record<string, ConfirmationValue>;
+}
+export interface InventoryStoredChoices extends InventoryStoredPreview {
+  page: InventoryFormChoices;
+}
+export interface InventoryStoredEffects extends InventoryStoredPreview {
+  after: number;
+  next_after: number | false;
+  continuation_token: string | false;
+  effects: StockConfirmationEffects;
+}
+function checkedInventoryStoredSelection(
+  selection: InventoryStoredSelection,
+): InventoryStoredSelection {
+  if (
+    !confirmationKeys(selection, ['transfer_id', 'version', 'edits']) ||
+    !stockId(selection.transfer_id) ||
+    !stockVersion(selection.version)
+  )
+    throw new Error('Reload the saved transfer and its original form version.');
+  return { ...selection, edits: checkedInventoryHeaderEdits(selection.edits) };
+}
+function validInventoryStoredPreview(
+  data: InventoryStoredPreview,
+  exact: InventoryStoredSelection,
+  extra: string[] = [],
+) {
+  return (
+    confirmationKeys(data, [
+      'read_only',
+      'write_ready',
+      'transfer_id',
+      'version',
+      'form',
+      'edits',
+      'effect_version',
+      'effect_count',
+      'domains',
+      ...extra,
+    ]) &&
+    data.read_only === true &&
+    data.write_ready === false &&
+    data.transfer_id === exact.transfer_id &&
+    data.version === exact.version &&
+    JSON.stringify(data.edits) === JSON.stringify(exact.edits) &&
+    stockVersion(data.effect_version) &&
+    stockCount(data.effect_count) &&
+    confirmationObject(data.domains) &&
+    validConfirmationValue(data.domains) &&
+    validInventoryForm(data.form, exact.transfer_id, false)
+  );
+}
+export async function getInventoryStoredForm(
+  transferId: number,
+): Promise<InventoryStoredForm> {
+  if (!stockId(transferId)) throw new Error('Choose a saved native transfer.');
+  const data = await stockCall<InventoryStoredForm>(
+    'qorlia_inventory_edit_load',
+    { transfer_id: transferId },
+  );
+  if (
+    !confirmationKeys(data, [
+      'read_only',
+      'write_ready',
+      'transfer_id',
+      'version',
+      'form',
+    ]) ||
+    data.read_only !== true ||
+    data.write_ready !== false ||
+    data.transfer_id !== transferId ||
+    !stockVersion(data.version) ||
+    !validInventoryForm(data.form, transferId, false) ||
+    data.form.version !== data.version
+  )
+    throw new Error('Invalid saved native form. Reload the transfer.');
+  return data;
+}
+export async function previewInventoryStoredForm(
+  selection: InventoryStoredSelection,
+): Promise<InventoryStoredPreview> {
+  const exact = checkedInventoryStoredSelection(selection);
+  const data = await stockCall<InventoryStoredPreview>(
+    'qorlia_inventory_edit_onchange',
+    exact,
+  );
+  if (!validInventoryStoredPreview(data, exact))
+    throw new Error('Invalid native saved-header replay. Reload the form.');
+  return data;
+}
+export async function getInventoryStoredFormChoices(
+  selection: InventoryStoredSelection,
+  node: number,
+  search = '',
+  offset = 0,
+): Promise<InventoryStoredChoices> {
+  const exact = checkedInventoryStoredSelection(selection);
+  checkedInventoryFormSearch(node, search, offset);
+  const data = await stockCall<InventoryStoredChoices>(
+    'qorlia_inventory_edit_choices',
+    { ...exact, node, search, offset },
+  );
+  if (!validInventoryStoredPreview(data, exact, ['page']))
+    throw new Error('Invalid saved-form relation replay.');
+  checkedInventoryFormChoices(
+    data.page,
+    exact.transfer_id,
+    false,
+    node,
+    offset,
+  );
+  const field = data.form.layout[node];
+  if (
+    data.page.form_version !== data.form.version ||
+    data.page.field !== field?.field ||
+    data.form.fields[field.field].type !== 'many2one' ||
+    !field.rules.visible ||
+    field.rules.readonly
+  )
+    throw new Error(
+      'Native relation choices belong to another edited form. Reload it.',
+    );
+  return data;
+}
+export async function getInventoryStoredFormEffects(
+  selection: InventoryStoredSelection,
+  after = 0,
+  effectVersion: string | false = false,
+  continuationToken: string | false = false,
+  limit = 50,
+): Promise<InventoryStoredEffects> {
+  const exact = checkedInventoryStoredSelection(selection);
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    (after === 0
+      ? effectVersion !== false || continuationToken !== false
+      : !stockVersion(effectVersion) || !stockVersion(continuationToken))
+  )
+    throw new Error(
+      'Inspect bounded native onchange effects in order with their original tokens.',
+    );
+  const data = await stockCall<InventoryStoredEffects>(
+    'qorlia_inventory_edit_effects',
+    {
+      ...exact,
+      after,
+      effect_version: effectVersion,
+      continuation_token: continuationToken,
+      limit,
+    },
+  );
+  if (
+    !validInventoryStoredPreview(data, exact, [
+      'after',
+      'next_after',
+      'effects',
+      'continuation_token',
+    ]) ||
+    data.after !== after ||
+    (effectVersion !== false && data.effect_version !== effectVersion) ||
+    after > data.effect_count ||
+    !validConfirmationEffects(data.effects)
+  )
+    throw new Error('Invalid native onchange effect page. Inspect it again.');
+  const page = confirmationEffectPageRows(data.effects),
+    end = after + page.count;
+  if (
+    !page.valid ||
+    page.count !== Math.min(limit, data.effect_count - after) ||
+    (end < data.effect_count
+      ? data.next_after !== end || !stockVersion(data.continuation_token)
+      : data.next_after !== false || data.continuation_token !== false)
+  )
+    throw new Error(
+      'Incomplete or unordered native onchange effects. Inspect them again.',
     );
   return data;
 }

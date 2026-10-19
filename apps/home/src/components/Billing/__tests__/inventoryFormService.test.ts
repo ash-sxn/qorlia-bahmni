@@ -2,54 +2,12 @@ import {
   BillingSessionExpired,
   getInventoryNativeForm,
   getInventoryNativeFormChoices,
-  type InventoryNativeForm,
 } from '../billingService';
+import {
+  inventoryForm as fixture,
+  inventoryFormChoices as choices,
+} from './inventoryFormFixture';
 
-const fixture = (id: number | false = false): InventoryNativeForm => ({
-  read_only: true,
-  transfer_id: id,
-  picking_type_id: false,
-  version: 'a'.repeat(64),
-  timezone: 'Asia/Kolkata',
-  fields: {
-    id: { type: 'integer', string: 'ID' },
-    move_ids: { type: 'one2many', string: 'Moves', relation: 'stock.move' },
-    note: { type: 'html', string: 'Note' },
-    partner_id: {
-      type: 'many2one',
-      string: 'Contact',
-      relation: 'res.partner',
-    },
-  },
-  layout: ['id', 'move_ids', 'note', 'partner_id'].map((field) => ({
-    field,
-    label: false,
-    domain: false,
-    context: false,
-    modifiers: {},
-    ancestor_modifiers: [],
-    containers: [],
-    attributes: {},
-    rules: { visible: true, readonly: field === 'id', required: false },
-  })),
-  label_nodes: [],
-  values: { id, note: false, partner_id: 4 },
-  labels: { partner_id: [4, 'QorliaQA Contact'] },
-  warning: false,
-  collections: ['move_ids'],
-  unsupported: [],
-});
-const choices = () => ({
-  read_only: true,
-  transfer_id: false,
-  picking_type_id: false,
-  form_version: 'a'.repeat(64),
-  node: 3,
-  field: 'partner_id',
-  offset: 0,
-  rows: [[4, 'QorliaQA Contact']],
-  has_more: false,
-});
 const reply = (result: unknown) =>
   jest.mocked(fetch).mockResolvedValue({
     ok: true,

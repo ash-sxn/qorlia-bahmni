@@ -79,14 +79,24 @@ remaining steps.
 
 ## Verification status
 
-A corrected frozen **116-case native run is in progress**: 13 saved-form cases, the prior
+A corrected frozen **116-case native run passes, zero failures/errors/skips**: 13 saved-form cases, the prior
 58 Inventory form/draft/list/detail cases and 45 existing confirmation cases.
 The latter exercise the shared preparation helper's unchanged default mode.
-112 Python files parse and three temporary gateway tests pass, explicitly
-blocking all nine unfinished form/draft/edit methods. No passing final native
-result is claimed for this source yet. Broad role/configuration, child editing, complete
-save/create/duplicate/recovery, saved/draft client/React, actual HTTP/browser, scale,
+All 112 frozen Python hashes match the recorded run. Current source differs only
+by one removed trailing blank line in its test file, with exact difference and
+equal AST independently asserted. All 132 guarded tables, mandatory analytics,
+SMS and installed metadata 49 are preserved. Independent read-only SQL counts
+and full-row hashes match the committed pre-run baseline. The worker is terminal
+and removed. Its source was readonly with no HTTP or published ports. Bootstrap
+warnings remain; this is not a clean install or persistent addon upgrade.
+
+The independent native-JSON checker accepts **101 responses across all nine
+form/draft/edit methods**. Three temporary gateway tests still explicitly block
+these unfinished methods. Broad role/configuration, child editing, complete
+save/create/duplicate/recovery, React, actual HTTP/browser, scale,
 concurrency and approved release remain unaccepted.
+Log SHA256:
+`44475b349f3c9f73bfcc60348c43e9476ad26497ae000d9e987e598af23d5b95`.
 
 The first frozen run completed all 116 cases with **three assertion failures,
 zero errors/skips**. All 132 guards, mandatory analytics/SMS and installed
@@ -100,7 +110,52 @@ asserts that real native link before preview, while keeping its actor without
 Sales membership. No product permission or expected native access is relaxed.
 The corrected run also checks callback restoration after native onchange fails.
 
-### Read-only native form client source
+### Complete current form/draft/onchange client source
+
+All nine existing native methods now have typed source callers through the same
+guarded Billing RPC transport. This is not a new save protocol or permission to
+expose unfinished routes. New drafts retain their original signed seed and
+ordered edits; saved forms retain their actual transfer ID and original version.
+No fake order, direct child edit, arbitrary context/domain, new nonce or Save
+request is introduced.
+
+| Native API | Client source function |
+| --- | --- |
+| `qorlia_inventory_form_load` | `getInventoryNativeForm` |
+| `qorlia_inventory_form_choices` | `getInventoryNativeFormChoices` |
+| `qorlia_inventory_draft_load` | `getInventoryDraftForm` |
+| `qorlia_inventory_draft_onchange` | `previewInventoryDraftForm` |
+| `qorlia_inventory_draft_choices` | `getInventoryDraftFormChoices` |
+| `qorlia_inventory_edit_load` | `getInventoryStoredForm` |
+| `qorlia_inventory_edit_onchange` | `previewInventoryStoredForm` |
+| `qorlia_inventory_edit_choices` | `getInventoryStoredFormChoices` |
+| `qorlia_inventory_edit_effects` | `getInventoryStoredFormEffects` |
+
+Client validation rejects malformed/changed seed echoes, wrong saved/new scope,
+unordered or oversized edit ledgers, nonfinite values, write-ready/save-proof
+injection, edited-choice/form mismatches, skipped/incomplete effect pages,
+unrelated labels and replaced effect versions. Private audit counts stay
+separate from public row counts. Final onchange pages do not become Save proofs.
+Session expiry propagates rather than becoming an empty successful form.
+
+All **1,701 Home tests/104 suites pass**, including 88 form/edit-client cases.
+Library and actual test-source types, scoped lint, Python AST, gateway, docs and
+diff checks pass. Independent replay of the actual client accepts all **101
+native candidate-77 responses**: 31 form loads, six form-choice pages, 20 signed
+draft loads, 18 draft replays, one edited-draft search, 14 saved loads, seven
+saved replays, one edited-saved search and three saved-effect pages. Transport is
+mocked, so this is source/client contract evidence, not HTTP, React or browser
+acceptance. Client SHA256:
+`2bf3d860cf32195f7786e3faa4511e7902259a40a675c540b54c3db28b26ea33`.
+
+Before implementing the writer, preserve the native distinction between dirty
+fields and all current values. Native `Record.getChanges` omits readonly values
+unless `forceSave` applies and obtains child changes through their own command
+handling. A source onchange result must not simply be written wholesale. Final
+required/company rules, child views/commands, complete native effects and exact
+durable recovery still need implementation and independent verification.
+
+### Earlier read-only native form client checkpoint
 
 The [read client](../../apps/home/src/components/Billing/billingService.ts)'s
 `getInventoryNativeForm` and `getInventoryNativeFormChoices` call only the two

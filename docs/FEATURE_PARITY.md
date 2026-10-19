@@ -5,16 +5,17 @@
 [Candidate 77](../runtime/billing/STOCK_INVENTORY_EDIT.md) adds real-origin
 saved-header replay and rollback-only native linked-effect inspection, with
 edited relation searches and sequential effect pages. The 116-case native
-verification is pending. These are onchange effects, not complete save review,
+verification passes, with 112 frozen hashes, 132 preserved tables and unchanged
+independent committed SQL. These are onchange effects, not complete save review,
 write/recovery or a React editor. The existing preparation default remains
 unchanged; stored-state-preserving previews permit native terminal notes only.
 Source APIs and Billing review stay closed. The completed 1,029-case full
 source-74 regression does not accept this source.
 
-The two read-only form methods now have typed client source and 31 new focused
-checks, with 1,644 Home tests/103 suites passing. The actual client accepts 37
-native form/choice responses from the verified source-76 log with transport
-mocked. Saved/draft clients, a React editor, HTTP and release remain unaccepted;
+All nine form/draft/onchange methods now have typed client source and 88 focused
+checks, with 1,701 Home tests/104 suites passing. The actual client accepts 101
+native candidate-77 responses with transport mocked. A complete save/create/
+duplicate/recovery writer, child editor, React, HTTP and release remain unaccepted;
 the gateway still blocks all nine unfinished methods.
 
 ## 20 October pinned native new-transfer draft source

@@ -5,7 +5,9 @@ This is not an Indian chart of accounts or healthcare tax configuration.
 
 Newest backend source: [saved-transfer header onchange and effect inspection](STOCK_INVENTORY_EDIT.md)
 replays the real native origin and rolls back linked writes. The 116-case native
-check is pending; this is not save approval, recovery or a React editor. The
+check passes; all nine form/draft/onchange methods have typed client calls and
+101 matching native responses with transport mocked. This is not save approval,
+recovery, HTTP or a React editor. The
 source gateway blocks all four new methods; review and deployment stay closed.
 
 Earlier source: [pinned native new-transfer drafts](STOCK_INVENTORY_FORM.md#candidate-76-pinned-new-transfer-drafts-20-october-2026)

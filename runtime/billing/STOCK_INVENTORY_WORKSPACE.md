@@ -7,7 +7,10 @@
 [The saved-form contract](STOCK_INVENTORY_EDIT.md) replays native changes on the
 real stored origin, including its linked-move writes, inside rollback-only
 guards. Four source methods cover load, onchange, edited choices and sequential
-onchange-effect pages. The 116-case check is pending. This is not complete save
+onchange-effect pages. The 116-case check passes with 112 frozen source hashes,
+132 preserved tables and unchanged independent SQL. All nine current form/
+draft/onchange APIs have typed client callers, accepting 101 native responses
+with transport mocked. Home passes 1,701 cases/104 suites. This is not complete save
 review, a writer, durable recovery or React acceptance. The gateway blocks the
 unfinished methods and review access stays closed.
 

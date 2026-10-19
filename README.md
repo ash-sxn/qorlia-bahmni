@@ -53,11 +53,12 @@ The goal is full native workflow/API parity in a consistent Qorlia interface. Bi
 
 Newest backend source: [saved-transfer header onchange and effect inspection](runtime/billing/STOCK_INVENTORY_EDIT.md)
 replays the real saved origin and rolls back its native linked writes. The
-116-case check is pending. These are onchange effects, not save approval or a
+116-case native check passes. These are onchange effects, not save approval or a
 React editor; the source gateway blocks all four new methods. Review stays closed.
-The two native form readers now have typed client calls and 31 focused checks;
-Home passes 1,644 tests/103 suites. These calls remain blocked at the gateway,
-and do not constitute a finished create/edit UI.
+All nine existing form/draft/onchange methods now have typed client calls, with
+88 focused cases and 1,701 Home tests/104 suites passing. Matching-client replay
+accepts 101 actual native responses with transport mocked. These calls remain
+blocked at the gateway and do not constitute a finished create/edit UI.
 
 Earlier source: [pinned native new-transfer drafts](runtime/billing/STOCK_INVENTORY_FORM.md#candidate-76-pinned-new-transfer-drafts-20-october-2026)
 adds signed native defaults, ordered new-header onchange and edited relation

@@ -2,7 +2,9 @@
 
 Newest backend source: [saved-transfer header onchange and effect inspection](../runtime/billing/STOCK_INVENTORY_EDIT.md)
 replays the real saved origin and inspects rolled-back linked writes. Its
-116-case native check is pending. There is no save approval or React editor;
+116-case native check passes. Typed callers cover all nine form/draft/onchange
+methods, with 101 matching native responses using mocked transport, not browser
+acceptance. There is no save approval or React editor;
 source APIs, review access and starter-task bases remain unchanged/closed.
 
 Earlier source: [pinned native new-transfer drafts](../runtime/billing/STOCK_INVENTORY_FORM.md#candidate-76-pinned-new-transfer-drafts-20-october-2026)
