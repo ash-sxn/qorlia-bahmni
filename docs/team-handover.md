@@ -1,5 +1,15 @@
 # New-team handover: Qorlia engineering
 
+Newest source: [global transfer details](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-67-global-details-19-october-2026)
+adds direct load and complete move/operation pages with no order/Sales dependency.
+Both sections pin one native scope and share the existing order tables, but
+global stock write actions remain unfinished. Read versions are not save proofs.
+Home passes 1,553 cases/102 suites; 50 native cases preserve 132 tables with 106
+matching Python files; actual-client replay accepts 72 native responses with
+transport mocked. Independent committed SQL agrees. Types/scoped lint and three
+gateway stub cases pass. Actual browser/runtime, global write/recovery and wider
+parity gates remain. Do not change starter-task bases or reopen Billing review.
+
 Newest source: [global Inventory transfers read flow](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md).
 Candidate 66 adds a signed-in Billing tab and named native reader without fake
 order links, preserving native stock permissions/company filtering and date

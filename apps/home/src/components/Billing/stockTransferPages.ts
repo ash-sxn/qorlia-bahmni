@@ -22,6 +22,19 @@ export const stockPreparationLabels = {
 export const transferLabel = (relation: [number, string] | false) =>
   relation ? relation[1] : 'Not set';
 
+export function formatTransferDate(value: string | false, timezone: string) {
+  if (!value) return 'Not set';
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: timezone,
+    }).format(new Date(value.replace(' ', 'T') + 'Z'));
+  } catch {
+    return 'Unavailable';
+  }
+}
+
 export function coherentTransferPages(
   pages: OrderDeliveryPage[],
   orderId: number,

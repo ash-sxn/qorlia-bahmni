@@ -3,7 +3,16 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Newest source: [global inventory transfer list](STOCK_INVENTORY_WORKSPACE.md)
+Newest source: [global inventory details](STOCK_INVENTORY_WORKSPACE.md#candidate-67-global-details-19-october-2026)
+adds two named readers and pinned complete move/operation pages without order IDs
+or Sales data. Both workspaces use shared tables; global details expose no stock
+write actions. Home passes 1,553 cases/102 suites; 50 native cases preserve 132
+tables with 106 matching Python hashes; actual-client replay accepts 72 native
+responses with transport mocked. Source/test types, scoped lint and three gateway
+stub cases pass. Actual HTTP/browser, global write/recovery, wider parity/scale
+and release remain open. Review stays closed; no build/server or deployment.
+
+Earlier source: [global inventory transfer list](STOCK_INVENTORY_WORKSPACE.md)
 connects an authenticated Billing tab to a named native reader and protected
 source-gateway route. It includes unlinked receipts/deliveries/internal transfers,
 native access/rules/companies, ordering, Waiting semantics, paging and timezone

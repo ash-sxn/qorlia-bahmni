@@ -1,5 +1,26 @@
 # Bahmni workflow parity ledger
 
+## 19 October global inventory detail source
+
+- [Candidate 67](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-67-global-details-19-october-2026)
+  opens the actual selected transfer with no order ID or Sales dependency.
+  Separate header/load and complete move/operation readers check all linked
+  permissions/fields/companies and native cursor membership. Hidden tails,
+  changed scope or cross-transfer operations reject; no record is repaired.
+- Both sections pin version/header/timezone/position. Errors hide both tables;
+  actual cursors support forward/back navigation and focus restoration. Shared
+  tables retain existing order action wiring; global details remain read-only.
+  Their read snapshot cannot authorise a stock save or replace native review.
+- Home passes 1,553 cases/102 suites; 50 native cases preserve 132 tables with
+  106 matching Python hashes, including 501 moves/2,001 operations and older
+  order readers. Matching-client replay accepts 72 native responses with mocked
+  transport; independent committed SQL agrees. Types/lint and three source-
+  gateway stub cases pass. DOM checks are not browser/layout acceptance.
+- Global reviewed write/recovery, remaining native forms/fields/filters/views,
+  full matching regression, transport/browser/IndexedDB/concurrency/scale and
+  rollout remain. Prior full-source proofs do not verify this newer source.
+  Review stays closed; no frontend build/server, installed upgrade or deployment.
+
 ## 19 October global inventory transfer read source
 
 - [Candidate 66](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md) connects a

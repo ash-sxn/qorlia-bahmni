@@ -1,6 +1,6 @@
 import { Button, TextInput } from '@bahmni/design-system';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styles from './BillingPage.module.scss';
 import {
   BillingSessionExpired,
@@ -8,20 +8,12 @@ import {
   InventoryOperation,
   InventoryState,
 } from './billingService';
-import { transferLabel, transferStates } from './stockTransferPages';
-
-function date(value: string | false, timezone: string) {
-  if (!value) return 'Not set';
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-      timeZone: timezone,
-    }).format(new Date(value.replace(' ', 'T') + 'Z'));
-  } catch {
-    return 'Unavailable';
-  }
-}
+import { InventoryTransferDetails } from './InventoryTransferDetails';
+import {
+  formatTransferDate,
+  transferLabel,
+  transferStates,
+} from './stockTransferPages';
 
 export function InventoryTransfersPanel({
   uid,
@@ -35,6 +27,10 @@ export function InventoryTransfersPanel({
   const [operation, setOperation] = useState<InventoryOperation>('all');
   const [state, setState] = useState<InventoryState>('all');
   const [offset, setOffset] = useState(0);
+  const [selected, setSelected] = useState<number | null>(null);
+  const openers = useRef(new Map<number, HTMLButtonElement>());
+  const restoreFocus = useRef<number | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   const page = useQuery({
     queryKey: [
       'billing',
@@ -47,10 +43,32 @@ export function InventoryTransfersPanel({
     ],
     queryFn: () => getInventoryTransfers(submitted, operation, state, offset),
     retry: false,
+    enabled: selected === null,
   });
+  useEffect(() => {
+    if (selected !== null || page.isFetching || restoreFocus.current === null)
+      return;
+    const target = openers.current.get(restoreFocus.current) ?? heading.current;
+    restoreFocus.current = null;
+    if (document.activeElement === document.body) target?.focus();
+  }, [selected, page.isFetching, page.data, page.isError]);
+  if (selected !== null)
+    return (
+      <InventoryTransferDetails
+        uid={uid}
+        transferId={selected}
+        reconnect={reconnect}
+        close={() => {
+          restoreFocus.current = selected;
+          setSelected(null);
+        }}
+      />
+    );
   return (
     <section className={styles.card} aria-label="Inventory transfers">
-      <h2>Inventory transfers</h2>
+      <h2 ref={heading} tabIndex={-1}>
+        Inventory transfers
+      </h2>
       <p>
         Find receipts, deliveries and internal transfers, including transfers
         without a charge order. This list is read-only; stock actions and the
@@ -185,7 +203,19 @@ export function InventoryTransfersPanel({
                 <tbody>
                   {page.data.rows.map((row) => (
                     <tr key={row.id}>
-                      <th scope="row">{row.name}</th>
+                      <th scope="row">
+                        <Button
+                          kind="ghost"
+                          ref={(button) => {
+                            if (button) openers.current.set(row.id, button);
+                            else openers.current.delete(row.id);
+                          }}
+                          onClick={() => setSelected(row.id)}
+                          aria-label={`Open transfer ${row.name}`}
+                        >
+                          {row.name}
+                        </Button>
+                      </th>
                       <td>
                         {
                           transferStates[
@@ -197,8 +227,15 @@ export function InventoryTransfersPanel({
                       <td>{transferLabel(row.customer)}</td>
                       <td>{transferLabel(row.source)}</td>
                       <td>{transferLabel(row.destination)}</td>
-                      <td>{date(row.scheduled_date, page.data.timezone)}</td>
-                      <td>{date(row.date_done, page.data.timezone)}</td>
+                      <td>
+                        {formatTransferDate(
+                          row.scheduled_date,
+                          page.data.timezone,
+                        )}
+                      </td>
+                      <td>
+                        {formatTransferDate(row.date_done, page.data.timezone)}
+                      </td>
                       <td>{row.origin || 'Not set'}</td>
                       <td>{transferLabel(row.company)}</td>
                       <td>{transferLabel(row.backorder)}</td>

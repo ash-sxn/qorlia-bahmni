@@ -1,5 +1,21 @@
 # Qorlia React frontend backend readiness
 
+## Global inventory pinned detail reads (19 October 2026)
+
+[Candidate 67](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-67-global-details-19-october-2026)
+adds direct transfer load and complete move/operation paging, independently of
+Sales orders. Hidden linked data/labels reject instead of truncating the graph;
+native field/role/company checks and actual cursor membership remain. The React
+view pins both sections to one header/version/timezone, hides stale details,
+restores navigation focus and reuses the existing order view's extracted tables.
+Global details have no write actions, and read snapshots are not write proofs.
+Home passes 1,553 cases/102 suites; 50 native cases preserve 132 tables with 106
+matching Python hashes; matching-client replay accepts 72 native responses with
+transport mocked. Independent committed SQL agrees. Types, scoped lint and three
+source-gateway stub cases pass. Global reviewed write/recovery, remaining native
+fields/views, actual transport/browser/layout/IndexedDB, scale, full matching
+regression and release remain. Review stays closed; no build/server or deployment.
+
 ## Global inventory transfer read flow (19 October 2026)
 
 [Candidate 66](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md) adds the signed-in

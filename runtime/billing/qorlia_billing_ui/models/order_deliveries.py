@@ -96,11 +96,13 @@ class OrderDeliveries(models.Model):
             'order_stamp': order.read(['write_date']), 'data': result, 'stamps': stamps})
         return result
 
-    def _qorlia_delivery_move(self, move):
-        return {'id': move.id, 'state': move.state, 'product': _label(move.product_id),
+    def _qorlia_delivery_move(self, move, include_order_line=True):
+        result = {'id': move.id, 'state': move.state, 'product': _label(move.product_id),
             'unit': _label(move.product_uom), 'demand': move.product_uom_qty,
-            'reserved': move.reserved_availability, 'done': move.quantity_done,
-            'order_line': _label(move.sale_line_id)}
+            'reserved': move.reserved_availability, 'done': move.quantity_done}
+        if include_order_line:
+            result['order_line'] = _label(move.sale_line_id)
+        return result
 
     def _qorlia_delivery_operation(self, line):
         return {'id': line.id, 'move_id': line.move_id.id or False,

@@ -14,6 +14,7 @@ import {
   transferLabel as label,
   transferStates,
 } from './stockTransferPages';
+import { StockMoveTable, StockOperationTable } from './StockTransferTables';
 
 type Props = {
   uid: number;
@@ -304,73 +305,34 @@ function TransferDetails({
         </Button>
       </div>
       {fetching ? null : (
-        <div
-          className={styles.tableScroll}
-          role="region"
-          aria-label="Transfer demand and reservations"
-          tabIndex={0}
-        >
-          <table>
-            <caption>
-              Demand and reservation quantities in the unit shown
-            </caption>
-            <thead>
-              <tr>
-                {[
-                  'Product',
-                  'Unit',
-                  'Demand',
-                  'Reserved',
-                  'Recorded done',
-                  'Move status',
-                  'Order item',
-                  'Operations',
-                ].map((title) => (
-                  <th scope="col" key={title}>
-                    {title}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {movePage.rows.map((move) => (
-                <tr key={move.id}>
-                  <td>{label(move.product)}</td>
-                  <td>{label(move.unit)}</td>
-                  <td>{move.demand}</td>
-                  <td>{move.reserved}</td>
-                  <td>{move.done}</td>
-                  <td>{move.state}</td>
-                  <td>{label(move.order_line)}</td>
-                  <td>
-                    <Button
-                      kind="ghost"
-                      disabled={
-                        stockLocked ||
-                        fetching ||
-                        ['done', 'cancel'].includes(move.state) ||
-                        ['done', 'cancel'].includes(transfer.state)
-                      }
-                      onClick={(event) =>
-                        operation(
-                          {
-                            order_id: snapshot.order_id,
-                            transfer_id: transferId,
-                            move_id: move.id,
-                            operation_id: false,
-                          },
-                          event.currentTarget,
-                        )
-                      }
-                    >
-                      Add operation for {label(move.product)}
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <StockMoveTable
+          rows={movePage.rows}
+          showOrderLine
+          actions={(move) => (
+            <Button
+              kind="ghost"
+              disabled={
+                stockLocked ||
+                fetching ||
+                ['done', 'cancel'].includes(move.state) ||
+                ['done', 'cancel'].includes(transfer.state)
+              }
+              onClick={(event) =>
+                operation(
+                  {
+                    order_id: snapshot.order_id,
+                    transfer_id: transferId,
+                    move_id: move.id,
+                    operation_id: false,
+                  },
+                  event.currentTarget,
+                )
+              }
+            >
+              Add operation for {label(move.product)}
+            </Button>
+          )}
+        />
       )}
       {transfer.move_count === 0 ? (
         <p>No stock moves are recorded in this transfer.</p>
@@ -425,83 +387,37 @@ function TransferDetails({
         </Button>
       </div>
       {fetching ? null : (
-        <div
-          className={styles.tableScroll}
-          role="region"
-          aria-label="Detailed stock operations"
-          tabIndex={0}
-        >
-          <table>
-            <caption>Detailed operations, quantities in the unit shown</caption>
-            <thead>
-              <tr>
-                {[
-                  'Product',
-                  'Unit',
-                  'Reserved',
-                  'Recorded done',
-                  'Batch / serial',
-                  'Expiry (UTC)',
-                  'Source',
-                  'Destination',
-                  'Source package',
-                  'Destination package',
-                  'Owner',
-                  'Edit',
-                ].map((title) => (
-                  <th scope="col" key={title}>
-                    {title}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {operationPage.rows.map((line) => (
-                <tr key={line.id}>
-                  <td>{label(line.product)}</td>
-                  <td>{label(line.unit)}</td>
-                  <td>{line.reserved}</td>
-                  <td>{line.done}</td>
-                  <td>{line.lot ? line.lot[1] : line.lot_name || 'Not set'}</td>
-                  <td>{line.expiry_date || 'Not set'}</td>
-                  <td>{label(line.source)}</td>
-                  <td>{label(line.destination)}</td>
-                  <td>{label(line.source_package)}</td>
-                  <td>{label(line.destination_package)}</td>
-                  <td>{label(line.owner)}</td>
-                  <td>
-                    {line.move_id ? (
-                      <Button
-                        kind="ghost"
-                        disabled={
-                          stockLocked ||
-                          fetching ||
-                          ['done', 'cancel'].includes(transfer.state)
-                        }
-                        onClick={(event) => {
-                          if (line.move_id !== false)
-                            operation(
-                              {
-                                order_id: snapshot.order_id,
-                                transfer_id: transferId,
-                                move_id: line.move_id,
-                                operation_id: line.id,
-                              },
-                              event.currentTarget,
-                            );
-                        }}
-                      >
-                        Edit operation #{line.id}
-                      </Button>
-                    ) : (
-                      'No linked move'
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <StockOperationTable
+          rows={operationPage.rows}
+          actions={(line) =>
+            line.move_id ? (
+              <Button
+                kind="ghost"
+                disabled={
+                  stockLocked ||
+                  fetching ||
+                  ['done', 'cancel'].includes(transfer.state)
+                }
+                onClick={(event) => {
+                  if (line.move_id !== false)
+                    operation(
+                      {
+                        order_id: snapshot.order_id,
+                        transfer_id: transferId,
+                        move_id: line.move_id,
+                        operation_id: line.id,
+                      },
+                      event.currentTarget,
+                    );
+                }}
+              >
+                Edit operation #{line.id}
+              </Button>
+            ) : (
+              'No linked move'
+            )
+          }
+        />
       )}
       {transfer.operation_count === 0 ? (
         <p>

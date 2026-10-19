@@ -3344,14 +3344,171 @@ export async function getInventoryTransfers(
   }
   return data;
 }
-function validTransferMove(move: OrderTransfer['moves'][number]) {
+export type InventoryMove = Omit<OrderTransfer['moves'][number], 'order_line'>;
+function validTransferMoveFields(move: InventoryMove) {
   return (
     move &&
     stockId(move.id) &&
     typeof move.state === 'string' &&
-    [move.product, move.unit, move.order_line].every(validRelation) &&
+    [move.product, move.unit].every(validRelation) &&
     [move.demand, move.reserved, move.done].every(Number.isFinite)
   );
+}
+function validTransferMove(move: OrderTransfer['moves'][number]) {
+  return validTransferMoveFields(move) && validRelation(move.order_line);
+}
+
+export interface InventoryTransferLoad {
+  read_only: true;
+  transfer: OrderTransferSummary;
+  version: string;
+  timezone: string;
+}
+export type InventoryTransferDetailPage = InventoryTransferLoad & {
+  after: number;
+  position: number;
+  total_count: number;
+  next_after: number | false;
+} & (
+    | { section: 'moves'; rows: InventoryMove[] }
+    | { section: 'operations'; rows: OrderTransfer['operations'] }
+  );
+
+function validInventoryTransferLoad(
+  data: InventoryTransferLoad,
+  transferId: number,
+) {
+  if (
+    data?.read_only !== true ||
+    !validTransferSummary(data.transfer) ||
+    data.transfer.id !== transferId ||
+    !stockVersion(data.version) ||
+    typeof data.timezone !== 'string' ||
+    !data.timezone.length ||
+    data.timezone.length > 64
+  )
+    return false;
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: data.timezone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+export async function getInventoryTransfer(
+  transferId: number,
+): Promise<InventoryTransferLoad> {
+  if (!stockId(transferId))
+    throw new Error('Select a saved inventory transfer.');
+  const data = await stockCall<InventoryTransferLoad>(
+    'qorlia_inventory_transfer_load',
+    { transfer_id: transferId },
+  );
+  if (
+    !confirmationKeys(data, ['read_only', 'transfer', 'version', 'timezone']) ||
+    !validInventoryTransferLoad(data, transferId)
+  )
+    throw new Error('Invalid inventory transfer. Reload its details.');
+  return data;
+}
+export async function getInventoryTransferDetailPage(
+  transferId: number,
+  section: OrderTransferDetailSection,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+): Promise<InventoryTransferDetailPage> {
+  if (
+    !stockId(transferId) ||
+    !['moves', 'operations'].includes(section) ||
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !(version === false || stockVersion(version)) ||
+    (after > 0 && version === false)
+  )
+    throw new Error(
+      'Use a bounded inventory detail page and its original version.',
+    );
+  const data = await stockCall<InventoryTransferDetailPage>(
+    'qorlia_inventory_transfer_detail_page',
+    { transfer_id: transferId, section, after, version, limit },
+  );
+  if (
+    !confirmationKeys(data, [
+      'read_only',
+      'transfer',
+      'version',
+      'timezone',
+      'section',
+      'after',
+      'position',
+      'total_count',
+      'next_after',
+      'rows',
+    ]) ||
+    !validInventoryTransferLoad(data, transferId) ||
+    (version !== false && data.version !== version) ||
+    data.section !== section ||
+    data.after !== after ||
+    !stockCount(data.position) ||
+    !stockCount(data.total_count) ||
+    data.total_count !==
+      (section === 'moves'
+        ? data.transfer.move_count
+        : data.transfer.operation_count) ||
+    data.position > data.total_count ||
+    data.position > after ||
+    (after === 0 ? data.position !== 0 : data.position === 0) ||
+    !Array.isArray(data.rows) ||
+    data.rows.length !== Math.min(limit, data.total_count - data.position) ||
+    !data.rows.every(
+      (row, index) =>
+        row &&
+        stockId(row.id) &&
+        row.id > (index ? data.rows[index - 1].id : after),
+    ) ||
+    !(data.section === 'moves'
+      ? data.rows.every(
+          (row) =>
+            confirmationKeys(row, [
+              'id',
+              'state',
+              'product',
+              'unit',
+              'demand',
+              'reserved',
+              'done',
+            ]) && validTransferMoveFields(row),
+        )
+      : data.rows.every(
+          (row) =>
+            confirmationKeys(row, [
+              'id',
+              'move_id',
+              'product',
+              'unit',
+              'reserved',
+              'done',
+              'lot',
+              'lot_name',
+              'expiry_date',
+              'source',
+              'destination',
+              'source_package',
+              'destination_package',
+              'owner',
+            ]) && validTransferOperation(row),
+        )) ||
+    (data.position + data.rows.length < data.total_count
+      ? data.next_after !== data.rows.at(-1)?.id
+      : data.next_after !== false)
+  )
+    throw new Error(
+      'Invalid inventory detail page. Reload the transfer details.',
+    );
+  return data;
 }
 function validTransferOperation(
   line: TransferReviewRow['operations'][number],

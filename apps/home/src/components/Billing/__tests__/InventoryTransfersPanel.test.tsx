@@ -14,6 +14,24 @@ jest.mock('../billingService', () => ({
   getInventoryTransfers: jest.fn(),
 }));
 expect.extend(toHaveNoViolations);
+jest.mock('../InventoryTransferDetails', () => ({
+  InventoryTransferDetails: ({
+    uid,
+    transferId,
+    close,
+  }: {
+    uid: number;
+    transferId: number;
+    close: () => void;
+  }) => (
+    <div>
+      <p>
+        Selected inventory account {uid}, transfer {transferId}
+      </p>
+      <button onClick={close}>Back to inventory transfers</button>
+    </div>
+  ),
+}));
 const load = jest.mocked(getInventoryTransfers);
 const reconnect = jest.fn();
 function show(uid = 3) {
@@ -55,6 +73,27 @@ it('shows actual native transfer headers and account-timezone dates without writ
   ).not.toBeInTheDocument();
   expect(load).toHaveBeenCalledWith('', 'all', 'all', 0);
   expect(await axe(document.body)).toHaveNoViolations();
+});
+it('opens only the selected native transfer and restores its opener after returning to the list', async () => {
+  show();
+  const opener = await screen.findByRole('button', {
+    name: 'Open transfer QORLIAQA/OUT/11',
+  });
+  opener.focus();
+  fireEvent.click(opener);
+  expect(
+    await screen.findByText('Selected inventory account 3, transfer 11'),
+  ).toBeInTheDocument();
+  const back = screen.getByRole('button', {
+    name: 'Back to inventory transfers',
+  });
+  back.focus();
+  fireEvent.click(back);
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Open transfer QORLIAQA/OUT/11' }),
+    ).toHaveFocus(),
+  );
 });
 it('filters native operation and status without treating status labels as row actions', async () => {
   show();

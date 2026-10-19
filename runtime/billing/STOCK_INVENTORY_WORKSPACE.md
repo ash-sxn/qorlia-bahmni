@@ -2,7 +2,90 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
-## Candidate 66, 19 October 2026
+## Candidate 67 global details, 19 October 2026
+
+The signed-in list now opens the selected native transfer directly, without a
+sales-order identifier. [InventoryTransferDetails](../../apps/home/src/components/Billing/InventoryTransferDetails.tsx)
+loads its header/snapshot before requesting move and operation pages in parallel.
+Both must match the header, timezone, version and actual cursor position. A
+rejected or mismatched page hides both tables and cached identifiers; reload
+starts a fresh scope, not a stock mutation. Native cursors are retained for back
+navigation, including gaps in IDs. Keyboard paging restores focus when Next
+becomes disabled, and returning to the list restores the transfer opener.
+
+### Two additional fixed read APIs
+
+- `stock.picking.qorlia_inventory_transfer_load(transfer_id)` returns only
+  `read_only`, `transfer` (header plus move/operation counts), `version` and
+  `timezone`.
+- `stock.picking.qorlia_inventory_transfer_detail_page(transfer_id, section,
+  after=0, version=False, limit=50)` adds `section`, `after`, `position`,
+  `total_count`, `next_after` and `rows`. Sections are `moves` or `operations`,
+  limits are 1 to 100, and later cursors require the original version and a real
+  row belonging to that transfer section. The UI uses pages of 50.
+
+The [native implementation](qorlia_billing_ui/models/stock_inventory.py) checks
+Stock User/Manager, model/field/record rights and the active transfer company.
+It checks every linked move, operation and batch in fixed ID batches before
+returning a detail page, with no legacy 500-move/2,000-operation truncation.
+Hidden linked rows or labels reject the complete detail scope; this is not the
+same as record-rule filtering in a global browse list. Cross-transfer operation
+links reject rather than being repaired or silently included.
+
+The read version binds selected rows, rendered dependencies/labels, author,
+active companies, groups, language/timezone and access configuration. Unrelated
+transfer edits do not invalidate it. It is a read snapshot, **not a save/recovery
+proof**: downstream chains, full inventory/configuration and actual native write
+effects still require their own purpose-bound complete reviews. No fake order,
+`sudo`, permission grant, generic query or caller-context bypass is introduced.
+Complete scope checks remain linear and retain complete recordsets; bounded
+response pages do not prove bounded total ORM cache, CPU or hospital latency.
+
+Global moves omit Sales line data entirely, including when the Stock User lacks
+Sales access. Existing order-linked projections retain their default `order_line`
+field. [Shared tables](../../apps/home/src/components/Billing/StockTransferTables.tsx)
+now render both workspaces with the same design-system/layout/focus conventions.
+Only the existing order workspace supplies reviewed action callbacks. Global
+details have no edit/save/cancel/validate controls. Quantities retain native
+units; recorded done is not proof of physical movement. Header dates use the
+labelled account timezone; batch expiry remains explicitly labelled UTC.
+
+### Candidate 67 verification
+
+- Home passes **1,553 cases/102 suites**: 14 new detail-client cases (including
+  both sections' invalid-payload contexts), 11 detail-component cases and the
+  new list/open/return focus case. Existing order-detail navigation/action tests
+  still pass after shared-table extraction. Source/test and library types,
+  scoped lint and three gateway stub cases pass. Basic axe/focus checks are DOM
+  evidence, not actual browser/layout acceptance.
+- **50 unique native cases pass, zero failures/errors/skips**: nine inventory
+  browse cases, 16 global-detail cases and 25 existing order-reader cases. They
+  include complete 501-move/2,001-operation reads, stock-only access without Sales,
+  empty transfers, hidden tail moves/operations/lot/owner/product, field denial,
+  cross-transfer links, stale quantities/batch/labels, author/timezone/policy
+  binding, active/inactive companies and unchanged unrelated transfer scope.
+- All **106 Python hashes** match the immutable package. All **132 guarded
+  tables** remain unchanged, with mandatory analytics/SMS enabled. Independent
+  post-worker committed SQL counts/full-row hashes match the pre-worker baseline.
+- The matching actual client accepts **72 captured native JSON responses across
+  all three inventory APIs**, replay transport mocked. Log SHA256:
+  `02b97f7aa25b62084f1205086f1afa42e13fcaffa6fc7388b63ef544fe04e486`.
+  Client SHA256:
+  `95afa8f0c1db1c3c0639c75708ad66281346b9fb616fb8da1aeefea8707669fe`.
+- Native workers use readonly source, `--no-http`, no published ports and
+  unchanged installed metadata 49. Bootstrap warnings remain recorded; this
+  is not a clean install, installed upgrade or HTTP/browser/release acceptance.
+
+Still required: global reviewed confirmation/reservation/operation editing/
+validation/return/cancellation and exact durable recovery; native create/edit,
+remaining form fields, chains/packages, type choices/overview, full filtering,
+grouping, alternate views, bulk/print and the wider permission/configuration
+matrix. Source-matched full regression, actual transport/browser/layout,
+IndexedDB/multi-tab/concurrency, scale and approved rollout remain separate.
+The earlier 928-case source-64 proof and still-running 938-case source-65 worker
+do not include this source. Review remains closed; no build/server/deployment.
+
+## Candidate 66 browse checkpoint, 19 October 2026
 
 The signed-in Billing workspace now has an **Inventory transfers** tab in source.
 It reads receipts, deliveries and internal transfers without requiring a charge
@@ -89,7 +172,7 @@ is running on its own immutable package/database copy, without this candidate-66
 reader. Do not sum overlapping suites or call either current whole-product or
 runtime/browser acceptance.
 
-## Remaining work, not replaced by this list
+## Remaining work at candidate 66
 
 - Global transfer detail/move/operation pages and actual operation-type choices.
 - Order-independent confirmation, reservation, operation editing, validation,
