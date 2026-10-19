@@ -65,6 +65,14 @@ const pagedRequests = [
     'paged_confirmation',
     { ...confirmationRequest(), review_complete_token: 'c'.repeat(64) },
   ],
+  [
+    'paged_confirmation',
+    {
+      ...confirmationRequest(),
+      order_id: false,
+      review_complete_token: 'c'.repeat(64),
+    },
+  ],
 ] as const;
 
 function database() {

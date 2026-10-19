@@ -1,6 +1,6 @@
 import { Button } from '@bahmni/design-system';
-import { useQueries, useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './BillingPage.module.scss';
 import {
   BillingSessionExpired,
@@ -8,6 +8,7 @@ import {
   getInventoryTransferDetailPage,
   InventoryTransferLoad,
 } from './billingService';
+import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
 import {
   sameTransferSummary,
   formatTransferDate,
@@ -24,9 +25,13 @@ type Props = {
 };
 export function InventoryTransferDetails(props: Props) {
   const [revision, setRevision] = useState(0);
+  const [confirming, setConfirming] = useState(false);
+  const back = useRef<HTMLButtonElement>(null);
+  const client = useQueryClient();
+  const returnFocus = useCallback(() => back.current?.focus(), []);
   return (
     <section className={styles.card} aria-label="Inventory transfer details">
-      <Button kind="tertiary" onClick={props.close}>
+      <Button ref={back} kind="tertiary" onClick={props.close}>
         Back to inventory transfers
       </Button>
       <ReadTransfer
@@ -34,8 +39,28 @@ export function InventoryTransferDetails(props: Props) {
         uid={props.uid}
         transferId={props.transferId}
         reconnect={props.reconnect}
+        confirmation={() => setConfirming(true)}
         reload={() => setRevision((value) => value + 1)}
       />
+      {confirming ? (
+        <PagedStockConfirmationModal
+          uid={props.uid}
+          orderId={false}
+          transferId={props.transferId}
+          reconnect={props.reconnect}
+          returnFocus={returnFocus}
+          close={() => {
+            setConfirming(false);
+            setRevision((value) => value + 1);
+            void client.invalidateQueries({
+              queryKey: ['billing', 'inventory-transfers', props.uid],
+            });
+            void client.invalidateQueries({
+              queryKey: ['billing', 'reservation-recovery', props.uid],
+            });
+          }}
+        />
+      ) : null}
     </section>
   );
 }
@@ -45,11 +70,13 @@ function ReadTransfer({
   transferId,
   reconnect,
   reload,
+  confirmation,
 }: {
   uid: number;
   transferId: number;
   reconnect: () => void;
   reload: () => void;
+  confirmation: () => void;
 }) {
   const loaded = useQuery({
     queryKey: ['billing', 'inventory-transfer-load', uid, transferId],
@@ -78,6 +105,7 @@ function ReadTransfer({
       loaded={loaded.data}
       reconnect={reconnect}
       reload={reload}
+      confirmation={confirmation}
     />
   );
 }
@@ -90,11 +118,13 @@ function DetailPages({
   loaded,
   reconnect,
   reload,
+  confirmation,
 }: {
   uid: number;
   loaded: InventoryTransferLoad;
   reconnect: () => void;
   reload: () => void;
+  confirmation: () => void;
 }) {
   const [cursors, setCursors] = useState<Record<Section, Cursor[]>>({
     moves: [{ after: 0, position: 0 }],
@@ -223,9 +253,9 @@ function DetailPages({
         {transferLabel(loaded.transfer.destination)}
       </p>
       <p>
-        Read-only native details. Recorded done quantities are not proof of a
-        completed stock movement. Global stock actions are still being
-        integrated.
+        Recorded done quantities are not proof of a completed stock movement.
+        Confirmation has a separate native effect review and does not deliver
+        stock. Other global stock actions are still being integrated.
       </p>
       <p>
         Operation: {transferLabel(loaded.transfer.operation_type)} · Backorder
@@ -245,6 +275,9 @@ function DetailPages({
         onClick={reload}
       >
         Reload inventory details
+      </Button>
+      <Button kind="tertiary" disabled={fetching} onClick={confirmation}>
+        Review or recover confirmation
       </Button>
       {sections.map((section, index) => {
         const page = queries[index].data!;

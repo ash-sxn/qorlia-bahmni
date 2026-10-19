@@ -85,7 +85,7 @@ export const isStockValidationRequest = (
   Object.hasOwn(request, 'decisions');
 export const isStockConfirmationRequest = (
   request: StockWriteRequest,
-): request is StockConfirmationRequest =>
+): request is StockConfirmationRequest | PagedStockConfirmationRequest =>
   !Object.hasOwn(request, 'action') &&
   !isStockValidationRequest(request) &&
   !isPagedStockReturnRequest(request);

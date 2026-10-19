@@ -1,5 +1,16 @@
 # Bahmni workflow parity ledger
 
+## 19 October global Inventory confirmation source
+
+[Candidate 68](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-68-global-confirmation-19-october-2026)
+connects confirmation for an explicit orderless transfer through the existing
+native effect review, six APIs, shared dialog, durable slot and direct Billing
+recovery. Legacy/order scopes and other workflows stay strict. Active Inventory
+views refresh on finish; the recovery target remains pinned while the banner
+refetches. Home passes 1,561 cases/102 suites. Native evidence and remaining
+global writes/native views and runtime/browser/release gates are in the guide.
+This is not whole Inventory or whole-product acceptance. Review remains closed.
+
 ## 19 October global inventory detail source
 
 - [Candidate 67](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-67-global-details-19-october-2026)

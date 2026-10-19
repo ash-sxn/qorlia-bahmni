@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import styles from './BillingPage.module.scss';
 import { OrderDeliveriesPanel } from './OrderDeliveriesPanel';
+import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
 import {
   isPagedStockReturnRequest,
   isPagedStockCancellationRequest,
@@ -23,7 +24,10 @@ export function StockRecoveryNotice(props: Props) {
 }
 
 function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
-  const [orderId, setOrderId] = useState<number | null>(null);
+  const [target, setTarget] = useState<{
+    orderId: number | false;
+    transferId: number;
+  } | null>(null);
   const opener = useRef<HTMLButtonElement>(null);
   const retryButton = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
@@ -37,29 +41,43 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
   });
   // A fast refetch can finish without a rendered isFetching transition.
   useEffect(() => {
-    if (orderId === null && restoreFocus.current && !saved.isFetching) {
+    if (target === null && restoreFocus.current && !saved.isFetching) {
       restoreFocus.current = false;
       const target = opener.current ?? retryButton.current;
       if (target) target.focus();
       else focusFallback();
     }
   }, [
-    orderId,
+    target,
     saved.isFetching,
     saved.dataUpdatedAt,
     saved.errorUpdatedAt,
     focusFallback,
   ]);
-  if (orderId !== null)
+  if (target?.orderId === false)
+    return (
+      <PagedStockConfirmationModal
+        uid={uid}
+        orderId={false}
+        transferId={target.transferId}
+        reconnect={reconnect}
+        close={() => {
+          restoreFocus.current = true;
+          setTarget(null);
+          void saved.refetch();
+        }}
+      />
+    );
+  if (target !== null)
     return (
       <OrderDeliveriesPanel
         uid={uid}
-        orderId={orderId}
+        orderId={target.orderId}
         closeLabel="Back to Billing"
         reconnect={reconnect}
         close={() => {
           restoreFocus.current = true;
-          setOrderId(null);
+          setTarget(null);
           void saved.refetch();
         }}
       />
@@ -102,14 +120,26 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
     <section className={styles.card} aria-label="Saved stock request">
       <h2>Check your saved stock request</h2>
       <p>
-        {kind} · Order #{request.order_id} · Transfer #{request.transfer_id}
+        {kind} ·{' '}
+        {request.order_id === false
+          ? 'Inventory'
+          : `Order #${request.order_id}`}{' '}
+        · Transfer #{request.transfer_id}
       </p>
       <p>
         A stock request is saved on this browser. Check its outcome before
         starting another stock action. Opening the workflow does not repeat or
         cancel it.
       </p>
-      <Button ref={opener} onClick={() => setOrderId(request.order_id)}>
+      <Button
+        ref={opener}
+        onClick={() =>
+          setTarget({
+            orderId: request.order_id,
+            transferId: request.transfer_id,
+          })
+        }
+      >
         Open saved stock workflow
       </Button>
     </section>

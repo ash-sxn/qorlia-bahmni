@@ -1,6 +1,12 @@
 # New-team handover: Qorlia engineering
 
-Newest source: [global transfer details](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-67-global-details-19-october-2026)
+Newest source: [global Inventory confirmation](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-68-global-confirmation-19-october-2026)
+reuses complete native confirmation and exact recovery for transfers without
+orders. It is not completion of the other global writes or browser/release
+acceptance. Home passes 1,561 cases/102 suites; source-specific evidence and
+remaining gates are in the guide. Starter-task bases and review access stay unchanged.
+
+Earlier source: [global transfer details](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-67-global-details-19-october-2026)
 adds direct load and complete move/operation pages with no order/Sales dependency.
 Both sections pin one native scope and share the existing order tables, but
 global stock write actions remain unfinished. Read versions are not save proofs.

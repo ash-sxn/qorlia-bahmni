@@ -75,8 +75,15 @@ export type PagedStockWriteModalProps = {
   reconnect: () => void;
   returnFocus?: () => void;
 };
-type Props = PagedStockWriteModalProps & {
-  kind: 'confirmation' | 'preparation' | 'operation' | 'cancellation';
+type Props = (
+  | (Omit<PagedStockWriteModalProps, 'orderId'> & {
+      kind: 'confirmation';
+      orderId: number | false;
+    })
+  | (PagedStockWriteModalProps & {
+      kind: 'preparation' | 'operation' | 'cancellation';
+    })
+) & {
   initialFailure?: Error | null;
 };
 type Request =
@@ -222,6 +229,10 @@ function StockWriteReview({
   const loaded = useQuery({
     queryKey: ['billing', query, uid, orderId, transferId],
     queryFn: async () => {
+      if (orderId === false && kind !== 'confirmation')
+        throw new Error(
+          'This stock workflow still requires its original charge order.',
+        );
       const request = await (kind === 'cancellation'
         ? loadPagedStockCancellationRecovery(uid)
         : loadPagedStockWriteRecovery(uid));
@@ -379,10 +390,17 @@ function StockWriteReview({
         transfer_id: writable.transfer_id,
         version: writable.version,
       };
+      const linkedSelection = () => {
+        if (selection.order_id === false)
+          throw new Error(
+            'This stock action requires its original charge order.',
+          );
+        return { ...selection, order_id: selection.order_id };
+      };
       const page =
         kind === 'cancellation'
           ? await getPagedStockCancellationReview(
-              { ...selection, action: 'cancel_transfer' },
+              { ...linkedSelection(), action: 'cancel_transfer' },
               cursor.after,
               cursor.version,
               cursor.token,
@@ -390,7 +408,7 @@ function StockWriteReview({
             )
           : kind === 'preparation' && action && action !== 'cancel_transfer'
             ? await getPagedStockReservationReview(
-                { ...selection, action },
+                { ...linkedSelection(), action },
                 cursor.after,
                 cursor.version,
                 cursor.token,
@@ -449,11 +467,13 @@ function StockWriteReview({
           'action' in page && page.action === 'cancel_transfer'
             ? checkedPagedStockCancellationRequest({
                 ...selection,
+                order_id: page.order_id,
                 action: page.action,
               })
             : 'action' in page
               ? checkedPagedStockReservationRequest({
                   ...selection,
+                  order_id: page.order_id,
                   action: page.action,
                 })
               : checkedPagedStockConfirmationRequest(selection);
@@ -509,6 +529,16 @@ function StockWriteReview({
       client.invalidateQueries({
         queryKey: ['billing', 'reservation-recovery', uid],
       }),
+      ...[
+        'inventory-transfers',
+        'inventory-transfer-load',
+        'inventory-transfer-detail',
+      ].map((key) =>
+        client.invalidateQueries({
+          queryKey: ['billing', key, uid],
+          refetchType: 'active',
+        }),
+      ),
       ...[
         'stock-confirmation-paged',
         'stock-reservation-paged',
@@ -622,8 +652,11 @@ function StockWriteReview({
           <>
             <h2>{state.transfer.name}</h2>
             <p>
-              Order #{state.order_id} · Transfer #{state.transfer_id} · State:{' '}
-              {state.transfer.state} · Company: {label(state.transfer.company)}
+              {state.order_id === false
+                ? 'Inventory'
+                : `Order #${state.order_id}`}{' '}
+              · Transfer #{state.transfer_id} · State: {state.transfer.state} ·
+              Company: {label(state.transfer.company)}
             </p>
             <p>
               {state.transfer.move_count} stock moves ·{' '}
@@ -640,8 +673,8 @@ function StockWriteReview({
             (request.order_id !== orderId ||
               request.transfer_id !== transferId) ? (
               <p role="status">
-                Resolve this previous {noun} for its original order and transfer
-                before another stock action.
+                Resolve this previous {noun} for its original workspace and
+                transfer before another stock action.
               </p>
             ) : null}
             {!request && writable ? (
@@ -758,8 +791,11 @@ function StockWriteReview({
         {request ? (
           <>
             <p>
-              Order #{request.order_id} · Transfer #{request.transfer_id} ·{' '}
-              Request: {request.request_key}.{' '}
+              {request.order_id === false
+                ? 'Inventory'
+                : `Order #${request.order_id}`}{' '}
+              · Transfer #{request.transfer_id} · Request: {request.request_key}
+              .{' '}
               {accepted?.accepted
                 ? 'The exact receipt is available.'
                 : 'This request may already be saved. It is never retried automatically.'}

@@ -55,19 +55,24 @@ class StockConfirmationPaged(models.Model):
         scoped.env.cr.flush()
         return scoped
 
-    def _qorlia_confirmation_paged_transfer(self, order_id, transfer_id, lock=False):
-        picking, order, version = self.env['sale.order']._qorlia_delivery_transfer_scope(order_id, transfer_id)
+    def _qorlia_confirmation_paged_transfer(self, order_id, transfer_id, lock=False, inventory=False):
+        if inventory and order_id is False:
+            scoped = self._qorlia_inventory_context()
+            picking, _records, version = scoped._qorlia_inventory_transfer_scope(transfer_id)
+            order = scoped.env['sale.order']
+        else:
+            picking, order, version = self.env['sale.order']._qorlia_delivery_transfer_scope(order_id, transfer_id)
         if lock:
             self.env.cr.execute('SELECT id FROM res_company WHERE id = %s FOR UPDATE', [picking.company_id.id])
             self.env.cr.execute('SELECT id FROM stock_picking WHERE id = %s FOR UPDATE', [picking.id])
             self.env.invalidate_all()
-            return self._qorlia_confirmation_paged_transfer(order_id, transfer_id)
+            return self._qorlia_confirmation_paged_transfer(order_id, transfer_id, inventory=inventory)
         return picking, order, version
 
     @api.model
     def qorlia_confirmation_paged_load(self, order_id, transfer_id):
         self = self._qorlia_confirmation_context()
-        picking, order, scope = self._qorlia_confirmation_paged_transfer(order_id, transfer_id)
+        picking, order, scope = self._qorlia_confirmation_paged_transfer(order_id, transfer_id, inventory=True)
         packages = picking._qorlia_reservation_package_graph()
         picking.check_field_access_rights('read', ['show_mark_as_todo'])
         self.env.cr.execute('SELECT (SELECT count(*) FROM stock_move WHERE picking_id = %s), '
@@ -97,7 +102,7 @@ class StockConfirmationPaged(models.Model):
             {'review_version': review, 'position': position}, {}, False)
 
     def _qorlia_confirmation_paged_preview(self, order_id, transfer_id, version):
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(order_id, transfer_id, lock=True)
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(order_id, transfer_id, lock=True, inventory=True)
         picking._qorlia_confirmation_access()
         current = self.qorlia_confirmation_paged_load(order_id, transfer_id)
         if current['version'] != version:
@@ -138,7 +143,8 @@ class StockConfirmationPaged(models.Model):
             raise ValidationError('Use the exact completely reviewed confirmation request.')
         if not _hash(payload['review_complete_token']):
             raise ValidationError('Complete every confirmation review page before saving.')
-        self._qorlia_confirmation_request({key: value for key, value in payload.items() if key != 'review_complete_token'})
+        self._qorlia_confirmation_request({key: value for key, value in payload.items() if key != 'review_complete_token'},
+            allow_inventory=True)
         return dict(payload), _digest({'purpose': _PURPOSE, 'request': payload,
             'author': self.env.uid, 'companies': self.env.companies.ids})
 
@@ -194,7 +200,8 @@ class StockConfirmationPaged(models.Model):
         for table in tables:
             cr.execute(sql.SQL('LOCK TABLE {} IN SHARE ROW EXCLUSIVE MODE').format(sql.Identifier(table)))
         self.env.invalidate_all()
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'],
+            inventory=purpose == _PURPOSE)
         picking.check_access_rights('write')
         picking.check_access_rule('write')
         key, marker = picking._qorlia_paged_stop_marker(request, digest, purpose, receipt_field)
@@ -234,7 +241,7 @@ class StockConfirmationPaged(models.Model):
     def qorlia_confirmation_paged_stop(self, payload):
         self = self._qorlia_confirmation_context()
         request, digest = self._qorlia_confirmation_paged_request(payload)
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         return picking._qorlia_paged_stop(request, digest, _PURPOSE, 'qorlia_confirmation_receipts',
             'qorlia_confirmation_receipt_token', _RECEIPT_TOKEN)
 
@@ -242,7 +249,7 @@ class StockConfirmationPaged(models.Model):
     def qorlia_confirmation_paged_status(self, payload):
         self = self._qorlia_confirmation_context()
         request, digest = self._qorlia_confirmation_paged_request(payload)
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         receipt = picking._qorlia_confirmation_paged_receipt(request, digest)
         return {'accepted': bool(receipt), 'request_key': request['request_key'],
             'state_after': receipt['state'] if receipt else False,
@@ -256,7 +263,7 @@ class StockConfirmationPaged(models.Model):
                 or not (version is False or _hash(version)) or after and version is False):
             raise ValidationError('Use a bounded confirmation reference page and its original version.')
         request, digest = self._qorlia_confirmation_paged_request(payload)
-        picking, _order, scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, _order, scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         receipt = picking._qorlia_confirmation_paged_receipt(request, digest)
         if not receipt:
             raise UserError('This confirmation has not been accepted. Check the original request status.')
@@ -276,7 +283,7 @@ class StockConfirmationPaged(models.Model):
     def qorlia_confirmation_paged_save(self, payload):
         self = self._qorlia_confirmation_context()
         request, digest = self._qorlia_confirmation_paged_request(payload)
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         if picking._qorlia_confirmation_paged_receipt(request, digest):
             return self.qorlia_confirmation_paged_status(request)
         self.env.cr.flush()
@@ -284,7 +291,7 @@ class StockConfirmationPaged(models.Model):
         for table in picking._qorlia_confirmation_tables():
             self.env.cr.execute(sql.SQL('LOCK TABLE {} IN SHARE ROW EXCLUSIVE MODE').format(sql.Identifier(table)))
         self.env.invalidate_all()
-        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'])
+        picking, _order, _scope = self._qorlia_confirmation_paged_transfer(request['order_id'], request['transfer_id'], inventory=True)
         if picking._qorlia_confirmation_paged_receipt(request, digest):
             return self.qorlia_confirmation_paged_status(request)
         picking, effects, _state, reviewed = self._qorlia_confirmation_paged_preview(

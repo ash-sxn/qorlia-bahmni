@@ -371,11 +371,13 @@ class StockConfirmation(models.Model):
             raise UserError('Native state changed during stock preview. Reload and review it again.')
         return result
 
-    def _qorlia_confirmation_request(self, payload):
+    def _qorlia_confirmation_request(self, payload, allow_inventory=False):
         if not isinstance(payload, dict) or set(payload) != {'order_id', 'transfer_id', 'version', 'review_version', 'request_key'}:
             raise ValidationError('Use the exact reviewed confirmation request.')
         try:
-            if (any(type(payload[name]) is not int or payload[name] <= 0 for name in ('order_id', 'transfer_id'))
+            if ((not (allow_inventory and payload['order_id'] is False)
+                    and (type(payload['order_id']) is not int or payload['order_id'] <= 0))
+                    or type(payload['transfer_id']) is not int or payload['transfer_id'] <= 0
                     or any(not isinstance(payload[name], str) or len(payload[name]) != 64
                         or any(char not in '0123456789abcdef' for char in payload[name]) for name in ('version', 'review_version'))
                     or str(uuid.UUID(payload['request_key'])) != payload['request_key']):

@@ -2,6 +2,76 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Candidate 68 global confirmation, 19 October 2026
+
+Inventory details now open the existing complete confirmation dialog, with
+`order_id: false` for a global transfer. This explicit identity is not zero, an
+omitted field or an invented Sales order. The same six
+`qorlia_confirmation_paged_*` APIs handle load, ordered effect review, exact
+save/status, pinned generated-reference pages and stopping an unsent request.
+Positive order identities retain their existing scope and request digests.
+Legacy confirmation and other stock workflows still require real orders.
+
+The shared native scope helper opts into the complete Inventory read scope only
+for this confirmation path. The read version does not become a write proof:
+confirmation still adds the full inventory/configuration/financial stamp,
+package graph, rollback-native effect preview, ordered proof, locks, caller
+permissions and actual-effect comparison. Confirmation may reserve stock or
+create native dependencies; it does not validate physical delivery. No new
+confirmation engine, raw action route, schema field, `sudo` or role grant is added.
+
+The client represents orderless identity only in paged confirmation types.
+Other workflow checks reject it. Exact global requests use the same schema-8
+account/database-bound durable slot; old clients cannot recover this new identity
+and must not clear or rewrite it. The Billing recovery banner opens confirmation
+directly, never an order page. Its target stays pinned during a cleared-banner
+refetch so the dialog can finish its acknowledgement and close normally.
+Existing order workspaces can also resume the exact global confirmation.
+Finishing refreshes active Inventory lists/details, while modal-state queries
+remain invalidated without an automatic stock retry. Closing is not undo.
+
+Source checks pass 1,561 Home cases/102 suites, including global identity
+boundaries, all six client calls, exact storage, no-resave recovery, Inventory
+entry/reload and recovery target stability. Types, scoped lint and gateway stub
+checks are separate from native and real-browser acceptance. The first 81-case
+native run had nine fixture errors (Odoo's exception helper and a missing native
+procurement-group link), zero assertion failures and all 132 tables preserved;
+its independent committed SQL also agrees. It remains a failed run.
+
+The corrected source passes **81 unique native cases, zero failures/errors/skips**:
+11 global confirmation cases, all 45 existing confirmation preview cases and
+25 global read cases. These include orderless receipts/deliveries/internal
+transfers with Stock User but no Sales role, actual reservation/batch references,
+exact duplicate-save/status/stop recovery, strict false identity, same-author
+order/global proof swaps, stale inventory/configuration, hidden rows/fields,
+write denial, foreign companies and different-author receipt rejection. All
+106 Python hashes match the immutable package. All 132 guarded tables remain
+unchanged with mandatory analytics/SMS enabled; independent post-worker committed
+SQL counts/full-row hashes match the baseline.
+
+The matching actual client accepts **276 captured native JSON responses** across
+all six confirmation methods, including 96 orderless frames. Replay transport
+is mocked, not HTTP/browser proof. Log SHA256:
+`aaf221a9b5b9d6496bce4beae304613f77d5636c33d9840bf8f2087e085b14f5`.
+Client SHA256:
+`6319e4292211f848bc38a86f1a2ee60ff096e80520b8dfeeb998445c1c0ef312`.
+Source/test and library types, scoped lint, three gateway stub cases and
+42-document/740-link checks pass. The worker is terminal/removed; it used
+readonly source, no HTTP/published ports and unchanged installed metadata 49.
+Bootstrap warnings remain. This is not clean-install or installed-upgrade proof.
+
+A new **974-case full-addon worker is running** on a separate synthetic copy
+using this same immutable candidate-68 source. Its planned unique case count and
+no-HTTP/no-published-port configuration are verified, not its final outcome.
+The completed 938-case candidate-65 proof is older-source evidence only.
+
+Still required: global reservation/preparation, operation editing, validation,
+returns/cancellation and their durable UI/recovery; native create/edit, remaining
+fields, chains/packages, overview/type choices, full filters/grouping/views,
+bulk/print and the wider role/configuration matrix. Actual HTTP/browser/layout,
+IndexedDB/multi-tab/concurrency, scale, current full regression and rollout remain
+separate gates. Review stays closed; no build/server, installed upgrade or deployment.
+
 ## Candidate 67 global details, 19 October 2026
 
 The signed-in list now opens the selected native transfer directly, without a

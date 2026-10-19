@@ -120,7 +120,7 @@ function OrderTransfers({
     paged: boolean;
   } | null>(null);
   const [confirmation, setConfirmation] = useState<{
-    orderId: number;
+    orderId: number | false;
     transferId: number;
     paged: boolean;
   } | null>(null);
@@ -505,7 +505,7 @@ function OrderTransfers({
           reconnect={reconnect}
           returnFocus={restoreConfirmationFocus}
         />
-      ) : confirmation ? (
+      ) : confirmation && confirmation.orderId !== false ? (
         <StockConfirmationModal
           uid={uid}
           orderId={confirmation.orderId}

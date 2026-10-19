@@ -11,7 +11,7 @@ import {
   confirmationRequest,
 } from './stockConfirmationFixture';
 
-export const load = (): PagedStockConfirmationLoad => {
+export const load = (): PagedStockConfirmationLoad & { order_id: number } => {
   const { graph, ...current } = confirmationLoad();
   const header = graph.transfer;
   return {
@@ -40,7 +40,9 @@ export const selection = () => ({
   transfer_id: 11,
   version: 'a'.repeat(64),
 });
-export const request = (): PagedStockConfirmationRequest => ({
+export const request = (): PagedStockConfirmationRequest & {
+  order_id: number;
+} => ({
   ...confirmationRequest(),
   review_complete_token: 'd'.repeat(64),
 });

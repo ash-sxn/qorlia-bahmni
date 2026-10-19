@@ -12,6 +12,24 @@ from the transfer workspace and signed-in Billing notice in source. Actual
 runtime/browser and broader parity acceptance remain unfinished. Do not
 label the full stock workflow complete or reinterpret Stop to fill this gap.
 
+## Candidate 65 completed full regression, 19 October 2026
+
+The immutable candidate-65 worker has finished with **938 unique native cases,
+zero failures/errors/skips**, all 132 guarded tables preserved and mandatory
+analytics/SMS enabled. All 104 Python files match its frozen source. Independent
+post-worker read-only SQL confirms identical committed counts/full-row hashes
+between its synthetic copy and the preserved original across all 132 tables.
+The matching frozen client accepts 213 captured cancellation responses across
+all six methods, including the private analytic reference, with transport mocked.
+Log SHA256:
+`d779123a3052262a4f4f9cdb6438c21836e45eca4e8207213a8175df250a3322`.
+Client SHA256:
+`15dbb0f6da558566b9da6182ffd8a9333967f0a5b448e68b1280ad59257e9291`.
+The worker is terminal/removed, without HTTP/published ports or installed upgrade;
+metadata remains 49 and bootstrap warnings remain recorded. This verifies that
+older cancellation source, not candidates 66 to 68, actual browser or deployment.
+Do not add overlapping scoped/full case counts together.
+
 ## Candidate 65 private analytic reference and mixed-state coverage
 
 The first nine-case native permission/mixed-state matrix against candidate 64
@@ -93,9 +111,8 @@ upgrade and installed metadata 49. Bootstrap warnings remain recorded.
 
 This is broader earlier-source evidence, not verification of candidate 65's
 private-reference correction, candidate 66's inventory reader, or browser/release
-behavior. The candidate-65 938-case full worker is running on another synthetic
-copy and its immutable 104-file source. Do not restart that live worker after an
-observation timeout or sum overlapping cases.
+behavior. The candidate-65 938-case full worker subsequently completed on its
+separate synthetic copy and immutable 104-file source, as recorded above.
 
 ## Initial native source audit
 

@@ -4598,10 +4598,20 @@ function validConfirmationField(
     );
   return ['json', 'properties', 'properties_definition'].includes(field.type);
 }
-function checkedConfirmationSelection(value: StockConfirmationSelection) {
+function checkedConfirmationSelection(
+  value: StockConfirmationSelection,
+): StockConfirmationSelection;
+function checkedConfirmationSelection(
+  value: PagedStockConfirmationSelection,
+  inventory: true,
+): PagedStockConfirmationSelection;
+function checkedConfirmationSelection(
+  value: PagedStockConfirmationSelection,
+  inventory = false,
+) {
   if (
     !value ||
-    !stockId(value.order_id) ||
+    !(stockId(value.order_id) || (inventory && value.order_id === false)) ||
     !stockId(value.transfer_id) ||
     !stockVersion(value.version)
   )
@@ -4929,13 +4939,20 @@ function validConfirmationReference(
   );
 }
 
-export interface PagedStockConfirmationLoad extends StockConfirmationSelection {
+export interface PagedStockConfirmationSelection
+  extends Omit<StockConfirmationSelection, 'order_id'> {
+  order_id: number | false;
+}
+export interface PagedStockConfirmationLoad
+  extends PagedStockConfirmationSelection {
   transfer: OrderTransferSummary;
   package_count: number;
   reason: string | false;
   write_ready: boolean;
 }
-export interface PagedStockConfirmationReview extends StockConfirmationReview {
+export interface PagedStockConfirmationReview
+  extends Omit<StockConfirmationReview, 'order_id'> {
+  order_id: number | false;
   after: number;
   total_count: number;
   next_after: number | false;
@@ -4943,7 +4960,8 @@ export interface PagedStockConfirmationReview extends StockConfirmationReview {
   review_complete_token: string | false;
 }
 export interface PagedStockConfirmationRequest
-  extends StockConfirmationRequest {
+  extends Omit<StockConfirmationRequest, 'order_id'> {
+  order_id: number | false;
   review_complete_token: string;
 }
 export interface PagedStockConfirmationStatus
@@ -4962,7 +4980,7 @@ export interface PagedStockConfirmationReferences {
 
 function checkedPagedConfirmationLoad(
   data: PagedStockConfirmationLoad,
-  orderId: number,
+  orderId: number | false,
   transferId: number,
 ) {
   if (
@@ -5000,18 +5018,27 @@ export function checkedPagedStockConfirmationRequest(
       'review_complete_token',
       'request_key',
     ]) ||
-    !stockVersion(value.review_complete_token)
+    !stockVersion(value.review_complete_token) ||
+    !stockVersion(value.review_version) ||
+    typeof value.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      value.request_key,
+    )
   )
     throw new Error('Use the exact completely reviewed confirmation request.');
-  const { review_complete_token, ...request } = value;
-  return { ...checkedStockConfirmationRequest(request), review_complete_token };
+  return {
+    ...checkedConfirmationSelection(value, true),
+    review_version: value.review_version,
+    request_key: value.request_key,
+    review_complete_token: value.review_complete_token,
+  };
 }
 
 export async function getPagedStockConfirmation(
-  orderId: number,
+  orderId: number | false,
   transferId: number,
 ) {
-  if (!stockId(orderId) || !stockId(transferId))
+  if (!(orderId === false || stockId(orderId)) || !stockId(transferId))
     throw new Error('Select a saved stock transfer.');
   return checkedPagedConfirmationLoad(
     await stockCall<PagedStockConfirmationLoad>(
@@ -5086,13 +5113,13 @@ function confirmationEffectPageRows(effects: StockConfirmationEffects) {
 }
 
 export async function getPagedStockConfirmationReview(
-  selection: StockConfirmationSelection,
+  selection: PagedStockConfirmationSelection,
   after = 0,
   reviewVersion: string | false = false,
   continuationToken: string | false = false,
   limit = 50,
 ) {
-  const exact = checkedConfirmationSelection(selection);
+  const exact = checkedConfirmationSelection(selection, true);
   if (
     !stockCount(after) ||
     !Number.isSafeInteger(limit) ||
@@ -5549,6 +5576,7 @@ export async function getPagedStockOperationReferences(
 
 export interface PagedStockReservationLoad
   extends Omit<PagedStockConfirmationLoad, 'reason'> {
+  order_id: number;
   reasons: Record<StockReservationAction, string | false>;
 }
 export interface PagedStockReservationReview extends StockReservationSelection {
@@ -6442,7 +6470,11 @@ export function checkedPagedStockCancellationRequest(
     version: value.version,
     action,
   });
-  return { ...checkedPagedStockConfirmationRequest(common), action };
+  return {
+    ...checkedPagedStockConfirmationRequest(common),
+    order_id: value.order_id,
+    action,
+  };
 }
 export async function getPagedStockCancellation(
   orderId: number,

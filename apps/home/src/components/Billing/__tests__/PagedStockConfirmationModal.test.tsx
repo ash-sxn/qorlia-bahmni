@@ -103,11 +103,15 @@ const deferred = <T,>() => {
   });
   return { promise, resolve };
 };
-function show() {
+function show(initialOrderId: number | false = 9) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  const element = (uid = 3, orderId = 9, transferId = 11) => (
+  const element = (
+    uid = 3,
+    orderId: number | false = initialOrderId,
+    transferId = 11,
+  ) => (
     <QueryClientProvider client={client}>
       <PagedStockConfirmationModal
         uid={uid}
@@ -178,6 +182,62 @@ describe('Complete paged confirmation consumer', () => {
       configurable: true,
       value: () => request().request_key,
     });
+  });
+  it('reviews and saves an orderless transfer with the same durable recovery and no fake order label', async () => {
+    effectCount = 1;
+    referenceCount = 0;
+    const current = { ...load(), order_id: false as const };
+    const exact = { ...request(), order_id: false as const };
+    const receipt = { ...accepted(), current };
+    get.mockResolvedValue(current);
+    preview.mockImplementation(async () => ({
+      ...effectPage(),
+      order_id: false,
+    }));
+    save.mockResolvedValue(receipt);
+    check.mockResolvedValue(receipt);
+    const { client } = show(false);
+    const invalidated = jest.spyOn(client, 'invalidateQueries');
+    await completeReview();
+    expect(get).toHaveBeenCalledWith(false, 11);
+    expect(preview.mock.calls[0][0].order_id).toBe(false);
+    expect(screen.queryByText(/Order #false/)).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Save reviewed confirmation' }),
+    );
+    await screen.findByRole('heading', {
+      name: 'Accepted confirmation: waiting',
+    });
+    expect(persist).toHaveBeenCalledWith(3, exact);
+    expect(save).toHaveBeenCalledWith(exact);
+    expect(disk.get(3)).toEqual(exact);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Finish and reload transfers' }),
+    );
+    await waitFor(() => expect(clear).toHaveBeenCalledWith(3, exact));
+    await waitFor(() => expect(close).toHaveBeenCalled());
+    expect(invalidated).toHaveBeenCalledWith({
+      queryKey: ['billing', 'inventory-transfer-load', 3],
+      refetchType: 'active',
+    });
+  });
+
+  it('recovers an orderless lost-response request without issuing another save', async () => {
+    const exact = { ...request(), order_id: false as const };
+    disk.set(3, exact);
+    check.mockResolvedValue({
+      ...accepted(),
+      current: { ...load(), order_id: false },
+    });
+    show(false);
+    await screen.findByRole('heading', {
+      name: 'Accepted confirmation: waiting',
+    });
+    expect(check).toHaveBeenCalledWith(exact);
+    expect(get).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+    expect(clear).not.toHaveBeenCalled();
+    expect(disk.get(3)).toEqual(exact);
   });
   it('requires every effect page, keeps rendered rows bounded and supports pinned backward review', async () => {
     show();

@@ -51,7 +51,14 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
-Newest source: [global inventory transfer details](runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-67-global-details-19-october-2026)
+Newest source: [global Inventory confirmation](runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-68-global-confirmation-19-october-2026)
+connects orderless receipts/deliveries/internal transfers to the existing complete
+native confirmation dialog and exact durable recovery, without a fake order or
+second confirmation engine. Home passes 1,561 cases/102 suites. Native verification
+and remaining stock/workflow/browser/release gates are recorded in that guide.
+Review remains closed; no build/server, installed upgrade or deployment.
+
+Earlier source: [global inventory transfer details](runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-67-global-details-19-october-2026)
 opens unlinked transfers with a complete pinned move/operation scope and shared
 Qorlia tables, without Sales line access or fake order IDs. Header/section/cursor
 coherence, hidden-record denial and focus restoration are checked. Home passes

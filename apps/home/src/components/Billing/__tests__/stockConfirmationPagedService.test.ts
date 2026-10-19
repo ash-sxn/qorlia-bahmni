@@ -7,6 +7,7 @@ import {
   getPagedStockConfirmationReview,
   getPagedStockConfirmationStatus,
   savePagedStockConfirmation,
+  stopPagedStockConfirmation,
   checkedStockConfirmationRequest,
   PagedStockConfirmationLoad,
   PagedStockConfirmationReferences,
@@ -88,6 +89,60 @@ describe('Complete paged native confirmation boundary', () => {
     );
     expect(checkedPagedStockConfirmationRequest(request())).toEqual(request());
     expect(() => checkedStockConfirmationRequest(request())).toThrow();
+  });
+
+  it('uses all six existing confirmation APIs for an explicit orderless inventory identity', async () => {
+    const current = { ...load(), order_id: false as const };
+    const exact = { ...request(), order_id: false as const };
+    const selected = { ...selection(), order_id: false as const };
+    const result = { ...status(), current };
+    reply(current);
+    expect(await getPagedStockConfirmation(false, 11)).toEqual(current);
+    reply({ ...review(), order_id: false });
+    await getPagedStockConfirmationReview(selected);
+    reply(result);
+    expect(await savePagedStockConfirmation(exact)).toEqual(result);
+    expect(await getPagedStockConfirmationStatus(exact)).toEqual(result);
+    reply(references());
+    await getPagedStockConfirmationReferences(exact);
+    reply({ request_key: exact.request_key, accepted: true, stopped: false });
+    await stopPagedStockConfirmation(exact);
+    const calls = params();
+    expect(calls.map((call) => call.method)).toEqual(
+      ['load', 'review', 'save', 'status', 'references', 'stop'].map(
+        (action) => `qorlia_confirmation_paged_${action}`,
+      ),
+    );
+    expect(calls[0].kwargs).toEqual({ order_id: false, transfer_id: 11 });
+    expect(calls[1].kwargs.order_id).toBe(false);
+    for (const call of calls.slice(2))
+      expect(call.kwargs.payload).toEqual(exact);
+    const { review_complete_token: _proof, ...legacy } = exact;
+    expect(_proof).toBe(exact.review_complete_token);
+    expect(() => checkedStockConfirmationRequest(legacy as never)).toThrow();
+  });
+
+  it('rejects false lookalikes and order/global response swaps without inventing a scope', async () => {
+    for (const invalid of [0, true, null, '', -1, [], {}]) {
+      await expect(
+        getPagedStockConfirmation(invalid as never, 11),
+      ).rejects.toThrow();
+      expect(() =>
+        checkedPagedStockConfirmationRequest({
+          ...request(),
+          order_id: invalid,
+        } as never),
+      ).toThrow();
+    }
+    expect(fetch).not.toHaveBeenCalled();
+    reply(load());
+    await expect(getPagedStockConfirmation(false, 11)).rejects.toThrow();
+    reply({ ...load(), order_id: false });
+    await expect(getPagedStockConfirmation(9, 11)).rejects.toThrow();
+    reply(status());
+    await expect(
+      getPagedStockConfirmationStatus({ ...request(), order_id: false }),
+    ).rejects.toThrow();
   });
 
   it('keeps 501/2001 counts compact without inventing a full graph', async () => {

@@ -14,6 +14,7 @@ import {
 } from '../stockReservationRecovery';
 import { request as cancellationRequest } from './stockCancellationPagedFixture';
 import { confirmationRequest } from './stockConfirmationFixture';
+import { request as pagedConfirmationRequest } from './stockConfirmationPagedFixture';
 import { operationRequest } from './stockOperationFixture';
 import { stockRequest } from './stockReservationFixture';
 import { returnRequest } from './stockReturnPagedFixture';
@@ -25,6 +26,13 @@ jest.mock('../stockReservationRecovery', () => ({
   loadStockWriteRecovery: jest.fn(),
 }));
 const mockPanel = jest.fn();
+const mockGlobalConfirmation = jest.fn();
+jest.mock('../PagedStockConfirmationModal', () => ({
+  PagedStockConfirmationModal: (props: { close: () => void }) => {
+    mockGlobalConfirmation(props);
+    return <button onClick={props.close}>Close global confirmation</button>;
+  },
+}));
 let disk: StockWriteRequest | null;
 jest.mock('../OrderDeliveriesPanel', () => ({
   OrderDeliveriesPanel: (props: {
@@ -65,13 +73,66 @@ function show() {
       />
     </QueryClientProvider>
   );
-  return { ...render(node()), node };
+  return { ...render(node()), node, client };
 }
 beforeEach(() => {
   jest.clearAllMocks();
   disk = returnRequest();
   load.mockImplementation(async () => disk);
   global.fetch = jest.fn();
+});
+it('opens a saved global confirmation directly without routing through a sales order', async () => {
+  disk = { ...pagedConfirmationRequest(), order_id: false };
+  show();
+  const open = await screen.findByRole('button', {
+    name: 'Open saved stock workflow',
+  });
+  expect(screen.getByText(/Transfer confirmation/)).toHaveTextContent(
+    'Inventory · Transfer #11',
+  );
+  expect(screen.queryByText(/Order #false/)).not.toBeInTheDocument();
+  fireEvent.click(open);
+  expect(mockGlobalConfirmation.mock.calls.at(-1)?.[0]).toMatchObject({
+    uid: 3,
+    orderId: false,
+    transferId: 11,
+    reconnect,
+  });
+  expect(mockPanel).not.toHaveBeenCalled();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close global confirmation' }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Open saved stock workflow' }),
+    ).toHaveFocus(),
+  );
+  expect(disk?.order_id).toBe(false);
+  expect(fetch).not.toHaveBeenCalled();
+});
+it('keeps the exact global workflow mounted while its cleared recovery banner refetches', async () => {
+  disk = { ...pagedConfirmationRequest(), order_id: false };
+  const { client } = show();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Open saved stock workflow' }),
+  );
+  disk = null;
+  await act(async () => {
+    await client.invalidateQueries({
+      queryKey: ['billing', 'reservation-recovery', 3],
+    });
+  });
+  expect(
+    screen.getByRole('button', { name: 'Close global confirmation' }),
+  ).toBeInTheDocument();
+  expect(mockGlobalConfirmation.mock.calls.at(-1)?.[0].transferId).toBe(11);
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close global confirmation' }),
+  );
+  await waitFor(() => expect(fallback).toHaveBeenCalled());
+  expect(
+    screen.queryByRole('button', { name: 'Close global confirmation' }),
+  ).not.toBeInTheDocument();
 });
 const cases: [string, () => StockWriteRequest][] = [
   ['Transfer cancellation', cancellationRequest],

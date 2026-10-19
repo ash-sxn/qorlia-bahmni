@@ -15,6 +15,21 @@ jest.mock('../billingService', () => ({
   getInventoryTransfer: jest.fn(),
   getInventoryTransferDetailPage: jest.fn(),
 }));
+const mockConfirmation = jest.fn();
+jest.mock('../PagedStockConfirmationModal', () => ({
+  PagedStockConfirmationModal: (props: {
+    close: () => void;
+    reconnect: () => void;
+  }) => {
+    mockConfirmation(props);
+    return (
+      <section aria-label="Global confirmation review">
+        <button onClick={props.close}>Close global confirmation</button>
+        <button onClick={props.reconnect}>Reconnect global confirmation</button>
+      </section>
+    );
+  },
+}));
 expect.extend(toHaveNoViolations);
 const load = jest.mocked(getInventoryTransfer),
   detail = jest.mocked(getInventoryTransferDetailPage);
@@ -105,9 +120,38 @@ it('loads the independent transfer and both pinned sections, with shared read-on
     screen.queryByRole('columnheader', { name: 'Order item' }),
   ).not.toBeInTheDocument();
   expect(
-    screen.queryByRole('button', { name: /save|review|edit|add operation/i }),
+    screen.queryByRole('button', { name: /save|edit|add operation/i }),
   ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'Review or recover confirmation' }),
+  ).toBeEnabled();
   expect(await axe(document.body)).toHaveNoViolations();
+});
+it('opens the existing confirmation consumer without an order and reloads details after close', async () => {
+  show();
+  const button = await screen.findByRole('button', {
+    name: 'Review or recover confirmation',
+  });
+  fireEvent.click(button);
+  expect(mockConfirmation.mock.calls.at(-1)?.[0]).toMatchObject({
+    uid: 3,
+    orderId: false,
+    transferId: 11,
+    reconnect,
+  });
+  expect(load).toHaveBeenCalledTimes(1);
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Reconnect global confirmation' }),
+  );
+  expect(reconnect).toHaveBeenCalledTimes(1);
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close global confirmation' }),
+  );
+  await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  await screen.findByRole('button', { name: 'Review or recover confirmation' });
+  expect(
+    screen.queryByRole('region', { name: 'Global confirmation review' }),
+  ).not.toBeInTheDocument();
 });
 it('shows complete empty sections without requiring an order or inventing stock', async () => {
   const loaded = inventoryLoad();

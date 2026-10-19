@@ -1,5 +1,15 @@
 # Qorlia React frontend backend readiness
 
+## Global Inventory confirmation (19 October 2026)
+
+[Candidate 68](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-68-global-confirmation-19-october-2026)
+extends only complete paged confirmation to an explicit orderless identity,
+retaining the existing native engine, full write proofs/permissions and exact
+recovery. The Inventory entry point and direct recovery banner use the same
+dialog. Home passes 1,561 cases/102 suites. Native evidence and remaining global
+writes, current full regression, runtime/browser and release gates are in the
+guide. Installed metadata stays 49; no build/server, upgrade or deployment.
+
 ## Global inventory pinned detail reads (19 October 2026)
 
 [Candidate 67](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-67-global-details-19-october-2026)
