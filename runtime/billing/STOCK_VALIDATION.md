@@ -2,6 +2,11 @@
 
 [Billing adapter](README.md) · [Stock confirmation](STOCK_CONFIRMATION.md) · [Architecture](../../docs/architecture.md) · [Parity ledger](../../docs/FEATURE_PARITY.md)
 
+Later candidate 59 adds [compact accepted-step recovery and paged saved prompts/references](VALIDATION_RECOVERY_PAGING.md)
+without changing the older validation-step payload or native write semantics.
+It is not a large validation writer or React/runtime update. Read that guide's
+separate evidence and remaining gates alongside the dated checkpoints below.
+
 This is a development integration contract, not a released delivery-validation control. The [native contract tests](qorlia_billing_ui/tests/test_stock_validation_contract.py) exercise installed Bahmni/Odoo behaviour directly. The [adapter source](qorlia_billing_ui/models/stock_validation.py) implements load, rollback preview, reviewed save and exact status recovery. Confirmation, reservations, recorded done quantity and completed movement remain different operations. Read the dated checkpoints separately from the API specification.
 
 ## Browser completed receipt and native automatic-valuation regression, 15 October 2026

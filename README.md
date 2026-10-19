@@ -51,6 +51,15 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
+The latest backend/client source is [candidate-59 saved-validation recovery](runtime/billing/VALIDATION_RECOVERY_PAGING.md).
+It adds compact exact-receipt status and paged saved-prompt/reference readers,
+preserving the original validation-step payload. Home passes 1,049 cases/86 suites.
+This is not a larger validation writer, a migrated React consumer or a runtime
+release. The scoped native run passes 23 cases with 130-table preservation and
+91 matching Python hashes; the client accepts 27 captured native responses with
+mocked replay transport. Remaining consumer/write/runtime gates are tracked in
+that guide. Review access remains closed.
+
 The latest [19 October operation consumer source](runtime/billing/STOCK_OPERATION_PAGING.md#react-operation-consumer-source-19-october-2026)
 connects create/edit/removal through native forms, complete choice/effect pages,
 durable exact-request recovery and stop. Older pending operations keep their

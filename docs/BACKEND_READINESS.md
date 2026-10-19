@@ -1,5 +1,18 @@
 # Qorlia React frontend backend readiness
 
+## Compact saved-validation recovery candidate 59 (19 October 2026)
+
+Three read-only APIs/typed clients/source routes recover original step receipts
+without the legacy full-graph status dependency, with paged saved prompts and
+business references. Native permissions, author/company/order scope, missing/
+consumed prompts and old write protocols remain distinct. Home passes 1,049
+cases/86 suites, types and scoped source checks pass. All 23 scoped native cases
+pass with 130-table preservation, mandatory analytics/SMS and 91 matching Python
+hashes; 27 recorded native JSON responses pass the actual client with mocked
+replay transport. This is not a larger validation writer, React migration,
+installed upgrade, actual HTTP/browser/storage acceptance or deployment. See
+[the contract and evidence](../runtime/billing/VALIDATION_RECOVERY_PAGING.md).
+
 ## Complete operation consumer source (19 October 2026)
 
 New create/edit/removal uses existing complete native form/onchange/choice,

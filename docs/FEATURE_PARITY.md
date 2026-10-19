@@ -1,5 +1,22 @@
 # Bahmni workflow parity ledger
 
+## 19 October compact saved-validation recovery candidate 59
+
+- Adds three named read-only native/client/source-gateway methods for original
+  validation-step receipt status, saved native prompt rows and business-reference
+  pages. It removes a full-graph dependency from recovery, not from validation writes.
+- Keeps old payloads, native scope/permissions, exact author identity and actual
+  terminal/consumed/missing prompt distinctions. No missing wizard is recreated.
+- Home passes 1,049 cases/86 suites, including 37 client-boundary cases. Types,
+  scoped lint/format/diff and three gateway unit cases pass. The corrected scoped
+  native run passes 23 cases, preserving all 130 guarded tables and mandatory
+  analytics/SMS, with 91 Python source hashes matched. The actual client accepts
+  27 native JSON frames with mocked replay transport. See the retained failed
+  fixtures and exact limits in [the evidence guide](../runtime/billing/VALIDATION_RECOVERY_PAGING.md).
+- React recovery/prompt paging, complete large validation writes, broader native/runtime/
+  browser/storage/scale acceptance, returns and full product parity remain.
+  No build/server, review reopening, installed upgrade or deployment.
+
 ## 19 October complete operation consumer source
 
 - Create/edit/removal now connects native form/onchange, complete choice search,

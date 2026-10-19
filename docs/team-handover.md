@@ -1,5 +1,12 @@
 # New-team handover: Qorlia engineering
 
+Latest backend/client candidate: [compact saved-validation recovery](../runtime/billing/VALIDATION_RECOVERY_PAGING.md)
+adds three read-only receipt/prompt/reference APIs while preserving original
+validation-step requests and all older write contracts. It is a prerequisite,
+not a larger validation writer, migrated React consumer or tester update.
+Home passes 1,049 cases/86 suites; native evidence and remaining gates are linked
+separately. The review gate stays closed and starter-task bases are unchanged.
+
 Newest API-consumer source, 19 October:
 [complete operation editor](../runtime/billing/STOCK_OPERATION_PAGING.md#react-operation-consumer-source-19-october-2026)
 connects create/edit/removal and all native form/choice/review/recovery APIs.

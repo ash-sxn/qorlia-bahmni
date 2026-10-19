@@ -165,6 +165,18 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     .matchAll(/^    def (qorlia_validation_step_\w+)\(/gm)].map(match => match[1]);
   assert.deepEqual([...validationStepMethods].sort(), ['preview', 'save', 'status'].map(action => `qorlia_validation_step_${action}`).sort(),
     'Only three named native step APIs are covered, without raw wizard methods.');
+  const validationRecoveryMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_validation_recovery.py'), 'utf8')
+    .matchAll(/^    def (qorlia_validation_step_\w+)\(/gm)].map(match => match[1]);
+  assert.deepEqual([...validationRecoveryMethods].sort(), ['compact_status', 'prompt_page', 'reference_page'].map(action => `qorlia_validation_step_${action}`).sort(),
+    'Only three fixed validation recovery readers are added, not larger validation writes or raw wizard access.');
+  for (const method of validationRecoveryMethods) {
+    const path = `/web/dataset/call_kw/stock.picking/${method}`;
+    const params = { model: 'stock.picking', method, args: [], kwargs: {} };
+    assert.equal((await rpc(path, cookie, params)).status, 401);
+    assert.equal((await rpc(path, allCookies, params)).status, 200);
+    for (const change of [{method:'button_validate'}, {model:'stock.immediate.transfer'}, {args:[1]}, {kwargs:{context:{uid:1}}}])
+      assert.equal((await rpc(path, allCookies, {...params,...change})).status,400);
+  }
   const returnMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_return.py'), 'utf8')
     .matchAll(/^    def (qorlia_return_\w+)\(/gm)].map(match => match[1]);
   assert.deepEqual([...returnMethods].sort(), ['load', 'locations', 'preview', 'save', 'status'].map(action => `qorlia_return_${action}`).sort(),

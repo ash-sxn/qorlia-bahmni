@@ -4979,7 +4979,7 @@ function checkedStockReferencePage(
   after: number,
   version: string | false,
   limit: number,
-  kind: 'confirmation' | 'operation' | 'reservation',
+  kind: 'confirmation' | 'operation' | 'reservation' | 'validation step',
 ) {
   if (
     !confirmationKeys(data, [
@@ -5002,7 +5002,9 @@ function checkedStockReferencePage(
       (row, index) =>
         confirmationKeys(row, ['key', 'model', 'id', 'name', 'available']) &&
         typeof row.key === 'string' &&
-        validConfirmationReference(row.key, row) &&
+        (kind === 'validation step'
+          ? validValidationReference(row.key, row)
+          : validConfirmationReference(row.key, row)) &&
         (!index || row.key > data.rows[index - 1].key),
     ) ||
     (after + data.rows.length < data.total_count
@@ -6290,6 +6292,22 @@ async function validationRequest(
     method === 'qorlia_validation_save',
   );
 }
+function validValidationReference(
+  key: string,
+  row: StockConfirmationStatus['references'][string],
+) {
+  return (
+    typeof row.model === 'string' &&
+    validationModels.includes(row.model) &&
+    !row.model.startsWith('mail.') &&
+    row.model !== 'ir.attachment' &&
+    confirmationKey(key, row.model) &&
+    typeof row.available === 'boolean' &&
+    (row.available
+      ? stockId(row.id) && typeof row.name === 'string'
+      : row.id === false && row.name === false)
+  );
+}
 function checkedValidationStatus(
   data: StockValidationStatus,
   exact: StockValidationRequest,
@@ -6314,15 +6332,7 @@ function checkedValidationStatus(
     !Object.entries(data.references).every(
       ([key, row]) =>
         confirmationKeys(row, ['model', 'id', 'name', 'available']) &&
-        typeof row.model === 'string' &&
-        validationModels.includes(row.model) &&
-        !row.model.startsWith('mail.') &&
-        row.model !== 'ir.attachment' &&
-        confirmationKey(key, row.model) &&
-        typeof row.available === 'boolean' &&
-        (row.available
-          ? stockId(row.id) && typeof row.name === 'string'
-          : row.id === false && row.name === false),
+        validValidationReference(key, row),
     )
   )
     throw new Error(
@@ -6510,6 +6520,271 @@ export const saveStockValidationStep = (request: StockValidationStepRequest) =>
 export const getStockValidationStepStatus = (
   request: StockValidationStepRequest,
 ) => validationStepRequest('qorlia_validation_step_status', request);
+
+export type StockValidationPromptMetadata = Omit<
+  StockValidationStep,
+  'transfers' | 'lots' | 'operations'
+> & {
+  counts: { transfers: number; lots: number; operations: number };
+};
+export type StockValidationPromptRow =
+  | { section: 'transfers'; value: StockValidationStep['transfers'][number] }
+  | { section: 'lots'; value: StockValidationStep['lots'][number] }
+  | { section: 'operations'; value: StockValidationOperation };
+export interface StockValidationStepCompactStatus {
+  accepted: boolean;
+  request_key: string;
+  state_after: OrderTransfer['state'] | false;
+  reference_count: number;
+  current: PagedStockOperationStatus['current'];
+  next_step: StockValidationPromptMetadata | false;
+  prompt_count: number;
+  prompt_version: string | false;
+  continuation_key: string | false;
+  continuation_reason: string | false;
+  terminal: boolean;
+}
+export interface StockValidationPromptPage {
+  request_key: string;
+  version: string;
+  descriptor: StockValidationPromptMetadata;
+  after: number;
+  total_count: number;
+  next_after: number | false;
+  rows: StockValidationPromptRow[];
+}
+function promptMetadataCount(
+  data: StockValidationPromptMetadata,
+): number | false {
+  if (
+    !data ||
+    !confirmationKeys(data, [
+      'kind',
+      'title',
+      'blocked_reason',
+      'counts',
+      ...(data.kind === 'receipt'
+        ? ['source', 'destination', 'picking_code']
+        : data.kind === 'expiry'
+          ? ['description']
+          : []),
+    ]) ||
+    !confirmationKeys(data.counts, ['transfers', 'lots', 'operations']) ||
+    !Object.values(data.counts).every(stockCount) ||
+    typeof data.title !== 'string'
+  )
+    return false;
+  const { transfers, lots, operations } = data.counts;
+  const count = transfers + lots + operations;
+  if (!stockCount(count)) return false;
+  if (data.kind === 'sms')
+    return count === 0 &&
+      typeof data.blocked_reason === 'string' &&
+      !!data.blocked_reason
+      ? count
+      : false;
+  if (data.blocked_reason !== false) return false;
+  if (data.kind === 'immediate' || data.kind === 'backorder')
+    return transfers === 1 && lots === 0 && operations === 0 ? count : false;
+  if (data.kind === 'expiry')
+    return transfers === 0 &&
+      operations === 0 &&
+      lots > 0 &&
+      typeof data.description === 'string'
+      ? count
+      : false;
+  if (data.kind === 'receipt')
+    return transfers === 0 &&
+      lots === 0 &&
+      validationRelation(data.source) &&
+      validationRelation(data.destination) &&
+      ['incoming', 'internal'].includes(String(data.picking_code))
+      ? count
+      : false;
+  return false;
+}
+function validPromptRow(
+  row: StockValidationPromptRow,
+  descriptor: StockValidationPromptMetadata,
+  transferId: number,
+) {
+  if (
+    !confirmationKeys(row, ['section', 'value']) ||
+    (row.section === 'operations'
+      ? descriptor.kind !== 'receipt'
+      : row.section === 'lots'
+        ? descriptor.kind !== 'expiry'
+        : row.section === 'transfers'
+          ? !['immediate', 'backorder'].includes(descriptor.kind)
+          : true)
+  )
+    return false;
+  const { counts, ...metadata } = descriptor;
+  if (counts[row.section] === 0) return false;
+  return validValidationStep(
+    {
+      ...metadata,
+      transfers: [],
+      lots: [],
+      operations: [],
+      [row.section]: [row.value],
+    },
+    transferId,
+  );
+}
+function validationRecoveryPageParameters(
+  after: number,
+  version: string | false,
+  limit: number,
+) {
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !(version === false || stockVersion(version)) ||
+    (after > 0 && version === false)
+  )
+    throw new Error(
+      'Use a bounded saved-validation page and its original version.',
+    );
+}
+export async function getStockValidationStepCompactStatus(
+  request: StockValidationStepRequest,
+) {
+  const exact = checkedStockValidationStepRequest(request);
+  const data = await stockCall<StockValidationStepCompactStatus>(
+    'qorlia_validation_step_compact_status',
+    { payload: exact },
+  );
+  if (
+    !confirmationKeys(data, [
+      'accepted',
+      'request_key',
+      'state_after',
+      'reference_count',
+      'current',
+      'next_step',
+      'prompt_count',
+      'prompt_version',
+      'continuation_key',
+      'continuation_reason',
+      'terminal',
+    ]) ||
+    typeof data.accepted !== 'boolean' ||
+    data.request_key !== exact.request_key ||
+    !stockCount(data.reference_count) ||
+    !stockCount(data.prompt_count) ||
+    typeof data.terminal !== 'boolean' ||
+    !stockText(data.continuation_reason) ||
+    !confirmationKeys(data.current, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'transfer',
+    ]) ||
+    data.current.order_id !== exact.order_id ||
+    data.current.transfer_id !== exact.transfer_id ||
+    !stockVersion(data.current.version) ||
+    !validTransferSummary(data.current.transfer) ||
+    data.current.transfer.id !== exact.transfer_id ||
+    (data.accepted
+      ? !validationStates.includes(String(data.state_after))
+      : data.state_after !== false ||
+        data.reference_count !== 0 ||
+        data.terminal ||
+        data.next_step !== false ||
+        data.continuation_reason !== false) ||
+    (data.next_step !== false
+      ? !data.accepted ||
+        data.terminal ||
+        data.continuation_reason !== false ||
+        promptMetadataCount(data.next_step) !== data.prompt_count ||
+        !stockVersion(data.prompt_version) ||
+        data.continuation_key !== exact.request_key
+      : data.prompt_count !== 0 ||
+        data.prompt_version !== false ||
+        data.continuation_key !== false ||
+        (data.accepted &&
+          !data.terminal &&
+          (typeof data.continuation_reason !== 'string' ||
+            !data.continuation_reason)))
+  )
+    throw new Error(
+      'Invalid compact validation receipt. Keep the exact recovery request.',
+    );
+  return data;
+}
+export async function getStockValidationStepPromptPage(
+  request: StockValidationStepRequest,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedStockValidationStepRequest(request);
+  validationRecoveryPageParameters(after, version, limit);
+  const data = await stockCall<StockValidationPromptPage>(
+    'qorlia_validation_step_prompt_page',
+    { payload: exact, after, version, limit },
+  );
+  if (
+    !confirmationKeys(data, [
+      'request_key',
+      'version',
+      'descriptor',
+      'after',
+      'total_count',
+      'next_after',
+      'rows',
+    ]) ||
+    data.request_key !== exact.request_key ||
+    !stockVersion(data.version) ||
+    (version !== false && version !== data.version) ||
+    data.after !== after ||
+    !stockCount(data.total_count) ||
+    promptMetadataCount(data.descriptor) !== data.total_count ||
+    after > data.total_count ||
+    !Array.isArray(data.rows) ||
+    data.rows.length !== Math.min(limit, data.total_count - after) ||
+    !data.rows.every((row) =>
+      validPromptRow(row, data.descriptor, exact.transfer_id),
+    ) ||
+    new Set(
+      data.rows.map((row) =>
+        row.section === 'lots'
+          ? row.value[0]
+          : row.section === 'operations'
+            ? row.value.id
+            : row.value.transfer[0],
+      ),
+    ).size !== data.rows.length ||
+    (after + data.rows.length < data.total_count
+      ? data.next_after !== after + data.rows.length
+      : data.next_after !== false)
+  )
+    throw new Error('Invalid saved validation prompt page. Reload its pages.');
+  return data;
+}
+export async function getStockValidationStepReferencePage(
+  request: StockValidationStepRequest,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedStockValidationStepRequest(request);
+  validationRecoveryPageParameters(after, version, limit);
+  return checkedStockReferencePage(
+    await stockCall<PagedStockConfirmationReferences>(
+      'qorlia_validation_step_reference_page',
+      { payload: exact, after, version, limit },
+    ),
+    exact.request_key,
+    after,
+    version,
+    limit,
+    'validation step',
+  );
+}
 
 export interface OrderWorkflow {
   id: number;
