@@ -1,5 +1,22 @@
 # Qorlia React frontend backend readiness
 
+## Global inventory transfer read flow (19 October 2026)
+
+[Candidate 66](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md) adds the signed-in
+Inventory transfers tab, typed client, fixed protected gateway route and native
+reader without sales-order links. Native Stock User/Manager access, record-rule
+filtering/counts, active companies, ordering and combined Waiting semantics
+remain. Pages contain at most 25 headers, with account/context timezone dates.
+Denied/expired refreshes hide stale rows. No stock action is dispatched.
+Home passes 1,527 cases/100 suites; nine native cases preserve 132 tables with
+106 matching Python files; the client accepts 15 captured native responses with
+transport mocked. Independent committed SQL also agrees. Three source-gateway
+stub cases pass, alongside types/scoped lint. Global detail/write flows, more
+native filters/views, full matching regression, real HTTP/browser/layout,
+scale and release acceptance remain open. The earlier candidate-64 full run
+passes 928 cases with independently preserved 132 tables, not current-source
+acceptance. Review stays closed; no build/server, installed upgrade or deployment.
+
 ## Private analytic cancellation and mixed native states (19 October 2026)
 
 [Candidate 65](../runtime/billing/STOCK_CANCELLATION.md#candidate-65-private-analytic-reference-and-mixed-state-coverage)

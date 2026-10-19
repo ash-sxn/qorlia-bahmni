@@ -51,6 +51,18 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
+Newest source: [global inventory transfer workspace](runtime/billing/STOCK_INVENTORY_WORKSPACE.md)
+adds a signed-in Inventory transfers tab, named read-only API and matching native
+reader for receipts/deliveries/internal transfers without fake order links.
+Native access, company filtering, native ordering, Waiting semantics, paging and
+account-timezone dates remain. Home passes 1,527 cases/100 suites; nine native
+cases preserve 132 tables with 106 matching Python files; client replay accepts
+15 native responses with transport mocked. Global detail/write workflows,
+remaining native views, actual transport/browser and release gates stay open.
+The earlier candidate-64 full regression completed 928 cases with independent
+132-table preservation; it does not verify later candidates 65/66. No build,
+server, review reopening, installed upgrade or deployment is included.
+
 Newest cancellation source: [candidate-65 private analytic reference and mixed-state coverage](runtime/billing/STOCK_CANCELLATION.md#candidate-65-private-analytic-reference-and-mixed-state-coverage)
 preserves a legitimate native cancellation of an unreadable analytic entry,
 without exposing its identity or relaxing native permissions. Exact hidden

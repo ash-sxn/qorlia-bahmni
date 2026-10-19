@@ -1,5 +1,17 @@
 # New-team handover: Qorlia engineering
 
+Newest source: [global Inventory transfers read flow](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md).
+Candidate 66 adds a signed-in Billing tab and named native reader without fake
+order links, preserving native stock permissions/company filtering and date
+semantics. Home passes 1,527 cases/100 suites; nine native cases preserve 132
+tables with 106 matching Python files; matching-client replay accepts 15 native
+responses with transport mocked. Independent committed SQL agrees. Three
+source-gateway stub cases and source/test types/scoped lint pass. Global details,
+write/recovery workflows, remaining filters/views and actual runtime/browser
+acceptance remain. The earlier candidate-64 full regression completed 928 cases,
+not verification of sources 65/66. Starter-task bases, closed Billing review,
+installed runtime and hosted tester remain unchanged.
+
 Newest cancellation source: [private analytic references and mixed native states](../runtime/billing/STOCK_CANCELLATION.md#candidate-65-private-analytic-reference-and-mixed-state-coverage).
 Candidate 65 preserves legitimate native hidden-entry deletion with an explicit
 private-item display and a server-only signed relationship. It does not grant

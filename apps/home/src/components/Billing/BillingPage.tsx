@@ -31,6 +31,7 @@ import { CorrectionWorkflowModal } from './CorrectionWorkflowModal';
 import { CreditWorkflowModal } from './CreditWorkflowModal';
 import { CustomerPaymentsPanel } from './CustomerPaymentsPanel';
 import { CustomerStatementModal } from './CustomerStatementModal';
+import { InventoryTransfersPanel } from './InventoryTransfersPanel';
 import { InvoiceConversationModal } from './InvoiceConversationModal';
 import { InvoiceDraftEditor } from './InvoiceDraftEditor';
 import { InvoiceJournalModal } from './InvoiceJournalModal';
@@ -305,6 +306,7 @@ export function BillingPage() {
                 <Tab>Charge orders</Tab>
                 <Tab>Customer payments</Tab>
                 <Tab>Bank statements</Tab>
+                <Tab>Inventory transfers</Tab>
               </TabList>
               <TabPanels>
                 <TabPanel>
@@ -760,6 +762,17 @@ export function BillingPage() {
                 <TabPanel>
                   {tab === 3 ? (
                     <BankStatementsPanel
+                      uid={session.data!.uid as number}
+                      reconnect={() => {
+                        queryClient.removeQueries({ queryKey: ['billing'] });
+                        void session.refetch();
+                      }}
+                    />
+                  ) : null}
+                </TabPanel>
+                <TabPanel>
+                  {tab === 4 ? (
+                    <InventoryTransfersPanel
                       uid={session.data!.uid as number}
                       reconnect={() => {
                         queryClient.removeQueries({ queryKey: ['billing'] });

@@ -1,5 +1,24 @@
 # Bahmni workflow parity ledger
 
+## 19 October global inventory transfer read source
+
+- [Candidate 66](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md) connects a
+  signed-in Billing tab, typed read client, fixed protected gateway route and
+  native reader for receipts, deliveries and internal transfers without orders.
+  Native stock access, hidden-row filtering/counts, active companies, ordering,
+  Waiting semantics and account-timezone dates remain. This is browse paging,
+  not a stable signed write review, and does not make global stock actions ready.
+- Home passes 1,527 cases/100 suites, including client/panel/sign-in boundaries.
+  Nine native cases preserve all 132 guarded tables and match 106 Python files;
+  actual-client replay accepts 15 native responses with transport mocked.
+  Independent committed SQL agrees. Types, scoped lint and three source-gateway
+  stub cases pass. Real HTTP/browser/layout and wider scale/configuration remain.
+- Global detail/write/recovery, remaining native filters/grouping/views and
+  Inventory parity are unfinished. The earlier candidate-64 full regression
+  completed 928 cases with independent 132-table preservation, not acceptance of
+  candidates 65/66. A candidate-65 full worker remains on its own frozen copy.
+  No review reopening, frontend build/server, installed upgrade or deployment.
+
 ## 19 October private analytic cancellation and mixed native states
 
 - [Candidate 65](../runtime/billing/STOCK_CANCELLATION.md#candidate-65-private-analytic-reference-and-mixed-state-coverage)

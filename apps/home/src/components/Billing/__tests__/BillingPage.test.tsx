@@ -43,6 +43,7 @@ import {
   postInvoiceNote,
   getInvoiceJournal,
   getBankHistory,
+  getInventoryTransfers,
 } from '../billingService';
 import { loadStockWriteRecovery } from '../stockReservationRecovery';
 import { correctionWorkflowFixture } from './correctionWorkflowFixture';
@@ -98,6 +99,7 @@ jest.mock('../billingService', () => ({
   postInvoiceNote: jest.fn(),
   getInvoiceJournal: jest.fn(),
   getBankHistory: jest.fn(),
+  getInventoryTransfers: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({
   useUserPrivilege: jest.fn(),
@@ -144,6 +146,34 @@ const invoice = {
   currency_id: [1, 'INR'],
 };
 describe('Billing workspace', () => {
+  it('does not expose inventory before Billing sign-in', async () => {
+    jest.mocked(getBillingSession).mockResolvedValue({ uid: false });
+    show();
+    await screen.findByRole('button', { name: 'Connect Billing' });
+    expect(
+      screen.queryByRole('tab', { name: 'Inventory transfers' }),
+    ).not.toBeInTheDocument();
+    expect(getInventoryTransfers).not.toHaveBeenCalled();
+  });
+  it('loads global inventory only after Billing sign-in and selecting its tab', async () => {
+    jest.mocked(getInventoryTransfers).mockResolvedValue({
+      read_only: true,
+      filters: { search: '', operation: 'all', state: 'all' },
+      offset: 0,
+      next_offset: false,
+      total_count: 0,
+      timezone: 'UTC',
+      rows: [],
+    });
+    show();
+    const tab = await screen.findByRole('tab', { name: 'Inventory transfers' });
+    expect(getInventoryTransfers).not.toHaveBeenCalled();
+    fireEvent.click(tab);
+    expect(
+      await screen.findByText(/No transfers match these filters/),
+    ).toBeInTheDocument();
+    expect(getInventoryTransfers).toHaveBeenCalledTimes(1);
+  });
   it('mounts the bank workspace only behind the signed-in Billing tab', async () => {
     (getBankHistory as jest.Mock).mockResolvedValue({
       rows: [],

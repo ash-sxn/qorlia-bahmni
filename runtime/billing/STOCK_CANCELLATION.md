@@ -74,6 +74,29 @@ not acceptance of candidate 65. Do not sum overlapping native case counts.
 Actual HTTP/browser, deployment, global inventory scope, broader
 role/configuration coverage, scale and whole-product parity remain separate gates.
 
+## Candidate 64 full regression completed, 19 October 2026
+
+The earlier immutable candidate-64 full worker subsequently finished with
+**928 unique native cases, zero failures/errors/skips**, all 132 guarded tables
+preserved and mandatory analytics/SMS enabled. All 103 Python files match its
+frozen source. Independent post-worker read-only SQL shows identical committed
+row counts/full-row hashes across all 132 tables between the synthetic copy and
+its preserved original.
+
+The matching frozen candidate-64 client accepts 166 cancellation JSON responses
+across all six methods with replay transport mocked. Log SHA256:
+`402f9a649a0505ea497ca2b471ef30485882c9858b157c83cba0b5b052f89d70`.
+Tested client SHA256:
+`013ce1e7b0edde70b155ad13f44310055afdbd6e487da59bfd697ad9c21b8fdf`.
+The worker is terminal/removed. It used no HTTP/published ports, no installed
+upgrade and installed metadata 49. Bootstrap warnings remain recorded.
+
+This is broader earlier-source evidence, not verification of candidate 65's
+private-reference correction, candidate 66's inventory reader, or browser/release
+behavior. The candidate-65 938-case full worker is running on another synthetic
+copy and its immutable 104-file source. Do not restart that live worker after an
+observation timeout or sum overlapping cases.
+
 ## Initial native source audit
 
 The installed image source was inspected read-only while the candidate-63 return

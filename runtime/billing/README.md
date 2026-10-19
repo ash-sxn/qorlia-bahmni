@@ -3,6 +3,17 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Newest source: [global inventory transfer list](STOCK_INVENTORY_WORKSPACE.md)
+connects an authenticated Billing tab to a named native reader and protected
+source-gateway route. It includes unlinked receipts/deliveries/internal transfers,
+native access/rules/companies, ordering, Waiting semantics, paging and timezone
+dates. Nine native cases preserve 132 tables with 106 matching Python files;
+matching-client replay accepts 15 responses with transport mocked. Home passes
+1,527 cases/100 suites. Global detail/write workflows and actual transport,
+browser/layout, full matching regression and release acceptance remain open.
+The earlier candidate-64 928-case full regression is now independently verified,
+not acceptance of later sources. Review remains closed; nothing is deployed.
+
 Newest cancellation source: [candidate-65 private analytic reference and mixed-state coverage](STOCK_CANCELLATION.md#candidate-65-private-analytic-reference-and-mixed-state-coverage)
 corrects a native-compatible hidden analytic deletion without granting access or
 publishing the hidden entry. Its exact relationship remains in the server-only

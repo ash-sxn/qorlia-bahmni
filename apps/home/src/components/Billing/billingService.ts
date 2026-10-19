@@ -3247,6 +3247,103 @@ function validTransferSummary(row: OrderTransferSummary) {
     stockCount(row.operation_count)
   );
 }
+export type InventoryTransfer = Omit<OrderTransfer, 'moves' | 'operations'>;
+export type InventoryOperation = 'all' | 'incoming' | 'outgoing' | 'internal';
+export type InventoryState =
+  | 'all'
+  | 'draft'
+  | 'waiting'
+  | 'assigned'
+  | 'done'
+  | 'cancel';
+export interface InventoryTransferPage {
+  read_only: true;
+  filters: {
+    search: string;
+    operation: InventoryOperation;
+    state: InventoryState;
+  };
+  offset: number;
+  next_offset: number | false;
+  total_count: number;
+  timezone: string;
+  rows: InventoryTransfer[];
+}
+export async function getInventoryTransfers(
+  search = '',
+  operation: InventoryOperation = 'all',
+  state: InventoryState = 'all',
+  offset = 0,
+): Promise<InventoryTransferPage> {
+  if (
+    typeof search !== 'string' ||
+    search.length > 160 ||
+    !['all', 'incoming', 'outgoing', 'internal'].includes(operation) ||
+    !['all', 'draft', 'waiting', 'assigned', 'done', 'cancel'].includes(
+      state,
+    ) ||
+    !stockCount(offset) ||
+    offset > 2147483647
+  )
+    throw new Error(
+      'Use a valid inventory search, operation, status and page.',
+    );
+  const filters = { search: search.trim(), operation, state };
+  const data = await stockCall<InventoryTransferPage>(
+    'qorlia_inventory_transfers',
+    { ...filters, offset },
+  );
+  if (
+    !confirmationKeys(data, [
+      'read_only',
+      'filters',
+      'offset',
+      'next_offset',
+      'total_count',
+      'timezone',
+      'rows',
+    ]) ||
+    data.read_only !== true ||
+    !confirmationKeys(data.filters, ['search', 'operation', 'state']) ||
+    data.filters.search !== filters.search ||
+    data.filters.operation !== operation ||
+    data.filters.state !== state ||
+    data.offset !== offset ||
+    !stockCount(data.total_count) ||
+    !Array.isArray(data.rows) ||
+    data.rows.length !== Math.min(25, Math.max(0, data.total_count - offset)) ||
+    data.next_offset !==
+      (offset + 25 < data.total_count ? offset + 25 : false) ||
+    typeof data.timezone !== 'string' ||
+    !data.timezone.length ||
+    data.timezone.length > 64 ||
+    !data.rows.every(
+      (row) =>
+        confirmationKeys(row, [
+          'id',
+          'name',
+          'state',
+          'operation_type',
+          'company',
+          'customer',
+          'source',
+          'destination',
+          'scheduled_date',
+          'date_done',
+          'origin',
+          'backorder',
+        ]) && validTransferHeader(row),
+    ) ||
+    new Set(data.rows.map((row) => row.id)).size !== data.rows.length
+  )
+    throw new Error('Invalid inventory transfer page. Reload the inventory.');
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: data.timezone });
+  } catch {
+    throw new Error('Invalid inventory timezone. Reload the inventory.');
+  }
+  return data;
+}
 function validTransferMove(move: OrderTransfer['moves'][number]) {
   return (
     move &&
