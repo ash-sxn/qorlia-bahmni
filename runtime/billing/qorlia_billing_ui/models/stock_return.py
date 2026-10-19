@@ -95,9 +95,9 @@ class StockReturn(models.Model):
         return {'rows': [_label(row) for row in rows[:limit]],
             'next_after': rows[limit - 1].id if len(rows) > limit else False}
 
-    def _qorlia_return_edited_form(self, location_id, lines):
+    def _qorlia_return_edited_form(self, location_id, lines, complete=False):
         if (type(location_id) is not int or location_id <= 0 or not isinstance(lines, list)
-                or len(lines) > 500):
+                or complete is not True and len(lines) > 500):
             raise ValidationError('Use saved return moves, a native location and finite quantities.')
         form = self._qorlia_return_form()
         default_location = form.location_id.id

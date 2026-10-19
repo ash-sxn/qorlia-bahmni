@@ -193,6 +193,13 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     .matchAll(/^    def (qorlia_return_\w+)\(/gm)].map(match => match[1]);
   assert.deepEqual([...returnMethods].sort(), ['load', 'locations', 'preview', 'save', 'status'].map(action => `qorlia_return_${action}`).sort(),
     'Only five named return APIs are covered, without raw wizard creation or client contexts.');
+  const pagedReturnMethods = [...readFileSync(resolve(__dirname, '../../runtime/billing/qorlia_billing_ui/models/stock_return_paged.py'), 'utf8')
+    .matchAll(/^    def (qorlia_return_paged_\w+)\(/gm)].map(match => match[1]);
+  assert.deepEqual([...pagedReturnMethods].sort(), ['load', 'lines', 'locations', 'review'].map(action => `qorlia_return_paged_${action}`).sort(),
+    'Only four fixed complete return readers/review routes are covered, not the future writer.');
+  for (const method of ['qorlia_return_paged_save', 'qorlia_return_paged_status', '_qorlia_return_paged_preview'])
+    assert.equal((await rpc(`/web/dataset/call_kw/stock.picking/${method}`, allCookies,
+      {model:'stock.picking',method,args:[],kwargs:{}})).status,404);
   for (const [model, method] of [['stock.picking', 'button_validate'], ['stock.immediate.transfer', 'process'],
     ['stock.picking.validate.wizard', 'btn_confirm'], ['stock.backorder.confirmation', 'process'], ['expiry.picking.confirmation', 'process'],
     ['stock.return.picking', 'create_returns'], ['stock.return.picking', 'create'], ['stock.return.picking.line', 'write'],
@@ -216,6 +223,7 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     ...validationMethods.map(method => ['stock.picking', method]),
     ...validationStepMethods.map(method => ['stock.picking', method]),
     ...returnMethods.map(method => ['stock.picking', method]),
+    ...pagedReturnMethods.map(method => ['stock.picking', method]),
     ...bankMethods.map(method => ['account.bank.statement.line', method]),
     ...checkpointMethods.map(method => ['account.bank.statement', method]),
   ]) {

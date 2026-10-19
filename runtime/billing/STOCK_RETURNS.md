@@ -1,5 +1,10 @@
 # Native stock returns
 
+Later [complete form/review source](RETURN_PAGED.md) adds compact native load,
+all original form-line pages, pinned location search and sequential rollback
+review beyond the old graph cap. It deliberately has no new writer/UI yet and
+does not change the earlier protocols described below.
+
 [Billing adapter](README.md) · [Validation](STOCK_VALIDATION.md) · [Architecture](../../docs/architecture.md) · [Parity ledger](../../docs/FEATURE_PARITY.md)
 
 This is an unfinished integration, not a released return control. The objective is the complete native return workflow in Qorlia, followed by its existing stock preparation and validation controls. A read/preview endpoint is not a substitute for return creation, recovery or physical receipt.

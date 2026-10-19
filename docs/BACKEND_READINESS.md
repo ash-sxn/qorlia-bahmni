@@ -1,5 +1,21 @@
 # Qorlia React frontend backend readiness
 
+## Complete return form and review source (19 October 2026)
+
+Four named [native and typed-client APIs](../runtime/billing/RETURN_PAGED.md)
+reconstruct all native form rows, search pinned role/domain-bound locations and
+review edited rows followed by complete native effects in one proof chain.
+The old graph cap is not reused. Responses do not echo the full selected form.
+This checkpoint has no new return save/status/stop, recovery storage or React
+consumer, so write readiness stays false. Native quantity/unit/configuration and
+permission checks remain. Read the verification, failed diagnostic and remaining
+payload/performance/runtime gates before treating this as large-return acceptance.
+No frontend build/server, review reopening, installed upgrade or deployment.
+Home passes 1,240 cases/91 suites, with type/lint/format checks. The corrected
+scoped native run passes 56 cases and preserves 132 tables with 97 matching source
+hashes. Actual-client replay accepts 45 native JSON responses with mocked
+transport. This is not full-addon or real HTTP/browser/scale acceptance.
+
 ## Complete validation React consumer source (19 October 2026)
 
 The new transfer validation/resume dialog connects all seven candidate-61 native

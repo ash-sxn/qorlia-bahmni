@@ -1,5 +1,22 @@
 # Bahmni workflow parity ledger
 
+## 19 October complete return form and review source
+
+- Four fixed APIs and typed clients cover compact native defaults, all original
+  form rows, pinned native location search and ordered edited-line/effect review.
+  No full legacy graph or 500-line selection cap is used by the new protocol.
+- Native base units, hidden quantity-update default, role/domain and chained
+  unreservation effects remain. Creation is not physical receipt or refund.
+- New writer, exact recovery storage and React return consumer remain unfinished;
+  both load/review report false write readiness. Earlier APIs retain their limits.
+- [Verification, retained diagnostics and limits](../runtime/billing/RETURN_PAGED.md)
+  separate client/native evidence from HTTP, browser, storage, concurrency and
+  scale acceptance. No review reopening, build/server, upgrade or deployment.
+- Home: 1,240 cases/91 suites. Corrected native: 56 cases, zero failures/errors/
+  skips, 132-table preservation and 97 matching source hashes. Actual-client
+  replay: 45 native JSON frames, with transport mocked. Full-addon and actual
+  runtime acceptance remain separate.
+
 ## 19 October complete validation React consumer source
 
 - New validation and paged resume connect all seven fixed native APIs plus exact

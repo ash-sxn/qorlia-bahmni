@@ -1,5 +1,15 @@
 # New-team handover: Qorlia engineering
 
+Latest backend/client source: [complete return form and review](../runtime/billing/RETURN_PAGED.md)
+adds four fixed native APIs without a new writer, recovery schema or React return
+editor. Readiness stays false, and native creation is not receipt/refund. Read
+the guide's diagnostics and limits, not just client test counts. Starter-task
+bases and the closed Billing review gate are unchanged.
+Home passes 1,240 cases/91 suites. The corrected scoped native run passes 56
+cases with 132-table preservation and 97 matching source hashes; actual-client
+replay accepts 45 responses with mocked transport. Do not call this full-addon,
+actual runtime or complete large-return acceptance.
+
 Latest UI source: [complete validation consumer](../runtime/billing/VALIDATION_PAGED_WRITE.md#react-complete-validation-consumer-source-19-october-2026)
 connects new validation/resume to seven native APIs and exact-history storage.
 New transfers use complete paged review; accepted legacy prompts hand off

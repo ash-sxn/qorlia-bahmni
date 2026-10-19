@@ -3,6 +3,16 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Candidate 62: [complete return form and review](RETURN_PAGED.md) adds four fixed
+native/client/source-gateway APIs beyond the old editable graph cap. Original
+units, quantity defaults, location role/domain and chained effects remain native.
+This is not the matching writer, recovery store or React return editor; readiness
+is false. Verification, diagnostics and remaining runtime/release gates are in
+the guide. No review reopening, build/server, installed upgrade or deployment.
+Home passes 1,240 cases/91 suites. The corrected scoped native run passes 56
+cases, preserves 132 guarded tables and matches 97 Python files. The actual
+client accepts 45 native responses with mocked transport, not runtime acceptance.
+
 Latest UI source: [complete native validation consumer](VALIDATION_PAGED_WRITE.md#react-complete-validation-consumer-source-19-october-2026)
 connects all seven APIs, exact-history recovery/stop and explicit accepted-legacy
 handoff. The new validation path removes its old UI size threshold without native

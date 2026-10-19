@@ -5836,6 +5836,7 @@ function validReturnForm(data: StockReturnForm): boolean {
 }
 function checkedReturnSelection(
   value: StockReturnSelection,
+  complete = false,
 ): StockReturnSelection {
   const base = checkedConfirmationSelection(value);
   if (
@@ -5848,7 +5849,7 @@ function checkedReturnSelection(
     ]) ||
     !stockId(value.location_id) ||
     !Array.isArray(value.lines) ||
-    value.lines.length > 500 ||
+    (!complete && value.lines.length > 500) ||
     !value.lines.every(
       (row) =>
         confirmationKeys(row, ['move_id', 'quantity']) &&
@@ -6093,6 +6094,316 @@ export const saveStockReturn = (request: StockReturnRequest) =>
   returnRequest('qorlia_return_save', request);
 export const getStockReturnStatus = (request: StockReturnRequest) =>
   returnRequest('qorlia_return_status', request);
+
+export type StockReturnMetadata = Omit<StockReturnForm, 'lines'>;
+export interface PagedStockReturnLoad extends StockConfirmationSelection {
+  transfer: OrderTransferSummary;
+  form: StockReturnMetadata | false;
+  line_count: number;
+  reason: string | false;
+  write_ready: false;
+}
+export interface PagedStockReturnLines extends StockConfirmationSelection {
+  form: StockReturnMetadata;
+  after: number;
+  total_count: number;
+  next_after: number | false;
+  rows: StockReturnForm['lines'];
+}
+export interface PagedStockReturnLocations extends StockConfirmationSelection {
+  query: string;
+  after: number;
+  rows: Exclude<Relation, false>[];
+  next_after: number | false;
+}
+export interface PagedStockReturnReview
+  extends Omit<StockReturnSelection, 'lines'> {
+  form: StockReturnMetadata;
+  line_count: number;
+  return_state: StockReturnReview['return_state'];
+  write_ready: false;
+  review_version: string;
+  after: number;
+  total_count: number;
+  effect_count: number;
+  next_after: number | false;
+  line_rows: StockReturnForm['lines'];
+  effects: StockValidationEffects;
+  continuation_token: string | false;
+  review_complete_token: string | false;
+}
+function validReturnMetadata(data: StockReturnMetadata): boolean {
+  return (
+    confirmationKeys(data, [
+      'location',
+      'location_editable',
+      'show_units',
+      'chained_move_warning',
+    ]) && validReturnForm({ ...data, lines: [] })
+  );
+}
+function checkedReturnPage(
+  selection: StockConfirmationSelection,
+  after: number,
+  limit: number,
+) {
+  const exact = checkedConfirmationSelection(selection);
+  if (
+    !confirmationKeys(selection, ['order_id', 'transfer_id', 'version']) ||
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100
+  )
+    throw new Error(
+      'Use bounded native return pages and the original version.',
+    );
+  return exact;
+}
+export async function getPagedStockReturn(orderId: number, transferId: number) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  const data = await stockCall<PagedStockReturnLoad>(
+    'qorlia_return_paged_load',
+    {
+      order_id: orderId,
+      transfer_id: transferId,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'transfer',
+      'form',
+      'line_count',
+      'reason',
+      'write_ready',
+    ]) ||
+    data.order_id !== orderId ||
+    data.transfer_id !== transferId ||
+    !stockVersion(data.version) ||
+    !validTransferSummary(data.transfer) ||
+    data.transfer.id !== transferId ||
+    !stockCount(data.line_count) ||
+    data.line_count > data.transfer.move_count ||
+    data.write_ready !== false ||
+    (data.form === false
+      ? data.line_count !== 0 || typeof data.reason !== 'string' || !data.reason
+      : !validReturnMetadata(data.form) ||
+        data.reason !== false ||
+        data.transfer.state !== 'done')
+  )
+    throw new Error(
+      'Invalid complete native return state. Reload the transfer.',
+    );
+  return data;
+}
+export async function getPagedStockReturnLines(
+  selection: StockConfirmationSelection,
+  after = 0,
+  limit = 50,
+) {
+  const exact = checkedReturnPage(selection, after, limit);
+  const data = await stockCall<PagedStockReturnLines>(
+    'qorlia_return_paged_lines',
+    {
+      ...exact,
+      after,
+      limit,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'form',
+      'after',
+      'total_count',
+      'next_after',
+      'rows',
+    ]) ||
+    data.order_id !== exact.order_id ||
+    data.transfer_id !== exact.transfer_id ||
+    data.version !== exact.version ||
+    data.after !== after ||
+    !stockCount(data.total_count) ||
+    after > data.total_count ||
+    !validReturnMetadata(data.form) ||
+    !validReturnForm({ ...data.form, lines: data.rows }) ||
+    data.rows.length !== Math.min(limit, data.total_count - after) ||
+    !data.rows.every(
+      (row, index) => !index || row.move_id > data.rows[index - 1].move_id,
+    ) ||
+    data.next_after !==
+      (after + limit < data.total_count ? after + limit : false)
+  )
+    throw new Error(
+      'Invalid complete native return line page. Reload all pages.',
+    );
+  return data;
+}
+export async function getPagedStockReturnLocations(
+  selection: StockConfirmationSelection,
+  query = '',
+  after = 0,
+  limit = 25,
+) {
+  const exact = checkedReturnPage(selection, after, limit);
+  if (typeof query !== 'string' || query.length > 200)
+    throw new Error('Use a bounded native return-location search.');
+  const data = await stockCall<PagedStockReturnLocations>(
+    'qorlia_return_paged_locations',
+    {
+      ...exact,
+      query,
+      after,
+      limit,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'query',
+      'after',
+      'rows',
+      'next_after',
+    ]) ||
+    data.order_id !== exact.order_id ||
+    data.transfer_id !== exact.transfer_id ||
+    data.version !== exact.version ||
+    data.query !== query ||
+    data.after !== after ||
+    !Array.isArray(data.rows) ||
+    data.rows.length > limit ||
+    !data.rows.every(
+      (row, index) =>
+        Array.isArray(row) &&
+        validRelation(row) &&
+        stockId(row[0]) &&
+        row[0] > (index ? data.rows[index - 1][0] : after),
+    ) ||
+    !(
+      data.next_after === false ||
+      (data.rows.length === limit &&
+        stockId(data.next_after) &&
+        data.next_after === data.rows[data.rows.length - 1][0])
+    )
+  )
+    throw new Error('Invalid pinned native return locations. Reload the form.');
+  return data;
+}
+export async function getPagedStockReturnReview(
+  selection: StockReturnSelection,
+  after = 0,
+  reviewVersion: string | false = false,
+  continuationToken: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedReturnSelection(selection, true);
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    (after === 0
+      ? reviewVersion !== false || continuationToken !== false
+      : !stockVersion(reviewVersion) || !stockVersion(continuationToken))
+  )
+    throw new Error(
+      'Review bounded native return pages in order with their original tokens.',
+    );
+  const data = await stockCall<PagedStockReturnReview>(
+    'qorlia_return_paged_review',
+    {
+      payload: exact,
+      after,
+      review_version: reviewVersion,
+      continuation_token: continuationToken,
+      limit,
+    },
+  );
+  const selected = new Map(
+    exact.lines.map((row) => [row.move_id, row.quantity]),
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'location_id',
+      'form',
+      'line_count',
+      'return_state',
+      'write_ready',
+      'review_version',
+      'after',
+      'total_count',
+      'effect_count',
+      'next_after',
+      'line_rows',
+      'effects',
+      'continuation_token',
+      'review_complete_token',
+    ]) ||
+    data.order_id !== exact.order_id ||
+    data.transfer_id !== exact.transfer_id ||
+    data.version !== exact.version ||
+    data.location_id !== exact.location_id ||
+    !validReturnMetadata(data.form) ||
+    data.form.location[0] !== exact.location_id ||
+    !validReturnForm({ ...data.form, lines: data.line_rows }) ||
+    !data.line_rows.every(
+      (row, index) =>
+        selected.has(row.move_id) &&
+        selected.get(row.move_id) === row.quantity &&
+        (!index || row.move_id > data.line_rows[index - 1].move_id),
+    ) ||
+    data.line_count !== exact.lines.length ||
+    !stockCount(data.effect_count) ||
+    !stockCount(data.total_count) ||
+    !stockCount(data.line_count + data.effect_count) ||
+    data.total_count !== data.line_count + data.effect_count ||
+    after > data.total_count ||
+    data.after !== after ||
+    data.line_rows.length !==
+      Math.min(Math.max(data.line_count - after, 0), limit) ||
+    !['draft', 'waiting', 'confirmed', 'assigned'].includes(
+      data.return_state,
+    ) ||
+    data.write_ready !== false ||
+    !stockVersion(data.review_version) ||
+    (reviewVersion !== false && data.review_version !== reviewVersion) ||
+    !validValidationEffects(data.effects, true)
+  )
+    throw new Error(
+      'Invalid complete native return review page. Review from the start.',
+    );
+  const effects = confirmationEffectPageRows({
+    ...data.effects,
+    private_audit_counts: data.effects.private_effect_counts,
+  });
+  const end = Math.min(after + limit, data.total_count);
+  if (
+    !effects.valid ||
+    effects.count + data.line_rows.length !== end - after ||
+    (end < data.total_count
+      ? data.next_after !== end ||
+        !stockVersion(data.continuation_token) ||
+        data.review_complete_token !== false
+      : data.next_after !== false ||
+        data.continuation_token !== false ||
+        !stockVersion(data.review_complete_token))
+  )
+    throw new Error(
+      'Incomplete native return review page or proof. Review every page in order.',
+    );
+  return data;
+}
 function validValidationStep(
   data: StockValidationStep,
   transferId: number,
