@@ -51,11 +51,18 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
-Newest source: [global Inventory returns](runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-73-global-returns-20-october-2026)
+Newest backend source: [native transfer form reader](runtime/billing/STOCK_INVENTORY_FORM.md)
+reads the installed merged form, scalar values, native defaults and role/state
+rules for creation/editing. This is not a finished editor or save workflow; its
+35-case native suite passes, but the source gateway blocks it. No review
+reopening, build/server, installed upgrade or deployment.
+
+Earlier source: [global Inventory returns](runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-73-global-returns-20-october-2026)
 connects all eight complete return APIs and shared Qorlia form/review/recovery
 without Sales orders. The created native return opens in Inventory; creation and
 physical validation remain separate. Home passes 1,613 cases/102 suites. Native
-return verification and remaining gates are in the guide. The corrected
+return verification and remaining gates are in the guide. Its 49 native cases
+pass, with 220 matching-client responses using mocked transport. The corrected
 cancellation run passes 49 native cases with 438 matching-client responses using
 mocked transport, not acceptance of newer returns. The older
 source-68 full regression now passes 974 cases, not acceptance of newer source.

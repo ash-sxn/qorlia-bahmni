@@ -3,11 +3,18 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Newest source: [global Inventory returns](STOCK_INVENTORY_WORKSPACE.md#candidate-73-global-returns-20-october-2026)
+Newest backend source: [native transfer form reader](STOCK_INVENTORY_FORM.md)
+reads the installed merged form, native defaults/values and role/state rules.
+This is not a finished React editor or create/edit/duplicate/save workflow. Its
+35-case native suite passes; the source gateway keeps it blocked. No review
+reopening, build/server, installed upgrade or deployment.
+
+Earlier source: [global Inventory returns](STOCK_INVENTORY_WORKSPACE.md#candidate-73-global-returns-20-october-2026)
 connects all eight complete native APIs and shared Qorlia form/review/recovery
 without Sales orders. It opens the actual created return in Inventory, without
 confusing creation with physical validation or refund. Home passes 1,613
-cases/102 suites; native return verification and remaining scope are
+cases/102 suites; 49 native return cases pass with 220 matching-client responses
+using mocked transport. Native verification and remaining scope are
 in the guide. Older source-68 full regression passes 974 cases, not current-source
 acceptance. Corrected cancellation passes 49 native cases, not acceptance of
 newer returns. No review reopening, build/server, installed upgrade or deployment.

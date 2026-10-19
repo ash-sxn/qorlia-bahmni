@@ -2,6 +2,17 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Candidate 74 native transfer form reader, 20 October 2026
+
+[The form contract](STOCK_INVENTORY_FORM.md) records the installed merged native
+layout, header defaults, group/state rules and creation/editing boundaries.
+Source adds one rollback-only form reader for new or existing transfers, not a
+React editor or a save API. Its 35-case native suite passes with 108 matching
+Python hashes, 132 preserved tables and unchanged independent committed SQL;
+17 native JSON responses match the read contract, not client/React acceptance.
+The source gateway blocks it until the full consumer/review path is ready.
+No review reopening, build/server, persistent upgrade or deployment is included.
+
 ## Candidate 73 global returns, 20 October 2026
 
 Inventory details and the signed-in recovery notice now open the existing
@@ -36,14 +47,23 @@ the actual return (including global recovery entered from Sales). Library and ac
 AST parses and three gateway stub cases pass. Component, storage and transport
 doubles are not actual browser/IndexedDB or hosted acceptance.
 
-A corrected frozen **49-case native run is active**, not accepted: eight new global
+A corrected frozen **49-case native run passes, zero failures/errors/skips**: eight new global
 cases plus all 41 existing native return-form, complete-review and complete-write
 cases. It includes all three operation types without Sales access, native
 defaults/destinations, exact recovery/stop, false-versus-lookalike identities,
 stale/incomplete proofs, denied records/writes and creation followed by global
-validation. Final native results, matching-client replay and independent SQL
-comparison remain pending. Source is readonly, HTTP/published ports disabled,
-and installed metadata stays 49 on a separate synthetic database copy.
+validation. All 106 Python hashes match; all 132 guards remain with mandatory
+analytics/SMS, and independent committed SQL counts/full-row hashes match its
+baseline and the original synthetic database. The matching frozen client accepts
+**220 native responses**, including 65 global, across all eight return methods;
+transport is mocked. Log SHA256:
+`3c9e721f746cbac7b735fbde5090745821634639ae0e7343585fe82358801515`.
+Client SHA256:
+`752cb9efae2d33d7460930631c52954b804936e09bdcf663be8bc2f0986cabda`.
+The worker is terminal/removed. Source was readonly, HTTP/published ports disabled
+and installed metadata remained 49 on its separate synthetic database copy.
+Bootstrap warnings remain; this is not clean-install, actual HTTP/browser,
+installed-upgrade or release acceptance, nor acceptance of newer source 74.
 
 The first run completed 49 cases with one failed role-fixture assertion, zero
 errors/skips and all 132 guards preserved with mandatory analytics/SMS.

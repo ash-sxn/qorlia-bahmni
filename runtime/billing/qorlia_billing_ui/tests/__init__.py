@@ -50,4 +50,5 @@ from . import test_stock_cancellation_contract
 from . import test_stock_cancellation
 from . import test_stock_cancellation_matrix
 from . import test_stock_inventory
+from . import test_stock_inventory_form
 from . import test_stock_request_stop

@@ -1,10 +1,16 @@
 # New-team handover: Qorlia engineering
 
-Newest source: [global Inventory returns](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-73-global-returns-20-october-2026)
+Newest backend source: [native transfer form reader](../runtime/billing/STOCK_INVENTORY_FORM.md)
+reads the installed merged layout/metadata and actual header values/defaults.
+It prepares creation/editing, not a finished UI or write/recovery workflow. Its
+35-case native suite passes; the source gateway blocks this unfinished method.
+Starter-task bases, closed review and deployment stay unchanged.
+
+Earlier source: [global Inventory returns](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-73-global-returns-20-october-2026)
 connects eight native APIs, shared Qorlia form/review/recovery and the actual
 created Inventory transfer without a Sales order. Creation is separate from
-validation/refund. Home passes 1,613 cases/102 suites; return native
-verification and remaining scope are in the guide. Corrected cancellation
+validation/refund. Home passes 1,613 cases/102 suites; 49 native return cases pass,
+not acceptance of newer source 74. Verification/remaining scope are in the guide. Corrected cancellation
 passes 49 native cases, not acceptance of newer returns. Older source-68 full
 regression passes 974 cases, not acceptance of the current source. Starter-task
 bases, closed review access, installed runtime and deployment remain unchanged.

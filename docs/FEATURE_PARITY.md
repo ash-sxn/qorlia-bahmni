@@ -1,12 +1,25 @@
 # Bahmni workflow parity ledger
 
+## 20 October native transfer form reader source
+
+[Candidate 74](../runtime/billing/STOCK_INVENTORY_FORM.md) reads the installed
+merged form, metadata/layout, scalar values, native new defaults and role/state
+rules. It is not a React create/edit/duplicate workflow, writer or save proof.
+Its corrected 35-case native suite passes with 108 matching source hashes,
+132 guarded tables, independent SQL and 17 native JSON-contract responses, not
+client/React/HTTP acceptance. Source gateway tests keep it blocked.
+Python AST parsing and three gateway stub checks pass; no frontend changed.
+Review stays closed, with no build/server or deployment.
+
 ## 20 October global Inventory returns source
 
 [Candidate 73](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-73-global-returns-20-october-2026)
 connects all eight complete native return APIs and shared Qorlia form/review,
 schema-7 recovery and actual-created-transfer navigation without Sales orders.
 Creation is not physical validation or a financial refund. Home passes 1,613
-cases/102 suites; the native return run is active, not accepted yet. Corrected
+cases/102 suites; 49 native return cases pass with 106 matching source hashes,
+132 preserved tables, independent SQL and 220 matching-client responses using
+mocked transport. This does not accept newer source 74. Corrected
 cancellation passes 49 native cases with 438 matching-client responses using
 mocked transport, not acceptance of newer returns. The older source-68 full result is independently
 verified at 974 cases, with 132 guards and 322 matching-client responses using
