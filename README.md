@@ -51,6 +51,13 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
+New source: [saved-stock recovery on the signed-in Billing landing page](runtime/billing/STOCK_RECOVERY.md#signed-in-billing-recovery-entry-19-october-2026)
+opens the original transfer workspace without requiring an order search or
+automatically replaying/clearing a request. The [native return lifecycle coverage](runtime/billing/RETURN_PAGED_WRITE.md#native-return-to-receipt-lifecycle-coverage-19-october-2026)
+joins creation to separate physical receipt; its full 898-case regression is
+still running. Home passes 1,372 cases/95 suites; types and scoped lint pass.
+These changes do not reopen review access or deploy the product.
+
 Current backend/client source: [complete return creation and recovery](runtime/billing/RETURN_PAGED_WRITE.md)
 connects the matching full-review writer, compact exact accepted/stopped/unknown
 status, all saved reference pages and stop without reversing accepted creation.
@@ -59,7 +66,7 @@ keeps the exact request and checks all accepted references or explicit stop befo
 retirement. The matching [React return workflow](runtime/billing/RETURN_PAGED_WRITE.md#react-complete-return-consumer-source-19-october-2026)
 now connects complete item/effect review, exact save/retry/stop, all references and
 opening the created transfer for separate receipt. Runtime and release acceptance
-remain separate. Current Home checks pass 1,354 cases/94 suites, including 35
+remain separate. The return-consumer checkpoint passed 1,354 cases/94 suites, including 35
 return component and three actual-SDK wire cases with transport/storage doubles.
 The scoped native run passes 88
 cases with 132-table preservation and 99 matching source files; actual-client

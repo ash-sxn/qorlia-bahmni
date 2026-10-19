@@ -43,6 +43,7 @@ type Props = {
   uid: number;
   orderId: number;
   close: () => void;
+  closeLabel?: string;
   reconnect: () => void;
 };
 export function OrderDeliveriesPanel(props: Props) {
@@ -71,12 +72,18 @@ function OrderTransfers({
   initialTransferId,
   openTransfer,
   close,
+  closeLabel = 'Back to order details',
   reconnect,
 }: Props & {
   initialTransferId: number | null;
   openTransfer: (orderId: number, transferId: number) => void;
 }) {
   const client = useQueryClient();
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (initialTransferId === null && document.activeElement === document.body)
+      heading.current?.focus();
+  }, [initialTransferId]);
   const confirmationOpener = useRef<HTMLButtonElement | null>(null);
   const backButton = useRef<HTMLButtonElement | null>(null);
   const refreshButton = useRef<HTMLButtonElement | null>(null);
@@ -195,7 +202,9 @@ function OrderTransfers({
   };
   return (
     <section className={styles.card} aria-label="Order stock transfers">
-      <h2>Order stock transfers</h2>
+      <h2 ref={heading} tabIndex={-1}>
+        Order stock transfers
+      </h2>
       <p>
         Review native demand, reservations and recorded done quantities. A
         recorded done quantity is not a completed transfer until its status is
@@ -271,7 +280,7 @@ function OrderTransfers({
           </Button>
         ) : null}
         <Button ref={backButton} kind="tertiary" onClick={close}>
-          Back to order details
+          {closeLabel}
         </Button>
         <Button
           ref={refreshButton}

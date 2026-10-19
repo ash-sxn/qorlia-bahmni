@@ -133,7 +133,7 @@ const details = jest.mocked(getOrderTransferDetailPage);
 let fixture = orderDeliveryFixture();
 const close = jest.fn();
 const reconnect = jest.fn();
-const show = () =>
+const show = (closeLabel?: string) =>
   render(
     <QueryClientProvider
       client={
@@ -144,10 +144,23 @@ const show = () =>
         uid={3}
         orderId={9}
         close={close}
+        closeLabel={closeLabel}
         reconnect={reconnect}
       />
     </QueryClientProvider>,
   );
+it('focuses the transfer heading and returns to Billing when opened from saved recovery', () => {
+  show('Back to Billing');
+  expect(
+    screen.getByRole('heading', { name: 'Order stock transfers' }),
+  ).toHaveFocus();
+  expect(
+    screen.queryByRole('button', { name: 'Back to order details' }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Back to Billing' }));
+  expect(close).toHaveBeenCalledTimes(1);
+});
+
 const openTransfer = async () => {
   fireEvent.click(
     await screen.findByRole('button', {

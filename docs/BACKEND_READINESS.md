@@ -1,5 +1,22 @@
 # Qorlia React frontend backend readiness
 
+## Billing recovery entry and return lifecycle coverage (19 October 2026)
+
+The [signed-in Billing recovery entry](../runtime/billing/STOCK_RECOVERY.md#signed-in-billing-recovery-entry-19-october-2026)
+finds the existing pending stock request from the default tab and opens its
+original transfer workspace without submitting or clearing it. Storage failure,
+account changes and keyboard focus have explicit source tests. Native contracts,
+permissions and recovery-retirement checks are unchanged.
+Home passes 1,372 cases/95 suites; five focused entry/routing suites pass 106
+cases. Library/focused source-test types, scoped lint/format and docs checks pass.
+
+The [native lifecycle tests](../runtime/billing/RETURN_PAGED_WRITE.md#native-return-to-receipt-lifecycle-coverage-19-october-2026)
+join complete return creation to native operation/preparation and separate
+receipt/backorder/valuation, including 501 moves. The first five-case frozen
+snapshot passed with 132-table preservation. Current extra assertions and the
+898-case full run are pending terminal verification. This is not HTTP/browser,
+real IndexedDB, hosted or complete Billing acceptance. Review access stays closed.
+
 ## Complete return creation and recovery source (19 October 2026)
 
 The [candidate-63 protocol](../runtime/billing/RETURN_PAGED_WRITE.md) adds exact
@@ -11,7 +28,7 @@ requests and gates retirement on all references, fresh native outcomes and accou
 identity. The [React return consumer](../runtime/billing/RETURN_PAGED_WRITE.md#react-complete-return-consumer-source-19-october-2026)
 now connects complete form/effect paging, exact durable creation/recovery, all
 references and the separate physical-validation handoff. Generic resume routes
-returns explicitly; older typed dialogs still reject them. Current Home checks
+returns explicitly; older typed dialogs still reject them. That UI checkpoint's Home checks
 pass 1,354 cases/94 suites, including 35 return component, three actual-SDK wire
 cases with transport/storage doubles and 71 storage
 cases. Native: 88 cases, 132-table preservation and 99 matching Python files.

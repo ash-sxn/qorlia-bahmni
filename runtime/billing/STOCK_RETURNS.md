@@ -1,5 +1,11 @@
 # Native stock returns
 
+New [native lifecycle coverage](RETURN_PAGED_WRITE.md#native-return-to-receipt-lifecycle-coverage-19-october-2026)
+joins complete creation, operation/preparation and separate physical receipt,
+including partial/backorder, valuation and 501-move cases. Its initial five-case
+snapshot passed; the current 898-case native regression remains in progress.
+Keep the tested source/configuration and remaining HTTP/browser gates separate.
+
 Current [complete native creation/recovery source](RETURN_PAGED_WRITE.md)
 connects the matching full-review writer and compact recovery/stop/reference
 protocol without the older graph/selection caps. The matching

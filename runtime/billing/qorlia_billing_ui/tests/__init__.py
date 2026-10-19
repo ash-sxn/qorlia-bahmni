@@ -45,4 +45,5 @@ from . import test_stock_return_preview
 from . import test_stock_return_save
 from . import test_stock_return_paged
 from . import test_stock_return_paged_write
+from . import test_stock_return_paged_lifecycle
 from . import test_stock_request_stop

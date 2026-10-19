@@ -1,0 +1,251 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { axe, toHaveNoViolations } from 'jest-axe';
+import { StockRecoveryNotice } from '../StockRecoveryNotice';
+import {
+  loadStockWriteRecovery,
+  type StockWriteRequest,
+} from '../stockReservationRecovery';
+import { confirmationRequest } from './stockConfirmationFixture';
+import { operationRequest } from './stockOperationFixture';
+import { stockRequest } from './stockReservationFixture';
+import { returnRequest } from './stockReturnPagedFixture';
+import { validationRequest } from './stockValidationFixture';
+import { pagedValidationRequest } from './stockValidationPagedFixture';
+
+jest.mock('../stockReservationRecovery', () => ({
+  ...jest.requireActual('../stockReservationRecovery'),
+  loadStockWriteRecovery: jest.fn(),
+}));
+const mockPanel = jest.fn();
+let disk: StockWriteRequest | null;
+jest.mock('../OrderDeliveriesPanel', () => ({
+  OrderDeliveriesPanel: (props: {
+    close: () => void;
+    reconnect: () => void;
+  }) => {
+    mockPanel(props);
+    return (
+      <section aria-label="Original transfer workspace">
+        <button onClick={props.close}>Close saved workflow</button>
+        <button
+          onClick={() => {
+            disk = null;
+            props.close();
+          }}
+        >
+          Finish saved workflow
+        </button>
+        <button onClick={props.reconnect}>Reconnect original workflow</button>
+      </section>
+    );
+  },
+}));
+expect.extend(toHaveNoViolations);
+const load = jest.mocked(loadStockWriteRecovery);
+const reconnect = jest.fn(),
+  fallback = jest.fn();
+function show() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const node = (uid = 3) => (
+    <QueryClientProvider client={client}>
+      <StockRecoveryNotice
+        uid={uid}
+        reconnect={reconnect}
+        focusFallback={fallback}
+      />
+    </QueryClientProvider>
+  );
+  return { ...render(node()), node };
+}
+beforeEach(() => {
+  jest.clearAllMocks();
+  disk = returnRequest();
+  load.mockImplementation(async () => disk);
+  global.fetch = jest.fn();
+});
+const cases: [string, () => StockWriteRequest][] = [
+  ['Return creation', returnRequest],
+  ['Transfer validation', validationRequest],
+  ['Transfer validation', pagedValidationRequest],
+  ['Detailed operation', operationRequest],
+  ['Transfer confirmation', confirmationRequest],
+  ['Stock preparation', stockRequest],
+];
+it.each(cases)(
+  'recognises %s without changing its stored protocol or exposing the request key',
+  async (kind, request) => {
+    disk = request();
+    show();
+    await screen.findByRole('region', { name: 'Saved stock request' });
+    expect(screen.getByText(new RegExp(kind))).toHaveTextContent(
+      `Order #${disk.order_id} · Transfer #${disk.transfer_id}`,
+    );
+    expect(screen.queryByText(disk.request_key)).not.toBeInTheDocument();
+    expect(mockPanel).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  },
+);
+
+it('opens the exact original order directly, does not submit anything, and keeps recovery when closed', async () => {
+  disk = { ...returnRequest(), order_id: 42, transfer_id: 57 };
+  const original = disk;
+  show();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Open saved stock workflow' }),
+  );
+  expect(mockPanel.mock.calls.at(-1)?.[0]).toMatchObject({
+    uid: 3,
+    orderId: 42,
+    closeLabel: 'Back to Billing',
+  });
+  expect(fetch).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Close saved workflow' }));
+  const button = await screen.findByRole('button', {
+    name: 'Open saved stock workflow',
+  });
+  await waitFor(() => expect(button).toHaveFocus());
+  expect(disk).toEqual(original);
+  expect(load).toHaveBeenCalledTimes(2);
+});
+
+it('rechecks storage after resolution and restores the Billing heading instead of leaving stale recovery', async () => {
+  show();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Open saved stock workflow' }),
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Finish saved workflow' }),
+  );
+  await waitFor(() => expect(fallback).toHaveBeenCalledTimes(1));
+  expect(
+    screen.queryByRole('region', { name: 'Saved stock request' }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'Open saved stock workflow' }),
+  ).not.toBeInTheDocument();
+});
+
+it('resets open recovery when the Billing account changes', async () => {
+  const view = show();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Open saved stock workflow' }),
+  );
+  disk = { ...returnRequest(), order_id: 70, transfer_id: 80 };
+  view.rerender(view.node(4));
+  await screen.findByText(/Order #70/);
+  expect(
+    screen.queryByRole('region', { name: 'Original transfer workspace' }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Open saved stock workflow' }),
+  );
+  expect(mockPanel.mock.calls.at(-1)?.[0]).toMatchObject({
+    uid: 4,
+    orderId: 70,
+  });
+});
+
+it('reports unreadable storage, never assumes no request, and retries without a native mutation', async () => {
+  load.mockRejectedValueOnce(new Error('Storage blocked'));
+  show();
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'They have not been cleared',
+  );
+  expect(
+    screen.queryByRole('button', { name: 'Open saved stock workflow' }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Reload saved stock requests' }),
+  );
+  await screen.findByRole('region', { name: 'Saved stock request' });
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Open saved stock workflow' }),
+    ).toHaveFocus(),
+  );
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+it('restores focus to reload when storage remains unreadable after a fast retry', async () => {
+  load.mockRejectedValue(new Error('Storage blocked'));
+  show();
+  await screen.findByRole('alert');
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Reload saved stock requests' }),
+  );
+  await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Reload saved stock requests' }),
+    ).toHaveFocus(),
+  );
+  expect(fallback).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+it('restores Billing focus after a successful retry finds no saved request', async () => {
+  load.mockRejectedValueOnce(new Error('Storage blocked'));
+  disk = null;
+  show();
+  await screen.findByRole('alert');
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Reload saved stock requests' }),
+  );
+  await waitFor(() => expect(fallback).toHaveBeenCalledTimes(1));
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('region', { name: 'Saved stock request' }),
+  ).not.toBeInTheDocument();
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+it('does not offer stale recovery while loading or when the account has no saved request', async () => {
+  let resolve!: (request: StockWriteRequest | null) => void;
+  load.mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+  );
+  show();
+  await screen.findByText('Checking saved stock requests...');
+  expect(
+    screen.queryByRole('button', { name: 'Open saved stock workflow' }),
+  ).not.toBeInTheDocument();
+  await act(async () => resolve(null));
+  await waitFor(() =>
+    expect(
+      screen.queryByText('Checking saved stock requests...'),
+    ).not.toBeInTheDocument(),
+  );
+  expect(
+    screen.queryByRole('region', { name: 'Saved stock request' }),
+  ).not.toBeInTheDocument();
+});
+
+it('passes reconnect to the original native workspace without rewriting recovery', async () => {
+  show();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Open saved stock workflow' }),
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Reconnect original workflow' }),
+  );
+  expect(reconnect).toHaveBeenCalledTimes(1);
+  expect(disk).toEqual(returnRequest());
+});
+
+it('provides a labelled, keyboard-accessible recovery notice', async () => {
+  show();
+  await screen.findByRole('button', { name: 'Open saved stock workflow' });
+  expect(await axe(document.body)).toHaveNoViolations();
+});

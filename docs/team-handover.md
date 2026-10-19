@@ -1,5 +1,15 @@
 # New-team handover: Qorlia engineering
 
+Newest source: [signed-in Billing recovery entry](../runtime/billing/STOCK_RECOVERY.md#signed-in-billing-recovery-entry-19-october-2026)
+shows pending stock work without searching for its order and opens the existing
+workspace without replaying or clearing a request. Account/storage/focus tests
+are distinct from real browser acceptance. [Native lifecycle tests](../runtime/billing/RETURN_PAGED_WRITE.md#native-return-to-receipt-lifecycle-coverage-19-october-2026)
+join complete creation to separate receipt, including partial/backorder,
+automatic valuation and 501 moves. The initial five-case snapshot passed; the
+latest 898-case regression is in progress. Home passes 1,372 cases/95 suites;
+source/test types and scoped lint/format pass. Starter-task bases and the closed
+Billing gate are unchanged. Do not branch staff tasks from this unfinished work.
+
 Current backend/client source: [complete return creation/recovery](../runtime/billing/RETURN_PAGED_WRITE.md)
 adds exact full-review save and compact accepted/stopped/unknown recovery, saved
 references and stop without undoing accepted work. Native creation is not receipt
@@ -8,7 +18,7 @@ and checks all references/outcomes/account identity before retirement. The
 [React return consumer](../runtime/billing/RETURN_PAGED_WRITE.md#react-complete-return-consumer-source-19-october-2026)
 connects all original-item/effect pages, exact creation/recovery/stop and all saved
 references, then opens the actual created transfer for separate receipt. Generic
-resume now recognises returns; older typed dialogs still reject them. Current
+resume now recognises returns; older typed dialogs still reject them. That
 Home checks pass 1,354 cases/94 suites, including 35 return component and three
 actual-SDK wire cases using transport/storage doubles; 88 scoped native cases preserve 132
 tables and match 99 source files. Client replay accepts 155 responses with mocked

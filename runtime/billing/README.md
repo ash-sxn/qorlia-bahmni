@@ -3,6 +3,15 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+New source: [signed-in Billing recovery entry](STOCK_RECOVERY.md#signed-in-billing-recovery-entry-19-october-2026)
+surfaces the existing pending account request without an order search or any
+automatic native action. [Native return lifecycle coverage](RETURN_PAGED_WRITE.md#native-return-to-receipt-lifecycle-coverage-19-october-2026)
+joins complete creation, operation/preparation and separate receipt. The initial
+five-case frozen snapshot passed; the latest full 898-case run remains pending.
+The current Home suite passes 1,372 cases/95 suites, plus source/test types and
+scoped lint/format checks. See the entry guide for the retained focus diagnostics.
+No review reopening, HTTP/frontend server, upgrade or deployment is included.
+
 Candidate 63 source: [complete return creation/recovery](RETURN_PAGED_WRITE.md)
 adds exact full-review save, compact accepted/stopped/unknown recovery, saved
 reference paging and stop through the protected native receipt mechanism.
@@ -11,7 +20,7 @@ store preserves exact requests and requires full references/acknowledgment befor
 retirement. The [React return consumer](RETURN_PAGED_WRITE.md#react-complete-return-consumer-source-19-october-2026)
 now connects complete form/review, exact creation/recovery/stop, all references and
 opening the returned transfer for separate physical receipt. Actual runtime/release
-acceptance remains next. Current Home checks pass 1,354 cases/94 suites, including
+acceptance remains next. That UI checkpoint passed 1,354 cases/94 suites, including
 35 return component, three actual-SDK wire cases using transport/storage doubles
 and 71 storage cases. The scoped native run passes
 88 cases with 132-table preservation and 99 matching Python files. Client replay

@@ -44,6 +44,7 @@ import {
   getInvoiceJournal,
   getBankHistory,
 } from '../billingService';
+import { loadStockWriteRecovery } from '../stockReservationRecovery';
 import { correctionWorkflowFixture } from './correctionWorkflowFixture';
 import { creditWorkflowFixture } from './creditWorkflowFixture';
 import { customerStatementFixture } from './customerStatementFixture';
@@ -56,6 +57,12 @@ import {
   reversalWorkflowFixture,
   reversalResultFixture,
 } from './reversalWorkflowFixture';
+import { returnRequest } from './stockReturnPagedFixture';
+
+jest.mock('../stockReservationRecovery', () => ({
+  ...jest.requireActual('../stockReservationRecovery'),
+  loadStockWriteRecovery: jest.fn(),
+}));
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
@@ -152,6 +159,7 @@ describe('Billing workspace', () => {
   });
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue(null);
     (useUserPrivilege as jest.Mock).mockReturnValue({
       userPrivileges: [],
       error: null,
@@ -170,6 +178,25 @@ describe('Billing workspace', () => {
     (getInvoiceBatchReports as jest.Mock).mockResolvedValue([
       { key: 'invoice', name: 'Invoices' },
     ]);
+  });
+  it('shows saved stock recovery on the default invoice tab without requiring an order search', async () => {
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue(returnRequest());
+    show();
+    await screen.findByRole('region', { name: 'Saved stock request' });
+    expect(
+      screen.getByRole('tab', { name: 'Invoices and credit notes' }),
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(loadStockWriteRecovery).toHaveBeenCalledWith(3);
+    expect(getChargeOrders).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: 'Open saved stock workflow' }),
+    ).toBeEnabled();
+  });
+  it('does not inspect stock recovery before Billing sign-in', async () => {
+    jest.mocked(getBillingSession).mockResolvedValue({ uid: false });
+    show();
+    await screen.findByLabelText(/Billing username/);
+    expect(loadStockWriteRecovery).not.toHaveBeenCalled();
   });
   it('selects only checked rows and opens batch reports without automatically generating a PDF', async () => {
     (getInvoices as jest.Mock).mockResolvedValue([
@@ -247,9 +274,7 @@ describe('Billing workspace', () => {
       await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
     );
     expect(await screen.findByText('Final total')).toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Journal items', exact: true }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Journal items' }));
     fireEvent.click(
       await screen.findByRole('button', {
         name: 'Edit journal amounts and rows',

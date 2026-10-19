@@ -1,5 +1,52 @@
 # Stock write recovery storage
 
+## Signed-in Billing recovery entry, 19 October 2026
+
+The [Billing landing page](../../apps/home/src/components/Billing/BillingPage.tsx)
+now mounts a [saved-stock notice](../../apps/home/src/components/Billing/StockRecoveryNotice.tsx)
+after Billing sign-in, independently of the selected invoice/order tab. Users no
+longer have to find an order in the default draft-order list to discover a pending
+stock request. The notice reads the existing account-bound IndexedDB slot and
+uses the same query key as the transfer workspace. It does not introduce a
+second store, change a pending payload or expose its request key/proofs.
+
+The notice identifies preparation, detailed operation, confirmation, validation
+or return creation and the original order/transfer. Explicitly opening it mounts
+the existing transfer workspace for that order, where the existing protocol-
+specific Resume action remains required. Opening, reloading or closing the
+notice never sends, retries, stops or clears a native stock request. Native
+permissions and all existing exact-outcome/reference checks still apply.
+
+Unreadable storage is an error with an explicit retry, not an empty slot.
+Loading hides stale recovery details. Account changes reset the open workspace.
+Opening focuses the existing transfer heading when focus would otherwise be
+lost, without overriding the created-transfer handoff. This entry's close button
+returns to Billing, not to an order-detail screen which was never opened.
+Closing rereads storage and returns focus to the opener, retry control or Billing
+heading as appropriate. Fast completed refetches also restore focus, even when
+React Query batches away the fetching transition.
+
+[Notice tests](../../apps/home/src/components/Billing/__tests__/StockRecoveryNotice.test.tsx)
+cover all six stored protocol variants, exact original-order routing, no native
+dispatch, retained pending data, resolution, account changes, storage failure,
+retry focus and basic axe checks. Billing page tests cover default-tab discovery
+and no storage read before Billing sign-in. These are React/JSDOM tests with
+storage and child-workspace doubles, not real IndexedDB, browser visual/keyboard,
+multi-tab or native save acceptance. The earlier failed focus test is retained
+as diagnostic evidence; the production effect now observes completed refetch
+timestamps rather than relaxing the focus assertion.
+
+The final source passes **1,372 Home cases in 95 suites**, including 15 notice
+cases, two new landing-page cases and the transfer-entry focus/return case.
+Five focused routing/entry suites pass 106 cases. Library and focused actual-
+source/test TypeScript, scoped ESLint, formatting and contributor links pass.
+Adding the existing Billing page tests to the type gate exposed an unsupported
+`getByRole` option; removing that unused option preserves its exact string-name
+match. An intermediate transfer-heading focus attempt failed the existing
+created-return handoff test and was narrowed, not accepted as a new behaviour.
+No backend contract, addon version, frontend build/server, review gate, hosted
+tester or deployment changed for this UI entry.
+
 ## Complete return storage source, 19 October 2026
 
 [Candidate-63 return recovery](RETURN_PAGED_WRITE.md#durable-request-storage-source-19-october-2026)

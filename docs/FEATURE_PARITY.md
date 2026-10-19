@@ -1,5 +1,23 @@
 # Bahmni workflow parity ledger
 
+## 19 October Billing recovery entry and return lifecycle coverage
+
+- The [signed-in Billing notice](../runtime/billing/STOCK_RECOVERY.md#signed-in-billing-recovery-entry-19-october-2026)
+  discovers pending stock work from any default tab and opens the original
+  transfer workspace. It preserves the existing store/protocol and requires the
+  existing explicit resume, never an automatic retry or clear.
+- Read failures are not treated as empty recovery. Account changes reset the
+  open view; close/retry restore keyboard focus. Tests cover these states and
+  no storage reads before Billing sign-in.
+- Current UI checks pass 1,372 Home cases/95 suites and 106 cases in five focused
+  entry/routing suites. Source/test types, scoped lint/format and docs checks pass.
+- [Native lifecycle tests](../runtime/billing/RETURN_PAGED_WRITE.md#native-return-to-receipt-lifecycle-coverage-19-october-2026)
+  join creation, operation/preparation, receipt/backorder and valuation, with a
+  501-move case. The first five-case frozen run passed; the current 898-case
+  regression is still running. Do not conflate different source snapshots.
+- Browser/IndexedDB/visual, native concurrency, performance, hosted and remaining
+  whole-product parity are not accepted. The Billing review gate stays closed.
+
 ## 19 October complete return creation and recovery source
 
 - [Eight fixed native/client/source-gateway APIs](../runtime/billing/RETURN_PAGED_WRITE.md)
@@ -18,7 +36,7 @@
   review, exact save/retry/stop and every saved reference before retirement. The
   created transfer opens in Qorlia for separate receipt/validation, including a
   recovered return for another order. Creation is never labelled a refund.
-- Current UI: 1,354 Home cases/94 suites, with 35 return component, three actual-SDK
+- That UI checkpoint: 1,354 Home cases/94 suites, with 35 return component, three actual-SDK
   wire cases using transport/storage doubles and 71 storage cases. Native: 88 cases, 132-table
   preservation and 99 matching source files. Actual-client replay: 155 responses
   with mocked transport. Actual runtime/browser/storage/race/scale/release

@@ -269,7 +269,7 @@ Transfer tests cover fresh entry, unavailable unfinished transfers, exact resume
 dispatch and opening a returned transfer belonging to another order. Older
 typed storage consumers still reject returns rather than converting their proofs.
 
-Current checks: **1,354 Home cases in 94 suites** pass, including 35 return
+At this return-consumer checkpoint, **1,354 Home cases in 94 suites** pass, including 35 return
 component cases, three actual-SDK wire cases and three new transfer routing cases.
 The wire tests stub transport and durable storage, not client request/response
 validation. They cover the complete create/reference/handoff path, incomplete
@@ -283,6 +283,41 @@ relaxing production guards. A subsequent focused run passed before the full suit
 
 No native contract, addon source, installed version, frontend build/server,
 review gate, hosted tester or deployment changed in this consumer increment.
+
+## Native return-to-receipt lifecycle coverage, 19 October 2026
+
+The [lifecycle tests](qorlia_billing_ui/tests/test_stock_return_paged_lifecycle.py)
+join the actual complete return, detailed-operation, quantity-preparation and
+validation APIs instead of proving only isolated methods. Five cases cover:
+
+- Creating a linked return, editing its native operation and separately receiving
+  it, with original stock, delivered quantities and valuation checked.
+- Partial receipt and a separate native backorder decision, preserving the
+  unfinished backorder and the accepted prompt chain.
+- Automatic valuation with a balanced posted journal, required analytic
+  distributions and no invented refund or payment.
+- Stopping a pending continuation without reversing accepted preparation or
+  losing the original return-creation receipt.
+- All 501 positive original/return moves through every form, review, prompt and
+  reference page, native preparation and separate physical receipt. Exact retries
+  must not duplicate accepted effects or receipts.
+
+The initial isolated five-case run passes with all 132 guarded tables preserved,
+mandatory analytics and native SMS enabled. That frozen diagnostic predates the
+additional saved-prompt and operation-onchange assertions in the current source;
+it is not acceptance of those extra assertions. The next full-suite preflight
+stopped before execution because the harness expected 847 text-defined methods,
+while the native loader includes 898 unique cases through inherited tests. The
+diagnostic is retained, and no product test was skipped or changed to fix it.
+
+The corrected 898-case run is in progress against a matching read-only 100-Python-
+file source mount in the isolated synthetic native database. Source candidate 63
+and installed metadata 49 remain distinct. No HTTP listener, published port,
+persistent addon upgrade or frontend server is involved. Do not describe the full
+run or subsequent actual-client replay as passed until their terminal results and
+matching source hashes are checked. The separate signed-in Billing
+[recovery-entry source](STOCK_RECOVERY.md#signed-in-billing-recovery-entry-19-october-2026)
+does not change this native contract.
 
 ## Remaining work and release gates
 

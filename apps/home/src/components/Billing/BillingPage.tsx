@@ -11,7 +11,7 @@ import {
 } from '@bahmni/design-system';
 import { useUserPrivilege } from '@bahmni/widgets';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useCallback, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HomePageHeader } from '../HomePageHeader';
 import { BankStatementsPanel } from './BankStatementsPanel';
@@ -38,10 +38,13 @@ import { InvoiceReportsModal } from './InvoiceReportsModal';
 import { InvoiceWorkflowModal } from './InvoiceWorkflowModal';
 import { PaymentWorkflowModal } from './PaymentWorkflowModal';
 import { ReversalWorkflowModal } from './ReversalWorkflowModal';
+import { StockRecoveryNotice } from './StockRecoveryNotice';
 
 const label = (value: string) => value.replaceAll('_', ' ');
 
 export function BillingPage() {
+  const heading = useRef<HTMLHeadingElement>(null);
+  const focusHeading = useCallback(() => heading.current?.focus(), []);
   const { userPrivileges, error: privilegeError } = useUserPrivilege();
   const ready = userPrivileges !== null && !privilegeError;
   const queryClient = useQueryClient();
@@ -185,7 +188,9 @@ export function BillingPage() {
       <main className={styles.page}>
         <Link to="/home/">Home</Link>
         <p className={styles.eyebrow}>HOSPITAL WORKSPACE</p>
-        <h1>Billing</h1>
+        <h1 ref={heading} tabIndex={-1}>
+          Billing
+        </h1>
         <p>
           Create draft quotations and review invoices and bill details in your
           Qorlia workspace.
@@ -277,6 +282,16 @@ export function BillingPage() {
               </Button>
             </div>
             {signInError ? <p role="alert">{signInError}</p> : null}
+            {session.data?.uid ? (
+              <StockRecoveryNotice
+                uid={session.data.uid}
+                reconnect={() => {
+                  queryClient.removeQueries({ queryKey: ['billing'] });
+                  void session.refetch();
+                }}
+                focusFallback={focusHeading}
+              />
+            ) : null}
             <Tabs
               selectedIndex={tab}
               onChange={({ selectedIndex }) => {
