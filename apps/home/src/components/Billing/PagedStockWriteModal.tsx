@@ -4,6 +4,17 @@ import { useEffect, useRef, useState } from 'react';
 import styles from './BillingPage.module.scss';
 import {
   BillingSessionExpired,
+  checkedPagedStockCancellationRequest,
+  getPagedStockCancellation,
+  getPagedStockCancellationReferences,
+  getPagedStockCancellationReview,
+  getPagedStockCancellationStatus,
+  savePagedStockCancellation,
+  stopPagedStockCancellation,
+  type PagedStockCancellationLoad,
+  type PagedStockCancellationRequest,
+  type PagedStockCancellationReview,
+  type PagedStockCancellationStatus,
   checkedPagedStockConfirmationRequest,
   checkedPagedStockReservationRequest,
   getPagedStockConfirmation,
@@ -46,6 +57,10 @@ import {
   isStockOperationRequest,
   loadPagedStockWriteRecovery,
   persistPagedStockWriteRecovery,
+  isPagedStockCancellationRequest,
+  loadPagedStockCancellationRecovery,
+  persistPagedStockCancellationRecovery,
+  clearPagedStockCancellationRecovery,
 } from './stockReservationRecovery';
 import {
   stockPreparationLabels,
@@ -61,58 +76,74 @@ export type PagedStockWriteModalProps = {
   returnFocus?: () => void;
 };
 type Props = PagedStockWriteModalProps & {
-  kind: 'confirmation' | 'preparation' | 'operation';
+  kind: 'confirmation' | 'preparation' | 'operation' | 'cancellation';
   initialFailure?: Error | null;
 };
 type Request =
   | PagedStockConfirmationRequest
   | PagedStockReservationRequest
+  | PagedStockCancellationRequest
   | PagedStockOperationRequest;
 type Status =
   | PagedStockConfirmationStatus
   | PagedStockReservationStatus
+  | PagedStockCancellationStatus
   | PagedStockOperationStatus;
-type Load = PagedStockConfirmationLoad | PagedStockReservationLoad;
+type Load =
+  | PagedStockConfirmationLoad
+  | PagedStockReservationLoad
+  | PagedStockCancellationLoad;
 type ReviewCursor = {
   after: number;
   version: string | false;
   token: string | false;
 };
 type Review = {
-  page: PagedStockConfirmationReview | PagedStockReservationReview;
+  page:
+    | PagedStockConfirmationReview
+    | PagedStockReservationReview
+    | PagedStockCancellationReview;
   cursors: ReviewCursor[];
 };
 type References = { page: PagedStockConfirmationReferences; cursors: number[] };
 const isOperation = (request: Request): request is PagedStockOperationRequest =>
   isStockOperationRequest(request);
 const requestStatus = (request: Request) =>
-  isOperation(request)
-    ? getPagedStockOperationStatus(request)
-    : request.action !== undefined
-      ? getPagedStockReservationStatus(request)
-      : getPagedStockConfirmationStatus(request);
+  isPagedStockCancellationRequest(request)
+    ? getPagedStockCancellationStatus(request)
+    : isOperation(request)
+      ? getPagedStockOperationStatus(request)
+      : request.action !== undefined
+        ? getPagedStockReservationStatus(request)
+        : getPagedStockConfirmationStatus(request);
 const requestSave = (request: Request) =>
-  isOperation(request)
-    ? savePagedStockOperation(request)
-    : request.action !== undefined
-      ? savePagedStockReservation(request)
-      : savePagedStockConfirmation(request);
+  isPagedStockCancellationRequest(request)
+    ? savePagedStockCancellation(request)
+    : isOperation(request)
+      ? savePagedStockOperation(request)
+      : request.action !== undefined
+        ? savePagedStockReservation(request)
+        : savePagedStockConfirmation(request);
 const requestStop = (request: Request) =>
-  isOperation(request)
-    ? stopPagedStockOperation(request)
-    : request.action !== undefined
-      ? stopPagedStockReservation(request)
-      : stopPagedStockConfirmation(request);
+  isPagedStockCancellationRequest(request)
+    ? stopPagedStockCancellation(request)
+    : isOperation(request)
+      ? stopPagedStockOperation(request)
+      : request.action !== undefined
+        ? stopPagedStockReservation(request)
+        : stopPagedStockConfirmation(request);
 const requestReferences = (
   request: Request,
   after: number,
   version: string | false,
 ) =>
-  isOperation(request)
-    ? getPagedStockOperationReferences(request, after, version, 50)
-    : request.action !== undefined
-      ? getPagedStockReservationReferences(request, after, version, 50)
-      : getPagedStockConfirmationReferences(request, after, version, 50);
+  isPagedStockCancellationRequest(request)
+    ? getPagedStockCancellationReferences(request, after, version, 50)
+    : isOperation(request)
+      ? getPagedStockOperationReferences(request, after, version, 50)
+      : request.action !== undefined
+        ? getPagedStockReservationReferences(request, after, version, 50)
+        : getPagedStockConfirmationReferences(request, after, version, 50);
 
 export function PagedStockWriteModal(props: Props) {
   return (
@@ -135,21 +166,25 @@ function StockWriteReview({
 }: Props) {
   const noun = kind;
   const title =
-    kind === 'confirmation'
-      ? 'Confirmation'
-      : kind === 'operation'
-        ? 'Operation'
-        : 'Preparation';
+    kind === 'cancellation'
+      ? 'Cancellation'
+      : kind === 'confirmation'
+        ? 'Confirmation'
+        : kind === 'operation'
+          ? 'Operation'
+          : 'Preparation';
   const heading =
     kind === 'operation'
       ? 'Stock operation request recovery'
       : `Complete transfer ${noun} review`;
   const query =
-    kind === 'confirmation'
-      ? 'stock-confirmation-paged'
-      : kind === 'operation'
-        ? 'stock-operation-paged'
-        : 'stock-reservation-paged';
+    kind === 'cancellation'
+      ? 'stock-cancellation-paged'
+      : kind === 'confirmation'
+        ? 'stock-confirmation-paged'
+        : kind === 'operation'
+          ? 'stock-operation-paged'
+          : 'stock-reservation-paged';
   const client = useQueryClient();
   const mounted = useRef(true),
     busyRef = useRef(false);
@@ -187,15 +222,20 @@ function StockWriteReview({
   const loaded = useQuery({
     queryKey: ['billing', query, uid, orderId, transferId],
     queryFn: async () => {
-      const request = await loadPagedStockWriteRecovery(uid);
+      const request = await (kind === 'cancellation'
+        ? loadPagedStockCancellationRecovery(uid)
+        : loadPagedStockWriteRecovery(uid));
       if (
         request &&
-        (kind === 'operation'
-          ? !isStockOperationRequest(request)
-          : isStockOperationRequest(request) ||
-            (kind === 'confirmation'
-              ? !isStockConfirmationRequest(request)
-              : isStockConfirmationRequest(request)))
+        (kind === 'cancellation'
+          ? !isPagedStockCancellationRequest(request)
+          : isPagedStockCancellationRequest(request) ||
+            (kind === 'operation'
+              ? !isStockOperationRequest(request)
+              : isStockOperationRequest(request) ||
+                (kind === 'confirmation'
+                  ? !isStockConfirmationRequest(request)
+                  : isStockConfirmationRequest(request))))
       )
         throw new Error(
           'Another stock request is pending. Resume its original workflow before starting this action.',
@@ -224,9 +264,11 @@ function StockWriteReview({
       }
       const load: Load | null = request
         ? null
-        : await (kind === 'confirmation'
-            ? getPagedStockConfirmation(orderId, transferId)
-            : getPagedStockReservation(orderId, transferId));
+        : await (kind === 'cancellation'
+            ? getPagedStockCancellation(orderId, transferId)
+            : kind === 'confirmation'
+              ? getPagedStockConfirmation(orderId, transferId)
+              : getPagedStockReservation(orderId, transferId));
       return {
         request,
         status,
@@ -249,6 +291,9 @@ function StockWriteReview({
       : null;
   const writable = request ? null : loaded.data?.load;
   const accepted = receipt ?? loaded.data?.status;
+  const cancellationStopped =
+    kind === 'cancellation' &&
+    (stopped || (accepted && 'stopped' in accepted && accepted.stopped));
   const recoveryError = receipt || stopped ? null : loaded.data?.recoveryError;
   const expired =
     failure instanceof BillingSessionExpired ||
@@ -286,9 +331,11 @@ function StockWriteReview({
     setReferences(null);
     setConfirmStop(false);
     setNotice(
-      value.accepted
-        ? `This exact ${noun} was accepted. Review saved references before finishing.`
-        : 'No receipt found yet. This does not prove the earlier request stopped. Check again or retry only the identical request.',
+      'stopped' in value && value.stopped
+        ? 'This exact cancellation request was stopped. It did not cancel the transfer.'
+        : value.accepted
+          ? `This exact ${noun} was accepted. Review saved references before finishing.`
+          : 'No receipt found yet. This does not prove the earlier request stopped. Check again or retry only the identical request.',
     );
   };
   const reviewPage = (
@@ -301,7 +348,13 @@ function StockWriteReview({
         review && 'action' in review.page ? review.page.action : selectedAction;
       const preparing = 'reasons' in writable;
       if ((kind === 'preparation') !== preparing) return;
-      if (preparing ? !action || !!writable.reasons[action] : !!writable.reason)
+      if (
+        preparing
+          ? !action ||
+            action === 'cancel_transfer' ||
+            !!writable.reasons[action]
+          : !!writable.reason
+      )
         return;
       const cursors = review
         ? previous
@@ -327,21 +380,29 @@ function StockWriteReview({
         version: writable.version,
       };
       const page =
-        kind === 'preparation' && action
-          ? await getPagedStockReservationReview(
-              { ...selection, action },
+        kind === 'cancellation'
+          ? await getPagedStockCancellationReview(
+              { ...selection, action: 'cancel_transfer' },
               cursor.after,
               cursor.version,
               cursor.token,
               50,
             )
-          : await getPagedStockConfirmationReview(
-              selection,
-              cursor.after,
-              cursor.version,
-              cursor.token,
-              50,
-            );
+          : kind === 'preparation' && action && action !== 'cancel_transfer'
+            ? await getPagedStockReservationReview(
+                { ...selection, action },
+                cursor.after,
+                cursor.version,
+                cursor.token,
+                50,
+              )
+            : await getPagedStockConfirmationReview(
+                selection,
+                cursor.after,
+                cursor.version,
+                cursor.token,
+                50,
+              );
       const previousAction = old && 'action' in old ? old.action : undefined;
       const nextAction = 'action' in page ? page.action : undefined;
       if (
@@ -361,6 +422,7 @@ function StockWriteReview({
     run(async () => {
       if (
         stopped ||
+        cancellationStopped ||
         accepted?.accepted ||
         (!request &&
           (!review ||
@@ -384,14 +446,21 @@ function StockWriteReview({
           request_key: crypto.randomUUID(),
         };
         exact =
-          'action' in page
-            ? checkedPagedStockReservationRequest({
+          'action' in page && page.action === 'cancel_transfer'
+            ? checkedPagedStockCancellationRequest({
                 ...selection,
                 action: page.action,
               })
-            : checkedPagedStockConfirmationRequest(selection);
+            : 'action' in page
+              ? checkedPagedStockReservationRequest({
+                  ...selection,
+                  action: page.action,
+                })
+              : checkedPagedStockConfirmationRequest(selection);
       }
-      await persistPagedStockWriteRecovery(uid, exact);
+      await (isPagedStockCancellationRequest(exact)
+        ? persistPagedStockCancellationRecovery(uid, exact)
+        : persistPagedStockWriteRecovery(uid, exact));
       if (!mounted.current) return;
       setPending(exact);
       showStatus(await requestSave(exact));
@@ -426,7 +495,13 @@ function StockWriteReview({
     accepted?.accepted &&
     (accepted.reference_count === 0 || references?.page.next_after === false);
   const clearAndReload = async (exact: Request) => {
-    await clearPagedStockWriteRecovery(uid, exact);
+    await (isPagedStockCancellationRequest(exact)
+      ? clearPagedStockCancellationRecovery(
+          uid,
+          exact,
+          references?.page.version ?? false,
+        )
+      : clearPagedStockWriteRecovery(uid, exact));
     await Promise.all([
       client.invalidateQueries({
         queryKey: ['billing', 'order-deliveries', uid],
@@ -439,6 +514,7 @@ function StockWriteReview({
         'stock-reservation-paged',
         'stock-operation-paged',
         'stock-operation-form-paged',
+        'stock-cancellation-paged',
         'stock-confirmation',
         'stock-reservation',
         'stock-operation',
@@ -472,6 +548,10 @@ function StockWriteReview({
   const stop = () =>
     run(async () => {
       if (!request || !confirmStop || accepted?.accepted) return;
+      if (isPagedStockCancellationRequest(request)) {
+        await persistPagedStockCancellationRecovery(uid, request);
+        if (!mounted.current) return;
+      }
       const result = await requestStop(request);
       if (!mounted.current) return;
       if (result.accepted) {
@@ -505,7 +585,15 @@ function StockWriteReview({
         aria-label={heading}
         aria-busy={busy || loaded.isFetching}
       >
-        {kind === 'confirmation' ? (
+        {kind === 'cancellation' ? (
+          <p>
+            Cancel this unfinished transfer through the native stock workflow.
+            This releases reservations and may cancel or detach linked
+            downstream moves. Recorded quantities may remain on surviving
+            operation lines. Review all effects before cancelling. This does not
+            receive goods, cancel the sales order or invoice, or issue a refund.
+          </p>
+        ) : kind === 'confirmation' ? (
           <p>
             Mark as Todo can reserve stock, merge moves and create upstream
             transfers or vendor RFQs. It does not complete delivery, post an
@@ -571,7 +659,9 @@ function StockWriteReview({
                     }
                     onClick={() => void reviewPage()}
                   >
-                    Review Mark as Todo
+                    {kind === 'cancellation'
+                      ? 'Review transfer cancellation'
+                      : 'Review Mark as Todo'}
                   </Button>
                 </>
               ) : (
@@ -608,7 +698,12 @@ function StockWriteReview({
                   {review.page.state_after}. This preview has not been saved.
                 </p>
                 {'action' in review.page ? (
-                  <p>Action: {stockPreparationLabels[review.page.action]}</p>
+                  <p>
+                    Action:{' '}
+                    {review.page.action === 'cancel_transfer'
+                      ? 'Cancel transfer'
+                      : stockPreparationLabels[review.page.action]}
+                  </p>
                 ) : null}
                 <p>
                   Displayed records cover this page. Private audit counts apply
@@ -641,6 +736,7 @@ function StockWriteReview({
                   </p>
                 )}
                 <Button
+                  kind={kind === 'cancellation' ? 'danger' : 'primary'}
                   disabled={
                     locked ||
                     !!failure ||
@@ -651,7 +747,9 @@ function StockWriteReview({
                   }
                   onClick={() => void save()}
                 >
-                  Save reviewed {noun}
+                  {kind === 'cancellation'
+                    ? 'Cancel reviewed transfer'
+                    : `Save reviewed ${noun}`}
                 </Button>
               </>
             ) : null}
@@ -673,7 +771,9 @@ function StockWriteReview({
                   ? 'Save operation'
                   : request.action === 'delete'
                     ? 'Remove operation'
-                    : stockPreparationLabels[request.action]}
+                    : request.action === 'cancel_transfer'
+                      ? 'Cancel transfer'
+                      : stockPreparationLabels[request.action]}
               </p>
             ) : null}
             {request.action === 'save' || request.action === 'delete' ? (
@@ -699,7 +799,21 @@ function StockWriteReview({
             >
               Check {noun} request
             </Button>
-            {!accepted?.accepted ? (
+            {cancellationStopped ? (
+              <>
+                <p role="status">
+                  This cancellation request was stopped. It did not cancel the
+                  transfer.
+                </p>
+                <Button
+                  kind="tertiary"
+                  disabled={locked}
+                  onClick={() => void run(async () => clearAndReload(request))}
+                >
+                  Finish stopped cancellation request
+                </Button>
+              </>
+            ) : !accepted?.accepted ? (
               <>
                 <Button
                   kind="danger"
@@ -814,10 +928,10 @@ function StockWriteReview({
               </>
             )}
             <p>
-              Keep this request after any failed response. An unaccepted status
-              is not proof of cancellation. Only a matching server stop result
-              allows this pending request to be cleared without an accepted
-              receipt.
+              Keep this request after any failed response. An unknown status is
+              not proof that the request stopped. Only a matching server stop
+              result allows this pending request to be cleared without an
+              accepted receipt.
             </p>
           </>
         ) : (

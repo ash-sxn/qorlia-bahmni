@@ -28,6 +28,7 @@ type Props = {
   confirmation: MouseEventHandler<HTMLButtonElement>;
   reservation: MouseEventHandler<HTMLButtonElement>;
   returnStock: MouseEventHandler<HTMLButtonElement>;
+  cancellation: MouseEventHandler<HTMLButtonElement>;
   operation: (
     selection: StockOperationSelection,
     opener: HTMLButtonElement,
@@ -55,6 +56,7 @@ function TransferDetails({
   confirmation,
   reservation,
   returnStock,
+  cancellation,
   operation,
   reload,
   reconnect,
@@ -217,6 +219,13 @@ function TransferDetails({
       {transfer.state === 'done' ? (
         <Button kind="tertiary" disabled={locked} onClick={returnStock}>
           Review stock return
+        </Button>
+      ) : null}
+      {['assigned', 'confirmed', 'draft', 'waiting'].includes(
+        transfer.state,
+      ) ? (
+        <Button kind="tertiary" disabled={locked} onClick={cancellation}>
+          Review transfer cancellation
         </Button>
       ) : null}
       <Button kind="tertiary" disabled={locked} onClick={validation}>

@@ -1,5 +1,31 @@
 # Stock write recovery storage
 
+## Complete cancellation recovery source, 19 October 2026
+
+[The React cancellation consumer](STOCK_CANCELLATION.md#react-complete-cancellation-consumer-source-19-october-2026)
+uses dedicated schema 8 in the same strict per-account slot, without migrating
+any prior request or validation history. Its envelope contains exactly `schema`,
+`kind`, `database`, `uid` and `request`; kind is `paged_cancellation`. The request
+keeps the exact seven native fields, including `action: "cancel_transfer"` and
+the terminal completion proof. Older typed dialogs reject it unchanged; generic
+transfer resume and the signed-in notice identify it explicitly.
+
+Persistence checks the actual Billing UID/database before and after commit.
+New/retried save and explicit stop await this persistence before transport.
+Unknown, rejected, expired or lost responses retain the exact request. No storage
+helper dispatches a save or stop. Retirement checks the original account,
+accepted/stopped native outcome, every pinned reference page (including an empty
+accepted set), the UI's earlier reference pin when supplied, fresh status and
+account, then atomically clears only the same request. Another request, changed
+visibility, overlapping pages or an aborted transaction is retained.
+
+The storage suite passes 104 cases; the full Home suite passes 1,490/98 suites.
+New cancellation dialogs and actual-SDK wiring pass 21 and four cases. These use
+the existing IndexedDB double or transport/storage doubles. They do not prove
+real browser durability, quota/crash recovery, multi-tab/concurrent transactions
+or runtime rollout. Native API evidence and remaining gates stay separate in the
+cancellation guide. No review reopening, build, HTTP server or deployment.
+
 ## Signed-in Billing recovery entry, 19 October 2026
 
 The [Billing landing page](../../apps/home/src/components/Billing/BillingPage.tsx)
@@ -10,8 +36,8 @@ stock request. The notice reads the existing account-bound IndexedDB slot and
 uses the same query key as the transfer workspace. It does not introduce a
 second store, change a pending payload or expose its request key/proofs.
 
-The notice identifies preparation, detailed operation, confirmation, validation
-or return creation and the original order/transfer. Explicitly opening it mounts
+The notice identifies preparation, detailed operation, confirmation, validation,
+return creation or cancellation and the original order/transfer. Explicitly opening it mounts
 the existing transfer workspace for that order, where the existing protocol-
 specific Resume action remains required. Opening, reloading or closing the
 notice never sends, retries, stops or clears a native stock request. Native
@@ -27,7 +53,8 @@ heading as appropriate. Fast completed refetches also restore focus, even when
 React Query batches away the fetching transition.
 
 [Notice tests](../../apps/home/src/components/Billing/__tests__/StockRecoveryNotice.test.tsx)
-cover all six stored protocol variants, exact original-order routing, no native
+cover seven representative stored-request variants, including cancellation,
+exact original-order routing, no native
 dispatch, retained pending data, resolution, account changes, storage failure,
 retry focus and basic axe checks. Billing page tests cover default-tab discovery
 and no storage read before Billing sign-in. These are React/JSDOM tests with
@@ -36,7 +63,7 @@ multi-tab or native save acceptance. The earlier failed focus test is retained
 as diagnostic evidence; the production effect now observes completed refetch
 timestamps rather than relaxing the focus assertion.
 
-The final source passes **1,372 Home cases in 95 suites**, including 15 notice
+The earlier recovery-entry checkpoint passed **1,372 Home cases in 95 suites**, including 15 notice
 cases, two new landing-page cases and the transfer-entry focus/return case.
 Five focused routing/entry suites pass 106 cases. Library and focused actual-
 source/test TypeScript, scoped ESLint, formatting and contributor links pass.

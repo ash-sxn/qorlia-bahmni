@@ -13,6 +13,7 @@ import {
   StockValidationStepRequest,
 } from './billingService';
 import { OrderTransferDetails } from './OrderTransferDetails';
+import { PagedStockCancellationModal } from './PagedStockCancellationModal';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
 import { PagedStockOperationEditor } from './PagedStockOperationEditor';
 import { PagedStockReservationModal } from './PagedStockReservationModal';
@@ -30,6 +31,7 @@ import {
   isPagedStockWriteRequest,
   isPagedStockValidationRequest,
   isPagedStockReturnRequest,
+  isPagedStockCancellationRequest,
   loadStockWriteRecovery,
 } from './stockReservationRecovery';
 import {
@@ -101,6 +103,10 @@ function OrderTransfers({
     initialTransferId,
   );
   const [stockReturn, setStockReturn] = useState<{
+    orderId: number;
+    transferId: number;
+  } | null>(null);
+  const [cancellation, setCancellation] = useState<{
     orderId: number;
     transferId: number;
   } | null>(null);
@@ -192,6 +198,7 @@ function OrderTransfers({
     setConfirmation(null);
     setValidation(null);
     setStockReturn(null);
+    setCancellation(null);
     refresh();
     void client.invalidateQueries({
       queryKey: ['billing', 'reservation-recovery', uid],
@@ -218,7 +225,13 @@ function OrderTransfers({
             disabled={recovery.isFetching || recovery.isError}
             onClick={(event) => {
               const pending = recovery.data!;
-              if (isPagedStockReturnRequest(pending)) {
+              if (isPagedStockCancellationRequest(pending)) {
+                confirmationOpener.current = event.currentTarget;
+                setCancellation({
+                  orderId: pending.order_id,
+                  transferId: pending.transfer_id,
+                });
+              } else if (isPagedStockReturnRequest(pending)) {
                 confirmationOpener.current = event.currentTarget;
                 setStockReturn({
                   orderId: pending.order_id,
@@ -268,15 +281,17 @@ function OrderTransfers({
               }
             }}
           >
-            {isPagedStockReturnRequest(recovery.data)
-              ? 'Resume return request'
-              : isStockValidationRequest(recovery.data)
-                ? 'Resume validation request'
-                : isStockConfirmationRequest(recovery.data)
-                  ? 'Resume confirmation request'
-                  : isStockOperationRequest(recovery.data)
-                    ? 'Resume operation request'
-                    : 'Resume reservation request'}
+            {isPagedStockCancellationRequest(recovery.data)
+              ? 'Resume cancellation request'
+              : isPagedStockReturnRequest(recovery.data)
+                ? 'Resume return request'
+                : isStockValidationRequest(recovery.data)
+                  ? 'Resume validation request'
+                  : isStockConfirmationRequest(recovery.data)
+                    ? 'Resume confirmation request'
+                    : isStockOperationRequest(recovery.data)
+                      ? 'Resume operation request'
+                      : 'Resume reservation request'}
           </Button>
         ) : null}
         <Button ref={backButton} kind="tertiary" onClick={close}>
@@ -411,6 +426,10 @@ function OrderTransfers({
               snapshot={first}
               stockLocked={stockLocked}
               focusOnLoad={initialTransferId === transferId}
+              cancellation={(event) => {
+                confirmationOpener.current = event.currentTarget;
+                setCancellation({ orderId, transferId });
+              }}
               returnStock={(event) => {
                 confirmationOpener.current = event.currentTarget;
                 setStockReturn({ orderId, transferId });
@@ -454,6 +473,16 @@ function OrderTransfers({
           transferId={reservation.transferId}
           close={reloadTransfers}
           reconnect={reconnect}
+        />
+      ) : null}
+      {cancellation ? (
+        <PagedStockCancellationModal
+          uid={uid}
+          orderId={cancellation.orderId}
+          transferId={cancellation.transferId}
+          close={reloadTransfers}
+          reconnect={reconnect}
+          returnFocus={restoreConfirmationFocus}
         />
       ) : null}
       {stockReturn ? (

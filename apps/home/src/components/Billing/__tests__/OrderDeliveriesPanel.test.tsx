@@ -19,6 +19,7 @@ import {
   orderDeliveryPageFixture,
   orderTransferDetailPageFixture,
 } from './orderDeliveryFixture';
+import { request as cancellationRequest } from './stockCancellationPagedFixture';
 import { confirmationRequest } from './stockConfirmationFixture';
 import { operationRequest, operationSelection } from './stockOperationFixture';
 import { stockRequest } from './stockReservationFixture';
@@ -62,6 +63,15 @@ jest.mock('../PagedStockConfirmationModal', () => ({
 const mockValidation = jest.fn();
 const mockPagedValidation = jest.fn();
 const mockPagedReturn = jest.fn();
+const mockPagedCancellation = jest.fn();
+jest.mock('../PagedStockCancellationModal', () => ({
+  PagedStockCancellationModal: (props: { close: () => void }) => {
+    mockPagedCancellation(props);
+    return (
+      <button onClick={props.close}>Return from complete cancellation</button>
+    );
+  },
+}));
 jest.mock('../PagedStockReturnModal', () => ({
   PagedStockReturnModal: (props: { close: () => void }) => {
     mockPagedReturn(props);
@@ -172,6 +182,81 @@ const openTransfer = async () => {
   });
 };
 describe('Order stock transfer review', () => {
+  it.each(['draft', 'waiting', 'confirmed', 'assigned'] as const)(
+    'opens reviewed native cancellation for %s transfers with focus restoration and refresh',
+    async (state) => {
+      fixture.rows[0].state = state;
+      show();
+      await openTransfer();
+      const button = screen.getByRole('button', {
+        name: 'Review transfer cancellation',
+      });
+      await waitFor(() => expect(button).toBeEnabled());
+      fireEvent.click(button);
+      const props = mockPagedCancellation.mock.calls.at(-1)?.[0];
+      expect(props).toMatchObject({ uid: 3, orderId: 9, transferId: 11 });
+      props.returnFocus();
+      expect(button).toHaveFocus();
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Return from complete cancellation',
+        }),
+      );
+      await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+      expect(mockPagedConfirmation).not.toHaveBeenCalled();
+      expect(mockPagedReservation).not.toHaveBeenCalled();
+    },
+  );
+  it.each(['done', 'cancel'] as const)(
+    'does not offer cancellation for %s transfers',
+    async (state) => {
+      fixture.rows[0].state = state;
+      show();
+      await openTransfer();
+      expect(
+        screen.queryByRole('button', { name: 'Review transfer cancellation' }),
+      ).not.toBeInTheDocument();
+      expect(mockPagedCancellation).not.toHaveBeenCalled();
+    },
+  );
+  it('resumes the original off-page cancellation and keeps other native actions locked', async () => {
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue({
+      ...cancellationRequest(),
+      order_id: 42,
+      transfer_id: 57,
+    });
+    show();
+    await openTransfer();
+    for (const name of [
+      'Review transfer cancellation',
+      'Review transfer validation',
+      'Review transfer confirmation',
+      'Review stock preparation',
+    ])
+      expect(screen.getByRole('button', { name })).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Resume cancellation request' }),
+    );
+    expect(mockPagedCancellation.mock.calls.at(-1)?.[0]).toMatchObject({
+      uid: 3,
+      orderId: 42,
+      transferId: 57,
+    });
+    expect(mockPagedConfirmation).not.toHaveBeenCalled();
+    expect(mockPagedReservation).not.toHaveBeenCalled();
+    expect(mockPagedValidation).not.toHaveBeenCalled();
+  });
+  it('blocks cancellation while recovery storage is unavailable', async () => {
+    jest
+      .mocked(loadStockWriteRecovery)
+      .mockRejectedValue(new Error('Recovery unavailable'));
+    show();
+    await openTransfer();
+    await screen.findByText('Recovery unavailable');
+    expect(
+      screen.getByRole('button', { name: 'Review transfer cancellation' }),
+    ).toBeDisabled();
+  });
   it('offers complete return only for completed transfers and restores focus on close', async () => {
     fixture.rows[0].state = 'done';
     show();

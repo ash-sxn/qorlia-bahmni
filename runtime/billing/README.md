@@ -3,13 +3,21 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest UI source: [complete native cancellation consumer](STOCK_CANCELLATION.md#react-complete-cancellation-consumer-source-19-october-2026)
+uses schema-8 exact recovery in the same account slot, complete ordered native
+review, explicit cancellation, exact status/retry/stop, pinned saved references
+and transfer/landing-page resume. The existing Qorlia review dialog and all older
+request protocols remain. Home passes 1,490 cases/98 suites, including 104 storage,
+21 cancellation component and four actual-SDK wiring cases with doubles. Actual
+runtime/browser/IndexedDB, broader parity and release acceptance remain open.
+
 Candidate-64 source: [native transfer cancellation](STOCK_CANCELLATION.md#candidate-64-native-api-and-client-source)
 adds six fixed native APIs, typed clients and gateway routes. Complete effect
 review and exact save/status/reference/stop are distinct from quantity
 preparation, physical receipt and refund. Protected finance, physical quantities,
-native permissions and receipt guards remain. There is no dedicated durable
-cancellation schema or UI yet. Client checks pass 51 cases; full Home passes
-1,423 cases/96 suites. Thirty native cases preserve 132 tables with 103 matching
+native permissions and receipt guards remain. The later consumer above adds
+durable recovery and UI. That API checkpoint passed 51 client cases and
+1,423 Home cases/96 suites. Thirty native cases preserve 132 tables with 103 matching
 Python hashes, and actual-client replay accepts 166 frames with transport mocked.
 Independent committed-table SQL agrees. Retained diagnostics are recorded
 in the guide, separately from runtime/browser acceptance and the earlier return

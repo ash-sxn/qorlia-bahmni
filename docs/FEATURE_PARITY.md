@@ -1,5 +1,28 @@
 # Bahmni workflow parity ledger
 
+## 19 October complete cancellation React and durable recovery source
+
+- [The consumer](../runtime/billing/STOCK_CANCELLATION.md#react-complete-cancellation-consumer-source-19-october-2026)
+  connects all six native APIs through the shared Qorlia dialog. Complete ordered
+  effect review precedes an explicit danger-labelled cancellation action. No raw
+  native action or UI-only state write is used.
+- Dedicated schema 8 shares the strict account slot. All older payloads/history
+  remain; older typed readers/clearers reject cancellation unchanged. Actual
+  account/database checks and strict persistence precede save/retry and stop.
+  Unknown outcomes and expiry retain the original nonce/proofs.
+- Accepted, unknown and explicitly stopped outcomes remain distinct. Full pinned
+  references, fresh status/account and exact slot checks gate retirement, carrying
+  the UI reference pin. A save-winning stop recovers acceptance, not reversal.
+- Transfer details, generic resume and signed-in Billing notice route the
+  original cancellation order/transfer. Snapshot/storage failures lock new writes.
+  Paging/return focus and shared native-effect/privacy rendering remain.
+- Home passes 1,490 cases/98 suites: 104 storage, 21 cancellation-dialog and four
+  actual-SDK wiring cases with transport/storage doubles. The 34 transfer and 16
+  notice cases include cancellation. Native evidence retains its separate source
+  snapshot and scope. Actual runtime/browser/IndexedDB/multi-tab/concurrency,
+  keyboard/narrow layout, performance, installed rollout and whole-product parity
+  remain open. No review reopening, frontend build/server or deployment.
+
 ## 19 October complete native cancellation API and client source
 
 - [Candidate 64](../runtime/billing/STOCK_CANCELLATION.md#candidate-64-native-api-and-client-source)
@@ -17,7 +40,8 @@
   matching Python hashes; actual-client replay accepts 166 native JSON frames
   with transport mocked. Independent post-worker SQL matches every guarded table
   to the committed synthetic source. Retained diagnostics stay in the guide.
-- Dedicated durable cancellation recovery and React controls remain unfinished.
+- At this earlier API checkpoint, durable recovery and React controls were unfinished;
+  the later consumer source above supersedes that gap, not its runtime gates.
   No raw native route, review reopening, frontend build/server, installed upgrade
   or deployment is included. The older contract audit below predates this API.
 

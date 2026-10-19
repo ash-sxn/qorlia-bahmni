@@ -51,10 +51,18 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
+Latest UI source: [complete transfer cancellation](runtime/billing/STOCK_CANCELLATION.md#react-complete-cancellation-consumer-source-19-october-2026)
+connects ordered native review, explicit cancellation, schema-8 durable recovery,
+exact retry/status/stop, all saved references and original-transfer resume from
+signed-in Billing. It reuses the shared Qorlia dialog, preserves all older stock
+protocols and distinguishes cancelling goods from stopping a pending request.
+Home passes 1,490 cases/98 suites. Real runtime/browser/storage/concurrency and
+release gates remain separate; review access stays closed and nothing is deployed.
+
 Candidate-64 source: [native transfer cancellation](runtime/billing/STOCK_CANCELLATION.md#candidate-64-native-api-and-client-source)
 adds complete effect review, native save, exact status/reference/stop recovery,
-typed clients and six fixed gateway routes. It has no cancellation UI or durable
-schema yet. Client checks pass 51 cases; the full Home suite passes 1,423 cases/96
+typed clients and six fixed gateway routes. The matching consumer is described
+above. At that API checkpoint, client checks passed 51 cases and Home passed 1,423 cases/96
 suites. Thirty native cases preserve 132 tables with 103 matching Python hashes;
 actual-client replay accepts 166 native response frames with transport mocked.
 Independent committed-table SQL agrees. Remaining runtime gates are separate.

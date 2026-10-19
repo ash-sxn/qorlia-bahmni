@@ -1,5 +1,20 @@
 # Qorlia React frontend backend readiness
 
+## Complete cancellation React consumer (19 October 2026)
+
+The [shared native-review consumer](../runtime/billing/STOCK_CANCELLATION.md#react-complete-cancellation-consumer-source-19-october-2026)
+now connects cancellation review/save/status/references/stop, schema-8 exact
+durable recovery and original-transfer resume from the signed-in Billing notice.
+It preserves all older protocols, native reasons/permissions and complete proof
+chains. Strict persistence/account checks precede save and stop; stopped requests
+cannot be presented as cancelled transfers. All pinned references, fresh outcome
+and account, and the exact unchanged slot gate clearing.
+Home passes 1,490 cases/98 suites, including 104 storage, 21 cancellation component
+and four actual-SDK dialog cases using doubles. Existing shared dialogs remain
+covered. Native verification is separate from real HTTP/browser/IndexedDB,
+concurrency/scale, wider parity and release gates. No build/server, review renewal
+or deployment is included.
+
 ## Complete native cancellation API and client source (19 October 2026)
 
 [Candidate 64](../runtime/billing/STOCK_CANCELLATION.md#candidate-64-native-api-and-client-source)
@@ -11,8 +26,8 @@ Client/source checks pass 51 cancellation cases, 1,423 Home cases/96 suites, bot
 type checks, scoped lint and three gateway tests. Thirty native cases preserve
 132 tables with 103 matching Python hashes, and actual-client replay accepts 166
 frames with transport mocked. Independent committed-table SQL agrees. See the
-guide for separate native evidence and retained failed-run diagnostics. Dedicated durable
-cancellation storage and its React consumer remain unfinished; this is not
+guide for separate native evidence and retained failed-run diagnostics. The later
+consumer above adds dedicated cancellation storage/UI; this is not
 runtime, browser or release acceptance. The earlier audit below predates the API.
 
 ## Native cancellation contract audit (19 October 2026)

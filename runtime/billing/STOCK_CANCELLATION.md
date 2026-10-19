@@ -7,9 +7,9 @@
 Transfer cancellation is a distinct native workflow, not another name for
 stopping an uncertain browser request. Candidate 64 adds the six fixed native
 APIs, matching typed clients and source-gateway routes described below. The
-Qorlia transfer screen connects preparation, detailed operations, confirmation,
-validation and returns, but does not yet expose cancellation. Its dedicated
-durable recovery schema, React consumer and acceptance remain unfinished. Do not
+matching React consumer and dedicated schema-8 recovery now connect cancellation
+from the transfer workspace and signed-in Billing notice in source. Actual
+runtime/browser and broader parity acceptance remain unfinished. Do not
 label the full stock workflow complete or reinterpret Stop to fill this gap.
 
 The installed image source was inspected read-only while the candidate-63 return
@@ -155,9 +155,9 @@ routes with the existing clinical/ERP sign-in checks, empty positional arguments
 no caller context and the normal 32 KiB body bound. Raw `action_cancel`, move
 cancellation, private methods and unknown routes remain denied.
 
-Client verification passes 51 cancellation cases and the full Home suite, 1,423
-cases in 96 suites. Library and focused source/test types, scoped ESLint and three
-gateway tests pass. Gateway tests use test-only stubs, not a live native worker.
+At the native API/client checkpoint, 51 cancellation cases and the full Home
+suite, 1,423 cases in 96 suites, passed. Library/focused source-test types, scoped
+ESLint and three gateway tests passed. Gateway tests use test-only stubs, not a live native worker.
 The corrected candidate-64 run passes **30 native cases, zero failures/errors/
 skips**: 19 API cases and 11 direct native cases. It preserves all 132 guarded
 tables, mandatory analytics and native SMS, with all 103 Python hashes matching
@@ -191,25 +191,69 @@ flushed by the API's standard context entry. The corrected test flushes that
 prior native work before pinning all 132 tables, just as the earlier direct
 completed-delivery rejection does. It does not omit any table from comparison.
 
-## Implementation and acceptance still required
+## React complete cancellation consumer source, 19 October 2026
 
-The next consumer crosses the existing
+The consumer extends the existing
 [per-account recovery store](../../apps/home/src/components/Billing/stockReservationRecovery.ts),
 [transfer dispatcher](../../apps/home/src/components/Billing/OrderDeliveriesPanel.tsx)
 and [Billing recovery entry](../../apps/home/src/components/Billing/StockRecoveryNotice.tsx).
-Use a dedicated versioned cancellation record in that same slot, not an
-independent slot that permits overlapping native stock writes. Generic detection
-must recognise cancellation before confirmation/preparation guards; older typed
-dialogs must reject it without dropping its action or completion proof. Preserve
-every existing request schema and validation history.
+Schema 8 contains exactly `schema`, `kind`, `database`, `uid` and `request`, with
+kind `paged_cancellation` and all seven original request fields. It uses the same
+strict per-account slot, not an independent slot permitting overlapping native
+stock writes. Generic dispatch recognises cancellation before older preparation
+guards; older typed readers/clearers reject it without dropping its action or
+completion proof. Schemas 1 to 7 and validation history remain unchanged.
 
-The new dialog must persist the exact request before transport, retain it after
-unknown outcomes or expiry, and reopen through the original transfer workspace.
+The [cancellation dialog](../../apps/home/src/components/Billing/PagedStockCancellationModal.tsx)
+reuses the [shared complete-review dialog](../../apps/home/src/components/Billing/PagedStockWriteModal.tsx),
+Qorlia/Carbon controls, existing styles and permission-aware native effects
+renderer. It reads actual cancellation readiness, pages every effect with the
+original proof chain and requires an explicit danger-labelled **Cancel reviewed
+transfer** action. Browsing a transfer or opening recovery never saves, retries,
+stops or clears a request. The transfer entry follows the native unfinished-state
+visibility rule and remains locked while snapshot/recovery reads are unresolved.
+Native load/review permissions and reasons still decide actual availability.
+
+Exact requests persist before native dispatch, with account/database checks
+before and after strict storage commit. Save retries use the original nonce and
+proofs. Stop also rechecks that exact durable slot/account before dispatch. A
+changed identity or unmount during persistence cannot trigger a late save/stop.
+Response loss, native rejection and expiry keep the original recovery request.
+An explicitly stopped request has its own finish action and cannot be presented
+as a cancelled transfer or retried as a fresh cancellation. Acceptance winning a
+stop race recovers the accepted receipt instead of reversing it.
+
 Retirement requires the original account/database, an accepted or explicitly
-stopped native outcome, every pinned saved-reference page, and a fresh matching
-status before clearing the exact unchanged slot. A saved cancellation and a
-stopped pending cancellation need different success messages. No automatic save,
-stop or clear is allowed merely from opening the recovery notice.
+stopped outcome, all pinned saved-reference pages, a fresh matching status and
+atomic clearing of the exact unchanged slot. The UI's reviewed reference version
+is carried through retirement, so changed references cannot be silently replaced
+with a newer set. Even zero-reference acceptance verifies the empty pinned page.
+Changed/missing reads, overlapping pages, quota/commit failure or another pending
+request preserve recovery. Recovery opens the original order/transfer even when
+it is absent from the currently selected order. Focus returns to the opener or
+workspace fallback, and effect/reference headings receive focus after paging.
+
+Source checks pass **1,490 Home cases in 98 suites**, including 104 storage
+cases, 21 cancellation-dialog cases and four actual-SDK dialog wiring cases.
+The 34 transfer-dispatch and 16 signed-in-notice cases include cancellation.
+The wiring cases use synthetic fixtures and transport/storage doubles, not the
+166 captured native response frames used by the earlier native-client replay.
+The existing confirmation/preparation paths remain covered by their own 25/24
+dialog cases. Basic axe checks, library/focused source-test types and scoped
+lint/format remain distinct from real browser or release acceptance.
+
+Retained UI diagnostic: the initial ten failing cancellation-dialog selectors
+did not include the shared danger control's existing accessible-name prefix.
+The tests now match the actual visible action text within that name; no native
+proof, account check, effect assertion or action guard was removed.
+
+The candidate-64 full native regression has a separate immutable 103-file mount
+and 928 unique cases; its result must be verified independently. This UI/store
+increment changes no native API, addon version or database schema. The closed
+Billing gate, hosted tester and production are unchanged. No frontend build,
+browser, tunnel, live HTTP server or persistent upgrade was used for these checks.
+
+## Remaining parity and release gates
 
 1. Extend the native cases/merged form to the wider account/stock privilege
    matrix, mixed completed/scrapped moves and other installed configurations.
@@ -221,10 +265,10 @@ stop or clear is allowed merely from opening the recovery notice.
    approved actual transport. Failed or lost responses require the original
    request, not another cancellation attempt with a new identity. A stop cannot
    undo an accepted cancellation.
-3. Reuse the durable per-account stock slot and Qorlia design system. Make the
-   destructive action explicit and separate from filters, request stopping,
-   invoice/order cancellation, backorder decisions and returns. Review linked
-   downstream effects, not only the currently visible transfer page.
+3. Independently replay the React/durable recovery flows against an approved
+   matching worker, including destructive-action clarity, linked downstream
+   effects, saved-versus-stopped messages and all reference pages. Source tests
+   do not replace real browser/IndexedDB, quota, crash or multi-tab acceptance.
 4. Independently verify physical stock, reservations, surviving operation lines,
    downstream moves, delivered/received quantities, permitted analytic deletion,
    unchanged protected ledger/payment state and exact duplicate recovery.

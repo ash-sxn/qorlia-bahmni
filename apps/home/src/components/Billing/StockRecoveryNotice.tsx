@@ -5,6 +5,7 @@ import styles from './BillingPage.module.scss';
 import { OrderDeliveriesPanel } from './OrderDeliveriesPanel';
 import {
   isPagedStockReturnRequest,
+  isPagedStockCancellationRequest,
   isStockValidationRequest,
   isStockOperationRequest,
   isStockConfirmationRequest,
@@ -86,15 +87,17 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
     );
   const request = saved.data;
   if (!request) return null;
-  const kind = isPagedStockReturnRequest(request)
-    ? 'Return creation'
-    : isStockValidationRequest(request)
-      ? 'Transfer validation'
-      : isStockOperationRequest(request)
-        ? 'Detailed operation'
-        : isStockConfirmationRequest(request)
-          ? 'Transfer confirmation'
-          : 'Stock preparation';
+  const kind = isPagedStockCancellationRequest(request)
+    ? 'Transfer cancellation'
+    : isPagedStockReturnRequest(request)
+      ? 'Return creation'
+      : isStockValidationRequest(request)
+        ? 'Transfer validation'
+        : isStockOperationRequest(request)
+          ? 'Detailed operation'
+          : isStockConfirmationRequest(request)
+            ? 'Transfer confirmation'
+            : 'Stock preparation';
   return (
     <section className={styles.card} aria-label="Saved stock request">
       <h2>Check your saved stock request</h2>

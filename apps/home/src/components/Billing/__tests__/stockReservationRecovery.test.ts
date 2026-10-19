@@ -1,9 +1,12 @@
+import { waitFor } from '@testing-library/react';
 import {
   StockReservationRequest,
   PagedStockValidationRequest,
   PagedStockValidationStatus,
   PagedStockReturnRequest,
   PagedStockReturnStatus,
+  PagedStockCancellationRequest,
+  PagedStockCancellationStatus,
 } from '../billingService';
 import {
   clearStockReservationRecovery,
@@ -36,6 +39,10 @@ import {
   loadPagedStockReturnRecovery,
   persistPagedStockReturnRecovery,
   clearPagedStockReturnRecovery,
+  isPagedStockCancellationRequest,
+  loadPagedStockCancellationRecovery,
+  persistPagedStockCancellationRecovery,
+  clearPagedStockCancellationRecovery,
 } from '../stockReservationRecovery';
 import { orderDeliveryPageFixture } from './orderDeliveryFixture';
 import { confirmationRequest } from './stockConfirmationFixture';
@@ -320,6 +327,452 @@ function returnOutcome(
   });
   return state;
 }
+
+const completeCancellation = (): PagedStockCancellationRequest => ({
+  ...confirmationRequest(),
+  action: 'cancel_transfer',
+  review_complete_token: 'c'.repeat(64),
+});
+const cancellationEnvelope = (request = completeCancellation(), uid = 3) => ({
+  schema: 8,
+  kind: 'paged_cancellation',
+  database: billingDatabase,
+  uid,
+  request,
+});
+function cancellationOutcome(
+  outcome: 'accepted' | 'stopped' | 'unknown' = 'accepted',
+  count = 0,
+) {
+  const accepted = outcome === 'accepted';
+  const status: PagedStockCancellationStatus = {
+    accepted,
+    stopped: outcome === 'stopped',
+    request_key: completeCancellation().request_key,
+    state_after: accepted ? 'cancel' : false,
+    reference_count: accepted ? count : 0,
+    current: {
+      order_id: 9,
+      transfer_id: 11,
+      version: 'd'.repeat(64),
+      transfer: {
+        ...orderDeliveryPageFixture().rows[0],
+        state: accepted ? 'cancel' : 'assigned',
+        move_count: 501,
+        operation_count: accepted ? 0 : 2001,
+      },
+    },
+  };
+  const state = {
+    status,
+    rows: Array.from({ length: count }, (_, index) => ({
+      key: `new:stock.move:${index}`,
+      model: 'stock.move',
+      id: 100 + index,
+      name: 'QorliaQA native reference',
+      available: true,
+    })).sort((a, b) => (a.key < b.key ? -1 : 1)),
+    version: 'e'.repeat(64),
+    session: { uid: 3, db: billingDatabase },
+  };
+  (fetch as jest.Mock).mockImplementation(async (route, options) => {
+    let result: unknown;
+    if (route.endsWith('/web/session/get_session_info')) result = state.session;
+    else {
+      const { method, kwargs } = JSON.parse(options.body).params;
+      if (method === 'qorlia_cancellation_paged_status') result = state.status;
+      else if (method === 'qorlia_cancellation_paged_references') {
+        if (kwargs.version !== false && kwargs.version !== state.version)
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              error: {
+                data: {
+                  name: 'odoo.exceptions.UserError',
+                  arguments: ['Cancellation references changed'],
+                },
+              },
+            }),
+          };
+        const { after, limit } = kwargs;
+        result = {
+          request_key: completeCancellation().request_key,
+          version: state.version,
+          after,
+          total_count: state.rows.length,
+          rows: state.rows.slice(after, after + limit),
+          next_after: after + limit < state.rows.length ? after + limit : false,
+        };
+      } else
+        throw new Error(`Unexpected cancellation recovery method: ${method}`);
+    }
+    const body = JSON.stringify({ result });
+    return { ok: true, status: 200, json: async () => JSON.parse(body) };
+  });
+  return state;
+}
+
+describe('Complete native cancellation durable recovery', () => {
+  it('retains references that no longer match the version reviewed by the UI', async () => {
+    const fake = database();
+    fake.records.set(3, cancellationEnvelope());
+    cancellationOutcome('accepted', 1);
+    await expect(
+      clearPagedStockCancellationRecovery(
+        3,
+        completeCancellation(),
+        'f'.repeat(64),
+      ),
+    ).rejects.toThrow(/references changed/);
+    expect(fake.records.get(3)).toEqual(cancellationEnvelope());
+  });
+  beforeEach(() => {
+    global.fetch = jest.fn();
+  });
+  it('stores exact schema-8 cancellation in the existing strict account slot without a native write', async () => {
+    const fake = database(),
+      exact = completeCancellation();
+    cancellationOutcome();
+    await persistPagedStockCancellationRecovery(3, exact);
+    expect(fake.records.get(3)).toEqual(cancellationEnvelope());
+    expect(await loadPagedStockCancellationRecovery(3)).toEqual(exact);
+    expect(await loadStockWriteRecovery(3)).toEqual(exact);
+    expect(isPagedStockCancellationRequest(exact)).toBe(true);
+    expect(isPagedStockWriteRequest(exact)).toBe(false);
+    expect(isStockConfirmationRequest(exact)).toBe(false);
+    expect(fake.factory.open).toHaveBeenCalledWith(
+      'qorlia.billing.stock-reservation-recovery',
+      1,
+    );
+    expect(fake.db.transaction).toHaveBeenCalledWith('pending', 'readwrite', {
+      durability: 'strict',
+    });
+    exact.review_complete_token = 'f'.repeat(64);
+    expect(fake.records.get(3)).toEqual(cancellationEnvelope());
+    expect(
+      (fetch as jest.Mock).mock.calls.every((call) =>
+        call[0].endsWith('/web/session/get_session_info'),
+      ),
+    ).toBe(true);
+  });
+  it('waits for commit and rechecks the original account after storage', async () => {
+    const fake = database(),
+      state = cancellationOutcome();
+    fake.hold();
+    const saving = persistPagedStockCancellationRecovery(
+      3,
+      completeCancellation(),
+    );
+    const rejected = saving.catch((error: unknown) => error);
+    await waitFor(() => expect(fake.db.transaction).toHaveBeenCalled());
+    expect(fake.records.size).toBe(0);
+    state.session.uid = 4;
+    fake.commit();
+    const error = await rejected;
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toMatchObject({
+      message: expect.stringMatching(/original Billing account/),
+    });
+    expect(fake.records.get(3)).toEqual(cancellationEnvelope());
+    expect((fetch as jest.Mock).mock.calls).toHaveLength(2);
+  });
+  it('keeps the original nonce, rejects replacement and separates accounts', async () => {
+    const fake = database(),
+      state = cancellationOutcome();
+    await persistPagedStockCancellationRecovery(3, completeCancellation());
+    await persistPagedStockCancellationRecovery(3, completeCancellation());
+    for (const change of [
+      { request_key: '22222222-2222-4333-8444-555555555555' },
+      { review_complete_token: 'd'.repeat(64) },
+      { transfer_id: 12 },
+    ])
+      await expect(
+        persistPagedStockCancellationRecovery(3, {
+          ...completeCancellation(),
+          ...change,
+        }),
+      ).rejects.toThrow(/Another stock request/);
+    expect(fake.records.get(3)).toEqual(cancellationEnvelope());
+    state.session.uid = 4;
+    await persistPagedStockCancellationRecovery(4, completeCancellation());
+    expect(fake.records.get(4)).toEqual(
+      cancellationEnvelope(completeCancellation(), 4),
+    );
+  });
+  it('blocks all older readers and clearers without stripping cancellation proofs', async () => {
+    const fake = database();
+    fake.records.set(3, cancellationEnvelope());
+    for (const load of [
+      loadStockReservationRecovery,
+      loadStockOperationRecovery,
+      loadStockConfirmationRecovery,
+      loadStockValidationRecovery,
+      loadPagedStockWriteRecovery,
+      loadPagedStockValidationRecovery,
+      loadPagedStockReturnRecovery,
+    ])
+      await expect(load(3)).rejects.toThrow(
+        /cancellation request|Another stock request/,
+      );
+    for (const clear of [
+      () => clearStockReservationRecovery(3, request()),
+      () => clearStockOperationRecovery(3, operationRequest()),
+      () => clearStockConfirmationRecovery(3, confirmationRequest()),
+      () => clearStockValidationRecovery(3, validationRequest()),
+      () => clearPagedStockWriteRecovery(3, pagedRequests[0][1]),
+      () => clearPagedStockReturnRecovery(3, completeReturn()),
+    ]) {
+      await expect(clear()).rejects.toThrow(
+        /cancellation request|Another stock request/,
+      );
+      expect(fake.records.get(3)).toEqual(cancellationEnvelope());
+    }
+    nativeOutcome(validationOutcome(completeValidation(), 'terminal'));
+    await expect(
+      clearPagedStockValidationRecovery(3, completeValidation()),
+    ).rejects.toThrow(/cancellation request/);
+    expect(fake.records.get(3)).toEqual(cancellationEnvelope());
+  });
+  it.each([1, 2, 3, 4, 5, 6, 7])(
+    'does not disguise cancellation as schema %s',
+    async (schema) => {
+      const fake = database(),
+        stored = { ...cancellationEnvelope(), schema };
+      fake.records.set(3, stored);
+      await expect(loadStockWriteRecovery(3)).rejects.toThrow();
+      expect(fake.records.get(3)).toEqual(stored);
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    { schema: 9 },
+    { uid: 4 },
+    { database: 'another' },
+    { kind: 'paged_confirmation' },
+    { history: [] },
+    { request: { ...completeCancellation(), context: {} } },
+    { request: { ...completeCancellation(), review_complete_token: false } },
+    { request: { ...completeCancellation(), action: 'unreserve' } },
+  ])(
+    'preserves malformed or foreign cancellation recovery %j',
+    async (change) => {
+      const fake = database(),
+        stored = { ...cancellationEnvelope(), ...change };
+      fake.records.set(3, stored);
+      await expect(loadStockWriteRecovery(3)).rejects.toThrow();
+      await expect(
+        clearPagedStockCancellationRecovery(3, completeCancellation()),
+      ).rejects.toThrow();
+      expect(fake.records.get(3)).toEqual(stored);
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+  it('rejects malformed new cancellation and invalid accounts before storage or transport', async () => {
+    const fake = database();
+    for (const change of [
+      { action: 'unreserve' },
+      { context: {} },
+      { review_complete_token: false },
+      { request_key: 'bad' },
+    ])
+      await expect(
+        persistPagedStockCancellationRecovery(3, {
+          ...completeCancellation(),
+          ...change,
+        } as PagedStockCancellationRequest),
+      ).rejects.toThrow();
+    await expect(
+      persistPagedStockCancellationRecovery(0, completeCancellation()),
+    ).rejects.toThrow();
+    expect(fake.factory.open).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('cannot replace another kind of stock work', async () => {
+    const fake = database();
+    cancellationOutcome();
+    for (const stored of [
+      { schema: 1, uid: 3, request: request() },
+      returnEnvelope(),
+      validationEnvelope(),
+    ]) {
+      fake.records.set(3, stored);
+      await expect(
+        persistPagedStockCancellationRecovery(3, completeCancellation()),
+      ).rejects.toThrow(/Another stock request/);
+      await expect(loadPagedStockCancellationRecovery(3)).rejects.toThrow(
+        /Another stock request/,
+      );
+      expect(fake.records.get(3)).toEqual(stored);
+    }
+  });
+  it.each([0, 101])(
+    'retires accepted cancellation only after all %s pinned references and fresh checks',
+    async (count) => {
+      const fake = database();
+      fake.records.set(3, cancellationEnvelope());
+      cancellationOutcome('accepted', count);
+      await clearPagedStockCancellationRecovery(3, completeCancellation());
+      expect(fake.records.size).toBe(0);
+      const calls = (fetch as jest.Mock).mock.calls;
+      const pages = calls
+        .filter((call) =>
+          call[0].endsWith('/qorlia_cancellation_paged_references'),
+        )
+        .map((call) => JSON.parse(call[1].body).params.kwargs);
+      expect(pages.map((p) => [p.after, p.limit])).toEqual(
+        count
+          ? [
+              [0, 50],
+              [50, 50],
+              [100, 50],
+              [0, 1],
+            ]
+          : [
+              [0, 50],
+              [0, 1],
+            ],
+      );
+      expect(pages.map((p) => p.version)).toEqual(
+        count
+          ? [false, 'e'.repeat(64), 'e'.repeat(64), 'e'.repeat(64)]
+          : [false, 'e'.repeat(64)],
+      );
+      expect(
+        calls.filter((call) =>
+          call[0].endsWith('/qorlia_cancellation_paged_status'),
+        ),
+      ).toHaveLength(2);
+      expect(
+        calls.filter((call) =>
+          call[0].endsWith('/web/session/get_session_info'),
+        ),
+      ).toHaveLength(2);
+      expect(
+        calls.some((call) =>
+          /qorlia_cancellation_paged_(save|stop)$/.test(call[0]),
+        ),
+      ).toBe(false);
+    },
+  );
+  it('retires only an explicitly stopped cancellation without pretending the transfer was cancelled', async () => {
+    const fake = database();
+    fake.records.set(3, cancellationEnvelope());
+    cancellationOutcome('stopped');
+    await clearPagedStockCancellationRecovery(3, completeCancellation());
+    expect(fake.records.size).toBe(0);
+    expect(
+      (fetch as jest.Mock).mock.calls.some((call) =>
+        /_references$|_save$|_stop$/.test(call[0]),
+      ),
+    ).toBe(false);
+  });
+  it('never clears unknown, failed or expired outcomes', async () => {
+    const fake = database();
+    fake.records.set(3, cancellationEnvelope());
+    cancellationOutcome('unknown');
+    await expect(
+      clearPagedStockCancellationRecovery(3, completeCancellation()),
+    ).rejects.toThrow(/outcome is unknown/);
+    (fetch as jest.Mock).mockRejectedValue(new Error('Offline'));
+    await expect(
+      clearPagedStockCancellationRecovery(3, completeCancellation()),
+    ).rejects.toThrow(/Offline/);
+    (fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ error: { code: 100 } }),
+    });
+    await expect(
+      clearPagedStockCancellationRecovery(3, completeCancellation()),
+    ).rejects.toThrow();
+    expect(fake.records.get(3)).toEqual(cancellationEnvelope());
+  });
+  it.each(['reference', 'status', 'overlap'])(
+    'retains changed or overlapping %s evidence',
+    async (mode) => {
+      const fake = database();
+      fake.records.set(3, cancellationEnvelope());
+      const state = cancellationOutcome('accepted', 101),
+        native = (fetch as jest.Mock).getMockImplementation()!;
+      let statuses = 0;
+      (fetch as jest.Mock).mockImplementation(async (route, options) => {
+        if (
+          route.endsWith('/qorlia_cancellation_paged_status') &&
+          ++statuses === 2
+        ) {
+          if (mode === 'reference') state.version = 'f'.repeat(64);
+          if (mode === 'status') state.status.current.version = 'f'.repeat(64);
+        }
+        const response = await native(route, options);
+        if (
+          mode === 'overlap' &&
+          route.endsWith('/qorlia_cancellation_paged_references') &&
+          JSON.parse(options.body).params.kwargs.after === 50
+        ) {
+          const body = await response.json();
+          body.result.rows = state.rows.slice(0, 50);
+          return { ...response, json: async () => body };
+        }
+        return response;
+      });
+      await expect(
+        clearPagedStockCancellationRecovery(3, completeCancellation()),
+      ).rejects.toThrow(/references changed|outcome changed|pages overlap/);
+      expect(fake.records.get(3)).toEqual(cancellationEnvelope());
+    },
+  );
+  it.each(['account', 'database', 'slot'])(
+    'preserves recovery when %s changes before final clear',
+    async (mode) => {
+      const fake = database();
+      fake.records.set(3, cancellationEnvelope());
+      const state = cancellationOutcome(),
+        native = (fetch as jest.Mock).getMockImplementation()!;
+      const newer = { schema: 1, uid: 3, request: request() };
+      let sessions = 0;
+      (fetch as jest.Mock).mockImplementation(async (route, options) => {
+        if (
+          route.endsWith('/web/session/get_session_info') &&
+          ++sessions === 2
+        ) {
+          if (mode === 'account') state.session.uid = 4;
+          if (mode === 'database') state.session.db = 'another';
+          if (mode === 'slot') fake.records.set(3, newer);
+        }
+        return native(route, options);
+      });
+      await expect(
+        clearPagedStockCancellationRecovery(3, completeCancellation()),
+      ).rejects.toThrow(
+        /original Billing account|pending stock request changed/,
+      );
+      expect(fake.records.get(3)).toEqual(
+        mode === 'slot' ? newer : cancellationEnvelope(),
+      );
+    },
+  );
+  it('retains a failed clear commit and never contacts native for an absent or different local request', async () => {
+    const fake = database();
+    await expect(
+      clearPagedStockCancellationRecovery(3, completeCancellation()),
+    ).rejects.toThrow(/not stored/);
+    fake.records.set(3, cancellationEnvelope());
+    await expect(
+      clearPagedStockCancellationRecovery(3, {
+        ...completeCancellation(),
+        review_complete_token: 'f'.repeat(64),
+      }),
+    ).rejects.toThrow(/request changed/);
+    expect(fetch).not.toHaveBeenCalled();
+    cancellationOutcome();
+    fake.fail();
+    await expect(
+      clearPagedStockCancellationRecovery(3, completeCancellation()),
+    ).rejects.toThrow(/could not be committed/);
+    expect(fake.records.get(3)).toEqual(cancellationEnvelope());
+  });
+});
 
 describe('Complete native return durable recovery', () => {
   beforeEach(() => {

@@ -12,6 +12,7 @@ import {
   loadStockWriteRecovery,
   type StockWriteRequest,
 } from '../stockReservationRecovery';
+import { request as cancellationRequest } from './stockCancellationPagedFixture';
 import { confirmationRequest } from './stockConfirmationFixture';
 import { operationRequest } from './stockOperationFixture';
 import { stockRequest } from './stockReservationFixture';
@@ -73,6 +74,7 @@ beforeEach(() => {
   global.fetch = jest.fn();
 });
 const cases: [string, () => StockWriteRequest][] = [
+  ['Transfer cancellation', cancellationRequest],
   ['Return creation', returnRequest],
   ['Transfer validation', validationRequest],
   ['Transfer validation', pagedValidationRequest],

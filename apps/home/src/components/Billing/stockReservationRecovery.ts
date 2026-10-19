@@ -24,6 +24,10 @@ import {
   getPagedStockReturnStatus,
   getPagedStockReturnReferences,
   getBillingSession,
+  checkedPagedStockCancellationRequest,
+  PagedStockCancellationRequest,
+  getPagedStockCancellationStatus,
+  getPagedStockCancellationReferences,
 } from './billingService';
 
 export type PagedStockWriteRequest =
@@ -38,6 +42,7 @@ export type StockWriteRequest =
   | StockValidationStepRequest
   | PagedStockValidationRequest
   | PagedStockReturnRequest
+  | PagedStockCancellationRequest
   | PagedStockWriteRequest;
 type ValidationParent =
   | StockValidationStepRequest
@@ -50,6 +55,12 @@ type RecoveryRecord = {
   request: StockWriteRequest | PagedStockReturnRequest;
   history: ValidationParent[];
 };
+export const isPagedStockCancellationRequest = (
+  request: StockWriteRequest,
+): request is PagedStockCancellationRequest =>
+  'action' in request &&
+  request.action === 'cancel_transfer' &&
+  Object.hasOwn(request, 'review_complete_token');
 export const isPagedStockReturnRequest = (
   request: StockWriteRequest | PagedStockReturnRequest,
 ): request is PagedStockReturnRequest =>
@@ -88,6 +99,7 @@ export const isPagedStockWriteRequest = (
 ): request is PagedStockWriteRequest =>
   Object.hasOwn(request, 'review_complete_token') &&
   !isPagedStockValidationRequest(request) &&
+  !isPagedStockCancellationRequest(request) &&
   !isPagedStockReturnRequest(request);
 const pagedKind = (request: PagedStockWriteRequest) =>
   isStockOperationRequest(request)
@@ -108,23 +120,25 @@ const checkedPagedWriteRequest = (value: PagedStockWriteRequest) =>
 const checkedWriteRequest = (
   value: StockWriteRequest | PagedStockReturnRequest,
 ) =>
-  value && isPagedStockReturnRequest(value)
-    ? checkedPagedStockReturnRequest(value)
-    : value && isPagedStockValidationRequest(value)
-      ? checkedPagedStockValidationRequest(value)
-      : value && isPagedStockWriteRequest(value)
-        ? checkedPagedWriteRequest(value)
-        : value && isStockValidationStepRequest(value)
-          ? checkedStockValidationStepRequest(value)
-          : value && isStockValidationRequest(value)
-            ? checkedStockValidationRequest(value)
-            : value && isStockConfirmationRequest(value)
-              ? checkedStockConfirmationRequest(value)
-              : value && isStockOperationRequest(value)
-                ? checkedStockOperationRequest(value)
-                : checkedStockReservationRequest(
-                    value as StockReservationRequest,
-                  );
+  value && isPagedStockCancellationRequest(value)
+    ? checkedPagedStockCancellationRequest(value)
+    : value && isPagedStockReturnRequest(value)
+      ? checkedPagedStockReturnRequest(value)
+      : value && isPagedStockValidationRequest(value)
+        ? checkedPagedStockValidationRequest(value)
+        : value && isPagedStockWriteRequest(value)
+          ? checkedPagedWriteRequest(value)
+          : value && isStockValidationStepRequest(value)
+            ? checkedStockValidationStepRequest(value)
+            : value && isStockValidationRequest(value)
+              ? checkedStockValidationRequest(value)
+              : value && isStockConfirmationRequest(value)
+                ? checkedStockConfirmationRequest(value)
+                : value && isStockOperationRequest(value)
+                  ? checkedStockOperationRequest(value)
+                  : checkedStockReservationRequest(
+                      value as StockReservationRequest,
+                    );
 
 const DATABASE = 'qorlia.billing.stock-reservation-recovery';
 const STORE = 'pending';
@@ -247,7 +261,8 @@ async function recoveryRecord(
                 (value?.schema === 4 && value.kind === 'validation_step') ||
                 value?.schema === 5 ||
                 value?.schema === 6 ||
-                value?.schema === 7) &&
+                value?.schema === 7 ||
+                value?.schema === 8) &&
               value.database !== BILLING_DATABASE
             )
               throw new Error(
@@ -258,57 +273,64 @@ async function recoveryRecord(
               typeof value !== 'object' ||
               Array.isArray(value) ||
               value.uid !== uid ||
-              (![5, 6, 7].includes(value.schema) &&
+              (![5, 6, 7, 8].includes(value.schema) &&
                 value.request &&
                 Object.hasOwn(value.request, 'review_complete_token')) ||
-              (value.schema === 7
+              (value.schema === 8
                 ? value.database !== BILLING_DATABASE ||
-                  value.kind !== 'paged_return' ||
+                  value.kind !== 'paged_cancellation' ||
                   Object.keys(value).sort().join(',') !==
                     'database,kind,request,schema,uid' ||
                   !value.request ||
-                  !isPagedStockReturnRequest(value.request)
-                : value.schema === 6
+                  !isPagedStockCancellationRequest(value.request)
+                : value.schema === 7
                   ? value.database !== BILLING_DATABASE ||
-                    value.kind !== 'paged_validation' ||
+                    value.kind !== 'paged_return' ||
                     Object.keys(value).sort().join(',') !==
-                      'database,history,kind,request,schema,uid' ||
+                      'database,kind,request,schema,uid' ||
                     !value.request ||
-                    !isPagedStockValidationRequest(value.request)
-                  : value.schema === 5
+                    !isPagedStockReturnRequest(value.request)
+                  : value.schema === 6
                     ? value.database !== BILLING_DATABASE ||
+                      value.kind !== 'paged_validation' ||
                       Object.keys(value).sort().join(',') !==
-                        'database,kind,request,schema,uid' ||
+                        'database,history,kind,request,schema,uid' ||
                       !value.request ||
-                      !isPagedStockWriteRequest(value.request) ||
-                      value.kind !== pagedKind(value.request)
-                    : value.schema === 4
-                      ? value.kind !== 'validation_step' ||
-                        value.database !== BILLING_DATABASE ||
+                      !isPagedStockValidationRequest(value.request)
+                    : value.schema === 5
+                      ? value.database !== BILLING_DATABASE ||
                         Object.keys(value).sort().join(',') !==
                           'database,kind,request,schema,uid' ||
                         !value.request ||
-                        !isStockValidationStepRequest(value.request)
-                      : value.schema === 3
-                        ? value.kind !== 'validation' ||
+                        !isPagedStockWriteRequest(value.request) ||
+                        value.kind !== pagedKind(value.request)
+                      : value.schema === 4
+                        ? value.kind !== 'validation_step' ||
                           value.database !== BILLING_DATABASE ||
                           Object.keys(value).sort().join(',') !==
                             'database,kind,request,schema,uid' ||
                           !value.request ||
-                          !isStockValidationRequest(value.request) ||
-                          isStockValidationStepRequest(value.request)
-                        : value.schema === 2
-                          ? value.kind !== 'confirmation' ||
+                          !isStockValidationStepRequest(value.request)
+                        : value.schema === 3
+                          ? value.kind !== 'validation' ||
+                            value.database !== BILLING_DATABASE ||
                             Object.keys(value).sort().join(',') !==
-                              'kind,request,schema,uid' ||
+                              'database,kind,request,schema,uid' ||
                             !value.request ||
-                            !isStockConfirmationRequest(value.request)
-                          : value.schema !== 1 ||
-                            Object.keys(value).sort().join(',') !==
-                              'request,schema,uid' ||
-                            !value.request ||
-                            isStockConfirmationRequest(value.request) ||
-                            isStockValidationRequest(value.request))
+                            !isStockValidationRequest(value.request) ||
+                            isStockValidationStepRequest(value.request)
+                          : value.schema === 2
+                            ? value.kind !== 'confirmation' ||
+                              Object.keys(value).sort().join(',') !==
+                                'kind,request,schema,uid' ||
+                              !value.request ||
+                              !isStockConfirmationRequest(value.request)
+                            : value.schema !== 1 ||
+                              Object.keys(value).sort().join(',') !==
+                                'request,schema,uid' ||
+                              !value.request ||
+                              isStockConfirmationRequest(value.request) ||
+                              isStockValidationRequest(value.request))
             )
               throw new Error(
                 'Stored reservation recovery is invalid. Ask your Billing administrator to check the previous request.',
@@ -321,6 +343,16 @@ async function recoveryRecord(
               );
           }
           if (operation !== 'read') {
+            if (
+              operation === 'clear' &&
+              result &&
+              isPagedStockCancellationRequest(result) &&
+              exact &&
+              !isPagedStockCancellationRequest(exact)
+            )
+              throw new Error(
+                'A cancellation request is pending. Only its dedicated recovery can clear it.',
+              );
             if (
               operation === 'clear' &&
               result &&
@@ -382,6 +414,21 @@ async function recoveryRecord(
               return;
             }
             if (operation === 'save') {
+              if (exact && isPagedStockCancellationRequest(exact)) {
+                store.put(
+                  {
+                    schema: 8,
+                    kind: 'paged_cancellation',
+                    database: BILLING_DATABASE,
+                    uid,
+                    request: exact,
+                  },
+                  uid,
+                );
+                result = exact;
+                history = [];
+                return;
+              }
               if (exact && isPagedStockReturnRequest(exact)) {
                 store.put(
                   {
@@ -482,6 +529,10 @@ async function recovery(
   request?: StockWriteRequest,
   previous?: StockValidationStepRequest,
 ): Promise<StockWriteRequest | null> {
+  if (request && isPagedStockCancellationRequest(request))
+    throw new Error(
+      'Use dedicated cancellation recovery. Keep its exact original request.',
+    );
   if (request && isPagedStockReturnRequest(request))
     throw new Error(
       'Use the complete return recovery protocol. Keep its original request.',
@@ -494,6 +545,10 @@ async function recovery(
       'Use the complete validation recovery protocol. Do not convert its request.',
     );
   const result = await recoveryRecord(uid, operation, request, previous);
+  if (result && isPagedStockCancellationRequest(result.request))
+    throw new Error(
+      'A cancellation request is pending. Keep it intact and use dedicated cancellation recovery.',
+    );
   if (result && isPagedStockReturnRequest(result.request))
     throw new Error(
       'A return request is pending. Keep it intact and use its dedicated return recovery.',
@@ -527,11 +582,14 @@ export async function persistPagedStockReturnRecovery(
 ) {
   await recoveryRecord(uid, 'save', checkedPagedStockReturnRequest(request));
 }
-async function checkedReturnRecoveryAccount(uid: number) {
+async function checkedRecoveryAccount(
+  uid: number,
+  noun: 'return' | 'cancellation',
+) {
   const session = await getBillingSession();
   if (session.uid !== uid || session.db !== BILLING_DATABASE)
     throw new Error(
-      'Return to the original Billing account and database. Keep the pending return request.',
+      `Return to the original Billing account and database. Keep the pending ${noun} request.`,
     );
 }
 export async function clearPagedStockReturnRecovery(
@@ -545,7 +603,7 @@ export async function clearPagedStockReturnRecovery(
     throw new Error(
       'The exact pending return request changed or is not stored. It was not cleared.',
     );
-  await checkedReturnRecoveryAccount(uid);
+  await checkedRecoveryAccount(uid, 'return');
   const status = await getPagedStockReturnStatus(exact);
   if (!status.accepted && !status.stopped)
     throw new Error(
@@ -617,7 +675,107 @@ export async function clearPagedStockReturnRecovery(
     if (page.total_count !== status.reference_count)
       throw new Error('Return references changed. Keep its recovery request.');
   }
-  await checkedReturnRecoveryAccount(uid);
+  await checkedRecoveryAccount(uid, 'return');
+  if (await recoveryRecord(uid, 'clear', exact))
+    throw new Error('The pending stock request changed. It was not cleared.');
+}
+export async function loadPagedStockCancellationRecovery(
+  uid: number,
+): Promise<PagedStockCancellationRequest | null> {
+  const record = await recoveryRecord(uid, 'read');
+  if (!record) return null;
+  if (!isPagedStockCancellationRequest(record.request))
+    throw new Error(
+      'Another stock request is pending. Resume its original workflow.',
+    );
+  return record.request;
+}
+export async function persistPagedStockCancellationRecovery(
+  uid: number,
+  request: PagedStockCancellationRequest,
+) {
+  checkBillingUser(uid);
+  const exact = checkedPagedStockCancellationRequest(request);
+  await checkedRecoveryAccount(uid, 'cancellation');
+  await recoveryRecord(uid, 'save', exact);
+  await checkedRecoveryAccount(uid, 'cancellation');
+}
+export async function clearPagedStockCancellationRecovery(
+  uid: number,
+  request: PagedStockCancellationRequest,
+  referenceVersion: string | false = false,
+) {
+  checkBillingUser(uid);
+  const exact = checkedPagedStockCancellationRequest(request);
+  const pending = await loadPagedStockCancellationRecovery(uid);
+  if (!pending || JSON.stringify(pending) !== JSON.stringify(exact))
+    throw new Error(
+      'The exact pending cancellation request changed or is not stored. It was not cleared.',
+    );
+  await checkedRecoveryAccount(uid, 'cancellation');
+  const status = await getPagedStockCancellationStatus(exact);
+  if (referenceVersion !== false && !status.accepted)
+    throw new Error(
+      'The accepted cancellation outcome changed. Keep its recovery request.',
+    );
+  if (!status.accepted && !status.stopped)
+    throw new Error(
+      'The native cancellation outcome is unknown. Keep its exact recovery request.',
+    );
+  let version: string | false = referenceVersion;
+  if (status.accepted) {
+    let after = 0,
+      lastKey = '';
+    do {
+      const page = await getPagedStockCancellationReferences(
+        exact,
+        after,
+        version,
+      );
+      if (page.total_count !== status.reference_count)
+        throw new Error(
+          'Cancellation references changed. Keep the request and reload all pages.',
+        );
+      version = page.version;
+      for (const row of page.rows) {
+        if (row.key <= lastKey)
+          throw new Error(
+            'Cancellation reference pages overlap. Keep the exact recovery request.',
+          );
+        lastKey = row.key;
+      }
+      after += page.rows.length;
+      if (page.next_after === false) break;
+    } while (after < status.reference_count);
+    if (after !== status.reference_count)
+      throw new Error(
+        'Not every cancellation reference was read. Keep its recovery request.',
+      );
+  }
+  const fresh = await getPagedStockCancellationStatus(exact);
+  if (
+    fresh.accepted !== status.accepted ||
+    fresh.stopped !== status.stopped ||
+    fresh.current.version !== status.current.version ||
+    fresh.state_after !== status.state_after ||
+    fresh.reference_count !== status.reference_count
+  )
+    throw new Error(
+      'The native cancellation outcome changed. Keep its recovery request.',
+    );
+  if (version !== false) {
+    const page = await getPagedStockCancellationReferences(
+      exact,
+      0,
+      version,
+      1,
+    );
+    if (page.total_count !== status.reference_count)
+      throw new Error(
+        'Cancellation references changed. Keep the recovery request.',
+      );
+  }
+  await checkedRecoveryAccount(uid, 'cancellation');
   if (await recoveryRecord(uid, 'clear', exact))
     throw new Error('The pending stock request changed. It was not cleared.');
 }
@@ -699,6 +857,10 @@ export async function clearPagedStockValidationRecovery(
 }
 async function loadLegacyStockWriteRecovery(uid: number) {
   const pending = await loadStockWriteRecovery(uid);
+  if (pending && isPagedStockCancellationRequest(pending))
+    throw new Error(
+      'A cancellation request is pending. Resume its dedicated recovery workflow.',
+    );
   if (pending && isPagedStockReturnRequest(pending))
     throw new Error(
       'A return request is pending. Resume its dedicated return workflow.',
@@ -715,6 +877,10 @@ async function loadLegacyStockWriteRecovery(uid: number) {
 }
 export async function loadPagedStockWriteRecovery(uid: number) {
   const pending = await loadStockWriteRecovery(uid);
+  if (pending && isPagedStockCancellationRequest(pending))
+    throw new Error(
+      'A cancellation request is pending. Resume its dedicated recovery workflow.',
+    );
   if (pending && isPagedStockReturnRequest(pending))
     throw new Error(
       'A return request is pending. Resume its dedicated return workflow.',

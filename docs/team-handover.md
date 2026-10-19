@@ -1,8 +1,17 @@
 # New-team handover: Qorlia engineering
 
+Newest UI source: [complete cancellation workflow](../runtime/billing/STOCK_CANCELLATION.md#react-complete-cancellation-consumer-source-19-october-2026)
+adds the matching shared review dialog, schema-8 recovery and original-transfer
+resume from signed-in Billing. Save and stop check the actual account and strict
+slot; complete proofs/references and fresh outcomes gate retirement. Prior
+protocols/history remain. Home passes 1,490 cases/98 suites, including 104 storage,
+21 cancellation component and four actual-SDK wiring cases with doubles. This is
+not actual browser/IndexedDB, runtime or release acceptance. Starter-task bases,
+the closed Billing gate and production remain unchanged.
+
 Candidate-64 backend/client source now includes [native transfer cancellation](../runtime/billing/STOCK_CANCELLATION.md#candidate-64-native-api-and-client-source)
-with complete effect review and exact save/status/reference/stop. Dedicated
-durable recovery and its React controls remain unfinished. Native verification
+with complete effect review and exact save/status/reference/stop. The consumer
+above adds dedicated durable recovery and React controls. Native verification
 is documented separately from client checks: 51 cancellation cases and the full
 1,423-case Home suite/96 suites pass. Thirty native cases preserve 132 tables with
 103 matching Python hashes, and actual-client replay accepts 166 frames with
