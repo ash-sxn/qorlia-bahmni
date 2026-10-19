@@ -24,10 +24,10 @@ def _effect_rows(effects):
         for row in effects[kind][model]]
 
 
-def _effect_page(effects, rows):
+def _effect_page(effects, rows, private_counts_key='private_audit_counts'):
     """Keep every native value of the selected records, without unrelated labels."""
     page = {kind: {} for kind in _KINDS}
-    page.update(labels={}, schema={}, private_audit_counts=effects['private_audit_counts'])
+    page.update(labels={}, schema={}, **{private_counts_key: effects[private_counts_key]})
     for model, kind, row in rows:
         if model not in page['schema']:
             page['schema'][model] = effects['schema'][model]

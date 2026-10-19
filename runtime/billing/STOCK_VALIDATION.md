@@ -2,6 +2,10 @@
 
 [Billing adapter](README.md) · [Stock confirmation](STOCK_CONFIRMATION.md) · [Architecture](../../docs/architecture.md) · [Parity ledger](../../docs/FEATURE_PARITY.md)
 
+Candidate 60 introduces [complete native prompt/effect review](VALIDATION_PAGED.md)
+without changing these older write contracts. Both new APIs remain non-writable;
+the matching large-validation save/recovery and UI consumer are unfinished.
+
 Later candidate 59 adds [compact accepted-step recovery and paged saved prompts/references](VALIDATION_RECOVERY_PAGING.md)
 without changing the older validation-step payload or native write semantics.
 It is not a large validation writer or React/runtime update. Read that guide's

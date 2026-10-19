@@ -1,5 +1,18 @@
 # Qorlia React frontend backend readiness
 
+## Complete validation review candidate 60 (19 October 2026)
+
+Compact complete-scope load and sequential rollback review cover saved native
+input-prompt rows and all resulting effects under one ordered, purpose-bound
+proof chain. The existing effects/label/financial privacy and native guards remain.
+Both APIs return `write_ready: false`; a matching larger writer is not implemented.
+Home passes 1,109 cases/88 suites, types/scoped lint and gateway unit cases pass.
+The scoped native run passes 36 cases with 130-table preservation and 93 matching
+Python hashes. The actual client accepts 69 native JSON responses with mocked
+replay transport. Retained failed diagnostics and remaining gates are separate in
+[the protocol guide](../runtime/billing/VALIDATION_PAGED.md). No UI size-limit
+removal, review reopening, installed upgrade, build/server or deployment.
+
 ## Saved validation recovery consumer source (19 October 2026)
 
 The transfer resume path now uses compact native status plus complete pinned

@@ -6786,6 +6786,192 @@ export async function getStockValidationStepReferencePage(
   );
 }
 
+export interface PagedStockValidationLoad extends StockConfirmationSelection {
+  transfer: OrderTransferSummary;
+  package_count: number;
+  inventory_quant_count: number;
+  reason: string | false;
+  write_ready: false;
+}
+export interface PagedStockValidationReview
+  extends StockValidationStepSelection {
+  review_version: string;
+  state_after: OrderTransfer['state'];
+  write_ready: false;
+  input_prompt: StockValidationPromptMetadata | false;
+  prompt_rows: StockValidationPromptRow[];
+  next_step: StockValidationPromptMetadata | false;
+  terminal: boolean;
+  effects: StockValidationEffects;
+  after: number;
+  total_count: number;
+  prompt_count: number;
+  effect_count: number;
+  next_after: number | false;
+  continuation_token: string | false;
+  review_complete_token: string | false;
+}
+export async function getPagedStockValidation(
+  orderId: number,
+  transferId: number,
+) {
+  if (!stockId(orderId) || !stockId(transferId))
+    throw new Error('Select a saved stock transfer.');
+  const data = await stockCall<PagedStockValidationLoad>(
+    'qorlia_validation_paged_load',
+    { order_id: orderId, transfer_id: transferId },
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'transfer',
+      'package_count',
+      'inventory_quant_count',
+      'reason',
+      'write_ready',
+    ]) ||
+    data.order_id !== orderId ||
+    data.transfer_id !== transferId ||
+    !stockVersion(data.version) ||
+    !validTransferSummary(data.transfer) ||
+    data.transfer.id !== transferId ||
+    !stockCount(data.package_count) ||
+    !stockCount(data.inventory_quant_count) ||
+    !stockText(data.reason) ||
+    data.write_ready !== false
+  )
+    throw new Error(
+      'Invalid complete validation review state. Reload the transfer.',
+    );
+  return data;
+}
+export async function getPagedStockValidationReview(
+  selection: StockValidationStepSelection,
+  after = 0,
+  reviewVersion: string | false = false,
+  continuationToken: string | false = false,
+  limit = 50,
+) {
+  const exact = checkedValidationStepSelection(selection);
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    (after === 0
+      ? reviewVersion !== false || continuationToken !== false
+      : !stockVersion(reviewVersion) || !stockVersion(continuationToken))
+  )
+    throw new Error(
+      'Review bounded native validation pages in order with their original tokens.',
+    );
+  const data = await stockCall<PagedStockValidationReview>(
+    'qorlia_validation_paged_review',
+    {
+      payload: exact,
+      after,
+      review_version: reviewVersion,
+      continuation_token: continuationToken,
+      limit,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      'order_id',
+      'transfer_id',
+      'version',
+      'continuation_key',
+      'decisions',
+      'review_version',
+      'state_after',
+      'write_ready',
+      'input_prompt',
+      'prompt_rows',
+      'next_step',
+      'terminal',
+      'effects',
+      'after',
+      'total_count',
+      'prompt_count',
+      'effect_count',
+      'next_after',
+      'continuation_token',
+      'review_complete_token',
+    ]) ||
+    data.order_id !== exact.order_id ||
+    data.transfer_id !== exact.transfer_id ||
+    data.version !== exact.version ||
+    data.continuation_key !== exact.continuation_key ||
+    JSON.stringify(checkedStockValidationDecisions(data.decisions)) !==
+      JSON.stringify(exact.decisions) ||
+    !stockVersion(data.review_version) ||
+    (reviewVersion !== false && data.review_version !== reviewVersion) ||
+    !validationStates.includes(data.state_after) ||
+    data.write_ready !== false ||
+    typeof data.terminal !== 'boolean' ||
+    (data.terminal
+      ? data.next_step !== false
+      : data.next_step === false ||
+        promptMetadataCount(data.next_step) === false ||
+        data.next_step.kind === 'sms') ||
+    !stockCount(data.total_count) ||
+    !stockCount(data.prompt_count) ||
+    !stockCount(data.effect_count) ||
+    !stockCount(data.prompt_count + data.effect_count) ||
+    data.total_count !== data.prompt_count + data.effect_count ||
+    after > data.total_count ||
+    data.after !== after ||
+    (exact.continuation_key === false
+      ? data.input_prompt !== false || data.prompt_count !== 0
+      : data.input_prompt === false ||
+        promptMetadataCount(data.input_prompt) !== data.prompt_count ||
+        data.input_prompt.kind !== exact.decisions[0].kind) ||
+    !Array.isArray(data.prompt_rows) ||
+    data.prompt_rows.length !==
+      Math.min(Math.max(data.prompt_count - after, 0), limit) ||
+    !data.prompt_rows.every(
+      (row) =>
+        data.input_prompt !== false &&
+        validPromptRow(row, data.input_prompt, exact.transfer_id),
+    ) ||
+    new Set(
+      data.prompt_rows.map((row) =>
+        row.section === 'lots'
+          ? row.value[0]
+          : row.section === 'operations'
+            ? row.value.id
+            : row.value.transfer[0],
+      ),
+    ).size !== data.prompt_rows.length ||
+    !validValidationEffects(data.effects)
+  )
+    throw new Error(
+      'Invalid complete native validation review page. Review from the start.',
+    );
+  const effects = confirmationEffectPageRows({
+    ...data.effects,
+    private_audit_counts: data.effects.private_effect_counts,
+  });
+  const end = Math.min(after + limit, data.total_count);
+  if (
+    !effects.valid ||
+    effects.count + data.prompt_rows.length !== end - after ||
+    (end < data.total_count
+      ? data.next_after !== end ||
+        !stockVersion(data.continuation_token) ||
+        data.review_complete_token !== false
+      : data.next_after !== false ||
+        data.continuation_token !== false ||
+        !stockVersion(data.review_complete_token))
+  )
+    throw new Error(
+      'Incomplete native validation review page or proof. Review every page in order.',
+    );
+  return data;
+}
+
 export interface OrderWorkflow {
   id: number;
   name: string;

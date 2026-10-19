@@ -1,5 +1,13 @@
 # New-team handover: Qorlia engineering
 
+Latest backend candidate: [complete validation review](../runtime/billing/VALIDATION_PAGED.md)
+adds compact complete load and ordered native input-prompt/effect pages. Both
+responses remain non-writable until the matching save/recovery contract exists.
+Do not connect these versions/proofs to older writes or change tester branches.
+Home passes 1,109 cases/88 suites; 36 scoped native cases pass with 130-table
+preservation and 93 matching Python hashes. Client replay accepts 69 native JSON
+responses with mocked transport. Runtime acceptance remains separate.
+
 Latest consumer: [saved validation recovery reader](../runtime/billing/VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026)
 connects the transfer resume route to compact native receipt status and complete
 saved prompt/reference pages. It does not enable large validation writes or

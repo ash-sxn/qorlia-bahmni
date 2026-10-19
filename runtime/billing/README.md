@@ -3,6 +3,13 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Candidate 60: [complete native validation review](VALIDATION_PAGED.md) adds compact
+complete load and sequential prompt/effect review APIs. It does not enable a new
+save or remove current UI limits. Both responses declare `write_ready: false`.
+Home passes 1,109 cases/88 suites. Scoped native: 36 cases pass with 130-table
+preservation and 93 matching Python hashes; client replay: 69 native JSON responses.
+Replay transport is mocked and remaining write/UI/runtime gates are separate.
+
 Latest [React saved-step recovery reader](VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026)
 connects the transfer resume path to compact status and complete saved prompt/
 reference pages, with exact durable terminal clear. Small continuations return

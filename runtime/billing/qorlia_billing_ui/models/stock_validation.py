@@ -181,6 +181,18 @@ class StockValidation(models.Model):
         wizard[relation].write({flag: decision[field]})
         return wizard.process()
 
+    def _qorlia_validation_prompt_label_access(self, wizard, descriptor):
+        related = []
+        if descriptor['kind'] == 'receipt':
+            related = [wizard.source_location, wizard.destination_location,
+                wizard.move_lines.product_id, wizard.move_lines.product_uom_id, wizard.move_lines.lot_id]
+        elif descriptor['kind'] == 'expiry':
+            related = [wizard.lot_ids]
+        for records in related:
+            records.check_access_rights('read')
+            records.check_access_rule('read')
+            records.check_field_access_rights('read', ['display_name'])
+
     def _qorlia_validation_native(self, decisions, *, start_action=None, include_action=False):
         # Apply the same external-send guard during preview and the exact reviewed save.
         self = self.with_context(qorlia_validation_preview_token=_PREVIEW_TOKEN)

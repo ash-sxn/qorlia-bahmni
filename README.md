@@ -51,6 +51,15 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
+Current backend candidate: [complete native validation review](runtime/billing/VALIDATION_PAGED.md)
+removes the legacy full-graph dependency from review, with one ordered proof chain
+covering all saved input-prompt rows and native effects. It does not yet implement
+the matching large-validation writer or remove UI write limits. Both new APIs
+return `write_ready: false`. Home passes 1,109 cases/88 suites. The scoped native
+run passes 36 cases with 130-table preservation and 93 matched Python hashes;
+the actual client accepts 69 native JSON responses with mocked replay transport.
+Runtime and remaining write/UI gates are separate in that guide.
+
 The latest UI source connects [saved-validation recovery](runtime/billing/VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026)
 to the transfer resume path. It reads complete saved prompts and references in
 pinned pages without the capped editable graph, rechecks terminal receipts before

@@ -46,16 +46,7 @@ class StockValidationRecovery(models.Model):
         if wizard.id != action['res_id']:
             raise UserError('The saved native prompt is unavailable. No prompt was recreated.')
         # Related labels must not disclose records hidden from this reader.
-        related = []
-        if descriptor['kind'] == 'receipt':
-            related = [wizard.source_location, wizard.destination_location,
-                wizard.move_lines.product_id, wizard.move_lines.product_uom_id, wizard.move_lines.lot_id]
-        elif descriptor['kind'] == 'expiry':
-            related = [wizard.lot_ids]
-        for records in related:
-            records.check_access_rights('read')
-            records.check_access_rule('read')
-            records.check_field_access_rights('read', ['display_name'])
+        self._qorlia_validation_prompt_label_access(wizard, descriptor)
         metadata, rows = _prompt_parts(descriptor)
         version = _digest({'purpose': _PURPOSE + '.prompt', 'request': digest, 'scope': scope,
             'descriptor': metadata, 'rows': rows})

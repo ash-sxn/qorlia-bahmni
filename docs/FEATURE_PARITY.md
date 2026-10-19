@@ -1,5 +1,19 @@
 # Bahmni workflow parity ledger
 
+## 19 October complete validation review candidate 60
+
+- New complete-scope load and sequential review bind all saved input-prompt rows,
+  native effects/private effects and resulting/next-prompt state without the old
+  full-graph response dependency. Pages cannot skip to a completion proof.
+- This is review-side source, not complete large validation writing: both APIs
+  declare `write_ready: false`; old payloads and UI write limits remain.
+- Home: 1,109 cases/88 suites pass, including 36 new client cases. Types/scoped
+  lint and three source-gateway cases pass. Scoped native: 36 cases pass, 130
+  guarded tables preserved, 93 Python hashes match. Client replay accepts 69
+  native responses with mocked transport. [Evidence and retained failures](../runtime/billing/VALIDATION_PAGED.md).
+- Matching save/recovery/retirement, write UI, real browser/storage/gateway/runtime,
+  scale, large returns and full Billing/product parity remain. No release or review reopening.
+
 ## 19 October saved validation recovery reader source
 
 - Existing step requests now resume through compact receipt status and complete
