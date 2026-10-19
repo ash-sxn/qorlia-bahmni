@@ -75,8 +75,9 @@ native draft/default basis, ordered effects, actual-save comparison and durable
 recovery; it must not simply trust a posted metadata/value object.
 
 Reading isolates native transaction callbacks, flushes and checks the existing
-132 guard tables inside a rollback-only savepoint. Unexpected stored writes are
-rejected and rolled back, and the original callbacks/cache boundary is restored.
+132 guard tables inside a rollback-only savepoint. Unexpected changes to those
+guarded tables are rejected; the savepoint rolls back transactional changes,
+and the original callbacks/cache boundary is restored.
 No new schema, permission grant, generic write route, dependency or replacement
 stock engine is added.
 
@@ -116,6 +117,12 @@ is tested rather than an unrelated ACL denial. They also cover no preselected
 type and foreign-company type rejection. Product permissions/defaults are not
 changed. Both earlier packages/logs are retained.
 
+A frozen **1,029-case full-addon run is active** on a separate synthetic database
+copy, using this same source. The unique planned count and no-HTTP/no-published-
+port/readonly configuration are verified, not its final result. The earlier
+974-case source-68 result does not accept this source. Full-run result,
+source-matched JSON/client replay and independent committed SQL remain pending.
+
 Python AST parsing and three temporary gateway stub checks pass. The gateway
 test explicitly verifies this unfinished form method is blocked. No frontend
 code changed in this checkpoint; the prior Home result remains 1,613 cases/102
@@ -123,3 +130,5 @@ suites, not evidence of a form editor. Broader native configuration/role checks,
 React integration, onchange/choices, create/edit/duplicate, stock demand and
 orphan/completed-operation changes, remaining fields/actions/views, actual
 HTTP/browser/layout/recovery/concurrency, scale and approved release remain.
+Direction-specific label nodes, native help/widget/options behavior and action
+controls also need explicit mapping before claiming a complete native editor.
