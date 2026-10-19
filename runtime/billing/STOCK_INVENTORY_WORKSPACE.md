@@ -43,7 +43,7 @@ acceptance. Library and actual test-source types, scoped lint, Python AST parsin
 of all 106 files, three gateway stub cases, diff checks and the
 42-document/746-link check pass. No new dependency or design system is added.
 
-A frozen **46-case native run is active**, not accepted yet: ten new global
+A corrected frozen **46-case native run is active**, not accepted yet: ten new global
 validation cases, ten existing complete-review cases, 14 complete-write cases
 and 12 legacy-step regressions. The new cases cover actual orderless receipt,
 delivery and internal movement, batch/prices/references, saved immediate
@@ -51,6 +51,14 @@ preparation followed by expiry decline, native backorders, stopped child/parent
 recovery, strict false identity, order/global proof separation, stale/incomplete
 proofs, hidden moves, write denial and different-author rejection. Final result,
 matching-client replay and independent committed SQL remain pending.
+
+The first native run completed 46 cases with one failed internal-transfer test
+expectation, zero errors/skips and all 132 guarded tables unchanged. Independent
+committed SQL counts/full-row hashes also match its baseline. The installed
+native internal transfer correctly returned a Validate Stock Entries prompt,
+not an immediate terminal movement. The corrected test explicitly reads and
+confirms that saved prompt and checks stock stays unchanged until confirmation.
+No native prompt or permission is bypassed; the original failed run is retained.
 
 Remaining: global return/cancellation, native transfer create/edit/duplicate,
 orphan operations and completed-operation corrections, remaining native fields,

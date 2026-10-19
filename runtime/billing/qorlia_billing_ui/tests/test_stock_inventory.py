@@ -430,6 +430,13 @@ class StockInventoryValidationTest(StockInventoryFixture, TransactionCase):
                 self.assertFalse(self.api().qorlia_validation_paged_status(request)['accepted'])
                 saved = self.api().qorlia_validation_paged_save(request)
                 self.assertIs(saved['current']['order_id'], False)
+                if kind.code == 'internal':
+                    self.assertEqual(saved['receipt']['next_step']['kind'], 'receipt')
+                    self.assertEqual((picking.state, self.source_stock()), ('assigned', before))
+                    prompt = self.api().qorlia_validation_paged_prompt_page(request)
+                    self.assertEqual(prompt['descriptor']['picking_code'], 'internal')
+                    request = self.exact(picking, request, {'kind': 'receipt', 'confirm': True})
+                    saved = self.api().qorlia_validation_paged_save(request)
                 self.assertTrue(saved['receipt']['terminal'])
                 self.assertEqual((picking.state, self.source_stock()), ('done', before - 5))
                 self.assertEqual(self.sale_line.qty_delivered, 0)
