@@ -2,6 +2,88 @@
 
 [README](../../README.md) · [Billing](README.md) · [Inventory workspace](STOCK_INVENTORY_WORKSPACE.md)
 
+## Candidate 75, native presentation and relation choices, 20 October 2026
+
+The form reader now preserves separate conditional label nodes, each root
+field's widget/options/help/placeholder/onchange attributes, and ancestor
+conditions. It evaluates visible/readonly/required rules against native values,
+including model/record/field write permissions. For example, the same Contact
+field is labelled Receive From, Delivery Address or Contact according to the
+native operation type. Hidden and readonly field occurrences cannot be used to
+search a relation. Duplicate occurrences keep their own rules.
+
+`stock.picking.qorlia_inventory_form_choices(transfer_id=False,
+picking_type_id=False, node=0, search='', offset=0)` reads a relation search
+from an exact root-layout node of a fresh, **unedited** native form. Identity
+rules are the same as the reader. `node` is a zero-based layout index, not an
+arbitrary field/model/domain supplied by the caller. The search is at most 200
+characters; offset is an integer from zero to 100,000, not a Boolean. Each page
+contains up to 25 native labels and a `has_more` flag. Native `name_search`
+ordering, active-record context, ACLs, record rules and label field access remain.
+The operation-type default context for a new form remains native; untrusted
+caller defaults are discarded and field context cannot widen active companies.
+
+The installed native web client's domain precedence matters. Both legacy
+`web/static/src/legacy/js/views/basic/basic_model.js` (`_getDomain`) and the
+native relation implementation choose a view domain before the model fallback.
+These are **not intersected**. In this installation, Responsible's view domain
+is `share = false`, replacing the field's default Stock User domain. Matching
+that native search does not grant the selected user Stock permissions. Python
+domain/context expressions come only from the installed merged view/field
+metadata and are evaluated on the server, never from caller-provided source
+or by a browser `eval`. Stored HTML notes remain data, not executable markup.
+The modern native relation model also intersects any onchange-supplied domain
+with that view/model choice. Future edit replay must retain those domains; the
+unedited search reader is not evidence of that still-unimplemented workflow.
+
+Both methods use the same rollback-only callback/guard boundary. Searches that
+unexpectedly write guarded data fail and roll back. The response identifies the
+exact transfer/type, node, field, offset and fresh `form_version`; that version
+is still a **read version**, not save authorization or a pinned new-form seed.
+The native name search does not offer offset, so the adapter fetches its bounded
+prefix to preserve ordering. The allowed maximum is not scale acceptance.
+
+The source gateway deliberately blocks both unfinished form methods. There is
+no typed client, React form editor, edit replay/onchange, selected-value domain
+validation, reviewed create/edit/duplicate, save or durable recovery yet. In
+particular, searching an unedited form is not proof of search after changing its
+operation type/contact/location. Native onchange can affect linked moves; it
+must be rolled back and incorporated into the future complete effect review,
+not replaced by a scalar write or omitted from save verification. Action widgets,
+chatter, child editors and unsupported/custom modifier operators still need
+their explicit adapters. Unsupported conditions fail closed.
+
+Ten new native cases compare presentation and scalar rules with the installed
+Form, all three direction labels, native relation ordering/pagination and domain
+precedence, operation-type/company defaults, record/field access, malformed and
+hidden/readonly searches, inherited context/ancestor conditions and unexpected
+search writes/callback rollback. The corrected **45-case source-matched native
+run passes, with zero failures/errors/skips**. All 108 Python hashes match the
+frozen package, all 132 guarded tables remain, mandatory analytics/SMS stay
+enabled, and installed metadata remains 49. Independent committed SQL counts
+and full-row hashes match the pre-run baseline. A separate checker verifies 37
+captured native JSON responses: five new forms, 26 existing forms and six choice
+pages. This is not typed-client, React, HTTP or browser acceptance. Log SHA256:
+`d2b7bd8f6985a3957f80fe376f203d57c6fe731ee70c1006201b1734168d1e0a`.
+The worker is terminal/removed; its source was readonly without HTTP or
+published ports. Bootstrap warnings remain, not clean-install/upgrade acceptance.
+Python AST parsing passes for 108 files and three temporary gateway stub checks
+pass. The older 35-case result below accepts source 74 only. The 1,029-case full
+source-74 worker remains separate and does not accept source 75.
+
+An earlier source package was retained before running, when inspection found
+new-form relation searches also need the server-selected operation-type default
+context. The first executed 45-case run then recorded zero assertion failures
+and one fixture error: pending stock computations flushed as the public actor
+while entering the test's exception savepoint, before the denial API ran. Its
+132 guards and independent SQL remained unchanged. The corrected fixture flushes
+setup under the authorized account before creating the public environment.
+Product permissions are unchanged. Earlier packages and the failed log remain.
+
+No schema, dependency, permission grant, installed addon upgrade, frontend build,
+dev/review server, tunnel, public hosting or production deployment is included.
+Billing review access remains closed.
+
 ## Candidate 74, 20 October 2026
 
 This source adds the native form reader used to prepare transfer creation and

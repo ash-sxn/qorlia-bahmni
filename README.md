@@ -51,10 +51,11 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
-Newest backend source: [native transfer form reader](runtime/billing/STOCK_INVENTORY_FORM.md)
-reads the installed merged form, scalar values, native defaults and role/state
-rules for creation/editing. This is not a finished editor or save workflow; its
-35-case native suite passes, but the source gateway blocks it. No review
+Newest backend source: [native transfer form presentation and relation searches](runtime/billing/STOCK_INVENTORY_FORM.md)
+preserves conditional labels, native field/ancestor rules, widget metadata and
+relation search behavior on unedited forms. This is not a finished editor or
+save workflow; 45 native cases pass and the source gateway
+blocks both methods. The older 35-case proof accepts source 74 only. No review
 reopening, build/server, installed upgrade or deployment.
 
 Earlier source: [global Inventory returns](runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-73-global-returns-20-october-2026)

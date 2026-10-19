@@ -1,9 +1,10 @@
 # New-team handover: Qorlia engineering
 
-Newest backend source: [native transfer form reader](../runtime/billing/STOCK_INVENTORY_FORM.md)
-reads the installed merged layout/metadata and actual header values/defaults.
-It prepares creation/editing, not a finished UI or write/recovery workflow. Its
-35-case native suite passes; the source gateway blocks this unfinished method.
+Newest backend source: [native transfer form presentation and relation searches](../runtime/billing/STOCK_INVENTORY_FORM.md)
+preserves conditional labels, field/ancestor rules, widgets and native searches
+on unedited forms. It is not a finished UI or create/edit/recovery workflow.
+Its 45-case native check passes; the source gateway blocks both methods.
+The older 35-case proof accepts source 74 only.
 Starter-task bases, closed review and deployment stay unchanged.
 
 Earlier source: [global Inventory returns](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-73-global-returns-20-october-2026)

@@ -171,7 +171,190 @@ class StockInventoryFormTest(inventory.StockInventoryFixture, TransactionCase):
 
     def test_nonstock_actor_cannot_open_a_new_or_existing_transfer_form(self):
         picking = self.unlinked()
+        self.env.flush_all()
         public = self.env['stock.picking'].with_user(self.env.ref('base.public_user'))
         for args in ((), (picking.id,), (False, self.in_type.id)):
             with self.assertRaises(AccessError):
                 public.qorlia_inventory_form_load(*args)
+
+    def node(self, loaded, field):
+        return next(index for index, row in enumerate(loaded['layout'])
+            if row['field'] == field and row['rules']['visible'] and not row['rules']['readonly'])
+
+    def choices(self, picking, field, **kwargs):
+        loaded = self.load(picking)
+        return self.api().qorlia_inventory_form_choices(picking.id, node=self.node(loaded, field), **kwargs)
+
+    def test_separate_labels_widgets_options_help_and_ancestor_conditions_match_merged_xml(self):
+        picking = self.unlinked()
+        loaded = self.load(picking)
+        root = etree.fromstring(self.api().get_view(view_id=self.env.ref('stock.view_picking_form').id,
+            view_type='form')['arch'])
+        nodes = root.xpath('.//field[not(ancestor::field)]')
+        for row, node in zip(loaded['layout'], nodes):
+            self.assertEqual(row['attributes'], {key: node.get(key) for key in
+                ('id', 'widget', 'options', 'help', 'nolabel', 'placeholder', 'force_save', 'on_change')
+                if node.get(key) is not None})
+            self.assertEqual(row['ancestor_modifiers'], [json.loads(parent.get('modifiers'))
+                for parent in reversed(list(node.iterancestors())) if parent.get('modifiers')])
+        partner_labels = [row for row in loaded['label_nodes'] if row['target'] == 'partner_id']
+        self.assertEqual([row['label'] for row in partner_labels], ['Delivery Address', 'Receive From', 'Contact'])
+        self.assertEqual([row['label'] for row in partner_labels if row['visible']], ['Delivery Address'])
+        self.assertEqual(next(row for row in loaded['layout'] if row['field'] == 'priority')['attributes']['widget'], 'priority')
+        self.assertEqual(loaded['fields']['scheduled_date']['help'],
+            self.api().fields_get(['scheduled_date'], attributes=['help'])['scheduled_date']['help'])
+
+    def test_direction_labels_and_editable_scalar_rules_match_native_form(self):
+        for kind, label in ((self.in_type, 'Receive From'), (self.out_type, 'Delivery Address'),
+                (self.internal_type, 'Contact')):
+            picking = self.unlinked(kind)
+            native = Form(picking)
+            loaded = self.load(picking)
+            self.assertEqual([row['label'] for row in loaded['label_nodes']
+                if row['target'] == 'partner_id' and row['visible']], [label])
+            for name in ('partner_id', 'picking_type_id', 'location_id', 'location_dest_id',
+                    'scheduled_date', 'move_type', 'user_id', 'origin', 'note'):
+                row = next(row for row in loaded['layout'] if row['field'] == name)
+                for modifier in ('readonly', 'required'):
+                    self.assertEqual(row['rules'][modifier], native._get_modifier(name, modifier), (kind.code, name, modifier))
+                self.assertEqual(row['rules']['visible'], not native._get_modifier(name, 'invisible'), (kind.code, name))
+
+    def test_relation_pages_match_native_name_search_order_and_do_not_change_data(self):
+        picking = self.unlinked()
+        self.env['res.partner'].create([{'name': 'QorliaQA Choice contact %02d' % index,
+            'company_id': self.env.company.id} for index in range(30)])
+        expected = self.env['res.partner'].with_user(self.reader).name_search(name='QorliaQA Choice contact',
+            args=[('company_id', 'in', [self.env.company.id, False])], operator='ilike', limit=51)
+        before = self.stamp()
+        first = self.choices(picking, 'partner_id', search='QorliaQA Choice contact')
+        second = self.choices(picking, 'partner_id', search='QorliaQA Choice contact', offset=25)
+        self.assertEqual(first['rows'], [list(item) for item in expected[:25]])
+        self.assertEqual(second['rows'], [list(item) for item in expected[25:]])
+        self.assertTrue(first['has_more'])
+        self.assertFalse(second['has_more'])
+        self.assertEqual(first['form_version'], second['form_version'])
+        self.assertEqual(first['transfer_id'], picking.id)
+        self.assertIs(first['picking_type_id'], False)
+        self.assertTrue(first['read_only'])
+        self.assertEqual(before, self.stamp())
+
+    def test_view_domain_replaces_model_domain_like_native_web_responsible_search(self):
+        picking = self.unlinked()
+        internal = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'QorliaQA Choice nonstock colleague', 'login': 'qorliaqa-choice-nonstock',
+            'company_id': self.env.company.id, 'company_ids': [(6, 0, self.env.company.ids)],
+            'groups_id': [(6, 0, [self.env.ref('base.group_user').id])]})
+        self.assertFalse(internal.has_group('stock.group_stock_user'))
+        loaded = self.load(picking)
+        row = loaded['layout'][self.node(loaded, 'user_id')]
+        self.assertEqual(row['domain'], "[('share', '=', False)]")
+        result = self.choices(picking, 'user_id', search='QorliaQA Choice nonstock colleague')
+        expected = self.env['res.users'].with_user(self.reader).name_search(name='QorliaQA Choice nonstock colleague',
+            args=[('share', '=', False)], operator='ilike', limit=26)
+        self.assertEqual(result['rows'], [list(item) for item in expected])
+        self.assertIn(internal.id, [row[0] for row in result['rows']])
+
+    def test_new_form_choices_use_native_default_company_type_and_location_domain(self):
+        loaded = self.load(kind=self.internal_type)
+        node = self.node(loaded, 'location_dest_id')
+        before = self.stamp()
+        original = type(self.env['stock.location']).name_search
+        observed = []
+        def capture(records, *args, **kwargs):
+            observed.append(dict(records.env.context))
+            return original(records, *args, **kwargs)
+        with patch.object(type(self.env['stock.location']), 'name_search', capture):
+            result = self.api().qorlia_inventory_form_choices(False, self.internal_type.id, node, 'WH')
+        expected = self.env['stock.location'].with_user(self.reader).name_search(name='WH',
+            args=[('company_id', 'in', [self.env.company.id, False])], operator='ilike', limit=26)
+        self.assertIs(result['transfer_id'], False)
+        self.assertEqual(result['picking_type_id'], self.internal_type.id)
+        self.assertEqual(result['rows'], [list(item) for item in expected[:25]])
+        self.assertEqual(len(observed), 1)
+        self.assertEqual(observed[0]['default_picking_type_id'], self.internal_type.id)
+        self.assertEqual(before, self.stamp())
+
+    def test_hidden_readonly_nonrelation_and_malformed_choice_requests_fail_closed(self):
+        picking = self.unlinked()
+        loaded = self.load(picking)
+        for index, row in enumerate(loaded['layout']):
+            if loaded['fields'][row['field']]['type'] == 'many2one' and (
+                    not row['rules']['visible'] or row['rules']['readonly']):
+                with self.assertRaises(AccessError):
+                    self.api().qorlia_inventory_form_choices(picking.id, node=index)
+        scalar = next(index for index, row in enumerate(loaded['layout']) if row['field'] == 'origin')
+        with self.assertRaises(ValidationError):
+            self.api().qorlia_inventory_form_choices(picking.id, node=scalar)
+        for kwargs in ({'node': True}, {'node': -1}, {'node': '1'}, {'node': len(loaded['layout'])},
+                {'offset': True}, {'offset': -1}, {'offset': 100001}, {'search': None}, {'search': 'x' * 201}):
+            with self.subTest(kwargs=kwargs), self.assertRaises(ValidationError):
+                self.api().qorlia_inventory_form_choices(picking.id, **kwargs)
+        public = self.env['stock.picking'].with_user(self.env.ref('base.public_user'))
+        with self.assertRaises(AccessError):
+            public.qorlia_inventory_form_choices(picking.id)
+
+    def test_choice_results_keep_native_record_and_label_field_permissions(self):
+        picking = self.unlinked()
+        contact = self.env['res.partner'].create({'name': 'QorliaQA Choice denied contact'})
+        self.deny('res.partner', contact.id)
+        self.assertEqual(self.choices(picking, 'partner_id', search=contact.name)['rows'], [])
+        original = type(self.env['res.partner']).check_field_access_rights
+        def deny_label(records, operation, fields=None):
+            if operation == 'read' and fields and 'display_name' in fields:
+                raise AccessError('QorliaQA Choice label denied')
+            return original(records, operation, fields)
+        with patch.object(type(self.env['res.partner']), 'check_field_access_rights', deny_label):
+            with self.assertRaises(AccessError):
+                self.choices(picking, 'partner_id', search=contact.name)
+
+    def test_native_field_context_is_applied_without_accepting_caller_defaults(self):
+        picking = self.unlinked()
+        self.env['ir.ui.view'].create({'name': 'QorliaQA Choice context', 'model': 'stock.picking',
+            'inherit_id': self.env.ref('stock.view_picking_form').id,
+            'arch': '<data><xpath expr="//field[@name=\'partner_id\']" position="attributes">'
+                '<attribute name="context">{\'qorlia_native_choice_marker\': picking_type_code, '
+                '\'allowed_company_ids\': [-1]}</attribute></xpath></data>'})
+        original = type(self.env['res.partner']).name_search
+        observed = []
+        def capture(records, *args, **kwargs):
+            observed.append(dict(records.env.context))
+            return original(records, *args, **kwargs)
+        with patch.object(type(self.env['res.partner']), 'name_search', capture):
+            self.api().with_context(default_picking_type_id=-1, default_company_id=-1).qorlia_inventory_form_choices(
+                picking.id, node=self.node(self.load(picking), 'partner_id'))
+        self.assertEqual(len(observed), 1)
+        self.assertEqual(observed[0]['qorlia_native_choice_marker'], 'outgoing')
+        self.assertEqual(observed[0]['allowed_company_ids'], self.env.company.ids)
+        self.assertNotIn('default_company_id', observed[0])
+        self.assertNotIn('default_picking_type_id', observed[0])
+
+    def test_ancestor_invisibility_blocks_search_even_when_field_itself_is_visible(self):
+        picking = self.unlinked()
+        self.env['ir.ui.view'].create({'name': 'QorliaQA Choice ancestor', 'model': 'stock.picking',
+            'inherit_id': self.env.ref('stock.view_picking_form').id,
+            'arch': '<data><xpath expr="//field[@name=\'partner_id\']/.." position="attributes">'
+                '<attribute name="attrs">{\'invisible\': [(\'state\', \'=\', \'draft\')]}</attribute></xpath></data>'})
+        loaded = self.load(picking)
+        index = next(index for index, row in enumerate(loaded['layout']) if row['field'] == 'partner_id')
+        self.assertFalse(loaded['layout'][index]['rules']['visible'])
+        with self.assertRaises(AccessError):
+            self.api().qorlia_inventory_form_choices(picking.id, node=index)
+
+    def test_search_side_effects_are_rejected_rolled_back_and_callbacks_restored(self):
+        picking = self.unlinked()
+        node = self.node(self.load(picking), 'partner_id')
+        before = self.stamp()
+        callbacks = {name: getattr(self.env.cr, name) for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
+        original = type(self.env['res.partner']).name_search
+        marker = []
+        def malicious(records, *args, **kwargs):
+            records.env['stock.picking'].browse(picking.id).write({'origin': 'QorliaQA Forbidden search side effect'})
+            records.env.cr.postcommit.add(lambda: marker.append('sent'))
+            return original(records, *args, **kwargs)
+        with patch.object(type(self.env['res.partner']), 'name_search', malicious):
+            with self.assertRaisesRegex(UserError, 'changed stored data'):
+                self.api().qorlia_inventory_form_choices(picking.id, node=node)
+        self.assertEqual(before, self.stamp())
+        self.assertEqual(marker, [])
+        for name, callback in callbacks.items():
+            self.assertIs(getattr(self.env.cr, name), callback)

@@ -1,5 +1,18 @@
 # Bahmni workflow parity ledger
 
+## 20 October native transfer presentation and relation choices source
+
+[Candidate 75](../runtime/billing/STOCK_INVENTORY_FORM.md) preserves conditional
+labels, widget/options metadata, field/ancestor conditions and native relation
+search on unedited forms. Native view-domain precedence, ordering, default-type
+context, company boundaries and native access remain. The source gateway blocks
+both unfinished form methods. The 45-case native verification passes, with 108
+matching Python hashes, 132 preserved tables, unchanged independent SQL and 37
+native JSON responses (six choice pages), not client/React/HTTP acceptance.
+Python AST and three temporary gateway checks pass. This is not a React editor,
+onchange, create/edit/duplicate, reviewed writer, save proof or recovery. The
+source-74 full regression remains separate. No review reopening or deployment.
+
 ## 20 October native transfer form reader source
 
 [Candidate 74](../runtime/billing/STOCK_INVENTORY_FORM.md) reads the installed

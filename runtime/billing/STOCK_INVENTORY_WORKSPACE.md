@@ -2,6 +2,19 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Candidate 75 native form presentation and choices, 20 October 2026
+
+[The form contract](STOCK_INVENTORY_FORM.md) now preserves separate conditional
+labels, widget/options metadata, ancestor conditions and actual node rules.
+Guarded relation searches use native view-domain precedence and `name_search`,
+not an invented filter or a broad unscoped catalog. This remains an unedited
+read-only form contract, not create/edit/onchange/save/recovery or a React
+editor. The 45-case source-matched native run passes, with 108 matching Python
+hashes, 132 preserved tables and unchanged independent committed SQL. An
+independent checker accepts 37 native JSON responses, including six choice
+pages, not typed-client/React/HTTP acceptance. The source gateway
+blocks both form methods; Billing review and deployments remain closed.
+
 ## Candidate 74 native transfer form reader, 20 October 2026
 
 [The form contract](STOCK_INVENTORY_FORM.md) records the installed merged native
