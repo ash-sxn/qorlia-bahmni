@@ -51,11 +51,21 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
-Newest backend source: [pinned native new-transfer drafts](runtime/billing/STOCK_INVENTORY_FORM.md#candidate-76-pinned-new-transfer-drafts-20-october-2026)
+Newest backend source: [saved-transfer header onchange and effect inspection](runtime/billing/STOCK_INVENTORY_EDIT.md)
+replays the real saved origin and rolls back its native linked writes. The
+116-case check is pending. These are onchange effects, not save approval or a
+React editor; the source gateway blocks all four new methods. Review stays closed.
+The two native form readers now have typed client calls and 31 focused checks;
+Home passes 1,644 tests/103 suites. These calls remain blocked at the gateway,
+and do not constitute a finished create/edit UI.
+
+Earlier source: [pinned native new-transfer drafts](runtime/billing/STOCK_INVENTORY_FORM.md#candidate-76-pinned-new-transfer-drafts-20-october-2026)
 adds signed native defaults, ordered new-header onchange and edited relation
 searches. All 58 native cases pass. There is no create/edit writer,
 save proof, recovery or React editor yet; the source gateway blocks these APIs.
 Review stays closed, with no build/server, installed upgrade or deployment.
+See the [native Inventory form contract](runtime/billing/STOCK_INVENTORY_FORM.md)
+for the versioned source API and verification boundaries.
 
 Earlier source: [native transfer form presentation and relation searches](runtime/billing/STOCK_INVENTORY_FORM.md#candidate-75-native-presentation-and-relation-choices-20-october-2026)
 preserves conditional labels, native field/ancestor rules, widget metadata and

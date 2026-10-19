@@ -1,5 +1,22 @@
 # Bahmni workflow parity ledger
 
+## 20 October saved-transfer native onchange source
+
+[Candidate 77](../runtime/billing/STOCK_INVENTORY_EDIT.md) adds real-origin
+saved-header replay and rollback-only native linked-effect inspection, with
+edited relation searches and sequential effect pages. The 116-case native
+verification is pending. These are onchange effects, not complete save review,
+write/recovery or a React editor. The existing preparation default remains
+unchanged; stored-state-preserving previews permit native terminal notes only.
+Source APIs and Billing review stay closed. The completed 1,029-case full
+source-74 regression does not accept this source.
+
+The two read-only form methods now have typed client source and 31 new focused
+checks, with 1,644 Home tests/103 suites passing. The actual client accepts 37
+native form/choice responses from the verified source-76 log with transport
+mocked. Saved/draft clients, a React editor, HTTP and release remain unaccepted;
+the gateway still blocks all nine unfinished methods.
+
 ## 20 October pinned native new-transfer draft source
 
 [Candidate 76](../runtime/billing/STOCK_INVENTORY_FORM.md#candidate-76-pinned-new-transfer-drafts-20-october-2026)

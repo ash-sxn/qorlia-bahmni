@@ -6,7 +6,6 @@ import json
 
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
-from odoo.osv import expression
 from odoo.tools.date_utils import json_default
 
 from .invoice_draft import _digest
@@ -70,7 +69,7 @@ class StockInventoryDraft(models.Model):
         form = model.new(values)
         # The original action/default context remains intact when the selected operation type changes.
         view = self._qorlia_inventory_form_snapshot(False, seed['picking_type_id'],
-            form_override=form, warning_override=warning)
+            form_override=form, warning_override=warning, basis_version=seed['version'])
         return {'read_only': True, 'write_ready': False, 'version': seed['version'],
             'seed': copy.deepcopy(seed), 'edits': copy.deepcopy(edits), 'domains': copy.deepcopy(domains), 'form': view}
 
@@ -92,55 +91,12 @@ class StockInventoryDraft(models.Model):
 
     def _qorlia_inventory_draft_replay(self, seed, edits):
         model, spec, metadata = self._qorlia_inventory_draft_seed(seed)
-        if not isinstance(edits, list) or len(edits) > 100:
-            raise ValidationError('Replay at most 100 ordered native new-transfer edits before reloading.')
-        try:
-            if len(json.dumps(edits, allow_nan=False)) > 2_000_000:
-                raise ValueError()
-        except (TypeError, ValueError):
-            raise ValidationError('Use bounded finite JSON for the native form edit ledger.')
+        self._qorlia_inventory_edit_ledger(edits)
         values, domains, warning = copy.deepcopy(seed['values']), copy.deepcopy(seed['domains']), seed['warning']
         for index, edit in enumerate(edits):
-            if not isinstance(edit, dict) or set(edit) != {'node', 'value'} or type(edit['node']) is not int:
-                raise ValidationError('Select a native new-transfer field occurrence and value.')
             current = self._qorlia_inventory_draft_snapshot(model, seed, values, domains, warning, edits[:index])
             view = current['form']
-            if not 0 <= edit['node'] < len(view['layout']):
-                raise ValidationError('This field occurrence is not part of the native new-transfer form.')
-            row = view['layout'][edit['node']]
-            name = row['field']
-            kind = metadata[name]['type']
-            if name == 'id':
-                raise ValidationError('Native Billing assigns the new transfer identity when it is saved.')
-            if kind not in _SCALARS:
-                raise ValidationError('Use the separate native child workflow for stock rows and collections.')
-            if not row['rules']['visible'] or row['rules']['readonly']:
-                raise AccessError('This native new-transfer field is hidden or read-only.')
-            model.check_field_access_rights('write', [name])
-            if kind == 'boolean' and type(edit['value']) is not bool:
-                raise ValidationError('Use a Boolean value for this native field.')
-            if kind == 'selection' and edit['value'] is not False and type(edit['value']) not in (str, int):
-                raise ValidationError('Select a native selection value.')
-            if kind in ('char', 'text', 'html'):
-                if edit['value'] is not False and not isinstance(edit['value'], str):
-                    raise ValidationError('Enter native text or clear the field.')
-                changed = {name: edit['value']}
-            else:
-                changed = self.env['sale.order']._qorlia_values(model, {name: edit['value']}, [name])
-            if kind in ('date', 'datetime') and edit['value'] is not False:
-                converter = fields.Datetime if kind == 'datetime' else fields.Date
-                try:
-                    if converter.to_string(converter.to_datetime(edit['value']) if kind == 'datetime'
-                            else converter.to_date(edit['value'])) != edit['value']:
-                        raise ValueError()
-                except (ValueError, TypeError):
-                    raise ValidationError('Use the exact native date or UTC date-time format.')
-            if kind == 'many2one' and edit['value']:
-                _row, relation, domain = self._qorlia_inventory_relation(model, view, edit['node'], domains)
-                offered = relation.name_search(name='', args=expression.AND([[('id', '=', edit['value'])], domain]),
-                    operator='ilike', limit=1)
-                if not any(item[0] == edit['value'] for item in offered):
-                    raise ValidationError('Choose a record offered by this native field domain.')
+            name, changed = self._qorlia_inventory_edit_value(model, view, edit, domains)
             values.update(changed)
             if spec.get(name) in ('1', 'true'):
                 result = _wire(model.onchange(dict(values, id=False), [name], spec))

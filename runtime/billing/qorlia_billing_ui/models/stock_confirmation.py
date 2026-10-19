@@ -297,7 +297,8 @@ class StockConfirmation(models.Model):
     def _qorlia_confirmation_native(self):
         return self._qorlia_stock_preparation_native(self.action_confirm, FINANCIAL_MODELS, CONFIG_MODELS)[:4]
 
-    def _qorlia_stock_preparation_native(self, action, financial_models, config_models):
+    def _qorlia_stock_preparation_native(self, action, financial_models, config_models, *, preserve_state=False):
+        original_state = self.state
         # Register the caller's tracking before sudo-computed state can choose a different audit author.
         self._track_prepare(self._fields)
         def guard_tables(names):
@@ -317,7 +318,9 @@ class StockConfirmation(models.Model):
         after = self._qorlia_confirmation_capture()
         money_after = self._qorlia_confirmation_stamp(finance_tables, semantic=True)
         config_after = self._qorlia_confirmation_stamp(config_tables, semantic=True)
-        if money_after != money_before or self.state in ('done', 'cancel'):
+        if preserve_state and self.state != original_state:
+            raise UserError('Native form onchange changed the stored transfer state. Nothing was saved.')
+        if money_after != money_before or not preserve_state and self.state in ('done', 'cancel'):
             raise UserError('Stock preparation changed financial records or completed stock. Nothing was saved.')
         if config_after != config_before:
             raise UserError('Stock preparation changed unreviewed native configuration. Nothing was saved.')

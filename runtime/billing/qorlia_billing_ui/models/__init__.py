@@ -19,6 +19,7 @@ from . import stock_cancellation
 from . import stock_inventory
 from . import stock_inventory_form
 from . import stock_inventory_draft
+from . import stock_inventory_edit
 from . import stock_operation_paged
 from . import stock_reservation_paged
 from . import account_move

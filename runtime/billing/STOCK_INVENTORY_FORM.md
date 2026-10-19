@@ -2,6 +2,9 @@
 
 [README](../../README.md) · [Billing](README.md) · [Inventory workspace](STOCK_INVENTORY_WORKSPACE.md)
 
+Latest saved-transfer source: [native onchange and complete effect inspection](STOCK_INVENTORY_EDIT.md).
+It is separate from the unsaved draft path below and is not save approval.
+
 ## Candidate 76 pinned new-transfer drafts, 20 October 2026
 
 This source adds the native **new, unsaved transfer** form lifecycle. It does
@@ -300,11 +303,19 @@ is tested rather than an unrelated ACL denial. They also cover no preselected
 type and foreign-company type rejection. Product permissions/defaults are not
 changed. Both earlier packages/logs are retained.
 
-A frozen **1,029-case full-addon run is active** on a separate synthetic database
-copy, using this same source. The unique planned count and no-HTTP/no-published-
-port/readonly configuration are verified, not its final result. The earlier
-974-case source-68 result does not accept this source. Full-run result,
-source-matched JSON/client replay and independent committed SQL remain pending.
+The frozen **1,029-case full-addon run passes** on its separate synthetic
+database copy, with zero failures/errors/skips, 108 matching Python hashes,
+132 preserved tables, mandatory analytics/SMS and unchanged installed metadata.
+Independent committed SQL counts/full-row hashes match the original synthetic
+database. Frozen-source client replay accepts 322 confirmation, 438 cancellation
+and 328 return responses (1,088 total), using mocked transport; 17 native form
+responses pass the JSON-only checker. Native log SHA256:
+`9cceb3a1d122d7cb0fda26903077781a289361725b62332adedaa737379e441f`.
+Frozen client SHA256:
+`752cb9efae2d33d7460930631c52954b804936e09bdcf663be8bc2f0986cabda`.
+The worker is terminal/removed, with readonly source and no HTTP/published ports.
+This verifies source 74 only, not newer source, a clean installation, installed
+upgrade or actual HTTP/browser/React/release acceptance. Bootstrap warnings remain.
 
 Python AST parsing and three temporary gateway stub checks pass. The gateway
 test explicitly verifies this unfinished form method is blocked. No frontend

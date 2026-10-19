@@ -3,7 +3,12 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Newest backend source: [pinned native new-transfer drafts](STOCK_INVENTORY_FORM.md#candidate-76-pinned-new-transfer-drafts-20-october-2026)
+Newest backend source: [saved-transfer header onchange and effect inspection](STOCK_INVENTORY_EDIT.md)
+replays the real native origin and rolls back linked writes. The 116-case native
+check is pending; this is not save approval, recovery or a React editor. The
+source gateway blocks all four new methods; review and deployment stay closed.
+
+Earlier source: [pinned native new-transfer drafts](STOCK_INVENTORY_FORM.md#candidate-76-pinned-new-transfer-drafts-20-october-2026)
 adds signed native defaults, ordered new-header onchange and edited relation
 searches. Its 58-case native check passes. No create/edit/save/recovery or
 React editor is accepted yet. The gateway keeps these APIs blocked, review

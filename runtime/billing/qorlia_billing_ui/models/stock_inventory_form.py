@@ -5,7 +5,7 @@ import json
 import operator
 
 from lxml import etree
-from odoo import api, models, tools
+from odoo import api, fields, models, tools
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.osv import expression
 from odoo.tools.safe_eval import safe_eval
@@ -83,8 +83,9 @@ class StockInventoryForm(models.Model):
                 model = model.with_context(default_picking_type_id=kind.id)
         return model, picking, scope
 
-    def _qorlia_inventory_form_snapshot(self, transfer_id, picking_type_id, form_override=None, warning_override=False):
-        model, picking, scope = self._qorlia_inventory_form_source(transfer_id, picking_type_id)
+    def _qorlia_inventory_form_snapshot(self, transfer_id, picking_type_id, form_override=None, warning_override=False,
+            source_override=None, basis_version=None):
+        model, picking, scope = source_override or self._qorlia_inventory_form_source(transfer_id, picking_type_id)
         view = model.get_view(view_id=self.env.ref('stock.view_picking_form').id, view_type='form')
         root = etree.fromstring(view['arch'])
         nodes = root.xpath('.//field[not(ancestor::field)]')
@@ -162,7 +163,8 @@ class StockInventoryForm(models.Model):
             'companies': self.env.companies.ids, 'groups': sorted(self.env.user.groups_id.ids),
             'lang': self.env.context.get('lang'), 'tz': self.env.context.get('tz')}
         return {'read_only': True, 'transfer_id': transfer_id, 'picking_type_id': picking_type_id,
-            'version': _digest({'basis': basis, 'stamp': self._qorlia_confirmation_stamp(self._qorlia_return_paged_tables())}),
+            'version': _digest({'basis': basis, 'stamp': basis_version if basis_version is not None
+                else self._qorlia_confirmation_stamp(self._qorlia_return_paged_tables())}),
             'timezone': self.env.context.get('tz') or self.env.user.tz or 'UTC', **surface}
 
     def _qorlia_inventory_form_read(self, action):
@@ -245,3 +247,53 @@ class StockInventoryForm(models.Model):
         self = self._qorlia_inventory_context()
         return self._qorlia_inventory_form_read(lambda: self._qorlia_inventory_form_choices(
             transfer_id, picking_type_id, node, search, offset))
+
+    def _qorlia_inventory_edit_ledger(self, edits):
+        if not isinstance(edits, list) or len(edits) > 100:
+            raise ValidationError('Replay at most 100 ordered native transfer edits before reloading.')
+        try:
+            if len(json.dumps(edits, allow_nan=False)) > 2_000_000:
+                raise ValueError()
+        except (TypeError, ValueError):
+            raise ValidationError('Use bounded finite JSON for the native form edit ledger.')
+
+    def _qorlia_inventory_edit_value(self, model, view, edit, domains):
+        if not isinstance(edit, dict) or set(edit) != {'node', 'value'} or type(edit['node']) is not int:
+            raise ValidationError('Select a native transfer field occurrence and value.')
+        if not 0 <= edit['node'] < len(view['layout']):
+            raise ValidationError('This field occurrence is not part of the native transfer form.')
+        row = view['layout'][edit['node']]
+        name, value = row['field'], edit['value']
+        kind = view['fields'][name]['type']
+        if name == 'id':
+            raise ValidationError('Native Billing controls transfer identity. It cannot be edited.')
+        if kind not in _SCALARS:
+            raise ValidationError('Use the separate native child workflow for stock rows and collections.')
+        if not row['rules']['visible'] or row['rules']['readonly']:
+            raise AccessError('This native transfer field is hidden or read-only.')
+        model.check_field_access_rights('write', [name])
+        if kind == 'boolean' and type(value) is not bool:
+            raise ValidationError('Use a Boolean value for this native field.')
+        if kind == 'selection' and value is not False and type(value) not in (str, int):
+            raise ValidationError('Select a native selection value.')
+        if kind in ('char', 'text', 'html'):
+            if value is not False and not isinstance(value, str):
+                raise ValidationError('Enter native text or clear the field.')
+            changed = {name: value}
+        else:
+            changed = self.env['sale.order']._qorlia_values(model, {name: value}, [name])
+        if kind in ('date', 'datetime') and value is not False:
+            converter = fields.Datetime if kind == 'datetime' else fields.Date
+            try:
+                if converter.to_string(converter.to_datetime(value) if kind == 'datetime'
+                        else converter.to_date(value)) != value:
+                    raise ValueError()
+            except (ValueError, TypeError):
+                raise ValidationError('Use the exact native date or UTC date-time format.')
+        if kind == 'many2one' and value:
+            _row, relation, domain = self._qorlia_inventory_relation(model, view, edit['node'], domains)
+            offered = relation.name_search(name='', args=expression.AND([[('id', '=', value)], domain]),
+                operator='ilike', limit=1)
+            if not any(item[0] == value for item in offered):
+                raise ValidationError('Choose a record offered by this native field domain.')
+        return name, changed

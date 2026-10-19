@@ -1,6 +1,11 @@
 # New-team handover: Qorlia engineering
 
-Newest backend source: [pinned native new-transfer drafts](../runtime/billing/STOCK_INVENTORY_FORM.md#candidate-76-pinned-new-transfer-drafts-20-october-2026)
+Newest backend source: [saved-transfer header onchange and effect inspection](../runtime/billing/STOCK_INVENTORY_EDIT.md)
+replays the real saved origin and inspects rolled-back linked writes. Its
+116-case native check is pending. There is no save approval or React editor;
+source APIs, review access and starter-task bases remain unchanged/closed.
+
+Earlier source: [pinned native new-transfer drafts](../runtime/billing/STOCK_INVENTORY_FORM.md#candidate-76-pinned-new-transfer-drafts-20-october-2026)
 adds signed native defaults, ordered new-header onchange and edited relation
 search. Its 58-case native check passes, not create/edit/save/recovery or
 React acceptance. Source APIs stay blocked; closed review and starter-task

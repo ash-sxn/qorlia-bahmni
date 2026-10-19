@@ -3364,6 +3364,335 @@ export interface InventoryTransferLoad {
   version: string;
   timezone: string;
 }
+export interface InventoryFormPresentation {
+  modifiers: Record<string, ConfirmationValue>;
+  ancestor_modifiers: Record<string, ConfirmationValue>[];
+  containers: {
+    kind: 'page' | 'group';
+    name: string | false;
+    label: string | false;
+    modifiers: Record<string, ConfirmationValue>;
+  }[];
+}
+export interface InventoryFormNode extends InventoryFormPresentation {
+  field: string;
+  label: string | false;
+  domain: string | false;
+  context: string | false;
+  attributes: Record<string, string>;
+  rules: { visible: boolean; readonly: boolean; required: boolean };
+}
+export interface InventoryNativeForm {
+  read_only: true;
+  transfer_id: number | false;
+  picking_type_id: number | false;
+  version: string;
+  timezone: string;
+  fields: Record<
+    string,
+    Record<string, ConfirmationValue> & { type: string; string: string }
+  >;
+  layout: InventoryFormNode[];
+  label_nodes: (InventoryFormPresentation & {
+    target: string;
+    label: string | false;
+    visible: boolean;
+  })[];
+  values: Record<string, ConfirmationValue>;
+  labels: Record<string, [number, string]>;
+  warning: Record<string, ConfirmationValue> | false;
+  collections: string[];
+  unsupported: string[];
+}
+export interface InventoryFormChoices {
+  read_only: true;
+  transfer_id: number | false;
+  picking_type_id: number | false;
+  form_version: string;
+  node: number;
+  field: string;
+  offset: number;
+  rows: [number, string][];
+  has_more: boolean;
+}
+function checkedInventoryFormIdentity(
+  transferId: number | false,
+  pickingTypeId: number | false,
+) {
+  if (
+    !(transferId === false || stockId(transferId)) ||
+    !(pickingTypeId === false || stockId(pickingTypeId)) ||
+    (transferId !== false && pickingTypeId !== false)
+  )
+    throw new Error('Choose a saved transfer or a new native operation type.');
+}
+function validInventoryPresentation(row: InventoryFormPresentation) {
+  return (
+    confirmationObject(row?.modifiers) &&
+    Array.isArray(row.ancestor_modifiers) &&
+    row.ancestor_modifiers.every(confirmationObject) &&
+    Array.isArray(row.containers) &&
+    row.containers.every(
+      (parent) =>
+        confirmationKeys(parent, ['kind', 'name', 'label', 'modifiers']) &&
+        ['page', 'group'].includes(parent.kind) &&
+        stockText(parent.name) &&
+        stockText(parent.label) &&
+        confirmationObject(parent.modifiers),
+    )
+  );
+}
+function validInventoryForm(
+  data: InventoryNativeForm,
+  transferId: number | false,
+  pickingTypeId: number | false,
+) {
+  if (
+    !confirmationKeys(data, [
+      'read_only',
+      'transfer_id',
+      'picking_type_id',
+      'version',
+      'timezone',
+      'fields',
+      'layout',
+      'label_nodes',
+      'values',
+      'labels',
+      'warning',
+      'collections',
+      'unsupported',
+    ]) ||
+    !validConfirmationValue(data) ||
+    data.read_only !== true ||
+    data.transfer_id !== transferId ||
+    data.picking_type_id !== pickingTypeId ||
+    !stockVersion(data.version) ||
+    typeof data.timezone !== 'string' ||
+    !data.timezone ||
+    data.timezone.length > 64 ||
+    !confirmationObject(data.fields) ||
+    !confirmationObject(data.values) ||
+    data.values.id !== transferId ||
+    !confirmationObject(data.labels) ||
+    !(data.warning === false || confirmationObject(data.warning)) ||
+    !Array.isArray(data.layout) ||
+    !data.layout.length ||
+    !Array.isArray(data.label_nodes) ||
+    !Array.isArray(data.collections) ||
+    !Array.isArray(data.unsupported)
+  )
+    return false;
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: data.timezone });
+  } catch {
+    return false;
+  }
+  const names = Object.keys(data.fields).sort();
+  if (
+    JSON.stringify(
+      [...new Set(data.layout.map((row) => row?.field))].sort(),
+    ) !== JSON.stringify(names) ||
+    !Object.values(data.fields).every(
+      (field) =>
+        confirmationObject(field) &&
+        typeof field.type === 'string' &&
+        typeof field.string === 'string',
+    ) ||
+    !data.layout.every(
+      (row) =>
+        confirmationKeys(row, [
+          'field',
+          'label',
+          'domain',
+          'context',
+          'modifiers',
+          'ancestor_modifiers',
+          'containers',
+          'attributes',
+          'rules',
+        ]) &&
+        validInventoryPresentation(row) &&
+        stockText(row.label) &&
+        stockText(row.domain) &&
+        stockText(row.context) &&
+        confirmationKeys(row.rules, ['visible', 'readonly', 'required']) &&
+        Object.values(row.rules).every((value) => typeof value === 'boolean') &&
+        confirmationObject(row.attributes) &&
+        Object.entries(row.attributes).every(
+          ([key, value]) =>
+            [
+              'id',
+              'widget',
+              'options',
+              'help',
+              'nolabel',
+              'placeholder',
+              'force_save',
+              'on_change',
+            ].includes(key) && typeof value === 'string',
+        ),
+    ) ||
+    !data.label_nodes.every(
+      (row) =>
+        confirmationKeys(row, [
+          'target',
+          'label',
+          'visible',
+          'modifiers',
+          'ancestor_modifiers',
+          'containers',
+        ]) &&
+        validInventoryPresentation(row) &&
+        typeof row.target === 'string' &&
+        stockText(row.label) &&
+        typeof row.visible === 'boolean',
+    )
+  )
+    return false;
+  const collections = names.filter((name) =>
+    ['one2many', 'many2many'].includes(data.fields[name].type),
+  );
+  const scalarTypes = [
+    'char',
+    'text',
+    'html',
+    'selection',
+    'boolean',
+    'float',
+    'monetary',
+    'integer',
+    'datetime',
+    'date',
+    'many2one',
+  ];
+  const unsupported = names.filter(
+    (name) =>
+      name !== 'id' &&
+      !scalarTypes.includes(data.fields[name].type) &&
+      !collections.includes(name),
+  );
+  if (
+    JSON.stringify(data.collections) !== JSON.stringify(collections) ||
+    JSON.stringify(data.unsupported) !== JSON.stringify(unsupported) ||
+    JSON.stringify(Object.keys(data.values).sort()) !==
+      JSON.stringify(
+        names.filter(
+          (name) => !collections.includes(name) && !unsupported.includes(name),
+        ),
+      )
+  )
+    return false;
+  for (const name of names.filter(
+    (name) =>
+      name !== 'id' &&
+      !collections.includes(name) &&
+      !unsupported.includes(name),
+  )) {
+    const field = data.fields[name],
+      value = data.values[name];
+    if (field.type === 'many2one') {
+      if (
+        !(value === false || stockId(value)) ||
+        typeof field.relation !== 'string'
+      )
+        return false;
+      if (
+        value !== false &&
+        (!Array.isArray(data.labels[name]) ||
+          !validRelation(data.labels[name]) ||
+          data.labels[name][0] !== value)
+      )
+        return false;
+    } else if (
+      !validConfirmationField(value, { type: field.type, relation: false })
+    )
+      return false;
+  }
+  return Object.entries(data.labels).every(
+    ([name, label]) =>
+      data.fields[name]?.type === 'many2one' &&
+      Array.isArray(label) &&
+      validRelation(label) &&
+      label[0] === data.values[name],
+  );
+}
+export async function getInventoryNativeForm(
+  transferId: number | false = false,
+  pickingTypeId: number | false = false,
+): Promise<InventoryNativeForm> {
+  checkedInventoryFormIdentity(transferId, pickingTypeId);
+  const data = await stockCall<InventoryNativeForm>(
+    'qorlia_inventory_form_load',
+    {
+      transfer_id: transferId,
+      picking_type_id: pickingTypeId,
+    },
+  );
+  if (!validInventoryForm(data, transferId, pickingTypeId))
+    throw new Error(
+      'Invalid native transfer form. Reload it before continuing.',
+    );
+  return data;
+}
+export async function getInventoryNativeFormChoices(
+  transferId: number | false,
+  pickingTypeId: number | false,
+  node: number,
+  search = '',
+  offset = 0,
+): Promise<InventoryFormChoices> {
+  checkedInventoryFormIdentity(transferId, pickingTypeId);
+  if (
+    !stockCount(node) ||
+    typeof search !== 'string' ||
+    search.length > 200 ||
+    !stockCount(offset) ||
+    offset > 100000
+  )
+    throw new Error('Choose a native field and bounded relation search.');
+  const data = await stockCall<InventoryFormChoices>(
+    'qorlia_inventory_form_choices',
+    {
+      transfer_id: transferId,
+      picking_type_id: pickingTypeId,
+      node,
+      search,
+      offset,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      'read_only',
+      'transfer_id',
+      'picking_type_id',
+      'form_version',
+      'node',
+      'field',
+      'offset',
+      'rows',
+      'has_more',
+    ]) ||
+    data.read_only !== true ||
+    data.transfer_id !== transferId ||
+    data.picking_type_id !== pickingTypeId ||
+    !stockVersion(data.form_version) ||
+    data.node !== node ||
+    data.offset !== offset ||
+    typeof data.field !== 'string' ||
+    !data.field ||
+    typeof data.has_more !== 'boolean' ||
+    !Array.isArray(data.rows) ||
+    data.rows.length > 25 ||
+    (data.has_more && data.rows.length !== 25) ||
+    !data.rows.every((row) => Array.isArray(row) && validRelation(row)) ||
+    new Set(data.rows.map((row) => row[0])).size !== data.rows.length
+  )
+    throw new Error(
+      'Invalid native relation choices. Reload the transfer form.',
+    );
+  return data;
+}
 export type InventoryTransferDetailPage = InventoryTransferLoad & {
   after: number;
   position: number;

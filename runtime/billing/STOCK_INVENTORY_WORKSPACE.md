@@ -2,6 +2,15 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Candidate 77 saved-header onchange and effect inspection, 20 October 2026
+
+[The saved-form contract](STOCK_INVENTORY_EDIT.md) replays native changes on the
+real stored origin, including its linked-move writes, inside rollback-only
+guards. Four source methods cover load, onchange, edited choices and sequential
+onchange-effect pages. The 116-case check is pending. This is not complete save
+review, a writer, durable recovery or React acceptance. The gateway blocks the
+unfinished methods and review access stays closed.
+
 ## Candidate 76 pinned native new-transfer drafts, 20 October 2026
 
 [The draft contract](STOCK_INVENTORY_FORM.md#candidate-76-pinned-new-transfer-drafts-20-october-2026)
