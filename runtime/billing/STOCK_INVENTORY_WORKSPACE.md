@@ -2,13 +2,23 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Candidate 80 Save and recovery in progress, 21 October 2026
+
+[The durable Save protocol](STOCK_INVENTORY_WRITE.md) adds complete-review proofs,
+exact native Save, protected receipts, status/reference recovery and durable Stop.
+Its 150-case native check is pending. All 14 form/review/write methods remain
+gateway-blocked; the React header editor and pending-request UI are unfinished.
+This does not reopen review/deployment or shrink the remaining module scope.
+
 ## Candidate 79 full native save review in progress, 20 October 2026
 
 [The save-review contract](STOCK_INVENTORY_SAVE.md) executes native header/derived
 child writes inside rollback-only guards, with dirty-field extraction, native
 preparation and separate full-effect pages. Candidate 79 adds identity-aware
 nested command replay and recursive explicit deletion extraction. Its focused
-18-case native check passes; the broader 134-case regression is running.
+18-case native check passes; the broader 134-case regression had one error in
+the added real nested-deletion comparison, with all 134 guards/committed tables
+preserved. Candidate 80 records that installed native computed-alias behavior.
 The last candidate-78 run had five
 child-serialization errors. There is
 no persistent Save endpoint, recovery protocol or React editor. Remaining child

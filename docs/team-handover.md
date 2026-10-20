@@ -1,12 +1,12 @@
 # New-team handover: Qorlia engineering
 
-Newest source in progress: [full saved-transfer native save review](../runtime/billing/STOCK_INVENTORY_SAVE.md)
-adds rollback-only actual write/effect inspection and identity-aware nested
-command replay. Candidate 79's focused 18-case native check passes; the broader
-134-case regression is running. The last
-candidate-78 130-case run had five child-serialization errors. This is not a
-writer, React editor, approval to reopen review or a
-change to contributor starter-task bases.
+Newest source in progress: [Inventory Save and recovery](../runtime/billing/STOCK_INVENTORY_WRITE.md)
+adds complete-review proofs, native Save, protected receipts, status, reference
+pages and durable Stop. Candidate 80's 150-case native check is pending after
+correcting assertions in the first 34-case run. There is
+no React header editor or pending-request UI, and all 14 form/review/write methods
+remain gateway-blocked. This does not reopen review/deployment or change
+contributor starter-task bases.
 
 Earlier backend source: [saved-transfer header onchange and effect inspection](../runtime/billing/STOCK_INVENTORY_EDIT.md)
 replays the real saved origin and inspects rolled-back linked writes. Its

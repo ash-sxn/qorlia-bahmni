@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from lxml import etree
 from odoo import Command
-from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.exceptions import AccessError, MissingError, UserError, ValidationError
 from odoo.tests import Form, TransactionCase, tagged
 
 from . import test_stock_inventory as inventory
@@ -52,7 +52,7 @@ class StockInventorySavePreviewTest(inventory.StockInventoryFixture, Transaction
         self.assertEqual(result['effects'], expected[0])
         self.assertEqual(result['state_after'], expected[2])
         self.assertTrue(result['read_only'])
-        self.assertFalse(result['write_ready'])
+        self.assertTrue(result['write_ready'])
         self.assertEqual(set(result['changed_fields']), {'origin', 'note', 'scheduled_date'})
         self.assertTrue(result['effects']['updated']['stock.picking'])
         self.assertEqual(before, self.stamp())
@@ -189,11 +189,21 @@ class StockInventorySavePreviewTest(inventory.StockInventoryFixture, Transaction
                 lambda: picking.write(write_values), _FINANCE, _CONFIG, allow_terminal_unchanged=True,
                 graph_models=_SAVE_GRAPH, private_models=_SAVE_PRIVATE, private_always={'mail.followers'}),
                 picking._qorlia_inventory_saved_tables())
-        expected = native({'move_ids_without_package': [Command.update(move.id,
+        # The stored relation accepts deletion; the computed alias replays DELETE twice in installed native Odoo.
+        stored_root = etree.fromstring(etree.tostring(root))
+        stored_root.find('field').set('name', 'move_ids')
+        stored_values = {'id': picking.id, 'move_ids': merged['move_ids_without_package']}
+        stored_form = model.new(stored_values, origin=picking)
+        stored_changes = model._qorlia_inventory_save_fields(stored_form, stored_root, {'move_ids'}, values=stored_values)
+        expected = native({'move_ids': [Command.update(move.id,
             {'description_picking': 'QorliaQA Pending nested deletion', 'move_line_ids': [Command.delete(line.id)]})]})
-        actual = native(changes)
+        actual = native(stored_changes)
         self.assertEqual(actual[0], expected[0])
         self.assertEqual(actual[2], expected[2])
+        for computed_values in ({'move_ids_without_package': [Command.update(move.id,
+                {'description_picking': 'QorliaQA Pending nested deletion', 'move_line_ids': [Command.delete(line.id)]})]}, changes):
+            with self.assertRaises(MissingError):
+                native(computed_values)
         self.assertTrue(line.exists())
         self.assertEqual(before, self.stamp())
 
@@ -298,14 +308,18 @@ class StockInventorySavePreviewTest(inventory.StockInventoryFixture, Transaction
 
     def test_complete_save_effects_are_sequential_and_distinct_from_onchange_inspection(self):
         picking = self.unlinked()
+        contact = self.env['res.partner'].create({'name': 'QorliaQA Multi-page save contact'})
         loaded = self.load(picking)
         edits = self.edits(loaded, [('note', 'QorliaQA Paged save note')])
         onchange = self.api().qorlia_inventory_edit_onchange(picking.id, loaded['version'], edits)
         self.assertEqual(onchange['effect_count'], 0)
+        note_review = self.api().qorlia_inventory_edit_save_review(picking.id, loaded['version'], edits)
+        self.assertGreater(note_review['effect_count'], 0)
+        self.assertNotEqual(note_review['review_version'], onchange['effect_version'])
+        edits = self.edits(loaded, [('note', 'QorliaQA Paged save note'), ('partner_id', contact.id)])
         first = self.api().qorlia_inventory_edit_save_review(picking.id, loaded['version'], edits, limit=1)
-        self.assertNotEqual(first['review_version'], onchange['effect_version'])
-        self.assertGreater(first['effect_count'], 0)
-        self.assertNotIn('review_complete_token', first)
+        self.assertGreater(first['effect_count'], 1)
+        self.assertFalse(first['review_complete_token'])
         pages, current = [first], first
         while current['next_after'] is not False:
             current = self.api().qorlia_inventory_edit_save_review(picking.id, loaded['version'], edits,
@@ -313,6 +327,7 @@ class StockInventorySavePreviewTest(inventory.StockInventoryFixture, Transaction
             pages.append(current)
         self.assertEqual(sum(len(_effect_rows(page['effects'])) for page in pages), first['effect_count'])
         self.assertFalse(current['continuation_token'])
+        self.assertEqual(len(current['review_complete_token']), 64)
 
     def test_malformed_or_onchange_page_tokens_cannot_authorize_save_review(self):
         picking = self.unlinked()

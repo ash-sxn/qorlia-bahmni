@@ -4077,7 +4077,9 @@ export async function getInventoryStoredFormEffects(
     );
   return data;
 }
-export interface InventoryStoredSaveReview extends InventoryStoredForm {
+export interface InventoryStoredSaveReview
+  extends Omit<InventoryStoredForm, 'write_ready'> {
+  write_ready: true;
   edits: InventoryHeaderEdit[];
   review_version: string;
   state_after: OrderTransferSummary['state'];
@@ -4087,6 +4089,7 @@ export interface InventoryStoredSaveReview extends InventoryStoredForm {
   after: number;
   next_after: number | false;
   continuation_token: string | false;
+  review_complete_token: string | false;
   effects: StockConfirmationEffects;
 }
 function validInventorySaveEffects(effects: StockConfirmationEffects) {
@@ -4146,10 +4149,11 @@ export async function getInventoryStoredSaveReview(
       'after',
       'next_after',
       'continuation_token',
+      'review_complete_token',
       'effects',
     ]) ||
     data.read_only !== true ||
-    data.write_ready !== false ||
+    data.write_ready !== true ||
     data.transfer_id !== exact.transfer_id ||
     data.version !== exact.version ||
     JSON.stringify(data.edits) !== JSON.stringify(exact.edits) ||
@@ -4183,8 +4187,12 @@ export async function getInventoryStoredSaveReview(
     !page.valid ||
     page.count !== Math.min(limit, data.effect_count - after) ||
     (end < data.effect_count
-      ? data.next_after !== end || !stockVersion(data.continuation_token)
-      : data.next_after !== false || data.continuation_token !== false)
+      ? data.next_after !== end ||
+        !stockVersion(data.continuation_token) ||
+        data.review_complete_token !== false
+      : data.next_after !== false ||
+        data.continuation_token !== false ||
+        !stockVersion(data.review_complete_token))
   )
     throw new Error(
       'Some transfer changes could not be checked. Start the review again.',
@@ -4200,6 +4208,159 @@ export type InventoryTransferDetailPage = InventoryTransferLoad & {
     | { section: 'moves'; rows: InventoryMove[] }
     | { section: 'operations'; rows: OrderTransfer['operations'] }
   );
+
+export interface InventoryStoredSaveRequest extends InventoryStoredSelection {
+  review_version: string;
+  review_complete_token: string;
+  request_key: string;
+}
+export interface InventoryStoredSaveStatus {
+  request_key: string;
+  accepted: boolean;
+  stopped: boolean;
+  state_after: OrderTransferSummary['state'] | false;
+  changed_fields: string[];
+  reference_count: number;
+  current: InventoryTransferLoad;
+}
+export function checkedInventoryStoredSaveRequest(
+  value: InventoryStoredSaveRequest,
+): InventoryStoredSaveRequest {
+  if (
+    !confirmationKeys(value, [
+      'transfer_id',
+      'version',
+      'edits',
+      'review_version',
+      'review_complete_token',
+      'request_key',
+    ])
+  )
+    throw new Error(
+      'Keep the exact completely reviewed transfer save request.',
+    );
+  const selection = checkedInventoryStoredSelection({
+    transfer_id: value.transfer_id,
+    version: value.version,
+    edits: value.edits,
+  });
+  const proof = checkedPagedStockConfirmationRequest({
+    order_id: false,
+    transfer_id: value.transfer_id,
+    version: value.version,
+    review_version: value.review_version,
+    review_complete_token: value.review_complete_token,
+    request_key: value.request_key,
+  });
+  return {
+    ...selection,
+    review_version: proof.review_version,
+    review_complete_token: proof.review_complete_token,
+    request_key: proof.request_key,
+  };
+}
+async function inventoryStoredSaveRequest(
+  action: 'save' | 'status' | 'stop',
+  request: InventoryStoredSaveRequest,
+) {
+  const exact = checkedInventoryStoredSaveRequest(request);
+  const data = await stockCall<InventoryStoredSaveStatus>(
+    action === 'save'
+      ? 'qorlia_inventory_edit_save'
+      : `qorlia_inventory_edit_save_${action}`,
+    { payload: exact },
+  );
+  if (
+    !confirmationKeys(data, [
+      'request_key',
+      'accepted',
+      'stopped',
+      'state_after',
+      'changed_fields',
+      'reference_count',
+      'current',
+    ]) ||
+    data.request_key !== exact.request_key ||
+    typeof data.accepted !== 'boolean' ||
+    typeof data.stopped !== 'boolean' ||
+    (data.accepted && data.stopped) ||
+    (action !== 'status' && !data.accepted && !data.stopped) ||
+    (action === 'save' && !data.accepted) ||
+    (data.accepted
+      ? ![
+          'draft',
+          'waiting',
+          'confirmed',
+          'assigned',
+          'done',
+          'cancel',
+        ].includes(String(data.state_after))
+      : data.state_after !== false) ||
+    !stockCount(data.reference_count) ||
+    !Array.isArray(data.changed_fields) ||
+    new Set(data.changed_fields).size !== data.changed_fields.length ||
+    !data.changed_fields.every(
+      (name, index) =>
+        typeof name === 'string' &&
+        /^[a-z][a-z0-9_]*$/.test(name) &&
+        name !== 'id' &&
+        !name.startsWith('qorlia_') &&
+        (!index || name > data.changed_fields[index - 1]),
+    ) ||
+    (!data.accepted &&
+      (data.reference_count !== 0 || data.changed_fields.length !== 0)) ||
+    !confirmationKeys(data.current, [
+      'read_only',
+      'version',
+      'timezone',
+      'transfer',
+    ]) ||
+    !validInventoryTransferLoad(data.current, exact.transfer_id)
+  )
+    throw new Error(
+      'The save outcome could not be verified. Keep the original request and check its status.',
+    );
+  return data;
+}
+export const saveInventoryStoredForm = (request: InventoryStoredSaveRequest) =>
+  inventoryStoredSaveRequest('save', request);
+export const getInventoryStoredSaveStatus = (
+  request: InventoryStoredSaveRequest,
+) => inventoryStoredSaveRequest('status', request);
+export const stopInventoryStoredSave = (request: InventoryStoredSaveRequest) =>
+  inventoryStoredSaveRequest('stop', request);
+
+export async function getInventoryStoredSaveReferences(
+  request: InventoryStoredSaveRequest,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+): Promise<PagedStockConfirmationReferences> {
+  const exact = checkedInventoryStoredSaveRequest(request);
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !(version === false || stockVersion(version)) ||
+    (after > 0 && version === false)
+  )
+    throw new Error(
+      'Use bounded saved-reference pages with their original version.',
+    );
+  const data = await stockCall<PagedStockConfirmationReferences>(
+    'qorlia_inventory_edit_save_references',
+    { payload: exact, after, version, limit },
+  );
+  return checkedStockReferencePage(
+    data,
+    exact.request_key,
+    after,
+    version,
+    limit,
+    'inventory save',
+  );
+}
 
 function validInventoryTransferLoad(
   data: InventoryTransferLoad,
@@ -6156,7 +6317,8 @@ function checkedStockReferencePage(
     | 'reservation'
     | 'validation step'
     | 'return'
-    | 'cancellation',
+    | 'cancellation'
+    | 'inventory save',
 ) {
   if (
     !confirmationKeys(data, [

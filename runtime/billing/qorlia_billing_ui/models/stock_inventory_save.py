@@ -15,7 +15,7 @@ from .stock_operation_paged import _FINANCE, _CONFIG
 from .stock_confirmation import GRAPH_MODELS, AUDIT_MODELS
 
 
-_PURPOSE = 'qorlia.inventory-stored-save.v1'
+_PURPOSE = 'qorlia.inventory-stored-save.v2'
 _SAVE_GRAPH = (*GRAPH_MODELS, 'mail.followers')
 _SAVE_PRIVATE = AUDIT_MODELS | {'mail.followers'}
 
@@ -137,22 +137,30 @@ class StockInventorySave(models.Model):
         _model, picking, _scope = source
         tables = self._qorlia_inventory_saved_tables()
         stamp = self._qorlia_confirmation_stamp(tables)
-        native = picking._qorlia_stock_preparation_preview(lambda: picking._qorlia_stock_preparation_native(
-            lambda: self._qorlia_inventory_saved_apply(source, baseline, spec, initial, edits),
-            _FINANCE, _CONFIG, allow_terminal_unchanged=True, graph_models=_SAVE_GRAPH,
-            private_models=_SAVE_PRIVATE, private_always={'mail.followers'}), tables)
+        native = picking._qorlia_stock_preparation_preview(
+            lambda: self._qorlia_inventory_saved_native(source, baseline, spec, initial, edits), tables)
         effects, private_audit, state, _references, current = native
-        basis = _digest({'purpose': _PURPOSE, 'database': self.env.cr.dbname,
-            'transfer_id': transfer_id, 'version': version, 'edits': edits,
-            'form': current['form'], 'domains': current['domains'], 'changed_fields': current['changed_fields'],
-            'companies': self.env.companies.ids, 'stamp': stamp})
+        basis = self._qorlia_inventory_saved_basis(transfer_id, version, edits, current, stamp)
         reviewed = picking._qorlia_confirmation_signature(basis, effects, private_audit, state)
-        return {'read_only': True, 'write_ready': False, 'transfer_id': transfer_id, 'version': version,
+        return {'read_only': True, 'write_ready': True, 'transfer_id': transfer_id, 'version': version,
             'edits': copy.deepcopy(edits), 'review_version': reviewed, 'state_after': state,
             'effect_count': len(_effect_rows(effects)), **current}, effects
 
-    def _qorlia_inventory_saved_token(self, transfer_id, version, edits, reviewed, position):
-        return self._qorlia_confirmation_signature(_digest({'purpose': _PURPOSE + '.continue', 'database': self.env.cr.dbname,
+    def _qorlia_inventory_saved_native(self, source, baseline, spec, initial, edits):
+        picking = source[1]
+        return picking._qorlia_stock_preparation_native(
+            lambda: self._qorlia_inventory_saved_apply(source, baseline, spec, initial, edits),
+            _FINANCE, _CONFIG, allow_terminal_unchanged=True, graph_models=_SAVE_GRAPH,
+            private_models=_SAVE_PRIVATE, private_always={'mail.followers'})
+
+    def _qorlia_inventory_saved_basis(self, transfer_id, version, edits, current, stamp):
+        return _digest({'purpose': _PURPOSE, 'database': self.env.cr.dbname,
+            'transfer_id': transfer_id, 'version': version, 'edits': edits,
+            'form': current['form'], 'domains': current['domains'], 'changed_fields': current['changed_fields'],
+            'companies': self.env.companies.ids, 'stamp': stamp})
+
+    def _qorlia_inventory_saved_token(self, transfer_id, version, edits, reviewed, position, phase='continue'):
+        return self._qorlia_confirmation_signature(_digest({'purpose': _PURPOSE + '.' + phase, 'database': self.env.cr.dbname,
             'transfer_id': transfer_id, 'version': version, 'edits': edits}),
             {'review_version': reviewed, 'position': position}, {}, False)
 
@@ -175,4 +183,6 @@ class StockInventorySave(models.Model):
         return {**current, 'after': after, 'next_after': end if end < len(rows) else False,
             'effects': _effect_page(effects, rows[after:end]),
             'continuation_token': self._qorlia_inventory_saved_token(transfer_id, version, edits, actual, end)
-                if end < len(rows) else False}
+                if end < len(rows) else False,
+            'review_complete_token': False if end < len(rows) else self._qorlia_inventory_saved_token(
+                transfer_id, version, edits, actual, end, 'complete')}

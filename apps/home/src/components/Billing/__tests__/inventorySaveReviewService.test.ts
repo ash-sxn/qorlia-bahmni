@@ -20,6 +20,8 @@ const result = (after = 0, limit = 50): InventoryStoredSaveReview => {
   const { effect_version, ...data } = inventoryEffectPage(after, limit);
   return {
     ...data,
+    write_ready: true,
+    review_complete_token: data.next_after === false ? 'e'.repeat(64) : false,
     review_version: effect_version,
     state_after: 'draft',
     changed_fields: ['note'],
@@ -53,8 +55,8 @@ it('uses the complete save-review method without saving or upgrading an onchange
       limit: 50,
     },
   });
-  expect(result().write_ready).toBe(false);
-  expect(result()).not.toHaveProperty('review_complete_token');
+  expect(result().write_ready).toBe(true);
+  expect(result().review_complete_token).toBe('e'.repeat(64));
 });
 it('retains native preparation and terminal-note outcomes instead of assuming every save stays draft', async () => {
   for (const state_after of [
@@ -136,7 +138,7 @@ it.each([
 ])('rejects an invalid or incomplete full-save review: %s', async (kind) => {
   const data = result(0, 2);
   if (kind === 'scope') data.transfer_id = 8;
-  if (kind === 'ready') Object.assign(data, { write_ready: true });
+  if (kind === 'ready') Object.assign(data, { write_ready: false });
   if (kind === 'version') data.review_version = 'bad';
   if (kind === 'edits') data.edits = [];
   if (kind === 'state') Object.assign(data, { state_after: 'unknown' });

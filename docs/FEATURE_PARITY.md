@@ -1,6 +1,20 @@
 # Bahmni workflow parity ledger
 
-## 20 October full native saved-transfer save review in progress
+## 21 October Inventory native Save and recovery in progress
+
+[Candidate 80](../runtime/billing/STOCK_INVENTORY_WRITE.md) adds complete-review
+proofs, native Save, protected exact-request receipts, status/reference recovery
+and durable Stop, plus typed callers. Its 150-case native run is pending after
+fixture corrections to the first 34-case run; the failed evidence is retained.
+1,750 Home cases/106 suites, types, lint/format, 116 Python parses and three
+gateway stub cases pass, not whole-module/native HTTP or browser acceptance. All 14
+form/review/write methods stay gateway-blocked; no header editor or durable
+pending-request UI is implemented, and review/deployment stay closed. The
+source-79 broad run ended with one native nested-deletion error, not a pass;
+the current tests distinguish successful stored-relation deletion from installed
+native computed-alias rejection. See the linked evidence limits.
+
+## 20 October source-79 native saved-transfer save review
 
 [Candidate 79](../runtime/billing/STOCK_INVENTORY_SAVE.md) adds rollback-only
 actual header/derived child write review, native dirty/readonly/force-save and
@@ -8,7 +22,7 @@ required handling, identity-aware nested child-command replay and separate
 save-effect signatures/pages. The focused 18-case native run passes, with 114
 matching source hashes, 134 preserved guards/independent tables, and 29 matching
 native responses accepted by three typed client methods with mocked transport.
-The broader 134-case regression is running, including an extended test of
+The broader 134-case regression ended with one error in an extended test of
 actual nested-deletion write effects. This is not whole-workspace or browser
 acceptance. The last candidate-78 130-case run had five child-serialization errors;
 its 134 rollback guards and independent committed tables were preserved.

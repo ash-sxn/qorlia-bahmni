@@ -2,6 +2,12 @@
 
 [README](../../README.md) · [Billing](README.md) · [Saved onchange](STOCK_INVENTORY_EDIT.md) · [Inventory](STOCK_INVENTORY_WORKSPACE.md)
 
+Current source: [candidate-80 Save and recovery](STOCK_INVENTORY_WRITE.md) upgrades
+this method to protocol v2, with `write_ready: true` and a complete proof only on
+the final page. All 14 form/review/write methods remain gateway-blocked. Its
+150-case native run is pending. The source-79 preview-only contract and frozen
+evidence below are historical and do not accept the writer or new response schema.
+
 ## Candidate 79 source in progress, 20 October 2026
 
 This source previews the **actual native header write**, including native child
@@ -68,12 +74,15 @@ onchange and full save review, with transport mocked, not HTTP/browser testing.
 Legacy helpers retain their default graph and permissions; the new save path
 explicitly opts into the extended private follower audit.
 
-A broader **134-case run is live**: the 18 save-preview cases and all preceding
+A broader **134-case run ended with one error**: the 18 save-preview cases and all preceding
 116 Inventory/form/onchange/confirmation cases. Its nested-deletion test now also
 compares the extracted write's full effects/state with a direct native write.
-That test extension is not accepted by the earlier focused run. All 113 other
-Python files, including the production models, match the passing focused packet;
-all 114 current files match the new frozen broad run. Do not treat the focused
+That test extension failed in a direct native write through the computed alias;
+the installed native behavior is recorded in the candidate-80 evidence above.
+All 134 guards and independent committed counts/full-row hashes were preserved.
+That source-79 frozen packet had 113 files, including its production models,
+identical to the earlier focused run; only its test file was extended. Current
+source is candidate 80. Do not treat the focused
 proof as acceptance of the whole workspace, browser flow or persistent Save.
 
 The first run completed all 130 cases with **six errors, zero assertion failures
