@@ -3,12 +3,15 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Newest source in progress: [Inventory Save and recovery](STOCK_INVENTORY_WRITE.md)
+Newest source: [Inventory Save and recovery](STOCK_INVENTORY_WRITE.md)
 adds complete-review proofs, native Save, protected receipts, status, reference
-pages and durable Stop. Candidate 80's 150-case native check is pending after
-correcting assertions in the first 34-case run. The React
-header editor and pending-request UI are unfinished, all 14 form/review/write
-methods remain gateway-blocked, and review/deployment stay closed.
+pages and durable Stop. Candidate 80's 150-case native check passes, with 116
+matching Python hashes, 134 preserved guards/independent committed tables and
+214 matching native responses accepted by the actual client with mocked transport.
+Exact header-save recovery storage shares the existing account/database-bound
+stock slot. The React header editor and dedicated pending-request UI remain
+unfinished, all 14 form/review/write methods stay gateway-blocked, and
+review/deployment stay closed.
 
 Earlier backend source: [saved-transfer header onchange and effect inspection](STOCK_INVENTORY_EDIT.md)
 replays the real native origin and rolls back linked writes. The 116-case native

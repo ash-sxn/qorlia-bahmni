@@ -1,12 +1,14 @@
 # New-team handover: Qorlia engineering
 
-Newest source in progress: [Inventory Save and recovery](../runtime/billing/STOCK_INVENTORY_WRITE.md)
+Newest source: [Inventory Save and recovery](../runtime/billing/STOCK_INVENTORY_WRITE.md)
 adds complete-review proofs, native Save, protected receipts, status, reference
-pages and durable Stop. Candidate 80's 150-case native check is pending after
-correcting assertions in the first 34-case run. There is
-no React header editor or pending-request UI, and all 14 form/review/write methods
-remain gateway-blocked. This does not reopen review/deployment or change
-contributor starter-task bases.
+pages and durable Stop. Candidate 80's 150-case native check passes with 116
+matching source hashes, 134 preserved guards and unchanged independent committed
+tables. The actual client accepts 214 recorded native responses across 14 methods
+with mocked transport. The existing stock recovery slot now retains exact
+header-save requests per account/database, but the editor and dedicated resume
+UI remain unfinished. All 14 form/review/write methods stay gateway-blocked.
+This does not reopen review/deployment or change contributor starter-task bases.
 
 Earlier backend source: [saved-transfer header onchange and effect inspection](../runtime/billing/STOCK_INVENTORY_EDIT.md)
 replays the real saved origin and inspects rolled-back linked writes. Its

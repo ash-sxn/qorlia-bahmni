@@ -7,6 +7,8 @@ import {
   PagedStockReturnStatus,
   PagedStockCancellationRequest,
   PagedStockCancellationStatus,
+  InventoryStoredSaveRequest,
+  InventoryStoredSaveStatus,
 } from '../billingService';
 import {
   clearStockReservationRecovery,
@@ -43,7 +45,13 @@ import {
   loadPagedStockCancellationRecovery,
   persistPagedStockCancellationRecovery,
   clearPagedStockCancellationRecovery,
+  isInventoryStoredSaveRequest,
+  loadInventoryStoredSaveRecovery,
+  persistInventoryStoredSaveRecovery,
+  clearInventoryStoredSaveRecovery,
 } from '../stockReservationRecovery';
+import { inventoryStoredPreview } from './inventoryFormFixture';
+import { inventoryLoad } from './inventoryTransferFixture';
 import { orderDeliveryPageFixture } from './orderDeliveryFixture';
 import { confirmationRequest } from './stockConfirmationFixture';
 import { operationRequest } from './stockOperationFixture';
@@ -175,6 +183,462 @@ function database() {
     },
   };
 }
+
+const inventorySave = (): InventoryStoredSaveRequest => {
+  const loaded = inventoryStoredPreview();
+  return {
+    transfer_id: loaded.transfer_id,
+    version: loaded.version,
+    edits: loaded.edits,
+    review_version: 'd'.repeat(64),
+    review_complete_token: 'e'.repeat(64),
+    request_key: '12345678-1234-4234-8234-123456789abc',
+  };
+};
+const inventoryEnvelope = (request = inventorySave(), uid = 3) => ({
+  schema: 9,
+  kind: 'inventory_save',
+  database: billingDatabase,
+  uid,
+  request,
+});
+function inventoryOutcome(
+  outcome: 'accepted' | 'stopped' | 'unknown' = 'accepted',
+  count = 0,
+) {
+  const accepted = outcome === 'accepted',
+    current = inventoryLoad();
+  current.transfer.id = inventorySave().transfer_id;
+  const status: InventoryStoredSaveStatus = {
+    request_key: inventorySave().request_key,
+    accepted,
+    stopped: outcome === 'stopped',
+    state_after: accepted ? 'draft' : false,
+    changed_fields: accepted ? ['note'] : [],
+    reference_count: accepted ? count : 0,
+    current,
+  };
+  const state = {
+    status,
+    rows: Array.from({ length: count }, (_, index) => ({
+      key: `new:stock.move:${index}`,
+      model: 'stock.move',
+      id: 100 + index,
+      name: 'QorliaQA generated move',
+      available: true,
+    })).sort((a, b) => (a.key < b.key ? -1 : 1)),
+    version: 'f'.repeat(64),
+    session: { uid: 3, db: billingDatabase },
+  };
+  (fetch as jest.Mock).mockImplementation(async (route, options) => {
+    let result: unknown;
+    if (route.endsWith('/web/session/get_session_info')) result = state.session;
+    else {
+      const { method, kwargs } = JSON.parse(options.body).params;
+      if (method === 'qorlia_inventory_edit_save_status') result = state.status;
+      else if (method === 'qorlia_inventory_edit_save_references') {
+        if (kwargs.version !== false && kwargs.version !== state.version)
+          throw new Error('Generated references changed');
+        const { after, limit } = kwargs;
+        result = {
+          request_key: inventorySave().request_key,
+          version: state.version,
+          after,
+          total_count: state.rows.length,
+          rows: state.rows.slice(after, after + limit),
+          next_after: after + limit < state.rows.length ? after + limit : false,
+        };
+      } else
+        throw new Error(`Unexpected transfer save recovery method: ${method}`);
+    }
+    const body = JSON.stringify({ result });
+    return { ok: true, status: 200, json: async () => JSON.parse(body) };
+  });
+  return state;
+}
+
+describe('stored Inventory header Save recovery', () => {
+  beforeEach(() => {
+    global.fetch = jest.fn();
+  });
+
+  it('shares the stock slot, retaining exact ordered edits and database/account identity', async () => {
+    const fake = database(),
+      state = inventoryOutcome();
+    const exact = inventorySave();
+    exact.edits = [
+      { node: 3, value: 12 },
+      ...exact.edits,
+      { node: 3, value: false },
+    ];
+    await persistInventoryStoredSaveRecovery(3, exact);
+    expect(fake.records.get(3)).toEqual(inventoryEnvelope(exact));
+    expect(await loadInventoryStoredSaveRecovery(3)).toEqual(exact);
+    expect(await loadInventoryStoredSaveRecovery(4)).toBeNull();
+    await persistInventoryStoredSaveRecovery(3, exact);
+    state.session.uid = 4;
+    await persistInventoryStoredSaveRecovery(4, exact);
+    expect(await loadInventoryStoredSaveRecovery(4)).toEqual(exact);
+    expect(fake.records.size).toBe(2);
+    expect(isInventoryStoredSaveRequest(exact)).toBe(true);
+    expect(isStockConfirmationRequest(exact)).toBe(false);
+    expect(isPagedStockWriteRequest(exact)).toBe(false);
+    expect(isInventoryStoredSaveRequest(operationRequest())).toBe(false);
+  });
+  it('never lets old stock dialogs misroute, replace or retire a saved header request', async () => {
+    const fake = database();
+    inventoryOutcome();
+    await persistInventoryStoredSaveRecovery(3, inventorySave());
+    for (const load of [
+      loadStockWriteRecovery,
+      loadPagedStockWriteRecovery,
+      loadStockReservationRecovery,
+      loadStockOperationRecovery,
+      loadStockConfirmationRecovery,
+      loadStockValidationRecovery,
+    ])
+      await expect(load(3)).rejects.toThrow(/header save is pending/);
+    for (const save of [
+      () => persistStockReservationRecovery(3, request()),
+      () => persistStockOperationRecovery(3, operationRequest()),
+      () => persistStockConfirmationRecovery(3, confirmationRequest()),
+      () => persistPagedStockCancellationRecovery(3, completeCancellation()),
+    ])
+      await expect(save()).rejects.toThrow(/Another stock request/);
+    for (const clear of [
+      () => clearStockReservationRecovery(3, request()),
+      () => clearStockOperationRecovery(3, operationRequest()),
+      () => clearStockConfirmationRecovery(3, confirmationRequest()),
+    ])
+      await expect(clear()).rejects.toThrow(/dedicated recovery/);
+    expect(fake.records.get(3)).toEqual(inventoryEnvelope());
+  });
+  it('cannot replace pending stock work of another kind', async () => {
+    const fake = database();
+    inventoryOutcome();
+    for (const stored of [
+      { schema: 1, uid: 3, request: request() },
+      { schema: 1, uid: 3, request: operationRequest() },
+      returnEnvelope(),
+      validationEnvelope(),
+      cancellationEnvelope(),
+    ]) {
+      fake.records.set(3, stored);
+      await expect(
+        persistInventoryStoredSaveRecovery(3, inventorySave()),
+      ).rejects.toThrow(/Another stock request/);
+      await expect(loadInventoryStoredSaveRecovery(3)).rejects.toThrow(
+        /Another stock request/,
+      );
+      await expect(
+        clearInventoryStoredSaveRecovery(3, inventorySave()),
+      ).rejects.toThrow(/Another stock request/);
+      expect(fake.records.get(3)).toEqual(stored);
+    }
+  });
+  it.each([
+    'database',
+    'uid',
+    'kind',
+    'schema',
+    'extra',
+    'nonce',
+    'proof',
+    'edits',
+    'order',
+    'other-kind',
+  ])(
+    'retains corrupt or foreign storage without reinterpreting it: %s',
+    async (kind) => {
+      const fake = database();
+      inventoryOutcome();
+      const stored = inventoryEnvelope();
+      if (kind === 'database') stored.database = 'other-database';
+      if (kind === 'uid') stored.uid = 4;
+      if (kind === 'kind') stored.kind = 'paged_confirmation';
+      if (kind === 'schema') stored.schema = 5;
+      if (kind === 'extra') Object.assign(stored, { history: [] });
+      if (kind === 'nonce') stored.request.request_key = 'new-key';
+      if (kind === 'proof')
+        stored.request.review_complete_token = false as unknown as string;
+      if (kind === 'edits') stored.request.edits[0].node = -1;
+      if (kind === 'order') Object.assign(stored.request, { order_id: false });
+      if (kind === 'other-kind')
+        Object.assign(stored, { request: completeCancellation() });
+      fake.records.set(3, stored);
+      await expect(loadInventoryStoredSaveRecovery(3)).rejects.toThrow();
+      await expect(
+        persistInventoryStoredSaveRecovery(3, inventorySave()),
+      ).rejects.toThrow();
+      await expect(
+        clearInventoryStoredSaveRecovery(3, inventorySave()),
+      ).rejects.toThrow();
+      expect(fake.records.get(3)).toEqual(stored);
+    },
+  );
+  it('waits for strict storage commit before reporting persistence', async () => {
+    const fake = database();
+    inventoryOutcome();
+    fake.hold();
+    let done = false;
+    const pending = persistInventoryStoredSaveRecovery(3, inventorySave()).then(
+      () => {
+        done = true;
+      },
+    );
+    await waitFor(() => expect(fake.db.transaction).toHaveBeenCalled());
+    expect(done).toBe(false);
+    expect(fake.records.size).toBe(0);
+    fake.commit();
+    await pending;
+    expect(done).toBe(true);
+    expect(fake.db.transaction).toHaveBeenCalledWith('pending', 'readwrite', {
+      durability: 'strict',
+    });
+  });
+  it.each([0, 101])(
+    'retires an accepted save only after all %s pinned references and fresh status/account checks',
+    async (count) => {
+      const fake = database();
+      fake.records.set(3, inventoryEnvelope());
+      inventoryOutcome('accepted', count);
+      await clearInventoryStoredSaveRecovery(3, inventorySave());
+      expect(fake.records.size).toBe(0);
+      const calls = (fetch as jest.Mock).mock.calls;
+      const pages = calls
+        .filter(([route]) =>
+          route.endsWith('/qorlia_inventory_edit_save_references'),
+        )
+        .map(([, options]) => JSON.parse(options.body).params.kwargs);
+      expect(pages.map((p) => [p.after, p.limit])).toEqual(
+        count
+          ? [
+              [0, 50],
+              [50, 50],
+              [100, 50],
+              [0, 1],
+            ]
+          : [
+              [0, 50],
+              [0, 1],
+            ],
+      );
+      expect(pages.map((p) => p.version)).toEqual(
+        count
+          ? [false, 'f'.repeat(64), 'f'.repeat(64), 'f'.repeat(64)]
+          : [false, 'f'.repeat(64)],
+      );
+      for (const [, options] of calls.filter(
+        ([route]) => !route.endsWith('/web/session/get_session_info'),
+      ))
+        expect(JSON.parse(options.body).params.kwargs.payload).toEqual(
+          inventorySave(),
+        );
+      expect(
+        calls.filter(([route]) =>
+          route.endsWith('/qorlia_inventory_edit_save_status'),
+        ),
+      ).toHaveLength(2);
+      expect(
+        calls.filter(([route]) =>
+          route.endsWith('/web/session/get_session_info'),
+        ),
+      ).toHaveLength(2);
+      expect(
+        calls.some(([route]) =>
+          /\/(qorlia_inventory_edit_save|qorlia_inventory_edit_save_stop)$/.test(
+            route,
+          ),
+        ),
+      ).toBe(false);
+    },
+  );
+  it('retires a durable stopped request without saving, stopping again, or claiming undo', async () => {
+    const fake = database();
+    fake.records.set(3, inventoryEnvelope());
+    inventoryOutcome('stopped');
+    await clearInventoryStoredSaveRecovery(3, inventorySave());
+    expect(fake.records.size).toBe(0);
+    expect(
+      (fetch as jest.Mock).mock.calls.some(([route]) =>
+        /_references$|_stop$|\/qorlia_inventory_edit_save$/.test(route),
+      ),
+    ).toBe(false);
+  });
+  it('keeps unknown and lost outcomes without retrying or generating a replacement nonce', async () => {
+    const fake = database();
+    fake.records.set(3, inventoryEnvelope());
+    inventoryOutcome('unknown');
+    await expect(
+      clearInventoryStoredSaveRecovery(3, inventorySave()),
+    ).rejects.toThrow(/unknown/);
+    (fetch as jest.Mock).mockRejectedValue(new Error('Connection lost'));
+    await expect(
+      clearInventoryStoredSaveRecovery(3, inventorySave()),
+    ).rejects.toThrow(/Connection lost/);
+    expect(fake.records.get(3)).toEqual(inventoryEnvelope());
+  });
+  it.each([
+    'uid',
+    'database',
+    'fresh-uid',
+    'fresh-database',
+    'state',
+    'fields',
+    'current',
+    'count',
+    'stopped',
+    'slot',
+    'reference-version',
+    'reference-count',
+    'reference-order',
+  ])(
+    'preserves the exact request when retirement is unsafe: %s',
+    async (mode) => {
+      const fake = database();
+      fake.records.set(3, inventoryEnvelope());
+      const state = inventoryOutcome('accepted', 101),
+        native = (fetch as jest.Mock).getMockImplementation()!;
+      let sessions = 0,
+        statuses = 0,
+        pages = 0;
+      (fetch as jest.Mock).mockImplementation(async (route, options) => {
+        if (route.endsWith('/web/session/get_session_info')) {
+          sessions++;
+          if (mode === 'uid' || (mode === 'fresh-uid' && sessions === 2))
+            state.session.uid = 4;
+          if (
+            mode === 'database' ||
+            (mode === 'fresh-database' && sessions === 2)
+          )
+            state.session.db = 'other';
+          if (mode === 'slot' && sessions === 2)
+            fake.records.set(
+              3,
+              inventoryEnvelope({
+                ...inventorySave(),
+                request_key: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+              }),
+            );
+        }
+        if (
+          route.endsWith('/qorlia_inventory_edit_save_status') &&
+          ++statuses === 2
+        ) {
+          if (mode === 'state') state.status.state_after = 'done';
+          if (mode === 'fields') state.status.changed_fields = ['origin'];
+          if (mode === 'current') state.status.current.version = 'b'.repeat(64);
+          if (mode === 'count') state.status.reference_count++;
+          if (mode === 'stopped') {
+            state.status.accepted = false;
+            state.status.stopped = true;
+            state.status.state_after = false;
+            state.status.reference_count = 0;
+            state.status.changed_fields = [];
+          }
+        }
+        if (
+          route.endsWith('/qorlia_inventory_edit_save_references') &&
+          ++pages === 2
+        ) {
+          if (mode === 'reference-version') state.version = 'b'.repeat(64);
+          if (mode === 'reference-count') state.rows.pop();
+          if (mode === 'reference-order') {
+            const first = state.rows[0];
+            state.rows[50] = first;
+          }
+        }
+        return native(route, options);
+      });
+      await expect(
+        clearInventoryStoredSaveRecovery(3, inventorySave()),
+      ).rejects.toThrow();
+      expect(fake.records.has(3)).toBe(true);
+      const expected =
+        mode === 'slot'
+          ? inventoryEnvelope({
+              ...inventorySave(),
+              request_key: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+            })
+          : inventoryEnvelope();
+      expect(fake.records.get(3)).toEqual(expected);
+    },
+  );
+  it('does not contact the server to retire a missing or different stored request', async () => {
+    const fake = database();
+    await expect(
+      clearInventoryStoredSaveRecovery(3, inventorySave()),
+    ).rejects.toThrow(/not stored/);
+    fake.records.set(3, inventoryEnvelope());
+    await expect(
+      clearInventoryStoredSaveRecovery(3, { ...inventorySave(), edits: [] }),
+    ).rejects.toThrow(/changed/);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(fake.records.get(3)).toEqual(inventoryEnvelope());
+  });
+  it('fails closed for unavailable storage, aborted persistence and invalid input', async () => {
+    inventoryOutcome();
+    Object.defineProperty(window, 'indexedDB', {
+      configurable: true,
+      value: undefined,
+    });
+    await expect(
+      persistInventoryStoredSaveRecovery(3, inventorySave()),
+    ).rejects.toThrow(/unavailable/);
+    const fake = database();
+    fake.fail();
+    await expect(
+      persistInventoryStoredSaveRecovery(3, inventorySave()),
+    ).rejects.toThrow(/could not be committed/);
+    expect(fake.records.size).toBe(0);
+    fake.factory.open.mockClear();
+    await expect(
+      persistInventoryStoredSaveRecovery(0, inventorySave()),
+    ).rejects.toThrow();
+    await expect(
+      persistInventoryStoredSaveRecovery(3, {
+        ...inventorySave(),
+        review_version: 'bad',
+      }),
+    ).rejects.toThrow();
+    expect(fake.factory.open).not.toHaveBeenCalled();
+  });
+  it.each([1, 2, 3, 4, 5, 6, 7, 8])(
+    'does not downgrade a header request to schema %s',
+    async (schema) => {
+      const fake = database();
+      inventoryOutcome();
+      const stored = { ...inventoryEnvelope(), schema };
+      fake.records.set(3, stored);
+      await expect(loadInventoryStoredSaveRecovery(3)).rejects.toThrow();
+      await expect(loadStockWriteRecovery(3)).rejects.toThrow();
+      await expect(
+        persistInventoryStoredSaveRecovery(3, inventorySave()),
+      ).rejects.toThrow();
+      expect(fake.records.get(3)).toEqual(stored);
+    },
+  );
+  it('retains committed recovery but prevents sending when the account changes during persistence', async () => {
+    const fake = database(),
+      state = inventoryOutcome(),
+      native = (fetch as jest.Mock).getMockImplementation()!;
+    let sessions = 0;
+    (fetch as jest.Mock).mockImplementation(async (route, options) => {
+      if (route.endsWith('/web/session/get_session_info') && ++sessions === 2)
+        state.session.uid = 4;
+      return native(route, options);
+    });
+    await expect(
+      persistInventoryStoredSaveRecovery(3, inventorySave()),
+    ).rejects.toThrow(/original Billing account/);
+    expect(fake.records.get(3)).toEqual(inventoryEnvelope());
+    expect(
+      (fetch as jest.Mock).mock.calls.every(([route]) =>
+        route.endsWith('/web/session/get_session_info'),
+      ),
+    ).toBe(true);
+  });
+});
 
 const completeValidation = (): PagedStockValidationRequest & {
   order_id: number;

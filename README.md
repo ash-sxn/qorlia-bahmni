@@ -51,12 +51,15 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
-Newest source in progress: [Inventory Save and recovery](runtime/billing/STOCK_INVENTORY_WRITE.md)
+Newest source: [Inventory Save and recovery](runtime/billing/STOCK_INVENTORY_WRITE.md)
 adds a complete-review proof, exact native Save, protected receipt, status,
-reference pages and durable Stop. Its 150-case native check is pending after
-correcting assertions in the first 34-case run. The React
-header editor and pending-request UI are not implemented, all 14 form/review/write
-methods remain gateway-blocked, and review/deployment remain closed.
+reference pages and durable Stop. Its 150-case native check passes with all 116
+source hashes matching and 134 guarded/independently checked tables unchanged.
+The actual typed client accepts 214 recorded native responses across all 14
+methods with mocked transport. Browser recovery storage shares the existing
+account/database-bound stock slot and preserves unknown outcomes. The React
+header editor and dedicated pending-request UI remain unfinished, all 14
+form/review/write methods stay gateway-blocked, and review/deployment stay closed.
 
 [Native save-review history](runtime/billing/STOCK_INVENTORY_SAVE.md) records the
 earlier frozen contracts and failed runs, not acceptance of the new writer.

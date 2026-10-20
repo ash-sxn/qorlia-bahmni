@@ -6,8 +6,11 @@
 
 [The durable Save protocol](STOCK_INVENTORY_WRITE.md) adds complete-review proofs,
 exact native Save, protected receipts, status/reference recovery and durable Stop.
-Its 150-case native check is pending. All 14 form/review/write methods remain
-gateway-blocked; the React header editor and pending-request UI are unfinished.
+Its 150-case native check passes, with 116 matching source hashes, 134 preserved
+guards/independent tables and 214 native responses accepted by the actual client
+with transport mocked. Header-save recovery storage now shares the existing
+strict account/database stock slot. All 14 form/review/write methods remain
+gateway-blocked; the React header editor and dedicated pending-request UI are unfinished.
 This does not reopen review/deployment or shrink the remaining module scope.
 
 ## Candidate 79 full native save review in progress, 20 October 2026

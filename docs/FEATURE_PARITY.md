@@ -1,18 +1,27 @@
 # Bahmni workflow parity ledger
 
-## 21 October Inventory native Save and recovery in progress
+## 21 October Inventory native Save verified, browser recovery storage source
 
 [Candidate 80](../runtime/billing/STOCK_INVENTORY_WRITE.md) adds complete-review
 proofs, native Save, protected exact-request receipts, status/reference recovery
-and durable Stop, plus typed callers. Its 150-case native run is pending after
-fixture corrections to the first 34-case run; the failed evidence is retained.
-1,750 Home cases/106 suites, types, lint/format, 116 Python parses and three
-gateway stub cases pass, not whole-module/native HTTP or browser acceptance. All 14
-form/review/write methods stay gateway-blocked; no header editor or durable
-pending-request UI is implemented, and review/deployment stay closed. The
+and durable Stop, plus typed callers. Its 150-case native run passes with all 116
+source hashes matching, 134 guards preserved and independent committed-table
+counts/full-row hashes unchanged. All 214 recorded native responses pass the
+matching actual typed client with transport mocked. Failed earlier evidence is
+retained. New schema-9 browser storage shares the existing stock request slot,
+preserves the exact ordered edits/proofs/UUID and checks full generated-reference
+pages, fresh outcome and account/database before retirement. Storage doubles
+do not establish browser or concurrency acceptance. All 14 form/review/write
+methods stay gateway-blocked; the header editor and dedicated pending-request UI
+remain unfinished, and review/deployment stay closed. The
 source-79 broad run ended with one native nested-deletion error, not a pass;
 the current tests distinguish successful stored-relation deletion from installed
 native computed-alias rejection. See the linked evidence limits.
+
+Home passes 1,792 cases/106 suites, including 42 added header-recovery storage
+cases (153 shared stock-storage cases total). Library and actual test-source
+types, scoped lint/format, three gateway stub checks and all 46 linked contributor
+documents/785 local links pass. No new build, server, tunnel or deployment occurs.
 
 ## 20 October source-79 native saved-transfer save review
 

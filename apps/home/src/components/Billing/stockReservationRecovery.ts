@@ -28,6 +28,10 @@ import {
   PagedStockCancellationRequest,
   getPagedStockCancellationStatus,
   getPagedStockCancellationReferences,
+  checkedInventoryStoredSaveRequest,
+  InventoryStoredSaveRequest,
+  getInventoryStoredSaveStatus,
+  getInventoryStoredSaveReferences,
 } from './billingService';
 
 export type PagedStockWriteRequest =
@@ -52,23 +56,30 @@ export type PagedStockValidationRecovery = {
   history: ValidationParent[];
 };
 type RecoveryRecord = {
-  request: StockWriteRequest | PagedStockReturnRequest;
+  request: StoredStockRequest;
   history: ValidationParent[];
 };
+type StoredStockRequest = StockWriteRequest | InventoryStoredSaveRequest;
+export const isInventoryStoredSaveRequest = (
+  request: StoredStockRequest,
+): request is InventoryStoredSaveRequest =>
+  Object.hasOwn(request, 'edits') &&
+  !Object.hasOwn(request, 'action') &&
+  !Object.hasOwn(request, 'order_id');
 export const isPagedStockCancellationRequest = (
-  request: StockWriteRequest,
+  request: StoredStockRequest,
 ): request is PagedStockCancellationRequest =>
   'action' in request &&
   request.action === 'cancel_transfer' &&
   Object.hasOwn(request, 'review_complete_token');
 export const isPagedStockReturnRequest = (
-  request: StockWriteRequest | PagedStockReturnRequest,
+  request: StoredStockRequest,
 ): request is PagedStockReturnRequest =>
   Object.hasOwn(request, 'location_id') &&
   Object.hasOwn(request, 'lines') &&
   Object.hasOwn(request, 'review_complete_token');
 export const isPagedStockValidationRequest = (
-  request: StockWriteRequest,
+  request: StoredStockRequest,
 ): request is PagedStockValidationRequest =>
   Object.hasOwn(request, 'continuation_key') &&
   Object.hasOwn(request, 'review_complete_token');
@@ -76,30 +87,32 @@ export type StockValidationRecoveryRequest =
   | StockValidationRequest
   | StockValidationStepRequest;
 export const isStockValidationStepRequest = (
-  request: StockWriteRequest,
+  request: StoredStockRequest,
 ): request is StockValidationStepRequest | PagedStockValidationRequest =>
   Object.hasOwn(request, 'continuation_key');
 export const isStockValidationRequest = (
-  request: StockWriteRequest,
+  request: StoredStockRequest,
 ): request is StockValidationRecoveryRequest | PagedStockValidationRequest =>
   Object.hasOwn(request, 'decisions');
 export const isStockConfirmationRequest = (
-  request: StockWriteRequest,
+  request: StoredStockRequest,
 ): request is StockConfirmationRequest | PagedStockConfirmationRequest =>
   !Object.hasOwn(request, 'action') &&
+  !isInventoryStoredSaveRequest(request) &&
   !isStockValidationRequest(request) &&
   !isPagedStockReturnRequest(request);
 export const isStockOperationRequest = (
-  request: StockWriteRequest,
+  request: StoredStockRequest,
 ): request is StockOperationRequest | PagedStockOperationRequest =>
   'action' in request &&
   (request.action === 'save' || request.action === 'delete');
 export const isPagedStockWriteRequest = (
-  request: StockWriteRequest,
+  request: StoredStockRequest,
 ): request is PagedStockWriteRequest =>
   Object.hasOwn(request, 'review_complete_token') &&
   !isPagedStockValidationRequest(request) &&
   !isPagedStockCancellationRequest(request) &&
+  !isInventoryStoredSaveRequest(request) &&
   !isPagedStockReturnRequest(request);
 const pagedKind = (request: PagedStockWriteRequest) =>
   isStockOperationRequest(request)
@@ -117,28 +130,28 @@ const checkedPagedWriteRequest = (value: PagedStockWriteRequest) =>
       : checkedPagedStockReservationRequest(
           value as PagedStockReservationRequest,
         );
-const checkedWriteRequest = (
-  value: StockWriteRequest | PagedStockReturnRequest,
-) =>
-  value && isPagedStockCancellationRequest(value)
-    ? checkedPagedStockCancellationRequest(value)
-    : value && isPagedStockReturnRequest(value)
-      ? checkedPagedStockReturnRequest(value)
-      : value && isPagedStockValidationRequest(value)
-        ? checkedPagedStockValidationRequest(value)
-        : value && isPagedStockWriteRequest(value)
-          ? checkedPagedWriteRequest(value)
-          : value && isStockValidationStepRequest(value)
-            ? checkedStockValidationStepRequest(value)
-            : value && isStockValidationRequest(value)
-              ? checkedStockValidationRequest(value)
-              : value && isStockConfirmationRequest(value)
-                ? checkedStockConfirmationRequest(value)
-                : value && isStockOperationRequest(value)
-                  ? checkedStockOperationRequest(value)
-                  : checkedStockReservationRequest(
-                      value as StockReservationRequest,
-                    );
+const checkedWriteRequest = (value: StoredStockRequest) =>
+  value && isInventoryStoredSaveRequest(value)
+    ? checkedInventoryStoredSaveRequest(value)
+    : value && isPagedStockCancellationRequest(value)
+      ? checkedPagedStockCancellationRequest(value)
+      : value && isPagedStockReturnRequest(value)
+        ? checkedPagedStockReturnRequest(value)
+        : value && isPagedStockValidationRequest(value)
+          ? checkedPagedStockValidationRequest(value)
+          : value && isPagedStockWriteRequest(value)
+            ? checkedPagedWriteRequest(value)
+            : value && isStockValidationStepRequest(value)
+              ? checkedStockValidationStepRequest(value)
+              : value && isStockValidationRequest(value)
+                ? checkedStockValidationRequest(value)
+                : value && isStockConfirmationRequest(value)
+                  ? checkedStockConfirmationRequest(value)
+                  : value && isStockOperationRequest(value)
+                    ? checkedStockOperationRequest(value)
+                    : checkedStockReservationRequest(
+                        value as StockReservationRequest,
+                      );
 
 const DATABASE = 'qorlia.billing.stock-reservation-recovery';
 const STORE = 'pending';
@@ -181,7 +194,7 @@ function checkedValidationHistory(
 async function recoveryRecord(
   uid: number,
   operation: 'read' | 'save' | 'clear' | 'restore',
-  request?: StockWriteRequest | PagedStockReturnRequest,
+  request?: StoredStockRequest,
   previous?: ValidationParent,
   restoredSource?: string | false,
 ): Promise<RecoveryRecord | null> {
@@ -238,7 +251,7 @@ async function recoveryRecord(
         operation === 'read' ? 'readonly' : 'readwrite',
         { durability: 'strict' },
       );
-      let result: StockWriteRequest | PagedStockReturnRequest | null = null;
+      let result: StoredStockRequest | null = null;
       let history: ValidationParent[] = [];
       let failure: Error | null = null;
       tx.oncomplete = () =>
@@ -262,7 +275,8 @@ async function recoveryRecord(
                 value?.schema === 5 ||
                 value?.schema === 6 ||
                 value?.schema === 7 ||
-                value?.schema === 8) &&
+                value?.schema === 8 ||
+                value?.schema === 9) &&
               value.database !== BILLING_DATABASE
             )
               throw new Error(
@@ -273,64 +287,71 @@ async function recoveryRecord(
               typeof value !== 'object' ||
               Array.isArray(value) ||
               value.uid !== uid ||
-              (![5, 6, 7, 8].includes(value.schema) &&
+              (![5, 6, 7, 8, 9].includes(value.schema) &&
                 value.request &&
                 Object.hasOwn(value.request, 'review_complete_token')) ||
-              (value.schema === 8
+              (value.schema === 9
                 ? value.database !== BILLING_DATABASE ||
-                  value.kind !== 'paged_cancellation' ||
+                  value.kind !== 'inventory_save' ||
                   Object.keys(value).sort().join(',') !==
                     'database,kind,request,schema,uid' ||
                   !value.request ||
-                  !isPagedStockCancellationRequest(value.request)
-                : value.schema === 7
+                  !isInventoryStoredSaveRequest(value.request)
+                : value.schema === 8
                   ? value.database !== BILLING_DATABASE ||
-                    value.kind !== 'paged_return' ||
+                    value.kind !== 'paged_cancellation' ||
                     Object.keys(value).sort().join(',') !==
                       'database,kind,request,schema,uid' ||
                     !value.request ||
-                    !isPagedStockReturnRequest(value.request)
-                  : value.schema === 6
+                    !isPagedStockCancellationRequest(value.request)
+                  : value.schema === 7
                     ? value.database !== BILLING_DATABASE ||
-                      value.kind !== 'paged_validation' ||
+                      value.kind !== 'paged_return' ||
                       Object.keys(value).sort().join(',') !==
-                        'database,history,kind,request,schema,uid' ||
+                        'database,kind,request,schema,uid' ||
                       !value.request ||
-                      !isPagedStockValidationRequest(value.request)
-                    : value.schema === 5
+                      !isPagedStockReturnRequest(value.request)
+                    : value.schema === 6
                       ? value.database !== BILLING_DATABASE ||
+                        value.kind !== 'paged_validation' ||
                         Object.keys(value).sort().join(',') !==
-                          'database,kind,request,schema,uid' ||
+                          'database,history,kind,request,schema,uid' ||
                         !value.request ||
-                        !isPagedStockWriteRequest(value.request) ||
-                        value.kind !== pagedKind(value.request)
-                      : value.schema === 4
-                        ? value.kind !== 'validation_step' ||
-                          value.database !== BILLING_DATABASE ||
+                        !isPagedStockValidationRequest(value.request)
+                      : value.schema === 5
+                        ? value.database !== BILLING_DATABASE ||
                           Object.keys(value).sort().join(',') !==
                             'database,kind,request,schema,uid' ||
                           !value.request ||
-                          !isStockValidationStepRequest(value.request)
-                        : value.schema === 3
-                          ? value.kind !== 'validation' ||
+                          !isPagedStockWriteRequest(value.request) ||
+                          value.kind !== pagedKind(value.request)
+                        : value.schema === 4
+                          ? value.kind !== 'validation_step' ||
                             value.database !== BILLING_DATABASE ||
                             Object.keys(value).sort().join(',') !==
                               'database,kind,request,schema,uid' ||
                             !value.request ||
-                            !isStockValidationRequest(value.request) ||
-                            isStockValidationStepRequest(value.request)
-                          : value.schema === 2
-                            ? value.kind !== 'confirmation' ||
+                            !isStockValidationStepRequest(value.request)
+                          : value.schema === 3
+                            ? value.kind !== 'validation' ||
+                              value.database !== BILLING_DATABASE ||
                               Object.keys(value).sort().join(',') !==
-                                'kind,request,schema,uid' ||
+                                'database,kind,request,schema,uid' ||
                               !value.request ||
-                              !isStockConfirmationRequest(value.request)
-                            : value.schema !== 1 ||
-                              Object.keys(value).sort().join(',') !==
-                                'request,schema,uid' ||
-                              !value.request ||
-                              isStockConfirmationRequest(value.request) ||
-                              isStockValidationRequest(value.request))
+                              !isStockValidationRequest(value.request) ||
+                              isStockValidationStepRequest(value.request)
+                            : value.schema === 2
+                              ? value.kind !== 'confirmation' ||
+                                Object.keys(value).sort().join(',') !==
+                                  'kind,request,schema,uid' ||
+                                !value.request ||
+                                !isStockConfirmationRequest(value.request)
+                              : value.schema !== 1 ||
+                                Object.keys(value).sort().join(',') !==
+                                  'request,schema,uid' ||
+                                !value.request ||
+                                isStockConfirmationRequest(value.request) ||
+                                isStockValidationRequest(value.request))
             )
               throw new Error(
                 'Stored reservation recovery is invalid. Ask your Billing administrator to check the previous request.',
@@ -343,6 +364,16 @@ async function recoveryRecord(
               );
           }
           if (operation !== 'read') {
+            if (
+              operation === 'clear' &&
+              result &&
+              isInventoryStoredSaveRequest(result) &&
+              exact &&
+              !isInventoryStoredSaveRequest(exact)
+            )
+              throw new Error(
+                'A transfer header save is pending. Only its dedicated recovery can clear it.',
+              );
             if (
               operation === 'clear' &&
               result &&
@@ -414,6 +445,21 @@ async function recoveryRecord(
               return;
             }
             if (operation === 'save') {
+              if (exact && isInventoryStoredSaveRequest(exact)) {
+                store.put(
+                  {
+                    schema: 9,
+                    kind: 'inventory_save',
+                    database: BILLING_DATABASE,
+                    uid,
+                    request: exact,
+                  },
+                  uid,
+                );
+                result = exact;
+                history = [];
+                return;
+              }
               if (exact && isPagedStockCancellationRequest(exact)) {
                 store.put(
                   {
@@ -544,27 +590,128 @@ async function recovery(
     throw new Error(
       'Use the complete validation recovery protocol. Do not convert its request.',
     );
-  const result = await recoveryRecord(uid, operation, request, previous);
-  if (result && isPagedStockCancellationRequest(result.request))
+  const result =
+    (await recoveryRecord(uid, operation, request, previous))?.request ?? null;
+  if (result && isInventoryStoredSaveRequest(result))
+    throw new Error(
+      'A transfer header save is pending. Keep it intact and resume its dedicated recovery.',
+    );
+  if (result && isPagedStockCancellationRequest(result))
     throw new Error(
       'A cancellation request is pending. Keep it intact and use dedicated cancellation recovery.',
     );
-  if (result && isPagedStockReturnRequest(result.request))
+  if (result && isPagedStockReturnRequest(result))
     throw new Error(
       'A return request is pending. Keep it intact and use its dedicated return recovery.',
     );
-  if (result && isPagedStockValidationRequest(result.request))
+  if (result && isPagedStockValidationRequest(result))
     throw new Error(
       'A complete validation request is pending. Keep its exact recovery history. This older stock dialog cannot recover it.',
     );
-  return result?.request ?? null;
+  return result;
 }
 export const loadStockWriteRecovery = async (
   uid: number,
 ): Promise<StockWriteRequest | null> => {
-  const record = await recoveryRecord(uid, 'read');
-  return record?.request ?? null;
+  const request = (await recoveryRecord(uid, 'read'))?.request ?? null;
+  if (request && isInventoryStoredSaveRequest(request))
+    throw new Error(
+      'A transfer header save is pending. Keep it intact and resume its dedicated recovery.',
+    );
+  return request;
 };
+export async function loadInventoryStoredSaveRecovery(
+  uid: number,
+): Promise<InventoryStoredSaveRequest | null> {
+  const record = await recoveryRecord(uid, 'read');
+  if (!record) return null;
+  if (!isInventoryStoredSaveRequest(record.request))
+    throw new Error(
+      'Another stock request is pending. Resume its original workflow.',
+    );
+  return record.request;
+}
+export async function persistInventoryStoredSaveRecovery(
+  uid: number,
+  request: InventoryStoredSaveRequest,
+) {
+  checkBillingUser(uid);
+  const exact = checkedInventoryStoredSaveRequest(request);
+  await checkedRecoveryAccount(uid, 'transfer header save');
+  await recoveryRecord(uid, 'save', exact);
+  await checkedRecoveryAccount(uid, 'transfer header save');
+}
+export async function clearInventoryStoredSaveRecovery(
+  uid: number,
+  request: InventoryStoredSaveRequest,
+) {
+  checkBillingUser(uid);
+  const exact = checkedInventoryStoredSaveRequest(request);
+  const pending = await loadInventoryStoredSaveRecovery(uid);
+  if (!pending || JSON.stringify(pending) !== JSON.stringify(exact))
+    throw new Error(
+      'The exact pending transfer header save changed or is not stored. It was not cleared.',
+    );
+  await checkedRecoveryAccount(uid, 'transfer header save');
+  const status = await getInventoryStoredSaveStatus(exact);
+  if (!status.accepted && !status.stopped)
+    throw new Error(
+      'The native transfer save outcome is unknown. Keep its exact recovery request.',
+    );
+  let version: string | false = false;
+  if (status.accepted) {
+    let after = 0,
+      lastKey = '';
+    do {
+      const page = await getInventoryStoredSaveReferences(
+        exact,
+        after,
+        version,
+      );
+      if (page.total_count !== status.reference_count)
+        throw new Error(
+          'Transfer save references changed. Keep the request and reload all pages.',
+        );
+      version = page.version;
+      for (const row of page.rows) {
+        if (row.key <= lastKey)
+          throw new Error(
+            'Transfer save reference pages overlap. Keep the exact recovery request.',
+          );
+        lastKey = row.key;
+      }
+      after += page.rows.length;
+      if (page.next_after === false) break;
+    } while (after < status.reference_count);
+    if (after !== status.reference_count)
+      throw new Error(
+        'Not every saved transfer reference was read. Keep its recovery request.',
+      );
+  }
+  const fresh = await getInventoryStoredSaveStatus(exact);
+  if (
+    fresh.accepted !== status.accepted ||
+    fresh.stopped !== status.stopped ||
+    fresh.current.version !== status.current.version ||
+    fresh.state_after !== status.state_after ||
+    fresh.reference_count !== status.reference_count ||
+    JSON.stringify(fresh.changed_fields) !==
+      JSON.stringify(status.changed_fields)
+  )
+    throw new Error(
+      'The native transfer save outcome changed. Keep its recovery request.',
+    );
+  if (version !== false) {
+    const page = await getInventoryStoredSaveReferences(exact, 0, version, 1);
+    if (page.total_count !== status.reference_count)
+      throw new Error(
+        'Transfer save references changed. Keep the recovery request.',
+      );
+  }
+  await checkedRecoveryAccount(uid, 'transfer header save');
+  if (await recoveryRecord(uid, 'clear', exact))
+    throw new Error('The pending stock request changed. It was not cleared.');
+}
 export async function loadPagedStockReturnRecovery(
   uid: number,
 ): Promise<PagedStockReturnRequest | null> {
@@ -584,7 +731,7 @@ export async function persistPagedStockReturnRecovery(
 }
 async function checkedRecoveryAccount(
   uid: number,
-  noun: 'return' | 'cancellation',
+  noun: 'return' | 'cancellation' | 'transfer header save',
 ) {
   const session = await getBillingSession();
   if (session.uid !== uid || session.db !== BILLING_DATABASE)

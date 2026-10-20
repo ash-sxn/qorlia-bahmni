@@ -51,9 +51,40 @@ not call either outcome “undone”. A pending status is not proof of failure.
 
 The TypeScript calls validate exact payload/response shapes, scope, mutually
 exclusive outcomes, states, changed field names and reference pages. They never
-automatically retry a write or treat session expiry as acceptance. The future UI
-still needs account-scoped durable request retention, recovery after re-login,
-explicit resolution of unknown outcomes and independent human/browser testing.
+automatically retry a write or treat session expiry as acceptance. The editor,
+recovery-after-login controls and independent human/browser testing remain open.
+
+## Browser recovery storage source, 21 October 2026
+
+The existing `stockReservationRecovery.ts` now retains a completely reviewed
+header-save request as schema 9, kind `inventory_save`, in the same strict
+IndexedDB transaction and per-account stock slot. Its database, actor, original
+version, ordered edits, proof and UUID are preserved. No second database or
+competing pending-stock slot is introduced.
+
+- `loadInventoryStoredSaveRecovery` reads only this request kind. Other pending
+  stock kinds block it without conversion or loss.
+- `persistInventoryStoredSaveRecovery` validates the complete exact request and
+  checks the current Billing account/database before and after durable storage.
+  Failure after storage preserves that request and prevents the caller from
+  proceeding as though persistence succeeded.
+- `clearInventoryStoredSaveRecovery` requires the exact stored request, a native
+  accepted or durable stopped outcome, every bounded/version-pinned generated
+  reference, fresh matching status and original-account checks. Unknown outcomes,
+  changed pages/receipt/account, aborted storage and a changed concurrent slot
+  retain recovery. This function does not Save, Stop or generate a replacement
+  UUID.
+
+Legacy stock dialogs deliberately fail closed on this new kind, rather than
+misrouting it as confirmation or clearing it. Their current global notice shows
+a recovery error for schema 9; its dedicated resume route and header editor are
+not yet implemented. There is no reachable new Save control in this checkpoint.
+Storage tests use an IndexedDB transaction double and mocked native transport,
+not a real browser/multi-tab/concurrency acceptance test. Native nonempty
+generated-reference coverage remains separate from client paging fixtures.
+Account separation is not encryption of browser storage. Shared-device access,
+retention and logout/re-login handling still need release review; never put raw
+pending notes, tokens, cookies or private recovery records in public evidence.
 
 ## Native execution and receipt safety
 
@@ -77,12 +108,24 @@ explicit resolution of unknown outcomes and independent human/browser testing.
 
 ## Verification boundaries
 
-A frozen **150-case native run is in progress**: 18 native form/save-preview cases,
+A frozen **150-case native run passes, zero failures/errors/skips**: 18 native form/save-preview cases,
 16 durable-save/recovery cases and the prior 116 Inventory/form/onchange/confirmation
-cases, with 116 matching Python files and 134 guarded tables. No successful
-candidate-80 native acceptance is claimed yet. The native
-tests run without HTTP, published ports or a persistent addon upgrade. Tests of
-real saves are inside rollback-only synthetic test transactions, not real records.
+cases, with 116 exactly matching Python files and all 134 guarded tables preserved.
+An independent committed count/full-row-hash comparison matches its baseline for
+all 134 tables. The worker is terminal/removed. Installed metadata remains 49;
+mandatory analytics and SMS validation remain enabled. The native tests ran
+without HTTP, published ports or a persistent addon upgrade. Actual saves were
+inside rollback-only synthetic test transactions, not real patient records.
+
+The matching current typed client accepts **214 recorded native responses across
+all 14 form/draft/edit/review/save/recovery methods**, with transport mocked. This
+checks the actual native JSON against the actual client, not HTTP or React
+acceptance. Native log SHA256:
+`dfeddadf12b56809c6d9dace27ca6da27494d01bd9d2ed7fc523e84ed28dee4f`.
+Replayed client SHA256:
+`51769ac13b125b052514f2288c5a01fb99379ae30e9580f2467bab228bb326eb`.
+Independent committed-table baseline/after SHA256:
+`3b2b546a4afffdb312cf3d354d2214292c137868f6d6e74b6bba4f3b95a85139`.
 
 The first candidate-80 run completed 34 cases with four assertion failures, one
 test-framework error and no skips. All 134 rollback guards and independent
@@ -91,13 +134,15 @@ retain native behavior: plain-text HTML notes are wrapped in paragraphs, a
 single-row review is already complete, PostgreSQL name collation is not Python
 sorting, and Odoo's assertion override requires a single exception class rather
 than a tuple. The updated page fixture now genuinely spans multiple pages. No
-production model or permission was changed to make those assertions pass; the
-150-case rerun must verify the corrections.
+production model or permission was changed to make those assertions pass. The
+successful 150-case rerun verifies those corrected fixtures alongside the prior
+native suites; the failed packet remains retained.
 
-Current frontend checks pass: **1,750 Home cases/106 suites**, including 29 new
-Save/recovery client tests; the four form/edit/review/recovery test files contain
-137 cases. Library and actual test-source types, scoped lint/format and 116 Python
-AST parses pass. Three temporary gateway stub checks verify that all 14 unfinished
+Current frontend checks pass: **1,792 Home cases/106 suites**, including 29
+Save/recovery client tests and 42 new header-recovery storage cases. The shared
+stock storage suite has 153 cases; the four form/edit/review/recovery client test
+files contain 137 cases. Library and actual recovery-test-source types, scoped
+lint/format and 116 Python AST parses pass. Three temporary gateway stub checks verify that all 14 unfinished
 form/review/write routes remain blocked. Documentation checks cover 46 linked
 documents and 785 local links. These are not native HTTP or browser acceptance.
 
@@ -109,7 +154,7 @@ that installed native Odoo itself can execute DELETE twice through the computed
 The current test separately compares successful deletion via the native stored
 relation and matching rejection through the computed alias. It does not replace
 DELETE with UNLINK or ignore missing records to manufacture success. These test
-changes still need the candidate-80 native run to pass.
+changes pass in the candidate-80 native run.
 
 The earlier source-79 focused 18-case/29-response proof remains valid only for its
 frozen source and v1 preview-only schema. It does not accept the new writer or v2
