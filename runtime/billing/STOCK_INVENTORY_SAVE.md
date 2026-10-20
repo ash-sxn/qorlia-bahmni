@@ -52,7 +52,7 @@ Do not enable a writer while those native-fidelity gaps remain.
 
 ## Checks and current evidence
 
-A corrected frozen **130-case native run is live**: 14 new save-preview cases and
+A third frozen **130-case native run is live**: 14 new save-preview cases and
 all 116 prior Inventory/form/onchange/confirmation cases. Its outer guard covers
 134 tables, adding native followers and their subtype relation. Legacy helpers
 retain their default graph and permissions; the new save path explicitly opts
@@ -69,6 +69,16 @@ intended denial because it searched only editable nodes on a denied form; it
 now submits the actual readonly note occurrence to test the backend denial.
 All 132 original guards and independent committed SQL counts/full-row hashes
 were preserved. The failed source/log remain retained, not reclassified as a pass.
+
+The second run completed all 130 cases with **five errors, zero assertion
+failures or skips**. Its 134 guards and independent committed counts/full-row
+hashes were preserved. Removing SET did not fix the cause: applying the native
+onchange result through ORM business assignments recomputed related child fields
+and emptied a collection before extraction. Replay now updates the temporary
+form cache without triggering a second business-assignment cycle. The pending
+child regression also checks a full clear/update response containing related
+operation-type and location values. The third run must establish this correction;
+neither failed run is acceptance, and no delete permission was granted.
 
 The planned native comparisons use real `Form.save` for current supported
 headers, contacts/dates, operation-type child changes, readonly/force-save output

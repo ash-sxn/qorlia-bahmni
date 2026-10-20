@@ -273,7 +273,8 @@ class StockInventoryForm(models.Model):
         check_nested(model, values)
         check_nested(model, incoming)
         form = model.new(values, origin=origin or None)
-        form.update(incoming)
+        # Replay the returned cache, not business assignments which can recompute related child fields and drop rows.
+        form._update_cache(incoming, validate=False)
         names = [name for name in dict.fromkeys([*values, *incoming]) if name != 'id']
         merged = _wire(form._convert_to_write({name: form[name] for name in names}))
         for name in names:

@@ -137,6 +137,14 @@ class StockInventorySavePreviewTest(inventory.StockInventoryFixture, Transaction
             {'move_ids_without_package': [Command.link(move.id)]})
         form = model.new(merged, origin=picking)
         self.assertEqual(form.move_ids_without_package.description_picking, 'QorliaQA pending child')
+        merged = model._qorlia_inventory_merge_onchange(model, picking, merged,
+            {'move_ids_without_package': [Command.clear(), Command.update(move.id, {
+                'picking_type_id': [picking.picking_type_id.id, picking.picking_type_id.display_name],
+                'location_id': [move.location_id.id, move.location_id.display_name],
+                'location_dest_id': [move.location_dest_id.id, move.location_dest_id.display_name]})]})
+        form = model.new(merged, origin=picking)
+        self.assertEqual(form.move_ids_without_package._origin, move)
+        self.assertEqual(form.move_ids_without_package.description_picking, 'QorliaQA pending child')
         self.assertEqual(before, self.stamp())
 
     def test_explicit_native_root_deletion_is_not_silently_changed_to_unlink(self):
