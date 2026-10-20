@@ -1,8 +1,11 @@
 # New-team handover: Qorlia engineering
 
 Newest source in progress: [full saved-transfer native save review](../runtime/billing/STOCK_INVENTORY_SAVE.md)
-adds rollback-only actual write/effect inspection. Its 130-case native check is
-pending. This is not a writer, React editor, approval to reopen review or a
+adds rollback-only actual write/effect inspection and identity-aware nested
+command replay. Candidate 79's focused 18-case native check passes; the broader
+134-case regression is running. The last
+candidate-78 130-case run had five child-serialization errors. This is not a
+writer, React editor, approval to reopen review or a
 change to contributor starter-task bases.
 
 Earlier backend source: [saved-transfer header onchange and effect inspection](../runtime/billing/STOCK_INVENTORY_EDIT.md)

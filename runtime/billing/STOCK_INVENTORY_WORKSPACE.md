@@ -2,12 +2,15 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
-## Candidate 78 full native save review in progress, 20 October 2026
+## Candidate 79 full native save review in progress, 20 October 2026
 
 [The save-review contract](STOCK_INVENTORY_SAVE.md) executes native header/derived
 child writes inside rollback-only guards, with dirty-field extraction, native
-preparation and separate full-effect pages. Its 130-case native check is pending;
-current source needs a matching rerun after the first frozen packet. There is
+preparation and separate full-effect pages. Candidate 79 adds identity-aware
+nested command replay and recursive explicit deletion extraction. Its focused
+18-case native check passes; the broader 134-case regression is running.
+The last candidate-78 run had five
+child-serialization errors. There is
 no persistent Save endpoint, recovery protocol or React editor. Remaining child
 command/view parity stays in scope, and review/deployment remain closed.
 

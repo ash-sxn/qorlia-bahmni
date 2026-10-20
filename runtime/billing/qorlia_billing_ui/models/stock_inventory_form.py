@@ -259,34 +259,79 @@ class StockInventoryForm(models.Model):
 
     def _qorlia_inventory_merge_onchange(self, model, origin, values, incoming):
         from .stock_inventory_draft import _wire
-        def check_nested(rel_model, data, nested=False):
-            for name, commands in data.items():
-                field = rel_model._fields.get(name)
-                if not field or field.type not in ('one2many', 'many2many'):
-                    continue
-                for command in commands or []:
-                    if command[0] == Command.DELETE and nested:
-                        # shortcut: preserve nested deletion identity before enabling the complete Save writer.
-                        raise UserError('This nested native deletion needs an explicit save adapter. Nothing was saved.')
-                    if command[0] in (Command.CREATE, Command.UPDATE):
-                        check_nested(self.env[field.comodel_name], command[2], True)
-        check_nested(model, values)
-        check_nested(model, incoming)
-        form = model.new(values, origin=origin or None)
-        # Replay the returned cache, not business assignments which can recompute related child fields and drop rows.
-        form._update_cache(incoming, validate=False)
-        names = [name for name in dict.fromkeys([*values, *incoming]) if name != 'id']
-        merged = _wire(form._convert_to_write({name: form[name] for name in names}))
-        for name in names:
-            if model._fields[name].type not in ('one2many', 'many2many'):
-                continue
-            # ORM normalization retains pending child updates across later link-only onchange results.
-            deleted = {command[1] for commands in (values.get(name) or [], incoming.get(name) or [])
-                for command in commands if command[0] == Command.DELETE}
-            retained = set(form[name]._origin.ids)
-            merged[name].extend([Command.delete(identifier) for identifier in sorted(deleted - retained)])
+        merged = _wire(self._qorlia_inventory_merge_fields(model, origin, values, incoming))
         merged['id'] = origin.id if origin else False
         return merged
+
+    def _qorlia_inventory_merge_fields(self, model, origin, values, incoming, path=()):
+        if len(path) > 20:
+            raise UserError('This native child structure exceeds the supported form depth.')
+        result = dict(values)
+        for name in dict.fromkeys([*values, *incoming]):
+            value = incoming[name] if name in incoming else values[name]
+            field = model._fields[name]
+            if field.type not in ('one2many', 'many2many'):
+                result[name] = value[0] if field.type == 'many2one' and isinstance(value, (list, tuple)) else value
+                continue
+            # Native web state retains child edits separately from membership, including after CLEAR then LINK.
+            members, pending, deleted = {}, {}, set()
+            initial = values[name] if name in values else [Command.link(identifier) for identifier in origin[name].ids] if origin else []
+            streams = (initial or [], (incoming.get(name) or []))
+            used_refs = {command[1] for stream in streams for command in stream if command[0] == Command.CREATE and command[1]}
+            sequence = 0
+            child_model = self.env[field.comodel_name]
+            for stream in streams:
+                for code, identifier, changes in stream:
+                    if code == Command.CLEAR:
+                        members.clear()
+                    elif code == Command.SET:
+                        members = dict.fromkeys((type(item) is not int, item) for item in changes)
+                        deleted.difference_update(changes)
+                    elif code in (Command.DELETE, Command.UNLINK):
+                        members.pop((type(identifier) is not int, identifier), None)
+                        if code == Command.DELETE and type(identifier) is int and identifier > 0:
+                            deleted.add(identifier)
+                    elif code in (Command.CREATE, Command.UPDATE, Command.LINK):
+                        if code == Command.CREATE and not identifier:
+                            identifier = 'qorlia_virtual:' + json.dumps([*path, name, sequence], separators=(',', ':'))
+                            while identifier in used_refs:
+                                sequence += 1
+                                identifier = 'qorlia_virtual:' + json.dumps([*path, name, sequence], separators=(',', ':'))
+                            used_refs.add(identifier)
+                            sequence += 1
+                        created = code == Command.CREATE or type(identifier) is not int
+                        identity = (created, identifier)
+                        if not created and (type(identifier) is not int or identifier <= 0):
+                            raise ValidationError('The native child reference has no existing or virtual row.')
+                        if created and code != Command.CREATE and identity not in pending:
+                            raise ValidationError('The native child reference has no existing or virtual row.')
+                        if code in (Command.CREATE, Command.UPDATE):
+                            child_origin = child_model.browse(identifier) if not created else child_model.browse()
+                            child_values = self._qorlia_inventory_merge_fields(child_model, child_origin,
+                                pending.get(identity, {}), changes, (*path, name, identity))
+                            pending[identity] = child_values
+                        members[identity] = None
+                        if not created:
+                            deleted.discard(identifier)
+                    else:
+                        raise ValidationError('This native child command is not supported.')
+            commands = [Command.clear()]
+            for created, identifier in members:
+                changes = pending.get((created, identifier), {})
+                if created and (created, identifier) not in pending:
+                    raise ValidationError('The native child reference has no existing or virtual row.')
+                if not created and (type(identifier) is not int or identifier <= 0):
+                    raise ValidationError('The native child reference has no existing or virtual row.')
+                if created:
+                    commands.append((Command.CREATE, identifier, changes))
+                elif changes:
+                    commands.append(Command.update(identifier, changes))
+                else:
+                    commands.append(Command.link(identifier))
+            retained = {identifier for created, identifier in members if not created}
+            commands.extend(Command.delete(identifier) for identifier in sorted(deleted - retained))
+            result[name] = commands
+        return result
 
     def _qorlia_inventory_edit_value(self, model, view, edit, domains):
         if not isinstance(edit, dict) or set(edit) != {'node', 'value'} or type(edit['node']) is not int:

@@ -53,7 +53,10 @@ The goal is full native workflow/API parity in a consistent Qorlia interface. Bi
 
 Newest source in progress: [full native saved-transfer save review](runtime/billing/STOCK_INVENTORY_SAVE.md)
 executes the header/derived child write inside rollback-only guards, instead of
-treating onchange effects as Save effects. Its 130-case native check is pending.
+treating onchange effects as Save effects. Candidate 79 adds identity-aware nested
+command replay; its focused 18-case native check passes. A broader 134-case
+regression is running. The last candidate-78 run had five child-serialization
+errors and is not acceptance.
 There is no persistent Save endpoint or React editor, and the gateway remains closed.
 
 Earlier backend source: [saved-transfer header onchange and effect inspection](runtime/billing/STOCK_INVENTORY_EDIT.md)

@@ -5,7 +5,10 @@ This is not an Indian chart of accounts or healthcare tax configuration.
 
 Newest source in progress: [full native saved-transfer save review](STOCK_INVENTORY_SAVE.md)
 previews actual header/derived child writes inside rollback-only guards. Its
-130-case native check is pending. No persistent Save endpoint or React editor;
+candidate-79 focused 18-case native check passes after adding nested command
+identity/deletion handling; the broader 134-case regression is running.
+The last candidate-78 run had five child-serialization
+errors. No persistent Save endpoint or React editor;
 review and deployment stay closed.
 
 Earlier backend source: [saved-transfer header onchange and effect inspection](STOCK_INVENTORY_EDIT.md)

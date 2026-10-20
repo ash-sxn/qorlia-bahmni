@@ -28,7 +28,7 @@ class StockInventorySave(models.Model):
         return sorted(set(self._qorlia_return_paged_tables()) | {model._table} |
             {field.relation for field in model._fields.values() if field.type == 'many2many' and field.store and field.relation})
 
-    def _qorlia_inventory_save_fields(self, record, root, dirty, parent=None, depth=0):
+    def _qorlia_inventory_save_fields(self, record, root, dirty, parent=None, depth=0, values=None):
         if depth > 10:
             raise UserError('This nested native form needs an explicit save adapter.')
         nodes = root.xpath('.//field[not(ancestor::field)]')
@@ -78,6 +78,11 @@ class StockInventorySave(models.Model):
                 converted = ([Command.link(identifier) for identifier in retained] +
                     [command for command in converted if command[0] != Command.SET] +
                     [Command.unlink(identifier) for identifier in record._origin[name].ids if identifier not in retained])
+            original = (values or {}).get(name, [])
+            deleted = {command[1] for command in original if command[0] == Command.DELETE}
+            converted = [command for command in converted if not
+                (command[0] == Command.UNLINK and command[1] in deleted)]
+            converted.extend(Command.delete(identifier) for identifier in sorted(deleted))
             if not any(command[0] in (Command.CREATE, Command.UPDATE) for command in converted):
                 result[name] = converted
                 continue
@@ -98,7 +103,9 @@ class StockInventorySave(models.Model):
                 child = next(new_rows, None) if code == Command.CREATE else value.filtered(lambda row: row._origin.id == identifier)
                 if not child or len(child) != 1:
                     raise UserError('A native child row changed identity during save preparation.')
-                child_values = self._qorlia_inventory_save_fields(child, subview, set(changes), context, depth + 1)
+                child_reference = child.id.ref if code == Command.CREATE else identifier
+                source = next((item[2] for item in original if item[0] == code and item[1] == child_reference), {})
+                child_values = self._qorlia_inventory_save_fields(child, subview, set(changes), context, depth + 1, source)
                 if code == Command.CREATE:
                     commands.append(Command.create(child_values))
                 elif child_values:
@@ -114,15 +121,7 @@ class StockInventorySave(models.Model):
         current, values = self._qorlia_inventory_stored_replay(source, baseline, spec, initial, edits, dirty)
         form = model.new(values, origin=picking)
         root = etree.fromstring(model.get_view(view_id=self.env.ref('stock.view_picking_form').id, view_type='form')['arch'])
-        changes = self._qorlia_inventory_save_fields(form, root, dirty)
-        for name in dirty:
-            field = model._fields[name]
-            if field.type in ('one2many', 'many2many') and name in changes:
-                # Preserve explicit native root deletions which ORM membership normalization cannot represent.
-                deleted = {command[1] for command in values[name] if command[0] == Command.DELETE}
-                changes[name] = [command for command in changes[name] if not
-                    (command[0] == Command.UNLINK and command[1] in deleted)]
-                changes[name].extend(command for command in values[name] if command[0] == Command.DELETE)
+        changes = self._qorlia_inventory_save_fields(form, root, dirty, values=values)
         if changes:
             picking.write(changes)
         picking._check_company()

@@ -2,6 +2,7 @@
 # Copyright 2026 Qorlia contributors.
 from unittest.mock import patch
 
+from lxml import etree
 from odoo import Command
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import Form, TransactionCase, tagged
@@ -154,12 +155,112 @@ class StockInventorySavePreviewTest(inventory.StockInventoryFixture, Transaction
         merged = self.api()._qorlia_inventory_merge_onchange(self.api(), picking,
             {'id': picking.id, 'move_ids_without_package': [Command.link(move.id)]},
             {'move_ids_without_package': [Command.delete(move.id)]})
-        self.assertIn(Command.delete(move.id), merged['move_ids_without_package'])
+        self.assertIn(list(Command.delete(move.id)), merged['move_ids_without_package'])
         self.assertTrue(move.exists())
-        with self.assertRaisesRegex(UserError, 'nested native deletion'):
-            self.api()._qorlia_inventory_merge_onchange(self.api(), picking,
-                {'id': picking.id, 'move_ids_without_package': [Command.link(move.id)]},
-                {'move_ids_without_package': [Command.update(move.id, {'move_line_ids': [Command.delete(1)]})]})
+        self.assertEqual(before, self.stamp())
+
+    def test_nested_native_deletion_survives_replay_and_save_extraction(self):
+        picking = self.unlinked()
+        line = self.reserve(picking)
+        move = picking.move_ids
+        model = self.api()
+        before = self.stamp()
+        values = {'id': picking.id, 'move_ids_without_package': [Command.update(move.id,
+            {'description_picking': 'QorliaQA Pending nested deletion'})]}
+        merged = model._qorlia_inventory_merge_onchange(model, picking, values,
+            {'move_ids_without_package': [Command.clear(), Command.update(move.id,
+                {'move_line_ids': [Command.delete(line.id)]})]})
+        # A later link-only refresh must not erase either the child edit or deletion intent.
+        merged = model._qorlia_inventory_merge_onchange(model, picking, merged,
+            {'move_ids_without_package': [Command.clear(), Command.link(move.id)]})
+        child = next(command[2] for command in merged['move_ids_without_package'] if command[0] == Command.UPDATE)
+        self.assertEqual(child['description_picking'], 'QorliaQA Pending nested deletion')
+        self.assertIn(list(Command.delete(line.id)), child['move_line_ids'])
+        root = etree.fromstring('''<form><field name="move_ids_without_package"><tree>
+            <field name="description_picking"/><field name="move_line_ids"><tree>
+            <field name="lot_id"/></tree></field></tree></field></form>''')
+        form = model.new(merged, origin=picking)
+        changes = model._qorlia_inventory_save_fields(form, root, {'move_ids_without_package'}, values=merged)
+        saved_child = next(command[2] for command in changes['move_ids_without_package'] if command[0] == Command.UPDATE)
+        self.assertIn(list(Command.delete(line.id)), saved_child['move_line_ids'])
+        self.assertNotIn(list(Command.unlink(line.id)), saved_child['move_line_ids'])
+        def native(write_values):
+            return picking._qorlia_stock_preparation_preview(lambda: picking._qorlia_stock_preparation_native(
+                lambda: picking.write(write_values), _FINANCE, _CONFIG, allow_terminal_unchanged=True,
+                graph_models=_SAVE_GRAPH, private_models=_SAVE_PRIVATE, private_always={'mail.followers'}),
+                picking._qorlia_inventory_saved_tables())
+        expected = native({'move_ids_without_package': [Command.update(move.id,
+            {'description_picking': 'QorliaQA Pending nested deletion', 'move_line_ids': [Command.delete(line.id)]})]})
+        actual = native(changes)
+        self.assertEqual(actual[0], expected[0])
+        self.assertEqual(actual[2], expected[2])
+        self.assertTrue(line.exists())
+        self.assertEqual(before, self.stamp())
+
+    def test_partial_commands_keep_other_members_and_pending_child_values(self):
+        picking = self.unlinked()
+        first = picking.move_ids
+        second = first.with_env(self.env).copy({'picking_id': picking.id})
+        model = self.api()
+        before = self.stamp()
+        values = {'id': picking.id, 'move_ids_without_package': [Command.link(first.id),
+            Command.update(second.id, {'description_picking': 'QorliaQA Retained second'})]}
+        merged = model._qorlia_inventory_merge_onchange(model, picking, values,
+            {'move_ids_without_package': [Command.update(first.id, {'name': 'QorliaQA Edited first'})]})
+        form = model.new(merged, origin=picking)
+        self.assertEqual(form.move_ids_without_package._origin.ids, [first.id, second.id])
+        self.assertEqual(form.move_ids_without_package[1].description_picking, 'QorliaQA Retained second')
+        merged = model._qorlia_inventory_merge_onchange(model, picking, merged,
+            {'move_ids_without_package': [Command.clear(), Command.link(second.id)]})
+        form = model.new(merged, origin=picking)
+        self.assertEqual(form.move_ids_without_package._origin.ids, [second.id])
+        self.assertEqual(form.move_ids_without_package.description_picking, 'QorliaQA Retained second')
+        merged = model._qorlia_inventory_merge_onchange(model, picking, merged,
+            {'move_ids_without_package': [Command.set([first.id]), Command.link(second.id), Command.unlink(first.id)]})
+        self.assertEqual(model.new(merged, origin=picking).move_ids_without_package._origin.ids, [second.id])
+        self.assertFalse(any(command[0] == Command.DELETE for command in merged['move_ids_without_package']))
+        self.assertEqual(before, self.stamp())
+
+    def test_virtual_child_references_stay_distinct_and_keep_nested_pending_values(self):
+        model = self.api()
+        before = self.stamp()
+        values = {'move_ids_without_package': [Command.create({'name': name, 'product_id': self.product.id,
+            'move_line_ids': [Command.create({'lot_name': name})]}) for name in ('QorliaQA First', 'QorliaQA Second')]}
+        merged = model._qorlia_inventory_merge_onchange(model, model.browse(), values, {})
+        creates = [command for command in merged['move_ids_without_package'] if command[0] == Command.CREATE]
+        self.assertEqual(len(creates), 2)
+        self.assertNotEqual(creates[0][1], creates[1][1])
+        children = [[item for item in command[2]['move_line_ids'] if item[0] == Command.CREATE][0] for command in creates]
+        self.assertNotEqual(children[0][1], children[1][1])
+        refreshed = model._qorlia_inventory_merge_onchange(model, model.browse(), merged,
+            {'move_ids_without_package': [Command.clear(), (Command.CREATE, creates[1][1], {'name': 'QorliaQA Refreshed second'})]})
+        retained = next(command for command in refreshed['move_ids_without_package'] if command[0] == Command.CREATE)
+        self.assertEqual(retained[1], creates[1][1])
+        self.assertEqual(retained[2]['product_id'], self.product.id)
+        self.assertEqual(retained[2]['move_line_ids'], creates[1][2]['move_line_ids'])
+        removed = model._qorlia_inventory_merge_onchange(model, model.browse(), refreshed,
+            {'move_ids_without_package': [Command.unlink(retained[1])]})
+        self.assertEqual(removed['move_ids_without_package'], [list(Command.clear())])
+        self.assertEqual(before, self.stamp())
+
+    def test_existing_and_virtual_numeric_references_cannot_alias(self):
+        picking = self.unlinked()
+        move = picking.move_ids
+        model = self.api()
+        before = self.stamp()
+        merged = model._qorlia_inventory_merge_onchange(model, picking,
+            {'id': picking.id, 'move_ids_without_package': [Command.link(move.id)]},
+            {'move_ids_without_package': [(Command.CREATE, move.id, {'name': 'QorliaQA Virtual numeric ref',
+                'product_id': self.product.id})]})
+        commands = merged['move_ids_without_package']
+        self.assertIn(list(Command.link(move.id)), commands)
+        self.assertEqual(len([command for command in commands if command[0] == Command.CREATE]), 1)
+        form = model.new(merged, origin=picking)
+        self.assertEqual(len(form.move_ids_without_package), 2)
+        self.assertEqual(form.move_ids_without_package._origin.ids, [move.id])
+        for incoming in ([Command.link('missing-virtual')], [Command.set(['missing-virtual'])]):
+            with self.assertRaises(ValidationError):
+                model._qorlia_inventory_merge_onchange(model, picking, {}, {'move_ids_without_package': incoming})
         self.assertEqual(before, self.stamp())
 
     def test_view_required_fields_are_checked_before_native_save(self):

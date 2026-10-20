@@ -2,12 +2,18 @@
 
 ## 20 October full native saved-transfer save review in progress
 
-[Candidate 78](../runtime/billing/STOCK_INVENTORY_SAVE.md) adds rollback-only
+[Candidate 79](../runtime/billing/STOCK_INVENTORY_SAVE.md) adds rollback-only
 actual header/derived child write review, native dirty/readonly/force-save and
-required handling, ORM pending-child normalization and separate save-effect
-signatures/pages. A 130-case native run is pending, not acceptance. No persistent
-Save/recovery endpoint or React editor is enabled. Nested explicit deletions and
-wider native child-view/command parity remain unfinished, not silently omitted.
+required handling, identity-aware nested child-command replay and separate
+save-effect signatures/pages. The focused 18-case native run passes, with 114
+matching source hashes, 134 preserved guards/independent tables, and 29 matching
+native responses accepted by three typed client methods with mocked transport.
+The broader 134-case regression is running, including an extended test of
+actual nested-deletion write effects. This is not whole-workspace or browser
+acceptance. The last candidate-78 130-case run had five child-serialization errors;
+its 134 rollback guards and independent committed tables were preserved.
+No persistent Save/recovery endpoint or React editor is enabled. Wider native
+child-view/command parity remains unfinished, not silently omitted.
 The earlier source-77 proof does not accept these changes. Review stays closed.
 
 ## 20 October saved-transfer native onchange source
