@@ -3,7 +3,12 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Newest backend source: [saved-transfer header onchange and effect inspection](STOCK_INVENTORY_EDIT.md)
+Newest source in progress: [full native saved-transfer save review](STOCK_INVENTORY_SAVE.md)
+previews actual header/derived child writes inside rollback-only guards. Its
+130-case native check is pending. No persistent Save endpoint or React editor;
+review and deployment stay closed.
+
+Earlier backend source: [saved-transfer header onchange and effect inspection](STOCK_INVENTORY_EDIT.md)
 replays the real native origin and rolls back linked writes. The 116-case native
 check passes; all nine form/draft/onchange methods have typed client calls and
 101 matching native responses with transport mocked. This is not save approval,

@@ -51,7 +51,12 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
-Newest backend source: [saved-transfer header onchange and effect inspection](runtime/billing/STOCK_INVENTORY_EDIT.md)
+Newest source in progress: [full native saved-transfer save review](runtime/billing/STOCK_INVENTORY_SAVE.md)
+executes the header/derived child write inside rollback-only guards, instead of
+treating onchange effects as Save effects. Its 130-case native check is pending.
+There is no persistent Save endpoint or React editor, and the gateway remains closed.
+
+Earlier backend source: [saved-transfer header onchange and effect inspection](runtime/billing/STOCK_INVENTORY_EDIT.md)
 replays the real saved origin and rolls back its native linked writes. The
 116-case native check passes. These are onchange effects, not save approval or a
 React editor; the source gateway blocks all four new methods. Review stays closed.

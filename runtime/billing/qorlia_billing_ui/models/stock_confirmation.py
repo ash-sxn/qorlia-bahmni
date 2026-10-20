@@ -136,7 +136,7 @@ class StockConfirmation(models.Model):
 
     def _qorlia_confirmation_effects(self, before, after, model_names=GRAPH_MODELS,
             private_models=AUDIT_MODELS, private_counts_key='private_audit_counts', assigned_fields=None,
-            private_analytic_deletions=False):
+            private_analytic_deletions=False, private_always=frozenset()):
         old, old_visible, old_links = before
         new, new_visible, new_links = after
         assigned_fields = assigned_fields or {}
@@ -212,8 +212,8 @@ class StockConfirmation(models.Model):
                 if (identifier in generated[name] and field_name in ASSIGNED_ON_SAVE.get(name, set())
                         or rows is new and field_name in assigned_fields.get((name, identifier), set())):
                     value = False
-                if name in ('mail.message', 'mail.activity') and field_name == 'res_id':
-                    target_model = raw.get('model')
+                if name in ('mail.message', 'mail.activity', 'mail.followers') and field_name == 'res_id':
+                    target_model = raw.get('res_model') if name == 'mail.followers' else raw.get('model')
                     if not target_model and raw.get('res_model_id'):
                         if private:
                             # Internal normalization only; inaccessible model metadata never leaves private effects.
@@ -246,7 +246,8 @@ class StockConfirmation(models.Model):
                     for field_name, field in model._fields.items() if field.type == 'many2many' and field.store)
                 if original is not None and current is not None and clean(original) == clean(current) and not link_change:
                     continue
-                hidden = original is not None and identifier not in old_visible[name] or current is not None and identifier not in new_visible[name]
+                hidden = (name in private_always or original is not None and identifier not in old_visible[name]
+                    or current is not None and identifier not in new_visible[name])
                 if not hidden and name in AUDIT_MODELS:
                     try:
                         if original:
@@ -297,7 +298,9 @@ class StockConfirmation(models.Model):
     def _qorlia_confirmation_native(self):
         return self._qorlia_stock_preparation_native(self.action_confirm, FINANCIAL_MODELS, CONFIG_MODELS)[:4]
 
-    def _qorlia_stock_preparation_native(self, action, financial_models, config_models, *, preserve_state=False):
+    def _qorlia_stock_preparation_native(self, action, financial_models, config_models, *, preserve_state=False,
+            allow_terminal_unchanged=False, graph_models=GRAPH_MODELS, private_models=AUDIT_MODELS,
+            private_always=frozenset()):
         original_state = self.state
         # Register the caller's tracking before sudo-computed state can choose a different audit author.
         self._track_prepare(self._fields)
@@ -307,20 +310,21 @@ class StockConfirmation(models.Model):
                 for model in models for field in model._fields.values()
                 if field.type == 'many2many' and field.store and field.relation})
         finance_tables = guard_tables(financial_models)
-        config_tables = guard_tables(name for name in config_models if name not in GRAPH_MODELS)
+        config_tables = guard_tables(name for name in config_models if name not in graph_models)
         money_before = self._qorlia_confirmation_stamp(finance_tables, semantic=True)
         config_before = self._qorlia_confirmation_stamp(config_tables, semantic=True)
-        before = self._qorlia_confirmation_capture()
+        before = self._qorlia_confirmation_capture(graph_models)
         value = action()
         # Cursor flush chooses an arbitrary live environment; drain computed tracking under the caller first.
         self.env.flush_all()
         self.env.cr.flush()
-        after = self._qorlia_confirmation_capture()
+        after = self._qorlia_confirmation_capture(graph_models)
         money_after = self._qorlia_confirmation_stamp(finance_tables, semantic=True)
         config_after = self._qorlia_confirmation_stamp(config_tables, semantic=True)
         if preserve_state and self.state != original_state:
             raise UserError('Native form onchange changed the stored transfer state. Nothing was saved.')
-        if money_after != money_before or not preserve_state and self.state in ('done', 'cancel'):
+        if (money_after != money_before or self.state in ('done', 'cancel') and not
+                (preserve_state or allow_terminal_unchanged and self.state == original_state)):
             raise UserError('Stock preparation changed financial records or completed stock. Nothing was saved.')
         if config_after != config_before:
             raise UserError('Stock preparation changed unreviewed native configuration. Nothing was saved.')
@@ -328,9 +332,10 @@ class StockConfirmation(models.Model):
             for identifier, row in snapshot[0]['stock.quant'].items() if row['quantity']}
         if physical(before) != physical(after):
             raise UserError('Stock preparation changed physical stock. Nothing was saved.')
-        effects, private_audit = self._qorlia_confirmation_effects(before, after)
+        effects, private_audit = self._qorlia_confirmation_effects(before, after, model_names=graph_models,
+            private_models=private_models, private_always=private_always)
         references = {('new:%s:%s' % (name, index)): {'model': name, 'id': identifier}
-            for name in GRAPH_MODELS if name not in AUDIT_MODELS
+            for name in graph_models if name not in private_models
             for index, identifier in enumerate(sorted(set(after[0][name]) - set(before[0][name])))}
         return effects, private_audit, self.state, references, value
 

@@ -53,16 +53,21 @@ class StockInventoryEdit(models.Model):
                 'version': form['version'], 'form': form}
         return self._qorlia_inventory_form_read(load)
 
-    def _qorlia_inventory_stored_replay(self, source, baseline, spec, initial, edits):
+    def _qorlia_inventory_stored_replay(self, source, baseline, spec, initial, edits, dirty=None):
         model, picking, _scope = source
         values, domains, warning = copy.deepcopy(initial), {}, False
         for edit in edits:
             view = self._qorlia_inventory_stored_snapshot(source, baseline, values, warning)
             name, changed = self._qorlia_inventory_edit_value(model, view, edit, domains)
             values.update(changed)
+            if dirty is not None:
+                dirty.add(name)
             if spec.get(name) in ('1', 'true'):
                 result = _wire(picking.onchange(dict(values, id=picking.id), [name], spec))
-                values.update(self.env['sale.order']._qorlia_from_onchange(model, result.get('value', {}), baseline['fields']))
+                incoming = self.env['sale.order']._qorlia_from_onchange(model, result.get('value', {}), baseline['fields'])
+                if dirty is not None:
+                    dirty.update(incoming)
+                values = self._qorlia_inventory_merge_onchange(model, picking, values, incoming)
                 domains.update(result.get('domain') or {})
                 warning = result.get('warning') or False
         return {'form': self._qorlia_inventory_stored_snapshot(source, baseline, values, warning),

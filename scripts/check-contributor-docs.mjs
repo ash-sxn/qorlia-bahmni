@@ -33,6 +33,7 @@ const files = [
   "runtime/billing/STOCK_INVENTORY_WORKSPACE.md",
   "runtime/billing/STOCK_INVENTORY_FORM.md",
   "runtime/billing/STOCK_INVENTORY_EDIT.md",
+  "runtime/billing/STOCK_INVENTORY_SAVE.md",
   "runtime/billing/STOCK_RECOVERY.md",
   "runtime/billing/STOCK_REQUEST_STOP.md",
   "runtime/billing/STOCK_CANCELLATION.md",

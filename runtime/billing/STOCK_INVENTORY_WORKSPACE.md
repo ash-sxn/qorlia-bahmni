@@ -2,6 +2,15 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Candidate 78 full native save review in progress, 20 October 2026
+
+[The save-review contract](STOCK_INVENTORY_SAVE.md) executes native header/derived
+child writes inside rollback-only guards, with dirty-field extraction, native
+preparation and separate full-effect pages. Its 130-case native check is pending;
+current source needs a matching rerun after the first frozen packet. There is
+no persistent Save endpoint, recovery protocol or React editor. Remaining child
+command/view parity stays in scope, and review/deployment remain closed.
+
 ## Candidate 77 saved-header onchange and effect inspection, 20 October 2026
 
 [The saved-form contract](STOCK_INVENTORY_EDIT.md) replays native changes on the

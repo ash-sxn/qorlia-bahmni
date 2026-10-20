@@ -5,7 +5,7 @@ import json
 import operator
 
 from lxml import etree
-from odoo import api, fields, models, tools
+from odoo import api, Command, fields, models, tools
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.osv import expression
 from odoo.tools.safe_eval import safe_eval
@@ -256,6 +256,36 @@ class StockInventoryForm(models.Model):
                 raise ValueError()
         except (TypeError, ValueError):
             raise ValidationError('Use bounded finite JSON for the native form edit ledger.')
+
+    def _qorlia_inventory_merge_onchange(self, model, origin, values, incoming):
+        from .stock_inventory_draft import _wire
+        def check_nested(rel_model, data, nested=False):
+            for name, commands in data.items():
+                field = rel_model._fields.get(name)
+                if not field or field.type not in ('one2many', 'many2many'):
+                    continue
+                for command in commands or []:
+                    if command[0] == Command.DELETE and nested:
+                        # shortcut: preserve nested deletion identity before enabling the complete Save writer.
+                        raise UserError('This nested native deletion needs an explicit save adapter. Nothing was saved.')
+                    if command[0] in (Command.CREATE, Command.UPDATE):
+                        check_nested(self.env[field.comodel_name], command[2], True)
+        check_nested(model, values)
+        check_nested(model, incoming)
+        form = model.new(values, origin=origin or None)
+        form.update(incoming)
+        names = [name for name in dict.fromkeys([*values, *incoming]) if name != 'id']
+        merged = _wire(form._convert_to_write({name: form[name] for name in names}))
+        for name in names:
+            if model._fields[name].type not in ('one2many', 'many2many'):
+                continue
+            # ORM normalization retains pending child updates across later link-only onchange results.
+            deleted = {command[1] for commands in (values.get(name) or [], incoming.get(name) or [])
+                for command in commands if command[0] == Command.DELETE}
+            retained = set(form[name]._origin.ids)
+            merged[name].extend([Command.delete(identifier) for identifier in sorted(deleted - retained)])
+        merged['id'] = origin.id if origin else False
+        return merged
 
     def _qorlia_inventory_edit_value(self, model, view, edit, domains):
         if not isinstance(edit, dict) or set(edit) != {'node', 'value'} or type(edit['node']) is not int:

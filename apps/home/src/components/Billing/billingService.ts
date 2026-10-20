@@ -4077,6 +4077,120 @@ export async function getInventoryStoredFormEffects(
     );
   return data;
 }
+export interface InventoryStoredSaveReview extends InventoryStoredForm {
+  edits: InventoryHeaderEdit[];
+  review_version: string;
+  state_after: OrderTransferSummary['state'];
+  changed_fields: string[];
+  effect_count: number;
+  domains: Record<string, ConfirmationValue>;
+  after: number;
+  next_after: number | false;
+  continuation_token: string | false;
+  effects: StockConfirmationEffects;
+}
+function validInventorySaveEffects(effects: StockConfirmationEffects) {
+  if (!confirmationObject(effects?.private_audit_counts)) return false;
+  const { 'mail.followers': followers, ...audit } =
+    effects.private_audit_counts;
+  return (
+    validConfirmationEffects({ ...effects, private_audit_counts: audit }) &&
+    (followers === undefined ||
+      (confirmationKeys(followers, ['created', 'updated', 'deleted']) &&
+        Object.values(followers).every(stockCount)))
+  );
+}
+export async function getInventoryStoredSaveReview(
+  selection: InventoryStoredSelection,
+  after = 0,
+  reviewVersion: string | false = false,
+  continuationToken: string | false = false,
+  limit = 50,
+): Promise<InventoryStoredSaveReview> {
+  const exact = checkedInventoryStoredSelection(selection);
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    (after === 0
+      ? reviewVersion !== false || continuationToken !== false
+      : !stockVersion(reviewVersion) || !stockVersion(continuationToken))
+  )
+    throw new Error(
+      'Review complete transfer changes in order with their original tokens.',
+    );
+  const data = await stockCall<InventoryStoredSaveReview>(
+    'qorlia_inventory_edit_save_review',
+    {
+      ...exact,
+      after,
+      review_version: reviewVersion,
+      continuation_token: continuationToken,
+      limit,
+    },
+  );
+  if (
+    !confirmationKeys(data, [
+      'read_only',
+      'write_ready',
+      'transfer_id',
+      'version',
+      'form',
+      'edits',
+      'review_version',
+      'state_after',
+      'changed_fields',
+      'effect_count',
+      'domains',
+      'after',
+      'next_after',
+      'continuation_token',
+      'effects',
+    ]) ||
+    data.read_only !== true ||
+    data.write_ready !== false ||
+    data.transfer_id !== exact.transfer_id ||
+    data.version !== exact.version ||
+    JSON.stringify(data.edits) !== JSON.stringify(exact.edits) ||
+    !stockVersion(data.review_version) ||
+    (reviewVersion !== false && data.review_version !== reviewVersion) ||
+    !['draft', 'waiting', 'confirmed', 'assigned', 'done', 'cancel'].includes(
+      data.state_after,
+    ) ||
+    !validInventoryForm(data.form, exact.transfer_id, false) ||
+    !stockCount(data.effect_count) ||
+    data.after !== after ||
+    after > data.effect_count ||
+    !confirmationObject(data.domains) ||
+    !validConfirmationValue(data.domains) ||
+    !Array.isArray(data.changed_fields) ||
+    new Set(data.changed_fields).size !== data.changed_fields.length ||
+    !data.changed_fields.every(
+      (name) =>
+        typeof name === 'string' &&
+        name !== 'id' &&
+        Object.hasOwn(data.form.fields, name),
+    ) ||
+    !validInventorySaveEffects(data.effects)
+  )
+    throw new Error(
+      'Could not review these transfer changes. Reload the form.',
+    );
+  const page = confirmationEffectPageRows(data.effects),
+    end = after + page.count;
+  if (
+    !page.valid ||
+    page.count !== Math.min(limit, data.effect_count - after) ||
+    (end < data.effect_count
+      ? data.next_after !== end || !stockVersion(data.continuation_token)
+      : data.next_after !== false || data.continuation_token !== false)
+  )
+    throw new Error(
+      'Some transfer changes could not be checked. Start the review again.',
+    );
+  return data;
+}
 export type InventoryTransferDetailPage = InventoryTransferLoad & {
   after: number;
   position: number;

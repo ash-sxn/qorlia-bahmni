@@ -1,6 +1,11 @@
 # New-team handover: Qorlia engineering
 
-Newest backend source: [saved-transfer header onchange and effect inspection](../runtime/billing/STOCK_INVENTORY_EDIT.md)
+Newest source in progress: [full saved-transfer native save review](../runtime/billing/STOCK_INVENTORY_SAVE.md)
+adds rollback-only actual write/effect inspection. Its 130-case native check is
+pending. This is not a writer, React editor, approval to reopen review or a
+change to contributor starter-task bases.
+
+Earlier backend source: [saved-transfer header onchange and effect inspection](../runtime/billing/STOCK_INVENTORY_EDIT.md)
 replays the real saved origin and inspects rolled-back linked writes. Its
 116-case native check passes. Typed callers cover all nine form/draft/onchange
 methods, with 101 matching native responses using mocked transport, not browser

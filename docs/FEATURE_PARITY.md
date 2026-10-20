@@ -1,5 +1,15 @@
 # Bahmni workflow parity ledger
 
+## 20 October full native saved-transfer save review in progress
+
+[Candidate 78](../runtime/billing/STOCK_INVENTORY_SAVE.md) adds rollback-only
+actual header/derived child write review, native dirty/readonly/force-save and
+required handling, ORM pending-child normalization and separate save-effect
+signatures/pages. A 130-case native run is pending, not acceptance. No persistent
+Save/recovery endpoint or React editor is enabled. Nested explicit deletions and
+wider native child-view/command parity remain unfinished, not silently omitted.
+The earlier source-77 proof does not accept these changes. Review stays closed.
+
 ## 20 October saved-transfer native onchange source
 
 [Candidate 77](../runtime/billing/STOCK_INVENTORY_EDIT.md) adds real-origin

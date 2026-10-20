@@ -100,7 +100,8 @@ class StockInventoryDraft(models.Model):
             values.update(changed)
             if spec.get(name) in ('1', 'true'):
                 result = _wire(model.onchange(dict(values, id=False), [name], spec))
-                values.update(self.env['sale.order']._qorlia_from_onchange(model, result.get('value', {}), metadata))
+                incoming = self.env['sale.order']._qorlia_from_onchange(model, result.get('value', {}), metadata)
+                values = self._qorlia_inventory_merge_onchange(model, model.browse(), values, incoming)
                 domains.update(result.get('domain') or {})
                 warning = result.get('warning') or False
         return model, self._qorlia_inventory_draft_snapshot(model, seed, values, domains, warning, edits)

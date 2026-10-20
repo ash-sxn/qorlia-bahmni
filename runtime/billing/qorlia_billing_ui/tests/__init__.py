@@ -53,4 +53,5 @@ from . import test_stock_inventory
 from . import test_stock_inventory_form
 from . import test_stock_inventory_draft
 from . import test_stock_inventory_edit
+from . import test_stock_inventory_save
 from . import test_stock_request_stop
