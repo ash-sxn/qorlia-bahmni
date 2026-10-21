@@ -1,8 +1,13 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 # Copyright 2026 Qorlia contributors.
+import copy
+
 from lxml import etree
 from odoo import models
 from odoo.exceptions import UserError
+
+from .stock_inventory_save import _SAVE_GRAPH, _SAVE_PRIVATE
+from .stock_operation_paged import _FINANCE, _CONFIG
 
 
 class StockInventoryCreate(models.Model):
@@ -31,3 +36,27 @@ class StockInventoryCreate(models.Model):
             return current, changes
 
         return self._qorlia_inventory_form_read(prepare)
+
+    def _qorlia_inventory_create_native(self, seed, edits):
+        """Save-only native execution. It allocates real references, so never use it for read-only preview."""
+        self = self._qorlia_inventory_context()
+        current, values = self._qorlia_inventory_draft_prepare(seed, edits)
+        model, _spec, _metadata = self._qorlia_inventory_draft_seed(seed)
+        cr = self.env.cr
+        hooks = {name: (getattr(cr, name), list(getattr(cr, name)._funcs), copy.deepcopy(getattr(cr, name).data))
+            for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
+
+        try:
+            with cr.savepoint():
+                native = self.browse()._qorlia_stock_preparation_native(lambda: model.create(values), _FINANCE, _CONFIG,
+                    graph_models=_SAVE_GRAPH, private_models=_SAVE_PRIVATE,
+                    private_always={'mail.followers'}, creation=True)
+                return (*native, current)
+        except Exception:
+            for name, (callbacks, functions, data) in hooks.items():
+                setattr(cr, name, callbacks)
+                callbacks.clear()
+                for function in functions:
+                    callbacks.add(function)
+                callbacks.data.update(data)
+            raise

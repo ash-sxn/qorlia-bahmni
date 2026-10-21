@@ -2,6 +2,80 @@
 
 [README](../../README.md) · [Billing](README.md) · [Draft form](STOCK_INVENTORY_FORM.md) · [Inventory](STOCK_INVENTORY_WORKSPACE.md)
 
+## Candidate 82 native execution source checkpoint
+
+The next private stage, `_qorlia_inventory_create_native(seed, edits)`, executes
+actual native creation as the original actor, using the verified preparation
+boundary and operation context. It obtains the real transfer ID/reference from
+native `create`; there is no fake saved-record anchor or generated browser name.
+It returns the original unsaved form, actual native outcome, complete effects,
+private audit and real new references for a future reviewed Save consumer.
+
+The shared native-effect guard now has an explicit creation mode. Its caller has
+no existing transfer identity; the returned record must be a genuinely new,
+stored transfer, not an existing, empty, missing or different-model result.
+Native create record rules and company checks apply. The guard retains existing
+financial, configuration, physical-stock, terminal-state and complete-effect
+checks. Its default existing-transfer path is unchanged. The execution boundary
+uses a savepoint and restores the original deferred callback objects, functions
+and data on failure, rather than retaining work from a rolled-back create.
+
+This is **Save-only internal execution, not a read-only preview**. Native
+creation allocates real references. PostgreSQL sequence allocations may survive
+a failed native transaction, as explained below; no counter is reset or claimed
+to be rolled back. The helper must not be wired to a preview/read endpoint.
+Sequence-safe review, the public Save protocol and independent durable
+acceptance/Stop/retry recovery remain unimplemented. The UI Create action and
+gateway routes remain disabled. There is no new model, field, table, ACL,
+dependency, installed upgrade, frontend build/server or review reopening.
+
+Ten added execution cases compare real receipt/delivery/internal creation and
+default-child/autoconfirm behaviour with native `Form.save()`. They check real
+distinct references, caller ownership, private follower effects, rejection of
+configuration/physical/financial/terminal changes, wrong returned identity,
+invalid seed/actor, callback restoration and refusal to reuse an existing root.
+An explicit active-second-company case checks the actual created company's
+effects and rejection of an extra foreign-company effect in the same request.
+The corrected source-82 native regression completed **171 cases, zero failures,
+errors or skips**: ten execution, eleven preparation and 150 existing
+inventory/form/header-save/confirmation cases. All **118 Python hashes** match
+the frozen worker and source. This is not the full addon suite. The worker
+preserved all 134 protected tables; independent committed SQL counts/full-row
+hashes match before/after. Mandatory analytics and SMS stayed enabled. The
+no-HTTP worker had a read-only source mount and no published ports, exited
+successfully and was removed. Installed addon metadata remained version 49;
+the in-memory source version was 82, not a persistent addon upgrade.
+
+The actual unchanged TypeScript client accepts **254 recorded native responses
+across all 14 existing form/draft/header-save methods**, with transport mocked.
+This validates those existing response contracts, not a new public Create API
+or creation UI consumer. Three gateway stub checks, 118-file Python parsing,
+contributor-document links and whitespace checks pass. No frontend tests, types
+or build were rerun because frontend implementation is unchanged and review
+remains closed. This is not HTTP/browser, IndexedDB, full-addon,
+concurrency/scale, sequence-safe preview, durable create recovery or release
+acceptance. Source-81's older result below remains separate history.
+
+Native log SHA-256:
+`b6cc6f793a85d61b132f142e17b82f41729cbeba7b8028359f5e1b9a25183609`.
+Matching client SHA-256:
+`51769ac13b125b052514f2288c5a01fb99379ae30e9580f2467bab228bb326eb`.
+Independent 134-table committed baseline/result SHA-256:
+`3b2b546a4afffdb312cf3d354d2214292c137868f6d6e74b6bba4f3b95a85139`.
+Raw logs and launch/account/configuration details remain private.
+
+The first 170-case worker was deliberately terminated after confirmed native
+errors and is not a complete passing run. Effect projection was still bound to
+the empty creation model rather than the actual created transfer, so the strict
+company check correctly rejected legitimate created records. Projection now
+uses the actual target; the existing company comparison is unchanged. The
+frozen failed source/log are retained. The added second-company case proves
+both legitimate creation and rejection of another company's unintended effect;
+it is not permission to weaken company boundaries or grant production roles.
+The failed worker's removal was verified, and independent committed counts and
+full-row hashes for all 134 protected tables match before/after. This does not
+claim that native reference counters were rolled back.
+
 ## Candidate 81 preparation source, 21 October 2026
 
 This is the create-values preparation part of the native creation contract, not
@@ -71,6 +145,38 @@ must survive ordinary business-record deletion and must not be editable through
 the native generic UI/RPC. Its schema, privileged metadata boundary, uniqueness,
 retention and retirement rules still need explicit implementation and review.
 
+Claim the unique request **before** executing native creation, in the same
+transaction as the accepted outcome. Inserting a receipt only after create can
+allow two concurrent attempts to allocate references and execute hooks before
+the duplicate is detected. A stale-snapshot uniqueness collision must cause a
+real retryable PostgreSQL serialization error, so native request handling starts
+again with a fresh snapshot; do not convert it to an ordinary validation error
+or retry the business action within the old snapshot. A pending claim must not
+commit separately from its terminal result. Failed execution must roll back the
+claim and business rows and restore deferred callbacks together.
+
+A private SQL journal can use the existing native database transaction without
+exposing an ordinary ORM model's generic read/export/write methods. It still
+needs versioned, privileged schema installation and real uniqueness checks;
+schema creation must not occur as an incidental customer request. Do not use
+`ir.config_parameter` as an improvised request store or attach acceptance solely
+to a business record which can be deleted. A single-cursor rollback-only test
+can check structure and failure rollback, but cannot by itself prove committed
+cross-request recovery or concurrent retries. Those need separate evidence
+before public Create is enabled. No journal schema is installed by this source
+checkpoint or by its current worker.
+
+Read-only inspection of the installed runtime confirms the relevant boundaries:
+`odoo.models.check_method_name` rejects underscore-prefixed methods and `init`
+over remote dispatch. `odoo.service.model.retrying` rolls back/resets the native
+environment and retries recognized concurrency `OperationalError` codes,
+including SQLSTATE `40001`, up to five attempts. It converts ordinary integrity
+errors into validation errors instead. These source facts guide the future
+journal implementation; they are not evidence of an implemented journal or a
+successful real concurrent-create test. `TransactionCase` uses one class cursor
+and per-test savepoints and closes without committing, so a passing class alone
+does not prove durable recovery across independent committed requests.
+
 ### Sequence boundary found in the installed source
 
 Installed native `stock.picking.create` calls `sequence_id.next_by_id()` before
@@ -102,8 +208,8 @@ JSON date serializer, not hand-written alternate values.
 The corrected source-matched native regression completed **161 cases, zero
 failures, errors or skips**, including all eleven new preparation cases and the
 150 existing inventory/form/header-save/confirmation cases in this selected
-suite. All **118 Python source hashes** match both the frozen worker and current
-source. This is not the full addon suite. All 134 guarded tables were preserved,
+suite. All **118 Python source hashes** match both the frozen worker and accepted
+source-81 commit `42fa0cd9`. This is not the full addon suite. All 134 guarded tables were preserved,
 mandatory analytics and SMS remained enabled, and an independent committed SQL
 comparison found identical counts and full-row hashes before/after the worker.
 The no-HTTP worker used a read-only source mount, exposed no ports, exited

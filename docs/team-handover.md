@@ -1,5 +1,12 @@
 # New-team handover: Qorlia engineering
 
+Current backend source: [private native creation execution](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-82-native-execution-source-checkpoint)
+adds the Save-only native engine, not a public Create action or recovery journal.
+Its 171-case native regression passes with 118 matching Python files and
+independently preserved 134 tables. The actual client accepts 254 native
+responses with mocked transport, not HTTP/browser/Create acceptance.
+Review, deployment and contributor starter bases stay unchanged.
+
 Newest backend work: [native create preparation](../runtime/billing/STOCK_INVENTORY_CREATE.md)
 adds an internal signed-default/ordered-edit create-value preparer, not a public
 writer or enabled Create action. Its 161-case native regression passes with 118

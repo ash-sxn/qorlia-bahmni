@@ -2,6 +2,17 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Private native creation execution source, 21 October 2026
+
+[Candidate 82](STOCK_INVENTORY_CREATE.md#candidate-82-native-execution-source-checkpoint)
+adds the Save-only native engine with actual assigned identity and complete
+guarded effects. Its 171-case native regression passes with 118 matching Python
+files and independently preserved 134 tables. The actual client accepts 254
+native responses across 14 existing methods with mocked transport, not
+HTTP/browser/Create acceptance. Sequence-safe review,
+public Save and independent durable recovery remain required. The source-81
+result below remains separate history. Create/gateway/review remain disabled.
+
 ## Native creation preparation checkpoint, 21 October 2026
 
 [Candidate 81](STOCK_INVENTORY_CREATE.md) retains raw native default/child values

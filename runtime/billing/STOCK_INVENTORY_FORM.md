@@ -5,6 +5,11 @@
 Latest saved-transfer source: [native onchange and complete effect inspection](STOCK_INVENTORY_EDIT.md).
 It is separate from the unsaved draft path below and is not save approval.
 
+The current [private native create execution](STOCK_INVENTORY_CREATE.md#candidate-82-native-execution-source-checkpoint)
+passes its 171-case native regression with 118 matching Python files and
+independently preserved 134 tables. It is Save-only, not a read-only preview,
+public Create API, completed review or recovery path. Create/review stay disabled.
+
 The next backend step, [native create-value preparation](STOCK_INVENTORY_CREATE.md),
 retains the original signed defaults, including child values, for native save-field
 extraction. Its 161-case native regression passes with 118 matching Python files

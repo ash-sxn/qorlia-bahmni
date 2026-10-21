@@ -1,5 +1,15 @@
 # Bahmni workflow parity ledger
 
+## 21 October private native creation execution source
+
+[Candidate 82](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-82-native-execution-source-checkpoint)
+adds Save-only native creation with real assigned identity and guarded complete
+effects, not a public writer, preview or durable recovery protocol. Its 171-case
+native regression passes with 118 matching Python hashes and independently
+preserved 134 tables. The actual client accepts 254 recorded responses across
+14 existing methods with mocked transport, not HTTP/browser/Create acceptance.
+Create/gateway/review remain disabled; the older source-81 evidence stays separate.
+
 ## 21 October native create preparation checkpoint
 
 [Candidate 81](../runtime/billing/STOCK_INVENTORY_CREATE.md) adds a private

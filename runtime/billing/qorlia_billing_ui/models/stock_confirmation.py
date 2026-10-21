@@ -300,10 +300,13 @@ class StockConfirmation(models.Model):
 
     def _qorlia_stock_preparation_native(self, action, financial_models, config_models, *, preserve_state=False,
             allow_terminal_unchanged=False, graph_models=GRAPH_MODELS, private_models=AUDIT_MODELS,
-            private_always=frozenset()):
+            private_always=frozenset(), creation=False):
+        if creation and self:
+            raise UserError('Native creation cannot reuse an existing transfer identity.')
         original_state = self.state
         # Register the caller's tracking before sudo-computed state can choose a different audit author.
-        self._track_prepare(self._fields)
+        if self:
+            self._track_prepare(self._fields)
         def guard_tables(names):
             models = [self.env[name] for name in names]
             return sorted({model._table for model in models} | {field.relation
@@ -315,16 +318,24 @@ class StockConfirmation(models.Model):
         config_before = self._qorlia_confirmation_stamp(config_tables, semantic=True)
         before = self._qorlia_confirmation_capture(graph_models)
         value = action()
+        target = value if creation else self
+        if creation and (getattr(target, '_name', False) != self._name or len(target) != 1
+                or type(target.id) is not int or target.id <= 0 or not target.exists()
+                or target.id in before[0][self._name]):
+            raise UserError('Native creation did not return a new transfer. Nothing was saved.')
+        if creation:
+            target.check_access_rule('create')
+            target._check_company()
         # Cursor flush chooses an arbitrary live environment; drain computed tracking under the caller first.
         self.env.flush_all()
         self.env.cr.flush()
         after = self._qorlia_confirmation_capture(graph_models)
         money_after = self._qorlia_confirmation_stamp(finance_tables, semantic=True)
         config_after = self._qorlia_confirmation_stamp(config_tables, semantic=True)
-        if preserve_state and self.state != original_state:
+        if preserve_state and target.state != original_state:
             raise UserError('Native form onchange changed the stored transfer state. Nothing was saved.')
-        if (money_after != money_before or self.state in ('done', 'cancel') and not
-                (preserve_state or allow_terminal_unchanged and self.state == original_state)):
+        if (money_after != money_before or target.state in ('done', 'cancel') and not
+                (preserve_state or allow_terminal_unchanged and target.state == original_state)):
             raise UserError('Stock preparation changed financial records or completed stock. Nothing was saved.')
         if config_after != config_before:
             raise UserError('Stock preparation changed unreviewed native configuration. Nothing was saved.')
@@ -332,12 +343,12 @@ class StockConfirmation(models.Model):
             for identifier, row in snapshot[0]['stock.quant'].items() if row['quantity']}
         if physical(before) != physical(after):
             raise UserError('Stock preparation changed physical stock. Nothing was saved.')
-        effects, private_audit = self._qorlia_confirmation_effects(before, after, model_names=graph_models,
+        effects, private_audit = target._qorlia_confirmation_effects(before, after, model_names=graph_models,
             private_models=private_models, private_always=private_always)
         references = {('new:%s:%s' % (name, index)): {'model': name, 'id': identifier}
             for name in graph_models if name not in private_models
             for index, identifier in enumerate(sorted(set(after[0][name]) - set(before[0][name])))}
-        return effects, private_audit, self.state, references, value
+        return effects, private_audit, target.state, references, value
 
     @api.model
     def qorlia_confirmation_preview(self, order_id, transfer_id, version):

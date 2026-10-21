@@ -3,6 +3,13 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Current backend source: [private native creation execution](STOCK_INVENTORY_CREATE.md#candidate-82-native-execution-source-checkpoint)
+adds a guarded Save-only native engine. Its 171-case native regression passes
+with 118 matching Python hashes and independently preserved 134 tables. The
+actual client accepts 254 native responses with mocked transport, not HTTP/browser
+or public Create acceptance. Create/review remain disabled; sequence-safe preview
+and durable recovery are still required.
+
 Newest backend work: [native create preparation](STOCK_INVENTORY_CREATE.md)
 prepares create values from signed defaults and ordered edits, without assigning
 a reference or creating a transfer. Its 161-case native regression passes with
