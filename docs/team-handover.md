@@ -8,8 +8,10 @@ tables. The actual client accepts 214 recorded native responses across 14 method
 with mocked transport. The existing stock recovery slot now retains exact
 header-save requests per account/database. The editor and dedicated resume UI now
 have connected source and direct Inventory/Billing routes, not built/browser
-acceptance. Native rich text, local-time/custom widgets and collection interfaces
-remain open. All 14 form/review/write methods stay gateway-blocked.
+acceptance. Header dates now use the Billing account zone, and native planning
+alerts route supported predecessors to Qorlia Inventory with dirty-edit
+confirmation. Rich text, smart-date input, other custom widgets and collection
+interfaces remain open. All 14 form/review/write methods stay gateway-blocked.
 This does not reopen review/deployment or change contributor starter-task bases.
 
 Earlier backend source: [saved-transfer header onchange and effect inspection](../runtime/billing/STOCK_INVENTORY_EDIT.md)

@@ -13,6 +13,11 @@ strict account/database stock slot. All 14 form/review/write methods remain
 gateway-blocked. React header editing and dedicated recovery have connected source
 and direct routes, not built/browser acceptance. Native presentation/collection
 gaps and the rest of Inventory remain open in the linked contract.
+Header dates now use the Billing account zone; native planning alerts open
+supported predecessors in Qorlia Inventory with dirty-edit confirmation.
+This does not accept smart-date input, other native widgets or unsupported
+model destinations. Pure native date-function comparisons are separate from
+full browser/native HTTP acceptance.
 This does not reopen review/deployment or shrink the remaining module scope.
 
 ## Candidate 79 full native save review in progress, 20 October 2026

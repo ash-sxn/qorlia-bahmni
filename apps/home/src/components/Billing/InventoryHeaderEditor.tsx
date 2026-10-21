@@ -31,10 +31,12 @@ type Props = {
   transferId: number;
   close: () => void;
   reconnect: () => void;
+  openTransfer: (id: number) => void;
   returnFocus?: () => void;
 };
 type Cursor = { after: number; version: string | false; token: string | false };
 type Review = { page: InventoryStoredSaveReview; cursors: Cursor[] };
+type LeaveTarget = 'close' | 'reload' | 'reconnect' | { transferId: number };
 export function InventoryHeaderEditor(props: Props) {
   return <HeaderEditor key={`${props.uid}:${props.transferId}`} {...props} />;
 }
@@ -43,6 +45,7 @@ function HeaderEditor({
   transferId,
   close,
   reconnect,
+  openTransfer,
   returnFocus,
 }: Props) {
   const mounted = useRef(true),
@@ -54,9 +57,7 @@ function HeaderEditor({
   const [edits, setEdits] = useState<InventoryHeaderEdit[]>([]),
     [local, setLocal] = useState<Record<number, string>>({});
   const [review, setReview] = useState<Review | null>(null);
-  const [discard, setDiscard] = useState<
-    'close' | 'reload' | 'reconnect' | null
-  >(null);
+  const [discard, setDiscard] = useState<LeaveTarget | null>(null);
   const [handoff, setHandoff] = useState<{
     request: InventoryStoredSaveRequest;
     error: Error | null;
@@ -138,8 +139,11 @@ function HeaderEditor({
       if (mounted.current) setBusy(false);
     }
   };
-  const executeLeave = (target: 'close' | 'reload' | 'reconnect') => {
-    if (target === 'close') close();
+  const executeLeave = (target: LeaveTarget) => {
+    if (typeof target === 'object') {
+      close();
+      openTransfer(target.transferId);
+    } else if (target === 'close') close();
     else if (target === 'reconnect') reconnect();
     else {
       setView(null);
@@ -150,7 +154,7 @@ function HeaderEditor({
       void loaded.refetch();
     }
   };
-  const leave = (target: 'close' | 'reload' | 'reconnect') => {
+  const leave = (target: LeaveTarget) => {
     if (busyRef.current) return;
     if (dirty && !pending) setDiscard(target);
     else executeLeave(target);
@@ -190,6 +194,7 @@ function HeaderEditor({
       const value = inventoryHeaderInputValue(
         form.fields[name].type,
         local[node],
+        form.timezone,
       );
       if (
         value === form.values[name] ||
@@ -358,6 +363,7 @@ function HeaderEditor({
               blur={blur}
               change={change}
               reconnect={() => leave('reconnect')}
+              openTransfer={(id) => leave({ transferId: id })}
             />
             {Object.keys(local).length > 0 ? (
               <div>

@@ -31,6 +31,24 @@ export function headerForm() {
   });
   return loaded;
 }
+export function planningHeaderForm() {
+  const loaded = headerForm();
+  loaded.form.fields.json_popover = { type: 'char', string: 'Planning issue' };
+  loaded.form.layout.push({
+    ...loaded.form.layout[2],
+    field: 'json_popover',
+    rules: { visible: true, readonly: true, required: false },
+    attributes: { widget: 'stock_rescheduling_popover' },
+  });
+  loaded.form.values.json_popover = JSON.stringify({
+    popoverTemplate: 'stock.PopoverStockRescheduling',
+    delay_alert_date: 'Oct 23, 2026, 5:30:00 PM',
+    late_elements: [
+      { id: 19, name: 'QorliaQA predecessor', model: 'stock.picking' },
+    ],
+  });
+  return loaded;
+}
 export function headerPreview(selection: InventoryStoredSelection) {
   const loaded = headerForm();
   for (const edit of selection.edits)

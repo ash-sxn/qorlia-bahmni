@@ -14,17 +14,25 @@ pages, fresh outcome and account/database before retirement. Storage doubles
 do not establish browser or concurrency acceptance. All 14 form/review/write
 methods stay gateway-blocked. The header editor and dedicated recovery now have
 connected source and Inventory/Billing routes, not built/browser acceptance.
-Native rich text, local-time/custom-widget and collection parity remain open,
+Header dates now use the explicit Billing account zone and native UTC serialization.
+Native planning alerts route supported predecessors to Qorlia Inventory with
+dirty-edit confirmation. Native rich text, smart-date input, other custom-widget
+and collection parity remain open,
 and review/deployment stay closed. The
 source-79 broad run ended with one native nested-deletion error, not a pass;
 the current tests distinguish successful stored-relation deletion from installed
 native computed-alias rejection. See the linked evidence limits.
 
-Home passes 1,837 cases/108 suites, including 45 new header editor/field/routing/
-cache cases and the earlier 42 header-recovery storage cases (153 shared stock-
+Home passes 1,899 cases/110 suites, including 62 additional account-time/planning
+cases, the earlier 45 header editor/field/routing/cache cases and 42
+header-recovery storage cases (153 shared stock-
 storage cases total). Library and actual changed-test-source
 types, scoped lint/format, three gateway stub checks and all 46 linked contributor
 documents/785 local links pass. No new build, server, tunnel or deployment occurs.
+The account-time helper agrees with the installed Odoo pure date functions in
+28 fixed-clock cases/56 comparisons, separate from browser/HTTP acceptance.
+The linked contract records exact source hashes, the scoped dependency change,
+planning-alert routing and remaining native parser/model/widget gaps.
 
 ## 20 October source-79 native saved-transfer save review
 

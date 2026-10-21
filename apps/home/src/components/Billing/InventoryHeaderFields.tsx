@@ -16,10 +16,16 @@ import {
   type InventoryStoredSelection,
   type InventoryHeaderEdit,
 } from './billingService';
+import {
+  inventoryLocalDateTime,
+  inventoryUtcDateTime,
+} from './inventoryDateTime';
+import { InventoryPlanningIssue } from './InventoryPlanningIssue';
 
 export function inventoryHeaderInputValue(
   type: string,
   raw: string,
+  timezone = 'UTC',
 ): InventoryHeaderEdit['value'] {
   if (!raw) return false;
   if (['float', 'monetary', 'integer'].includes(type)) {
@@ -35,10 +41,7 @@ export function inventoryHeaderInputValue(
     return value;
   }
   if (type === 'datetime') {
-    const value = raw.replace('T', ' ').replace(/\.0+$/, '');
-    if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(value))
-      throw new Error('Enter a UTC date and time with whole seconds.');
-    return value.length === 16 ? value + ':00' : value;
+    return inventoryUtcDateTime(raw, timezone);
   }
   return raw;
 }
@@ -188,6 +191,7 @@ export function InventoryHeaderFields({
   blur,
   change,
   reconnect,
+  openTransfer,
 }: {
   uid: number;
   form: InventoryNativeForm;
@@ -198,6 +202,7 @@ export function InventoryHeaderFields({
   blur: (node: number) => void;
   change: (node: number, value: InventoryHeaderEdit['value']) => void;
   reconnect: () => void;
+  openTransfer: (id: number) => void;
 }) {
   return (
     <div className={styles.editorGrid}>
@@ -222,8 +227,31 @@ export function InventoryHeaderFields({
             )
           : [];
         let control;
-        // shortcut: custom native widgets use scalar controls; add their action-aware adapters before parity acceptance.
-        if (form.collections.includes(row.field))
+        let dateValue = '',
+          dateError: string | undefined;
+        if (field.type === 'datetime') {
+          try {
+            dateValue = inventoryLocalDateTime(
+              typeof value === 'string' ? value : false,
+              form.timezone,
+            );
+          } catch (error) {
+            dateError =
+              error instanceof Error
+                ? error.message
+                : 'The native date-time is unavailable.';
+          }
+        }
+        // shortcut: other custom widgets still use scalar controls; add their native adapters before parity acceptance.
+        if (row.attributes.widget === 'stock_rescheduling_popover')
+          control = (
+            <InventoryPlanningIssue
+              value={value}
+              openTransfer={openTransfer}
+              disabled={disabled}
+            />
+          );
+        else if (form.collections.includes(row.field))
           control = (
             <p>
               {label}: direct collection editing is not available here. Header
@@ -247,9 +275,12 @@ export function InventoryHeaderFields({
                       (value === false || value == null
                         ? 'Not set'
                         : String(value)))
-                    : value === false || value === undefined || value === null
-                      ? 'Not set'
-                      : String(value)}
+                    : field.type === 'datetime'
+                      ? (dateError ??
+                        `${dateValue.replace('T', ' ') || 'Not set'} (${form.timezone})`)
+                      : value === false || value === undefined || value === null
+                        ? 'Not set'
+                        : String(value)}
             </p>
           );
         else if (field.type === 'many2one')
@@ -347,7 +378,11 @@ export function InventoryHeaderFields({
           control = (
             <TextInput
               id={id}
-              labelText={field.type === 'datetime' ? `${label} (UTC)` : label}
+              labelText={
+                field.type === 'datetime'
+                  ? `${label} (${form.timezone})`
+                  : label
+              }
               type={
                 ['float', 'monetary', 'integer'].includes(field.type)
                   ? 'number'
@@ -364,12 +399,14 @@ export function InventoryHeaderFields({
                     ? 'any'
                     : undefined
               }
-              disabled={disabled}
+              disabled={disabled || !!dateError}
+              invalid={!!dateError}
+              invalidText={dateError}
               aria-required={row.rules.required}
               placeholder={row.attributes.placeholder}
               helperText={
                 field.type === 'datetime'
-                  ? `Enter UTC, not device-local time. The native account time zone is ${form.timezone}.`
+                  ? `Dates use your Billing account time zone, ${form.timezone}, not the device time zone. Changes are stored in UTC. Daylight-saving adjustments follow the native system.`
                   : (row.attributes.help ?? inventoryHeaderText(field.help))
               }
               value={
@@ -377,7 +414,7 @@ export function InventoryHeaderFields({
                 (value === false || value == null
                   ? ''
                   : field.type === 'datetime'
-                    ? String(value).replace(' ', 'T')
+                    ? dateValue
                     : String(value))
               }
               onChange={(event) => {

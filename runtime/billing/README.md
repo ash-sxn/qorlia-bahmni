@@ -10,8 +10,10 @@ matching Python hashes, 134 preserved guards/independent committed tables and
 214 matching native responses accepted by the actual client with mocked transport.
 Exact header-save recovery storage shares the existing account/database-bound
 stock slot. React header editing and dedicated recovery now have connected source
-and direct Inventory/Billing routes. Native rich-text, local-time/custom widgets,
-collections and actual browser acceptance remain unfinished. All 14 methods stay
+and direct Inventory/Billing routes. Header dates now use the Billing account
+zone; native planning alerts route supported predecessors into Qorlia Inventory
+with dirty-edit confirmation. Native rich text, smart-date input, other custom
+widgets, collections and actual browser acceptance remain unfinished. All 14 methods stay
 gateway-blocked, and review/deployment stay closed.
 
 Earlier backend source: [saved-transfer header onchange and effect inspection](STOCK_INVENTORY_EDIT.md)

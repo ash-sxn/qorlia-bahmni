@@ -59,8 +59,10 @@ The actual typed client accepts 214 recorded native responses across all 14
 methods with mocked transport. Browser recovery storage shares the existing
 account/database-bound stock slot and preserves unknown outcomes. The React
 header editor and dedicated recovery UI now have connected source and direct
-Inventory/Billing routes. Rich text, local-time/custom-widget/collection parity
-and actual browser/native HTTP acceptance remain unfinished. All 14 methods
+Inventory/Billing routes. Header dates now use the Billing account time zone;
+native planning alerts open supported predecessors in Qorlia Inventory with
+dirty-edit protection. Rich text, native smart-date input, other custom widgets,
+collections and actual browser/native HTTP acceptance remain unfinished. All 14 methods
 stay gateway-blocked, and review/deployment stay closed.
 
 [Native save-review history](runtime/billing/STOCK_INVENTORY_SAVE.md) records the

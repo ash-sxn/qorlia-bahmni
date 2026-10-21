@@ -32,6 +32,7 @@ import {
   headerRequest,
   headerReview,
   headerOutcome,
+  planningHeaderForm,
 } from './inventoryHeaderFixture';
 
 jest.mock('../billingService', () => ({
@@ -63,6 +64,7 @@ const get = jest.mocked(getInventoryStoredForm),
   persist = jest.mocked(persistInventoryStoredSaveRecovery),
   clear = jest.mocked(clearInventoryStoredSaveRecovery);
 const close = jest.fn(),
+  openTransfer = jest.fn(),
   reconnect = jest.fn(),
   returnFocus = jest.fn();
 let disk: InventoryStoredSaveRequest | null;
@@ -86,6 +88,7 @@ function show(recovery = false) {
           transferId={transferId}
           close={close}
           reconnect={reconnect}
+          openTransfer={openTransfer}
           returnFocus={returnFocus}
         />
       )}
@@ -203,6 +206,50 @@ it('loads the native saved form without a write, preserving visible native label
   expect(
     screen.getByRole('button', { name: 'Review header save effects' }),
   ).toBeDisabled();
+});
+it('closes a clean header and opens the actual predecessor without saving or using an order', async () => {
+  get.mockResolvedValue(planningHeaderForm());
+  show();
+  fireEvent.click(await screen.findByText('Planning issue'));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Open QorliaQA predecessor' }),
+  );
+  expect(close).toHaveBeenCalledTimes(1);
+  expect(openTransfer).toHaveBeenCalledWith(19);
+  expect(close.mock.invocationCallOrder[0]).toBeLessThan(
+    openTransfer.mock.invocationCallOrder[0],
+  );
+  expect(change).not.toHaveBeenCalled();
+  expect(save).not.toHaveBeenCalled();
+  expect(persist).not.toHaveBeenCalled();
+});
+it('requires explicit discard before a predecessor link can lose unapplied header input', async () => {
+  get.mockResolvedValue(planningHeaderForm());
+  show();
+  const note = await screen.findByRole('textbox', { name: 'Note' });
+  fireEvent.change(note, { target: { value: 'QorliaQA keep this input' } });
+  fireEvent.click(screen.getByText('Planning issue'));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Open QorliaQA predecessor' }),
+  );
+  expect(
+    screen.getByRole('group', { name: 'Discard unsaved header changes?' }),
+  ).toBeInTheDocument();
+  expect(close).not.toHaveBeenCalled();
+  expect(openTransfer).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Keep header edits' }));
+  expect(note).toHaveValue('QorliaQA keep this input');
+  expect(openTransfer).not.toHaveBeenCalled();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Open QorliaQA predecessor' }),
+  );
+  fireEvent.click(screen.getByRole('button', { name: /Discard header edits/ }));
+  expect(close).toHaveBeenCalledTimes(1);
+  expect(openTransfer).toHaveBeenCalledTimes(1);
+  expect(openTransfer).toHaveBeenCalledWith(19);
+  expect(change).not.toHaveBeenCalled();
+  expect(save).not.toHaveBeenCalled();
+  expect(persist).not.toHaveBeenCalled();
 });
 it('keeps the original version and ordered occurrence edits through native onchange and every save-effect page', async () => {
   show();
@@ -485,6 +532,70 @@ it('obeys changed native visibility, readonly state and warnings after onchange'
   expect(
     screen.getByText(/Native scheduling: QorliaQA warning/),
   ).toBeInTheDocument();
+});
+it('converts account-local date input to native UTC without replacing the original form version', async () => {
+  const loaded = headerForm();
+  loaded.form.fields.scheduled_date = {
+    type: 'datetime',
+    string: 'Scheduled date',
+  };
+  loaded.form.layout.push({
+    ...loaded.form.layout[2],
+    field: 'scheduled_date',
+  });
+  loaded.form.values.scheduled_date = '2026-10-24 11:22:33';
+  get.mockResolvedValue(loaded);
+  change.mockImplementation(async (selection) => ({
+    ...loaded,
+    edits: selection.edits,
+    effect_version: 'd'.repeat(64),
+    effect_count: 0,
+    domains: {},
+    form: {
+      ...loaded.form,
+      version: 'c'.repeat(64),
+      values: {
+        ...loaded.form.values,
+        scheduled_date: selection.edits[0].value,
+      },
+    },
+  }));
+  show();
+  const date = await screen.findByLabelText('Scheduled date (Asia/Kolkata)');
+  expect(date).toHaveValue('2026-10-24T16:52:33.000');
+  fireEvent.change(date, { target: { value: '2026-10-24T17:22:33' } });
+  fireEvent.blur(date);
+  await waitFor(() =>
+    expect(change).toHaveBeenCalledWith({
+      transfer_id: 7,
+      version: 'a'.repeat(64),
+      edits: [{ node: 5, value: '2026-10-24 11:52:33' }],
+    }),
+  );
+  await waitFor(() => expect(date).toHaveValue('2026-10-24T17:22:33.000'));
+  expect(save).not.toHaveBeenCalled();
+});
+it('does not reparse an unchanged ambiguous wall clock on blur', async () => {
+  const loaded = headerForm();
+  loaded.form.timezone = 'America/New_York';
+  loaded.form.fields.scheduled_date = {
+    type: 'datetime',
+    string: 'Scheduled date',
+  };
+  loaded.form.layout.push({
+    ...loaded.form.layout[2],
+    field: 'scheduled_date',
+  });
+  loaded.form.values.scheduled_date = '2026-11-01 06:30:00';
+  get.mockResolvedValue(loaded);
+  show();
+  const date = await screen.findByLabelText(
+    'Scheduled date (America/New_York)',
+  );
+  expect(date).toHaveValue('2026-11-01T01:30');
+  fireEvent.blur(date);
+  expect(change).not.toHaveBeenCalled();
+  expect(save).not.toHaveBeenCalled();
 });
 it('preserves another unapplied field instead of silently losing it after one onchange', async () => {
   show();

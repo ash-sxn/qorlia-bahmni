@@ -26,7 +26,8 @@ inventing a Sales order or routing it to transfer confirmation.
   hidden, readonly and disabled fields do not search or apply changes.
 - `InventoryHeaderEditor.tsx` applies native onchange on field commit. Unapplied
   input blocks review and is not silently dropped when another field changes.
-  Reload, reconnect and close protect dirty edits with explicit discard.
+  Reload, reconnect, close and supported planning-document links protect dirty
+  edits with explicit discard.
 - Complete Save effects reuse the existing stock effect cards, including private
   follower counts. Every ordered page and its original proof must be read before
   Save is offered. Changed/failed pages hide the old review. One UUID is retained
@@ -44,11 +45,11 @@ inventing a Sales order or routing it to transfer confirmation.
   prior account's controls.
 
 This is connected source, not accepted one-to-one presentation parity. HTML notes
-are edited as escaped source text, not an integrated rich-text editor. Date-time
-entry is explicitly UTC rather than the native account-local picker. Custom
-widgets currently use scalar controls; inspection of the installed native
-`stock_rescheduling_popover.js` confirms it also opens linked model/form actions,
-whose Qorlia destinations still need adapters. Root collections, chatter,
+are edited as escaped source text, not an integrated rich-text editor. Header
+date-time input now uses the native Billing account zone and serializes to UTC;
+native smart/free-text and locale-specific parsing remain unimplemented. The
+planning widget now has the adapter described below; other custom widgets still
+use scalar controls. Root collections, chatter,
 followers, activities and package interfaces are not implemented by these scalar
 header controls. Existing stock-row/operation workflows are separate; header
 onchange can still affect linked rows, and those effects require full review.
@@ -68,6 +69,58 @@ remain gateway-blocked; no build/server, review reopening or deployment occurs.
 Any later runtime verification must pin a matching candidate-80 addon/client and
 v2 review protocol on approved synthetic infrastructure. An older installed addon
 or hosted tester is not assumed to support these new source controls.
+
+### Account-local dates and native planning alerts, 21 October 2026
+
+`inventoryDateTime.ts` converts whole-second native UTC strings to canonical
+`datetime-local` values in the form's explicit account zone, and converts edits
+back to native UTC. It never inherits or mutates the device/default zone.
+Invalid stored dates/zones disable the date control with an explanation, not an
+invented value. Empty native values remain empty. Luxon preserves the installed
+native DST gap normalization, current-offset choice for ambiguous folds and
+whole-second serialization. Unchanged controls do not trigger onchange merely
+on blur. The original stored-form version and ordered node edits still reach
+the existing native onchange/review/save contract.
+
+Home now declares the already-installed Luxon 3.7.1 directly. Its version and
+integrity did not change; the root adds genuine `@types/luxon` 3.7.6. The scoped
+Yarn install skipped scripts. No native addon, source API or gateway route changed.
+
+The private pure-JS comparison executes the installed Odoo `dates.js` and its
+bundled Luxon 3.0.1 in a VM alongside the actual new helper. All **28 fixed-clock
+cases / 56 comparisons** agree for canonical inputs, fractional seconds,
+quarter-hour/year-boundary zones, half-hour gaps and ambiguous folds with January
+and July clocks. The helper uses a deliberately different default/device zone.
+Native `parseDateTime`, `serializeDateTime` and `deserializeDateTime` are real;
+localization/clock are fixed and translation/cache/string imports have narrow
+bindings. This is pure function evidence, not a browser, native HTTP or full
+smart-date-parser test. Private result: `inventory-local-time-native-r2-20261021.json`.
+Compared helper SHA256:
+`c35d6c29b5ef267a86d633289c8be53bbe529af4c1d9a55132e06f315834c46c`.
+Installed native dates source SHA256:
+`0bc23100be138815103e589cf77fcaf42956043ee63a24b6bfa9b355943428fa`.
+Installed native Luxon source SHA256:
+`53dacae95f8099b260f550526a10897addc95297f97b9f9a6c7eade48df10068`.
+
+`InventoryPlanningIssue.tsx` follows the installed stock widget/template and
+`stock.picking._compute_json_popover`: the alert date is already server-localized
+text, not another UTC value to convert. It validates the native JSON shape,
+template identity and document IDs, escapes text and never executes native
+templates, icon markup or CSS configuration. Visible readonly occurrences show
+the alert rather than raw JSON; hidden fields remain hidden. `stock.picking`
+documents route to their actual Inventory transfer with no invented Sales order.
+Unapplied edits require explicit discard, and pending review/request states
+disable document navigation. Other native models, such as `mrp.production`, have
+no Qorlia destination yet and remain an explicit parity gap rather than opening
+the old application. Planning fixtures follow inspected native source, not a
+new accepted runtime read of a nonempty alert.
+
+Five focused suites pass **123 cases** in both the default and US Pacific
+process zones, covering helper conversion, actual house
+controls, invalid/escaped alert data, readonly/hidden/disabled rules, explicit
+dirty discard and actual transfer-route wiring with mocked services. Automated
+axe results are not full keyboard/layout or clinical-user acceptance. Closed
+review, no frontend build/server and no deployment remain unchanged.
 
 ## Complete review before Save
 
@@ -197,8 +250,9 @@ production model or permission was changed to make those assertions pass. The
 successful 150-case rerun verifies those corrected fixtures alongside the prior
 native suites; the failed packet remains retained.
 
-Current frontend checks pass: **1,837 Home cases/108 suites**, including 45 added
-header editor/field/routing/cache cases, 29 Save/recovery client tests and the
+Current frontend checks pass: **1,899 Home cases/110 suites**, including 62 added
+account-time/planning cases, the earlier 45 header editor/field/routing/cache
+cases, 29 Save/recovery client tests and the
 earlier 42 header-recovery storage cases. The shared
 stock storage suite has 153 cases; the four form/edit/review/recovery client test
 files contain 137 cases. Library and actual changed-test-source types, scoped

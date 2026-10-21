@@ -14,6 +14,7 @@ import {
   headerForm,
   headerPreview,
   headerRequest,
+  planningHeaderForm,
 } from './inventoryHeaderFixture';
 
 jest.mock('../billingService', () => ({
@@ -24,6 +25,7 @@ const get = jest.mocked(getInventoryStoredFormChoices),
   edit = jest.fn(),
   blur = jest.fn(),
   change = jest.fn(),
+  openTransfer = jest.fn(),
   reconnect = jest.fn();
 const selection = () => ({
   transfer_id: 7,
@@ -66,6 +68,7 @@ function show(form = headerForm().form, disabled = false) {
         blur={blur}
         change={change}
         reconnect={reconnect}
+        openTransfer={openTransfer}
       />
     </QueryClientProvider>,
   );
@@ -109,6 +112,7 @@ it.each([
   ['monetary', '9.99', 9.99],
   ['datetime', '2026-10-23T12:34', '2026-10-23 12:34:00'],
   ['datetime', '2026-10-23T12:34:56.000', '2026-10-23 12:34:56'],
+  ['datetime', '2026-10-23T12:34:56.01', '2026-10-23 12:34:56'],
   ['date', '2026-10-23', '2026-10-23'],
   ['float', '', false],
   ['html', '', false],
@@ -124,7 +128,6 @@ it.each([
   ['integer', '9007199254740992'],
   ['monetary', 'Infinity'],
   ['float', '   '],
-  ['datetime', '2026-10-23T12:34:56.01'],
   ['datetime', 'tomorrow'],
 ])('rejects invalid native %s input %s', (type, raw) => {
   expect(() => inventoryHeaderInputValue(type, raw)).toThrow();
@@ -173,8 +176,8 @@ it('renders numeric zero, integer selection keys, Booleans and explicit UTC/date
   expect(change).toHaveBeenCalledWith(policy, 1);
   fireEvent.change(select, { target: { value: '' } });
   expect(change).toHaveBeenCalledWith(policy, false);
-  expect(screen.getByLabelText('Scheduled (UTC)')).toHaveValue(
-    '2026-10-23T12:34:56.000',
+  expect(screen.getByLabelText('Scheduled (Asia/Kolkata)')).toHaveValue(
+    '2026-10-23T18:04:56.000',
   );
   expect(screen.getByLabelText('Day')).toHaveValue('2026-10-23');
 });
@@ -201,6 +204,42 @@ it('does not disguise an unavailable native selection value as an empty field', 
       name: 'Current native value: old-policy (not offered)',
     }),
   ).toBeDisabled();
+  expect(change).not.toHaveBeenCalled();
+});
+it('uses the native planning widget for a visible readonly field instead of exposing JSON', () => {
+  const view = show(planningHeaderForm().form);
+  fireEvent.click(screen.getByText('Planning issue'));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Open QorliaQA predecessor' }),
+  );
+  expect(openTransfer).toHaveBeenCalledWith(19);
+  expect(view.container.textContent).not.toContain('popoverTemplate');
+  expect(edit).not.toHaveBeenCalled();
+  expect(change).not.toHaveBeenCalled();
+});
+it('does not reveal an invisible planning field or activate a disabled document destination', () => {
+  const form = planningHeaderForm().form;
+  form.layout.at(-1)!.rules.visible = false;
+  const view = show(form);
+  expect(screen.queryByText('Planning issue')).not.toBeInTheDocument();
+  view.unmount();
+  show(planningHeaderForm().form, true);
+  fireEvent.click(screen.getByText('Planning issue'));
+  const open = screen.getByRole('button', {
+    name: 'Open QorliaQA predecessor',
+  });
+  expect(open).toBeDisabled();
+  fireEvent.click(open);
+  expect(openTransfer).not.toHaveBeenCalled();
+});
+it('shows a malformed stored date as an explicit disabled field instead of clearing or coercing it', () => {
+  const form = headerForm().form;
+  add(form, 'Scheduled', 'datetime', 'not a date');
+  show(form);
+  expect(screen.getByLabelText('Scheduled (Asia/Kolkata)')).toBeDisabled();
+  expect(
+    screen.getByText(/stored native date-time is invalid/),
+  ).toBeInTheDocument();
   expect(change).not.toHaveBeenCalled();
 });
 it('searches only on interaction, pages native choices and keeps original version and ordered edits', async () => {

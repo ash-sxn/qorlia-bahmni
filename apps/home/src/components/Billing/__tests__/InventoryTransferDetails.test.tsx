@@ -23,9 +23,24 @@ const mockCancellation = jest.fn();
 const mockReturn = jest.fn();
 const mockHeader = jest.fn();
 jest.mock('../InventoryHeaderEditor', () => ({
-  InventoryHeaderEditor: (props: { close: () => void }) => {
+  InventoryHeaderEditor: (props: {
+    close: () => void;
+    openTransfer: (id: number) => void;
+  }) => {
     mockHeader(props);
-    return <button onClick={props.close}>Close global header editor</button>;
+    return (
+      <>
+        <button onClick={props.close}>Close global header editor</button>
+        <button
+          onClick={() => {
+            props.close();
+            props.openTransfer(23);
+          }}
+        >
+          Open header predecessor
+        </button>
+      </>
+    );
   },
 }));
 jest.mock('../PagedStockReturnModal', () => ({
@@ -501,6 +516,46 @@ it('opens the native header editor with actual Inventory identity and refreshes 
   );
   await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
   expect(mockConfirmation).not.toHaveBeenCalled();
+});
+it('routes a header predecessor to its own Inventory details with no Sales order', async () => {
+  load.mockImplementation(async (id) => {
+    const loaded = inventoryLoad();
+    return {
+      ...loaded,
+      transfer: { ...loaded.transfer, id, name: `QA/TRANSFER/${id}` },
+    };
+  });
+  detail.mockImplementation(async (id, section) => {
+    const page = inventoryDetail(section);
+    return {
+      ...page,
+      transfer: { ...page.transfer, id, name: `QA/TRANSFER/${id}` },
+    };
+  });
+  show();
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: 'Edit or recover transfer header',
+    }),
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Open header predecessor' }),
+  );
+  expect(
+    await screen.findByRole('heading', { name: 'QA/TRANSFER/23' }),
+  ).toHaveFocus();
+  expect(load).toHaveBeenLastCalledWith(23);
+  expect(detail).toHaveBeenCalledWith(
+    23,
+    'moves',
+    0,
+    inventoryLoad().version,
+    50,
+  );
+  expect(
+    screen.queryByRole('button', { name: 'Close global header editor' }),
+  ).not.toBeInTheDocument();
+  expect(mockReturn).not.toHaveBeenCalled();
 });
 it('offers explicit reconnection on expiry and a separate return to the inventory list', async () => {
   detail.mockRejectedValue(new BillingSessionExpired());

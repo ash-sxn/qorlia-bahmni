@@ -112,6 +112,7 @@ function TransferDetails(
           reconnect={props.reconnect}
           returnFocus={returnFocus}
           close={closeWorkflow}
+          openTransfer={props.openTransfer}
         />
       ) : workflow === 'return' ? (
         <PagedStockReturnModal
