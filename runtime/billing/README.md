@@ -3,6 +3,12 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest source checkpoint: [native sequence read boundary](STOCK_INVENTORY_CREATE.md#candidate-86-native-sequence-read-boundary-source-checkpoint)
+guards ORM numbering/configuration in shared read-only form work, retaining
+ordinary Save. All 230 native cases pass with 128 matching Python files and
+134 independently unchanged tables. No new Inventory gateway access or installed
+upgrade is included. The separately reopened tester retains adapter 43.
+
 Latest source checkpoint: [complete prepared creation-values review](STOCK_INVENTORY_CREATE.md#candidate-85-prepared-values-review-source-checkpoint)
 returns native form/default/child values without allocating references, not a
 Save/effect proof. Its 214 native cases pass with 126 matching Python files,

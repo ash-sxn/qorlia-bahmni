@@ -2,6 +2,15 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Native sequence read boundary source checkpoint, 21 October 2026
+
+[Source 86](STOCK_INVENTORY_CREATE.md#candidate-86-native-sequence-read-boundary-source-checkpoint)
+guards ORM numbering/configuration inside shared form reads, without changing
+ordinary native Save. Its 230 native cases pass with 128 matching Python files,
+343 native responses through 18 actual typed SDK methods (mocked transport) and
+134 independently unchanged tables. Complete effect/Save/UI parity remains
+required, with no new Inventory gateway access or installed upgrade.
+
 ## Complete prepared creation-values review source checkpoint, 21 October 2026
 
 [Source 85](STOCK_INVENTORY_CREATE.md#candidate-85-prepared-values-review-source-checkpoint)

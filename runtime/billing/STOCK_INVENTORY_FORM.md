@@ -5,6 +5,12 @@
 Latest saved-transfer source: [native onchange and complete effect inspection](STOCK_INVENTORY_EDIT.md).
 It is separate from the unsaved draft path below and is not save approval.
 
+The [native sequence read-boundary source](STOCK_INVENTORY_CREATE.md#candidate-86-native-sequence-read-boundary-source-checkpoint)
+guards ORM numbering/configuration in the shared form sandbox, retaining nested
+cleanup and ordinary Save. Its 230 native cases pass, with 128 matching Python
+files and 134 independently unchanged tables. Source 86 is not installed and no
+new Inventory gateway access is enabled.
+
 The [complete prepared-values review source](STOCK_INVENTORY_CREATE.md#candidate-85-prepared-values-review-source-checkpoint)
 returns native defaults/edits/child commands with the form, without allocating
 references or authorizing Save. Its 214 native cases pass with 126 matching

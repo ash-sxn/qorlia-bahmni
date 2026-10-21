@@ -2,6 +2,78 @@
 
 [README](../../README.md) · [Billing](README.md) · [Draft form](STOCK_INVENTORY_FORM.md) · [Inventory](STOCK_INVENTORY_WORKSPACE.md)
 
+## Candidate 86 native sequence read boundary source checkpoint
+
+[The shared sequence guard](qorlia_billing_ui/models/sequence_read_guard.py)
+protects the existing Inventory form-read sandbox, including nested draft replay,
+choices, native create-value preparation and complete values review. A temporary
+cursor-local identity marker rejects native sequence allocation/configuration
+mutation before the ORM reaches its counter update. `sudo` and a caller's JSON
+context do not disable it. Nested reads and exception exits restore the exact
+prior cursor state, while retaining callback isolation and all 134 existing
+table checks. No capability is stored in the database or returned to the client.
+
+The native `ir.sequence._next`, `_next_do` and date-range `_next` paths are
+guarded, covering ordinary `next_by_id`, `next_by_code` and legacy entry points.
+Native create/write/unlink and date-range direct alteration are also guarded,
+including inverse-counter writes and implicit missing-range creation. Ordinary
+native operations outside the read boundary delegate unchanged. There is no
+global numbering shutdown, monkey-patched native allocator, fabricated number,
+shared-counter reset or temporary sequence overlay in this adapter.
+
+[Sixteen new native cases](qorlia_billing_ui/tests/test_sequence_read_guard.py)
+check actual physical sequence state and native counter/configuration rows for
+standard, no-gap, existing/missing date ranges, private/legacy calls, linked hooks,
+`sudo`/context attempts, nesting and callback restoration. Positive cases retain
+ordinary native allocation and non-allocating formatting/current-number reads.
+The complete **230-case regression passes**, with zero failures/errors/skips and
+**128 matching Python files**, keeping the exact prior 214-case selection. All
+134 protected tables have independently unchanged committed counts/full-row
+fingerprints after rollback. Fresh SQL confirms the journal is absent and
+installed addon metadata remains `16.0.1.49.0`. Mandatory analytics/SMS remain
+enabled. The no-HTTP worker exited zero and was removed.
+
+Python syntax and frozen/current-source checks pass. The actual unchanged typed
+SDK validates **343 recorded native responses through 18 named methods**, with
+mocked transport. Three temporary gateway stub cases pass, including direct
+sequence-route denials. No frontend implementation changed; source-85 frontend
+evidence stays separate, not a fresh full Home run or HTTP/browser acceptance.
+
+Native log SHA-256: `462fe4553ea229efa10ac766d3d9684db2ab609010f7f821999b5d1524e11960`.
+Independent SQL SHA-256: `3b2b546a4afffdb312cf3d354d2214292c137868f6d6e74b6bba4f3b95a85139`.
+Typed SDK SHA-256: `27cd6aecce40674f326319d5853b7673cc807488c868833e6a6de48fb9d941c7`.
+
+This guard is not an arbitrary Python/SQL sandbox and does not provide complete
+creation-effect simulation. A native default that genuinely allocates needs a
+proper safe workflow/isolation adapter, not permanent rejection as a substitute
+for native parity. Effect-preview isolation, public Save/proof, durable creation
+UI, child editing and all remaining requested parity are still required. No
+Inventory route/review access, dependency, field/table/ACL change, installed upgrade,
+frontend build/server, native HTTP/browser acceptance, tunnel, deployment or
+purchase is included. The separately reopened hosted tester retains its
+14 October artifact and adapter 43; it does not run this source.
+
+### Native temporary-sequence feasibility finding
+
+A separate rollback-only, no-HTTP probe created a new disposable native sequence
+and a same-name temporary sequence. Actual unchanged native `next_by_id`
+allocated from the temporary counter, leaving the disposable root counter
+unchanged. However, the installed native next-number predictor queries
+`pg_sequences` by basename, not namespace. The two real sequence rows caused an
+actual PostgreSQL cardinality error (`21000`). After the temporary sequence rolled
+back, native prediction worked again. Both disposable sequence objects and the
+native row were removed by rollback; independently read protected/sequence
+metadata rows were unchanged. No shared document reference counter was advanced
+or reset.
+
+This rules out a simple same-name overlay as a drop-in solution. Full effect
+preview still needs safe allocation, matching native prediction/formatting,
+date-range and linked-document semantics, exact cleanup and comparison with Save.
+Do not suppress the native error, choose an arbitrary namespace row, or call a
+predicted number reserved. The probe is two feasibility assertions, not additional
+addon regression cases or production-adapter acceptance. Its log SHA-256 is
+`9945bbf96b937682555c538a60ed7eb68633e0efac2a55a191b3796683d7981b`.
+
 ## Candidate 85 prepared-values review source checkpoint
 
 [The review adapter](qorlia_billing_ui/models/stock_inventory_create_review.py)
@@ -567,7 +639,7 @@ preserved table fingerprints alone prove neither sequence property. The
 current values review avoids native creation entirely and does not claim to
 solve this remaining effect-preview boundary.
 
-The current form-read boundary checks business values inside rollback and all
+Source 85's form-read boundary checks business values inside rollback and all
 raw table fields afterward. It is not a runtime interceptor for sequence calls
 inside an arbitrary native hook. Source-85 tests guard allocation entry points
 for the installed forms they exercise; they do not establish a universal ban on

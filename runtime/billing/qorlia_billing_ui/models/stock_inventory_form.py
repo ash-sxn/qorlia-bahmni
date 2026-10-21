@@ -12,6 +12,7 @@ from odoo.tools.safe_eval import safe_eval
 
 from .invoice_draft import _digest
 from .order_deliveries import _label
+from .sequence_read_guard import _read_sequence_boundary
 
 
 _SCALARS = {'char', 'text', 'html', 'selection', 'boolean', 'float', 'monetary',
@@ -170,27 +171,28 @@ class StockInventoryForm(models.Model):
     def _qorlia_inventory_form_read(self, action):
         cr = self.env.cr
         cr.flush()
-        tables = self._qorlia_inventory_saved_tables()
-        before = self._qorlia_confirmation_stamp(tables)
-        business_before = self._qorlia_confirmation_stamp(tables, semantic=True)
-        callbacks = {name: getattr(cr, name) for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
-        try:
-            for name in callbacks:
-                setattr(cr, name, tools.Callbacks())
-            with closing(cr.savepoint()):
-                result = action()
-                cr.flush()
-                if self._qorlia_confirmation_stamp(tables, semantic=True) != business_before:
-                    raise UserError('Reading the native transfer form changed stored data. Nothing was saved.')
-            # Native read/onchange can recompute identical business values with a new audit author.
-            self.env.invalidate_all()
-            if self._qorlia_confirmation_stamp(tables) != before:
-                raise UserError('The native form rollback did not restore every stored field. Nothing was accepted.')
-            return result
-        finally:
-            for name, original in callbacks.items():
-                setattr(cr, name, original)
-            self.env.invalidate_all()
+        with _read_sequence_boundary(cr):
+            tables = self._qorlia_inventory_saved_tables()
+            before = self._qorlia_confirmation_stamp(tables)
+            business_before = self._qorlia_confirmation_stamp(tables, semantic=True)
+            callbacks = {name: getattr(cr, name) for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
+            try:
+                for name in callbacks:
+                    setattr(cr, name, tools.Callbacks())
+                with closing(cr.savepoint()):
+                    result = action()
+                    cr.flush()
+                    if self._qorlia_confirmation_stamp(tables, semantic=True) != business_before:
+                        raise UserError('Reading the native transfer form changed stored data. Nothing was saved.')
+                # Native read/onchange can recompute identical business values with a new audit author.
+                self.env.invalidate_all()
+                if self._qorlia_confirmation_stamp(tables) != before:
+                    raise UserError('The native form rollback did not restore every stored field. Nothing was accepted.')
+                return result
+            finally:
+                for name, original in callbacks.items():
+                    setattr(cr, name, original)
+                self.env.invalidate_all()
 
     @api.model
     def qorlia_inventory_form_load(self, transfer_id=False, picking_type_id=False):

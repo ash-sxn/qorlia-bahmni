@@ -211,6 +211,11 @@ test('review gate protects UI, clinical API and named Billing actions with isola
     '_qorlia_inventory_creation_recovery', '_qorlia_inventory_creation_reference_labels', '_qorlia_inventory_creation_public_status'])
     assert.equal((await rpc(`/web/dataset/call_kw/stock.picking/${method}`, allCookies,
       {model:'stock.picking',method,args:[],kwargs:{}})).status,404);
+  for (const [model, method] of [['ir.sequence', 'next_by_id'], ['ir.sequence', 'next_by_code'],
+    ['ir.sequence', 'create'], ['ir.sequence', 'write'], ['ir.sequence.date_range', '_next'],
+    ['ir.sequence.date_range', 'create'], ['ir.sequence.date_range', 'write']])
+    assert.equal((await rpc(`/web/dataset/call_kw/${model}/${method}`, allCookies,
+      {model,method,args:[],kwargs:{}})).status,404);
   for (const [model, method] of [['stock.picking', 'action_cancel'], ['stock.move', '_action_cancel'],
     ['stock.picking', 'qorlia_cancellation_paged_unknown'], ['stock.picking', 'qorlia_cancellation_paged_preview'],
     ['stock.picking', '_qorlia_cancellation_execute'], ['stock.picking', 'button_validate'], ['stock.immediate.transfer', 'process'],

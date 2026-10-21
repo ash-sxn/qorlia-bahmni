@@ -1,5 +1,16 @@
 # New-team handover: Qorlia engineering
 
+Latest source checkpoint: [native sequence read boundary](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-86-native-sequence-read-boundary-source-checkpoint)
+protects ORM numbering/configuration in shared read-only form work, without
+changing ordinary Save. Its 230 native cases pass with 128 matching files;
+134 committed table fingerprints are independently unchanged. Source 86 is not
+installed or exposed through review. Contributor task bases remain separate.
+
+Separate hosting maintenance on 21 October reopened the existing 14 October
+protected tester until 28 October at 23:59 IST. Its artifact and Billing adapter
+remain unchanged. It is not the latest integration branch or acceptance of the
+source-only work below. Ask Ashutosh for the private access sheet.
+
 Latest source checkpoint: [complete prepared creation-values review](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-85-prepared-values-review-source-checkpoint)
 returns native form/default/child values without allocating references. It is
 read-only, not a Save/effect proof. Its 214 native cases pass with 126 matching

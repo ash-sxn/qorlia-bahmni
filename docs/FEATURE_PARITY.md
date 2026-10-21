@@ -1,5 +1,16 @@
 # Bahmni workflow parity ledger
 
+## 21 October native sequence read boundary source checkpoint
+
+[Source 86](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-86-native-sequence-read-boundary-source-checkpoint)
+guards native sequence allocation/configuration during shared form reads using
+cursor-local identity, retaining nested/callback cleanup and ordinary Save.
+Sixteen new native cases plus the exact prior 214-case selection pass, with
+128 matching Python files, 343 actual response replays through 18 SDK methods
+and 134 independently unchanged tables. Transport is mocked for SDK replay.
+This is not arbitrary SQL isolation or a completed creation-effect/Save/UI flow.
+Inventory creation routes remain blocked and source 86 is not installed.
+
 ## 21 October complete prepared creation-values review source checkpoint
 
 [Source 85](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-85-prepared-values-review-source-checkpoint)

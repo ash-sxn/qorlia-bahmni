@@ -51,6 +51,12 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
+Latest source checkpoint: [native sequence protection for form reads](runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-86-native-sequence-read-boundary-source-checkpoint)
+guards ORM allocation/configuration paths during the shared read sandbox,
+without changing ordinary Save. All 230 native cases pass with 128 matching
+Python files and 134 independently unchanged tables. This does not finish
+creation-effect/Save/UI parity or update the hosted test build.
+
 Latest source checkpoint: [complete native creation-values review](runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-85-prepared-values-review-source-checkpoint)
 exposes prepared defaults/edits/child commands without creating records or
 allocating references. It is explicitly not a native-effect proof or enabled Save.
