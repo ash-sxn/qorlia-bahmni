@@ -2,6 +2,19 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Native creation preparation checkpoint, 21 October 2026
+
+[Candidate 81](STOCK_INVENTORY_CREATE.md) retains raw native default/child values
+while replaying the signed seed and ordered edits, then applies native save-field
+and company rules. It is internal preparation, not create/effect approval or
+durable create recovery. Its 161-case native regression passes with 118 matching
+Python files and independently preserved 134 tables. The actual client accepts
+235 recorded native responses across 14 methods with mocked transport, not
+HTTP/browser acceptance. Create
+stays disabled, all 14 unfinished routes remain blocked, and no review or
+deployment is reopened. Sequence counters and independent request receipts
+still need their own native implementation and acceptance.
+
 ## Unsaved new-transfer form source, 21 October 2026
 
 [Prepare new transfer](STOCK_INVENTORY_FORM.md#react-unsaved-new-transfer-form-21-october-2026)

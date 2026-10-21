@@ -51,6 +51,12 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
+Newest backend work: [native creation preparation](runtime/billing/STOCK_INVENTORY_CREATE.md)
+retains signed defaults and prepares native create values, with no public
+writer/API or enabled Create action. Its 161-case native regression passes with
+118 matching Python files and independently preserved 134 tables. The contract records the remaining sequence, durable-receipt and
+concurrency requirements rather than treating a saved-header write as creation.
+
 Newest UI source: [unsaved Inventory new-transfer form](runtime/billing/STOCK_INVENTORY_FORM.md#react-unsaved-new-transfer-form-21-october-2026)
 connects native signed defaults, ordered onchange and draft relation search to
 shared Qorlia controls from the Inventory list. Create remains disabled;

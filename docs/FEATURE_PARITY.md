@@ -1,5 +1,19 @@
 # Bahmni workflow parity ledger
 
+## 21 October native create preparation checkpoint
+
+[Candidate 81](../runtime/billing/STOCK_INVENTORY_CREATE.md) adds a private
+create-value preparer from the original signed seed and ordered scalar edits,
+retaining native child defaults and the existing merged-view save-field rules.
+Its 161-case native regression passes with 118 matching Python hashes and
+independently preserved 134 tables. The actual client accepts 235 recorded native
+responses across 14 methods with mocked transport, not HTTP/browser acceptance.
+No new public API, create writer,
+effect proof, durable create journal or enabled Create action is included.
+The contract explicitly separates table preservation from native sequence
+behaviour and records lost-response/deleted-record/concurrent-retry requirements.
+All 14 unfinished gateway routes remain blocked, with review/deployment closed.
+
 ## 21 October unsaved Inventory new-transfer React source
 
 [The new-transfer form](../runtime/billing/STOCK_INVENTORY_FORM.md#react-unsaved-new-transfer-form-21-october-2026)

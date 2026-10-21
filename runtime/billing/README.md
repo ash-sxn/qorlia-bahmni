@@ -3,6 +3,14 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Newest backend work: [native create preparation](STOCK_INVENTORY_CREATE.md)
+prepares create values from signed defaults and ordered edits, without assigning
+a reference or creating a transfer. Its 161-case native regression passes with
+118 matching Python hashes and independently preserved 134 tables. The actual
+client accepts 235 native responses with mocked transport, not HTTP/browser acceptance.
+There is no new public API/writer or enabled Create action. Sequence behaviour,
+independent durable recovery and concurrency remain explicit requirements.
+
 Newest UI source: [unsaved new-transfer form](STOCK_INVENTORY_FORM.md#react-unsaved-new-transfer-form-21-october-2026)
 connects native signed defaults, ordered onchange and draft relation searches
 from Inventory through shared Qorlia controls. Create remains disabled;

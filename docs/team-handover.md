@@ -1,5 +1,13 @@
 # New-team handover: Qorlia engineering
 
+Newest backend work: [native create preparation](../runtime/billing/STOCK_INVENTORY_CREATE.md)
+adds an internal signed-default/ordered-edit create-value preparer, not a public
+writer or enabled Create action. Its 161-case native regression passes with 118
+matching Python files and independently preserved 134 tables; the actual client
+accepts 235 native responses with mocked transport, not HTTP/browser acceptance.
+Its contract explains the remaining sequence, durable request journal and retry
+requirements. Review, deployment and contributor starter bases are unchanged.
+
 Newest UI source: [unsaved new-transfer form](../runtime/billing/STOCK_INVENTORY_FORM.md#react-unsaved-new-transfer-form-21-october-2026)
 connects signed defaults, ordered onchange and edited-form relation searches
 from Inventory through shared Qorlia controls. It does not create records;

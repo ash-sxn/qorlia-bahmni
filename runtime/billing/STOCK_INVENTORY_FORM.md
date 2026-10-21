@@ -5,6 +5,12 @@
 Latest saved-transfer source: [native onchange and complete effect inspection](STOCK_INVENTORY_EDIT.md).
 It is separate from the unsaved draft path below and is not save approval.
 
+The next backend step, [native create-value preparation](STOCK_INVENTORY_CREATE.md),
+retains the original signed defaults, including child values, for native save-field
+extraction. Its 161-case native regression passes with 118 matching Python files
+and independently preserved 134 tables. It is not a public
+create API, effect proof or completed creation/recovery workflow.
+
 ## React unsaved new-transfer form, 21 October 2026
 
 The Inventory transfer list now has an explicit **Prepare new transfer** source

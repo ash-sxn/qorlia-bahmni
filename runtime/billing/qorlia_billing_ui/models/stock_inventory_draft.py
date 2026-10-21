@@ -89,7 +89,7 @@ class StockInventoryDraft(models.Model):
         self = self._qorlia_inventory_context()
         return self._qorlia_inventory_form_read(lambda: self._qorlia_inventory_draft_load(picking_type_id))
 
-    def _qorlia_inventory_draft_replay(self, seed, edits):
+    def _qorlia_inventory_draft_replay_values(self, seed, edits):
         model, spec, metadata = self._qorlia_inventory_draft_seed(seed)
         self._qorlia_inventory_edit_ledger(edits)
         values, domains, warning = copy.deepcopy(seed['values']), copy.deepcopy(seed['domains']), seed['warning']
@@ -104,6 +104,10 @@ class StockInventoryDraft(models.Model):
                 values = self._qorlia_inventory_merge_onchange(model, model.browse(), values, incoming)
                 domains.update(result.get('domain') or {})
                 warning = result.get('warning') or False
+        return model, values, domains, warning
+
+    def _qorlia_inventory_draft_replay(self, seed, edits):
+        model, values, domains, warning = self._qorlia_inventory_draft_replay_values(seed, edits)
         return model, self._qorlia_inventory_draft_snapshot(model, seed, values, domains, warning, edits)
 
     @api.model
