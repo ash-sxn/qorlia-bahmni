@@ -127,6 +127,7 @@
   "APPOINTMENTS_EDIT_LOAD_ERROR": "No se pudo cargar la cita. Inténtelo de nuevo.",
   "APPOINTMENTS_EDIT_TIME_ERROR": "Elija una fecha válida y una hora de finalización posterior a la de inicio.",
   "APPOINTMENTS_END_TIME": "Hora de finalización",
+  "APPOINTMENTS_START_TIME": "Hora de inicio",
   "APPOINTMENTS_SAVE_CHANGES": "Guardar cambios",
   "APPOINTMENTS_WEEK_VIEW": "Semana",
   "APPOINTMENTS_CONFIRM_STATUS": "¿Cambiar esta cita a {{status}}?",
