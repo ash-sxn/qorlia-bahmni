@@ -23,6 +23,7 @@ from . import stock_inventory_edit
 from . import stock_inventory_save
 from . import stock_inventory_save_write
 from . import stock_inventory_create
+from . import stock_inventory_create_journal
 from . import stock_operation_paged
 from . import stock_reservation_paged
 from . import account_move

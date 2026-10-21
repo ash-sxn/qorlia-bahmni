@@ -3,6 +3,13 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Current backend source: [private creation request journal](STOCK_INVENTORY_CREATE.md#candidate-83-private-request-journal-source-checkpoint)
+adds scoped atomic recovery, not a public writer/proof validator. Its 186-case
+native regression passes with 122 matching Python files, 134 independently
+preserved tables and rollback-only test schema. The actual client accepts 269
+recorded responses with mocked transport, not committed concurrency or HTTP/browser
+acceptance. No installed upgrade, review reopening or release acceptance.
+
 Current backend source: [private native creation execution](STOCK_INVENTORY_CREATE.md#candidate-82-native-execution-source-checkpoint)
 adds a guarded Save-only native engine. Its 171-case native regression passes
 with 118 matching Python hashes and independently preserved 134 tables. The

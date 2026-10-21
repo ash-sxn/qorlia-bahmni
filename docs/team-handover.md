@@ -1,5 +1,13 @@
 # New-team handover: Qorlia engineering
 
+Current backend source: [private creation request journal](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-83-private-request-journal-source-checkpoint)
+adds atomic scoped recovery independent of a deleted transfer. Its 186-case
+native regression passes with 122 matching Python files, 134 independently
+preserved tables and rollback-only test schema. The actual client accepts 269
+native responses with mocked transport, not committed concurrency, an installed
+upgrade, public Create or HTTP/browser approval. Source-82 proof is separate.
+Review, deployment and contributor starter bases stay unchanged.
+
 Current backend source: [private native creation execution](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-82-native-execution-source-checkpoint)
 adds the Save-only native engine, not a public Create action or recovery journal.
 Its 171-case native regression passes with 118 matching Python files and

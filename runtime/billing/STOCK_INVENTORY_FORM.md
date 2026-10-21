@@ -5,6 +5,12 @@
 Latest saved-transfer source: [native onchange and complete effect inspection](STOCK_INVENTORY_EDIT.md).
 It is separate from the unsaved draft path below and is not save approval.
 
+The current [private creation journal](STOCK_INVENTORY_CREATE.md#candidate-83-private-request-journal-source-checkpoint)
+passes 186 native cases with 122 matching Python files, 134 independently preserved
+tables and rollback-only test schema. The actual client accepts 269 native responses
+with mocked transport. This is not public review/Save, committed recovery/concurrency
+or HTTP/browser acceptance. Create stays disabled.
+
 The current [private native create execution](STOCK_INVENTORY_CREATE.md#candidate-82-native-execution-source-checkpoint)
 passes its 171-case native regression with 118 matching Python files and
 independently preserved 134 tables. It is Save-only, not a read-only preview,

@@ -1,5 +1,17 @@
 # Bahmni workflow parity ledger
 
+## 21 October private creation journal source checkpoint
+
+[Candidate 83](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-83-private-request-journal-source-checkpoint)
+adds atomic request claims, scoped exact-body binding and accepted/stopped
+metadata independent of a deleted transfer. Its 186-case native regression passes
+with 122 matching Python files and 134 independently preserved tables. Fresh SQL
+confirms the test-only journal table is absent afterward; installed metadata stays
+49. The actual client accepts 269 recorded responses across 14 existing methods
+with mocked transport, not committed concurrency or HTTP/browser acceptance.
+No installed migration, public proof/Save API or release is accepted.
+Create/gateway/review remain disabled; source-82 evidence stays separate.
+
 ## 21 October private native creation execution source
 
 [Candidate 82](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-82-native-execution-source-checkpoint)

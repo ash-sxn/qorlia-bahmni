@@ -2,6 +2,16 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Private creation journal source checkpoint, 21 October 2026
+
+[Candidate 83](STOCK_INVENTORY_CREATE.md#candidate-83-private-request-journal-source-checkpoint)
+adds scoped atomic accepted/stopped history independent of a deleted transfer.
+Its 186-case native regression passes with 122 matching Python files, 134
+independently preserved tables and rollback-only test DDL. The actual client
+accepts 269 native responses across 14 existing methods with mocked transport.
+No installed migration, public proof/Save, real concurrent or committed recovery,
+HTTP/browser or release acceptance follows. Create/gateway/review remain disabled.
+
 ## Private native creation execution source, 21 October 2026
 
 [Candidate 82](STOCK_INVENTORY_CREATE.md#candidate-82-native-execution-source-checkpoint)

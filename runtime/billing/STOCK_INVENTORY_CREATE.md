@@ -2,6 +2,96 @@
 
 [README](../../README.md) · [Billing](README.md) · [Draft form](STOCK_INVENTORY_FORM.md) · [Inventory](STOCK_INVENTORY_WORKSPACE.md)
 
+## Candidate 83 private request journal source checkpoint
+
+[The private journal](qorlia_billing_ui/models/stock_inventory_create_journal.py)
+adds a native-database request claim and terminal accepted/stopped outcome,
+independent of the created business record. It is not an ordinary ORM model, so
+there is no generic journal record read/export/write interface. Only the
+request UUID, exact-body digest, actor/company scope, timestamp and minimal
+accepted transfer/state/reference metadata are stored, not the full form seed,
+notes or request payload. The digest also binds the actual database.
+
+Creation claims the immediate unique UUID before calling the source-82 native
+engine. The claim, actual creation and terminal metadata share one transaction.
+Failures restore the claim, business rows and original deferred callbacks.
+Retries and Stop return a matching terminal outcome without rerunning creation;
+historical acceptance remains available after the transfer is deleted. Changed
+body/actor/company scope rejects. An unexpected persisted pending shape rejects
+instead of guessing that creation should run again. Only the journal's own
+primary-key collision is converted to a real PostgreSQL `40001` for native
+fresh-transaction retry; other native uniqueness errors remain their own errors.
+
+This is **private transaction/recovery source, not a public Save or review-proof
+validator**. Proof-shaped values are bound as opaque inputs here. The tests use
+clearly labelled placeholder proof bindings to isolate journal behavior; they
+do not prove creation-review authorization. A future public writer must verify
+the complete native creation review, preserve account-scoped client recovery
+and apply current access rules before exposing historical references. The UI
+Create action and gateway routes remain disabled. The native engine remains
+Save-only, not a read-only preview.
+
+Schema setup is privileged and verifies exact columns and an immediate valid
+primary key. Missing/incompatible schema fails closed; ordinary requests never
+create or repair it. A [fresh-install hook](qorlia_billing_ui/hooks.py) and
+[versioned upgrade migration](qorlia_billing_ui/migrations/16.0.1.83.0/post-migrate.py)
+provide future operator-controlled installation. Neither is run against the
+installed database by the current worker. Its journal test class explicitly
+creates test-only DDL in its uncommitted class cursor and closes with rollback.
+Table absence must be independently checked before/after, not inferred from the
+134 older business-table fingerprints. There is no new ORM model, role grant,
+dependency, installed upgrade, frontend build/server or review reopening.
+
+[Fifteen new native cases](qorlia_billing_ui/tests/test_stock_inventory_create_journal.py)
+cover native creation/replay, deleted-record history, Stop, request/actor/company
+binding, malformed input, signature failure, native/metadata failure and callback
+restoration, real uniqueness errors, invalid pending/result data, immutable
+returned metadata and schema/privacy boundaries. The forced stale-read test
+uses a real database uniqueness violation and SQLSTATE but a mocked lookup; it
+is not an actual two-connection concurrency test. Single-cursor rollback tests
+also do not prove committed cross-request or HTTP/browser durability.
+
+The corrected source-83 selected native regression completed **186 cases, zero
+failures, errors or skips**: 15 journal, ten execution, eleven preparation and
+150 existing Inventory/form/header-save/confirmation cases. All **122 Python
+hashes** match the frozen worker and current source. This is not the full addon
+suite. New journal cases ran first for faster failure feedback, retaining the
+complete legacy case set. Mandatory analytics and SMS remained enabled.
+
+All **134 protected tables** were preserved. Independent committed SQL counts
+and full-row hashes match before/after, and a fresh independent query confirms
+the journal table is absent. The no-HTTP worker exited zero and was removed;
+installed metadata remains `16.0.1.49.0`, with source `16.0.1.83.0` mounted
+read-only and no exposed ports. No persistent schema or addon upgrade ran.
+
+The actual unchanged `billingService.ts` accepts **269 recorded native responses
+across 14 existing methods**, using mocked transport and asserting the complete
+request envelope and response. This does not add or accept a public Create SDK.
+Three temporary gateway stub cases, AST parsing of all 122 Python files,
+contributor links and whitespace checks also pass. No frontend build, type check
+or frontend suite was rerun; no frontend implementation changed here.
+
+The retained corrected native log SHA-256 is
+`5c828b60ab046e5431714f12c10d9aa55d90ed7b07e40cfd9715eed3c91ea451`.
+The client source SHA-256 is
+`51769ac13b125b052514f2288c5a01fb99379ae30e9580f2467bab228bb326eb`.
+The independent 134-table SQL result SHA-256 is
+`3b2b546a4afffdb312cf3d354d2214292c137868f6d6e74b6bba4f3b95a85139`.
+The source-82 proof below stays separate. No sequence-safe creation review,
+public endpoint, committed/two-connection concurrency, installed migration,
+HTTP/browser/UI or release acceptance is claimed. Create/review remain disabled.
+
+The first source-83 run was stopped on a confirmed fixture error, not accepted:
+Odoo discovered a mock's fabricated `_ondelete` attribute and called the mock
+as a deletion hook. A plain function guard replaces that mock, retaining real
+transfer deletion and the no-duplicate-creation assertions. Its failed log is
+retained privately (SHA-256
+`5e690ddd91b447bd858a4f2dba69667976ee3df516c5b89bc557c5b964b1513d`).
+After worker removal, independent SQL confirmed all 134 committed business-table
+fingerprints unchanged and the test-only journal table absent. This cleanup
+evidence does not turn the failed run into a pass. The corrected run above has
+its own frozen source, complete log and independent cleanup proof.
+
 ## Candidate 82 native execution source checkpoint
 
 The next private stage, `_qorlia_inventory_create_native(seed, edits)`, executes
@@ -39,7 +129,7 @@ effects and rejection of an extra foreign-company effect in the same request.
 The corrected source-82 native regression completed **171 cases, zero failures,
 errors or skips**: ten execution, eleven preparation and 150 existing
 inventory/form/header-save/confirmation cases. All **118 Python hashes** match
-the frozen worker and source. This is not the full addon suite. The worker
+the frozen worker and accepted source-82 commit `7d42f7d3`. This is not the full addon suite. The worker
 preserved all 134 protected tables; independent committed SQL counts/full-row
 hashes match before/after. Mandatory analytics and SMS stayed enabled. The
 no-HTTP worker had a read-only source mount and no published ports, exited
@@ -136,14 +226,16 @@ transfer ID before native create has returned that ID.
 | Permission changes | Actual native create runs as the authorized actor. Private receipt storage must not grant business access or expose another actor's result. Direct ordinary receipt CRUD and caller-supplied capability contexts must be rejected. |
 | Deferred/external effects | Account for native scheduling, autoconfirmation, followers, child rows and callbacks. Unreviewed financial/physical/configuration effects must not escape on failure. |
 
-A separate, minimal, protected request journal is the likely durable anchor:
+Source 83 above implements the private form of the protected request anchor:
 actor, request UUID/digest, original company scope, accepted/stopped outcome and
-native reference identities. This is a design direction to implement and test,
-not an existing model or permission to upgrade the installed database. Avoid
+native reference identities. It is not an ordinary ORM model or permission to
+upgrade the installed database. Public writer/proof integration and real
+committed/concurrent acceptance remain unfinished. Avoid
 retaining the full seed, notes or payload merely to identify a retry. A journal
 must survive ordinary business-record deletion and must not be editable through
-the native generic UI/RPC. Its schema, privileged metadata boundary, uniqueness,
-retention and retirement rules still need explicit implementation and review.
+the native generic UI/RPC. The source-83 tests cover the private schema,
+metadata, uniqueness and deletion boundary without a committed runtime upgrade.
+Retention and retirement must not silently erase duplicate-prevention history.
 
 Claim the unique request **before** executing native creation, in the same
 transaction as the accepted outcome. Inserting a receipt only after create can
@@ -171,9 +263,10 @@ Read-only inspection of the installed runtime confirms the relevant boundaries:
 over remote dispatch. `odoo.service.model.retrying` rolls back/resets the native
 environment and retries recognized concurrency `OperationalError` codes,
 including SQLSTATE `40001`, up to five attempts. It converts ordinary integrity
-errors into validation errors instead. These source facts guide the future
-journal implementation; they are not evidence of an implemented journal or a
-successful real concurrent-create test. `TransactionCase` uses one class cursor
+errors into validation errors instead. These source facts guide the private
+journal implementation; its implementation evidence is the source-83 checkpoint
+above, not proof of a successful real concurrent-create test. `TransactionCase`
+uses one class cursor
 and per-test savepoints and closes without committing, so a passing class alone
 does not prove durable recovery across independent committed requests.
 
