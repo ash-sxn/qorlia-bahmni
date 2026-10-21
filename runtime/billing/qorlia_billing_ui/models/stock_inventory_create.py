@@ -8,10 +8,24 @@ from odoo.exceptions import UserError
 
 from .stock_inventory_save import _SAVE_GRAPH, _SAVE_PRIVATE
 from .stock_operation_paged import _FINANCE, _CONFIG
+from .sequence_preview import _preview_sequence_boundary
 
 
 class StockInventoryCreate(models.Model):
     _inherit = 'stock.picking'
+
+    def _qorlia_inventory_create_preview(self, seed, edits):
+        """Private native-effect preparation, not public review proof or Save authorisation."""
+        self = self._qorlia_inventory_context()
+        cr = self.env.cr
+        cr.flush()
+        tables = sorted(set(self._qorlia_inventory_saved_tables()) | {'ir_sequence', 'ir_sequence_date_range'})
+        before = self._qorlia_confirmation_stamp(tables)
+        with _preview_sequence_boundary(self.env):
+            effects, private, state, _references, _record, current = self._qorlia_inventory_create_native(seed, edits)
+        if self._qorlia_confirmation_stamp(tables) != before:
+            raise UserError('Native creation preview did not restore stored data. Nothing was accepted.')
+        return effects, private, state, current
 
     def _qorlia_inventory_draft_prepare(self, seed, edits):
         """Prepare native create values only; this is not a public API or Save proof."""

@@ -1,5 +1,12 @@
 # New-team handover: Qorlia engineering
 
+Latest source checkpoint: [private creation-effect preview](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-87-private-creation-effect-preview-source-checkpoint)
+passes 241 selected native cases with 130 matching Python files and 136 independently
+unchanged tables. Fresh Home checks pass 1,975 tests and library types. An actual
+JavaScript/native diagnostic proves a numeric signed-seed defect; client integration
+must fix that first. There is no public creation Save, installed upgrade or new
+tester build. Contributor task bases stay unchanged.
+
 Latest source checkpoint: [native sequence read boundary](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-86-native-sequence-read-boundary-source-checkpoint)
 protects ORM numbering/configuration in shared read-only form work, without
 changing ordinary Save. Its 230 native cases pass with 128 matching files;

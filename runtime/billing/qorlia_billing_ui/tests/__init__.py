@@ -60,4 +60,5 @@ from . import test_stock_inventory_create_journal
 from . import test_stock_inventory_create_recovery
 from . import test_stock_inventory_create_review
 from . import test_sequence_read_guard
+from . import test_sequence_preview
 from . import test_stock_request_stop

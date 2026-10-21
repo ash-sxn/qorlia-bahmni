@@ -2,6 +2,11 @@
 
 [README](../../README.md) · [Billing](README.md) · [Inventory workspace](STOCK_INVENTORY_WORKSPACE.md)
 
+The [private creation-effect preview checkpoint](STOCK_INVENTORY_CREATE.md#candidate-87-private-creation-effect-preview-source-checkpoint)
+passes 241 selected native cases, with 130 matching Python files and 136 independently
+unchanged tables. It does not enable public Save or client creation. Actual V8/native
+validation exposes a numeric signed-seed defect that must be fixed first.
+
 Latest saved-transfer source: [native onchange and complete effect inspection](STOCK_INVENTORY_EDIT.md).
 It is separate from the unsaved draft path below and is not save approval.
 

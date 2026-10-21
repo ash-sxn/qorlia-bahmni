@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 from . import sequence_read_guard
+from . import sequence_preview
 from . import sale_order
 from . import order_workflow
 from . import order_deliveries

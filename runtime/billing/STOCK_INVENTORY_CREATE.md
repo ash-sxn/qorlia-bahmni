@@ -2,6 +2,61 @@
 
 [README](../../README.md) · [Billing](README.md) · [Draft form](STOCK_INVENTORY_FORM.md) · [Inventory](STOCK_INVENTORY_WORKSPACE.md)
 
+## Candidate 87 private creation-effect preview source checkpoint
+
+[Private sequence isolation](qorlia_billing_ui/models/sequence_preview.py) and
+`_qorlia_inventory_create_preview` now execute actual native creation inside a
+callback-isolated rollback boundary. Standard counters use uniquely named
+temporary sequences with native allocation, prediction and formatting helpers;
+no-gap counters use native row updates that roll back. Ordinary Save is unchanged.
+Root configuration changes remain blocked; native missing-range initialisation
+has a narrow new-row inverse-write exception, not permission to alter an existing
+range. A nonstandard sequence cache still requires a safe adapter. This is not
+arbitrary SQL/Python isolation or a reserved reference.
+
+[Eleven native tests](qorlia_billing_ui/tests/test_sequence_preview.py) cover
+actual creation effects, default child creation/autoconfirm, comparison with
+Save, counters, ranges, context, nesting, denied/tampered requests and cleanup.
+Two initial focused runs each passed ten cases and exposed the native missing
+range's inverse-write/alter chain, which the guard initially rejected. Both
+rolled back; the corrected focused run passes all eleven cases with all 136
+protected/sequence metadata tables preserved. The full **241-case regression
+passes with zero failures/errors/skips**, retaining the exact prior 230 cases.
+All 130 frozen/current Python hashes match. Independent committed counts/full-row
+fingerprints match across all 136 tables; fresh SQL confirms the journal remains
+absent and installed metadata remains 49. Mandatory analytics/SMS remain enabled.
+The no-HTTP worker exited zero and was removed.
+
+The unchanged typed SDK accepts 351 recorded native responses through 18 named
+methods with mocked transport. A fresh full Home run passes 1,975 tests in 113
+suites, and Home library type checking passes. Existing fixture/native-module
+warnings remain. Three gateway stub cases pass. No public review proof, Save endpoint, SDK/UI
+consumer, gateway enablement, installed upgrade or tester publication is accepted.
+Source-86 results below remain a separate accepted checkpoint.
+
+Native log SHA-256: `1026d34de4e8810a9abadf2f41c5e0820ac0f8c51a081d025984d35c294d359f`.
+Independent SQL SHA-256: `af95203a7e2090ec7c2dcba9ff392c28852bcf5f6839eb1a48fe51f7677bcfb2`.
+Typed SDK SHA-256: `27cd6aecce40674f326319d5853b7673cc807488c868833e6a6de48fb9d941c7`.
+
+### Browser numeric representation blocker
+
+A separate diagnostic found that JavaScript changes integral JSON floats such
+as `2.0` to `2`. The current seed signer hashes their Python representations
+differently. Nine of 141 recorded source-86 seed responses changed signature
+input after actual V8 parse/stringify. A fresh rollback-only native diagnostic
+then proved that the original signed seed passes the actual validator and its
+semantically equal V8-roundtripped seed is rejected. No native create ran, all
+136 protected tables were preserved and the journal remained absent.
+
+This is a known defect, not successful browser integration. The initial probe
+used an incompatible test-suite wrapper; a second probe timed out during file
+handoff. Both exited without accepted diagnostic evidence. The corrected native
+suite/file handoff reproduced the defect. It is separate from the 241 passing
+addon cases. Before client integration, preserve native defaults inside an
+opaque signed JSON payload rather than globally weakening numeric signatures.
+Complete effect/review proof, public Save, durable creation UI, child editing
+and the remaining native workflow/widget parity are still required.
+
 ## Candidate 86 native sequence read boundary source checkpoint
 
 [The shared sequence guard](qorlia_billing_ui/models/sequence_read_guard.py)
@@ -525,6 +580,45 @@ transfer ID before native create has returned that ID.
 | Accepted transfer is later changed or deleted | Retain the original acceptance so retry cannot create another transfer. Resolve current document/reference access separately from the historical acceptance. |
 | Permission changes | Actual native create runs as the authorized actor. Private receipt storage must not grant business access or expose another actor's result. Direct ordinary receipt CRUD and caller-supplied capability contexts must be rejected. |
 | Deferred/external effects | Account for native scheduling, autoconfirmation, followers, child rows and callbacks. Unreviewed financial/physical/configuration effects must not escape on failure. |
+| Actual creation-effect proof | The public review must bind the original signed seed, ordered edits, current complete native effects/private audit and resulting state. Prepared-values signatures are not effect-review tokens. Validate complete ordered page traversal before Save, then recheck native effects under the write boundary. Never expose the current private journal execution as an already authorised writer. |
+| Proof versus request identity | Bind the creation request UUID to continuation/completion proof as well as actor, database, company scope and exact seed/edits. A proof read for one UUID must not authorise a second creation by substituting another UUID. Recover an already accepted/stopped exact request before requiring today's defaults or re-running creation; historical acceptance must survive changed/deleted native records. |
+| Browser recovery classification | Creation has `seed` and no existing `transfer_id`. Give it its own schema/kind in the shared account/database-bound pending slot. The current `isInventoryStoredSaveRequest` predicate recognises edits without action/order fields; that is not a sufficient discriminator once creation joins the request union. Update every guard, dispatcher, notice, load/persist/clear function and test together. Existing strict validators do not currently accept creation as a header save. |
+| Clearing a creation recovery record | Keep the original request through unknown, expired and unavailable outcomes. An accepted result can be cleared only after all current-access reference pages, the root reference and a fresh status are verified under the same account/database; stopped must be verified as stopped. An unknown request cannot be discarded merely because no root ID was received. |
+| Complete native form parity | Default child rows in creation effects do not establish editable child-grid parity. Add/change/remove virtual move and operation rows, parent/child onchange, modifiers, domains, detail dialogs and package/serial workflows require their actual native contracts. Do not describe a header-only creation path as complete Inventory. |
+
+### Installed native form audit, 21 October 2026
+
+The installed Odoo 16 `stock/views/stock_picking_views.xml` defines the native
+transfer surface; Bahmni/custom inherited views and role-dependent merged views
+can add to it. This source inspection is a minimum coverage map, not a complete
+rendered-browser or all-role audit. Current Qorlia source still has these explicit
+distinctions:
+
+| Native surface/action | Qorlia source coverage and remaining requirement |
+| --- | --- |
+| Header, Additional Info and Note, with original action context/defaults | Native metadata, signed draft replay and stored-header flow exist. Creation still needs public reviewed Save and recovery wiring. |
+| Operations `stock_move_one2many`, editable-bottom move grid | Default children can be prepared/created by native code. Adding, removing and editing arbitrary virtual rows is not accepted by the scalar header ledger or generic field display. |
+| Detailed Operations and `stock.move.action_show_details` | Existing saved-operation adapters mirror native context and native form/onchange rules. The source explicitly avoids the native detail action's serial-number write during a read; rendering the form is not serial-assignment parity. |
+| Check Availability, Unreserve, Set quantities and Clear quantities | Native reservation dispatch maps to the real four methods in `stock_reservation.py`. Preparation is not validation, dispensing or physical delivery. Current source/browser/hosted versions have different coverage. |
+| Mark as Todo, Validate and Return | Separate confirmation, multi-step validation and return adapters exist. Their individual review/recovery and release evidence must be checked; a shared transfer screen does not accept them all. |
+| Forecast report/widget and Assign serial | No corresponding action adapter was found in the current Billing source search. They need explicit native view/action and mutation contracts, not an invented client calculation. |
+| Put in Pack, package detail/stat buttons and allocation view | Reading package relations is not native package creation/movement, allocation or action parity. These remain required where the native role/configuration exposes them. |
+| Scrap, manager Lock/Unlock and traceability | No corresponding mutation/navigation adapter was found in the current Billing source search. Native role/state rules and stock/valuation effects must be preserved before enabling equivalents. |
+| Print picking, delivery reports and Print Labels | Invoice/payment PDF adapters do not implement these native stock actions. Exact report/action access, output and label-selection workflow still need coverage. |
+
+The source search findings above are not permission to enable raw native
+`call_kw` actions or substitute links to unrelated products. Continue using the
+shared Qorlia design system while preserving native state, roles and API
+semantics. Keep the full requested parity scope, including these missing actions.
+
+Source-87's initial creation-preview tests cover empty native transfers and a
+default child/autoconfirm case. Broader linked procurement/RFQ allocations,
+package/serial creation, all-role merged views and full browser interaction
+remain separate acceptance requirements. The 241-case selection is the current
+Inventory/form/creation regression, not the entire financial addon suite or
+whole-product acceptance. Existing `model.check_access_rights('create')` in
+`_qorlia_inventory_form_source` is retained before any native creation call;
+do not rely on a disabled button or a later native exception as permission checks.
 
 Source 83 above implements the private form of the protected request anchor:
 actor, request UUID/digest, original company scope, accepted/stopped outcome and

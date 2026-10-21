@@ -51,6 +51,14 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
+Latest source checkpoint: [private native creation-effect preview](runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-87-private-creation-effect-preview-source-checkpoint)
+isolates native sequence allocation during rolled-back creation. All 241 selected
+native cases pass with 130 matching Python files and 136 independently unchanged
+tables. Fresh Home checks pass 1,975 tests and library types. A separate actual
+JavaScript/native diagnostic exposes a signed numeric-seed defect that must be
+fixed before client integration. No public creation Save or new deployment is
+enabled; the hosted tester remains the 14 October build with adapter 43.
+
 Latest source checkpoint: [native sequence protection for form reads](runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-86-native-sequence-read-boundary-source-checkpoint)
 guards ORM allocation/configuration paths during the shared read sandbox,
 without changing ordinary Save. All 230 native cases pass with 128 matching

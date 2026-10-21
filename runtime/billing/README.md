@@ -3,6 +3,13 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest source checkpoint: [private creation-effect preview](STOCK_INVENTORY_CREATE.md#candidate-87-private-creation-effect-preview-source-checkpoint)
+passes 241 selected native cases with 130 matching Python files and 136 independently
+unchanged tables. Native numbering uses rollback-only private counters, not a
+reserved reference. Fresh Home checks pass 1,975 tests and library types. Actual
+JavaScript/native diagnostic evidence identifies a numeric signed-seed defect,
+so this does not enable client creation, public Save or a new tester deployment.
+
 Latest source checkpoint: [native sequence read boundary](STOCK_INVENTORY_CREATE.md#candidate-86-native-sequence-read-boundary-source-checkpoint)
 guards ORM numbering/configuration in shared read-only form work, retaining
 ordinary Save. All 230 native cases pass with 128 matching Python files and

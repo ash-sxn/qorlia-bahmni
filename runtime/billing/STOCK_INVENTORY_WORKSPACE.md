@@ -2,6 +2,15 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Private creation-effect preview source checkpoint, 21 October 2026
+
+[Source 87](STOCK_INVENTORY_CREATE.md#candidate-87-private-creation-effect-preview-source-checkpoint)
+passes 241 selected native cases, with 130 matching Python files and 136 independently
+unchanged tables. The unchanged SDK validates 351 native responses using mocked
+transport. Actual V8/native validation separately exposes a numeric signed-seed
+defect. Public creation review/Save, complete child/widget parity and durable UI
+remain required; no installed upgrade or new tester build is included.
+
 ## Native sequence read boundary source checkpoint, 21 October 2026
 
 [Source 86](STOCK_INVENTORY_CREATE.md#candidate-86-native-sequence-read-boundary-source-checkpoint)

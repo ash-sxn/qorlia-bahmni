@@ -1,5 +1,17 @@
 # Bahmni workflow parity ledger
 
+## 21 October private creation-effect preview source checkpoint
+
+[Source 87](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-87-private-creation-effect-preview-source-checkpoint)
+adds rollback-only native creation effects with private sequence counters. Its
+241 selected native cases pass with 130 matching Python files and 136 independently
+unchanged tables. The unchanged typed SDK accepts 351 responses with mocked
+transport. Fresh Home checks pass 1,975 tests and library types. A separate actual
+V8/native diagnostic proves a numeric signed-seed defect; this must be fixed
+before client integration. Complete public effect review/Save, durable creation
+UI, child/widget parity and browser acceptance remain unfinished. No source-87
+installation, gateway access or new tester build is accepted.
+
 ## 21 October native sequence read boundary source checkpoint
 
 [Source 86](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-86-native-sequence-read-boundary-source-checkpoint)
