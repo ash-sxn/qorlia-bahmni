@@ -1,0 +1,173 @@
+# Testing and acceptance
+
+[README](../README.md) · [Previous: contributing](../CONTRIBUTING.md) · [Next: team workflow](team-workflow.md)
+
+## Checks prove different things
+
+| Check                     | What it proves                                      | What it does not prove                       |
+| ------------------------- | --------------------------------------------------- | -------------------------------------------- |
+| TypeScript                | Checked source fits declared types                  | Server payloads or workflow correctness      |
+| Lint/format               | Defined source quality rules                        | Clinical or accounting correctness           |
+| Unit/component tests      | Tested logic and simulated interactions             | Real backend behaviour                       |
+| Native adapter tests      | Covered rules against the native runtime            | Every frontend/browser flow                  |
+| Actual API save/read-back | Tested endpoint persists the intended native result | Every UI/layout case                         |
+| Browser acceptance        | Observed end-to-end user path                       | All permissions, data sizes or environments  |
+| Domain review             | Qualified review of clinical/accounting semantics   | Substitute for implementation/security tests |
+
+Do not report “all APIs connected” from a test count. Keep evidence scoped to the requirement and exact source/environment.
+
+## Focused frontend checks
+
+From repository root, using macOS/Linux or Git Bash/WSL syntax:
+
+```bash
+TS_NODE_SKIP_PROJECT=true TS_NODE_COMPILER_OPTIONS='{"module":"CommonJS","moduleResolution":"node"}' yarn jest --config apps/appointments/jest.config.ts --runInBand
+yarn tsc -p apps/appointments/tsconfig.lib.json --noEmit --emitDeclarationOnly false
+yarn eslint apps/appointments/src/pages/appointmentActions.ts
+yarn prettier --check apps/appointments/src/pages/appointmentActions.ts
+git diff --check
+```
+
+Replace Appointments and file paths with your assigned module/files. Direct Jest is a known way around the current Nx dependent-build cycle; it is not a reason to alter unrelated packages.
+
+`tsconfig.lib.json` can exclude tests. Check test-source types using the actual `tsconfig.spec.json` and real imported source too; do not invent mock/shadow declarations to make them pass. Ask the maintainer for the scoped source-based checker if the whole spec configuration has unrelated failures.
+
+For Home/Billing use `apps/home/jest.config.ts` and `apps/home/tsconfig.lib.json`. Gateway/configuration checks:
+
+```bash
+node --test scripts/review-host/server.test.cjs distro/webpack.config.test.cjs
+node scripts/check-contributor-docs.mjs
+```
+
+The [documentation check](../scripts/check-contributor-docs.mjs) validates local links, linked headings, README reachability and the no-em-dash convention for the contributor guides. It does not validate live backend setup or remote URLs. The protected 14 October Billing UI checkpoint has 595 Home tests/69 suites passing; its preceding seven gateway/configuration checks are unchanged. Counts are a dated observation, not a permanent threshold or whole-product completion claim. Check the current [parity ledger](FEATURE_PARITY.md).
+
+## Build check
+
+For the existing development distribution build, from repository root:
+
+```bash
+cd distro
+NX_TASK_TARGET_PROJECT=@bahmni/distro NX_TASK_TARGET_TARGET=build NX_TASK_TARGET_CONFIGURATION=development ../node_modules/.bin/webpack --mode development --config webpack.config.js
+```
+
+This supplies the Nx target context used by its Webpack plugin. The protected 14 October UI build succeeded with hash `01c92a12bdb90486`; do not expect future builds to retain that hash. Generated output is `distro/dist`. This is not a production release command. Run the checks/build again after source changes and record the tested SHA.
+
+## Native runtime testing
+
+### Mandatory analytic configuration is part of the test
+
+Do not turn mandatory analytic plans optional to make a current regression run
+pass. An older fixture with no distribution is not a valid positive example in
+that configuration. Query native `get_relevant_plans` with the actual company,
+account/product and business domain, then give synthetic positive fixtures a
+100 percent allocation for each mandatory root plan. Keep those plans enabled.
+Use new synthetic analytic accounts, not an arbitrary department from hospital
+data. Required percentages are per plan, not 100 percent across unrelated plans.
+
+The [bank contract fixtures](../runtime/billing/qorlia_billing_ui/tests/test_native_bank_matching_contract.py)
+share required allocations with the adapter's simulation/API fixtures. Fee rules
+also need their required allocations. Accountant test users need the native
+analytic permission when supplying distributions; retain separate negative cases
+which remove it. Never grant production users extra roles as a test workaround.
+
+Resolve a bank allocation against its actual native journal account. A cash-basis
+invoice may use the customer's property receivable account rather than a custom
+test account. Do not silently omit its mandatory allocation because that account
+was not in a fixture's initial list.
+
+The [charge-order fixtures](../runtime/billing/qorlia_billing_ui/tests/test_drafts.py)
+supply allocations through the normal draft field. Keep a missing-allocation
+case which proves confirmation rejects without creating invoices or transfers,
+then succeeds with complete allocations. Adding a second mandatory plan must not
+erase the first one's allocation. These are test inputs, not a product feature
+which silently chooses departments for a hospital.
+
+Generated discount lines can require their own allocation. Use a synthetic,
+partner/account-scoped native distribution model and assert the posted adjustment
+retains it. Do not guess a hospital's adjustment department by copying one item.
+
+Run against a compatible isolated native database, not ordinary local Python.
+Record source and installed metadata separately. Compare existing stock, ledger,
+bank, analytic-plan, company and configuration rows after rollback, including
+failed runs. A failed full-addon run remains failed even if selected classes
+later pass. Record exact cases, failures, errors and skips before making a new
+acceptance claim. Private launch scripts, credentials and raw records do not
+belong in this public repository.
+
+When a full-row fingerprint changes, inspect every field before relaxing a
+preservation check. Native recomputation may write the same product quantity and
+update only its audit date/user. Prove that distinction by reconstructing the
+exact original row hash with only those audit fields restored. A changed business
+value must remain in the signed review and independently match stored/native
+stock values. Do not drop products or financial rows from the comparison.
+
+### Stock workflow regressions
+
+For return work, start with [the native return contract](../runtime/billing/STOCK_RETURNS.md).
+Run the direct `StockReturnContractTest`, adapter `StockReturnPreviewTest` and
+`StockReturnSaveTest` classes against the operator-provided isolated native copy.
+The direct class establishes what the installed engine does; the adapter classes
+must preserve that behaviour, not replace it with a browser inventory formula.
+Also run the confirmation and validation regressions when changing their shared
+effect snapshots, receipt storage or locks. Return creation and subsequent stock
+validation are separate actions. Cover their integration, not just each method
+in isolation. Keep the runtime/company/analytics configuration and exact source
+with the results, and independently read protected records after rollback.
+
+An expired or explicitly closed review gate is not permission to renew it or
+create a replacement UI route. Continue approved native/backend tests without
+claiming HTTP, browser or hosted acceptance. Ask the owner before changing access.
+
+The [adapter 48 step-contract checkpoint](../runtime/billing/STOCK_VALIDATION.md#native-intermediate-persistence-audit-and-adapter-48-step-contract) supersedes the terminal-only validation assumptions below. Native prompts can commit preparation before a later prompt closes. That native checkpoint passes 10 focused step cases, 106 combined mandatory-analytics cases and a 684-case legacy-copy harness with mandatory analytics restored. The subsequent [React/browser checkpoint](../runtime/billing/STOCK_VALIDATION.md#react-per-step-migration-and-receipt-browser-checkpoint-15-october-2026) migrates fresh validations to individual steps and schema 4 recovery, with 695 Home tests/74 suites and nine gateway/configuration checks. Actual isolated browser receipt saves, full reload/tab reopen, exact status recovery and closing the saved prompt have independent read-back. Other browser wizard/transport-loss/keyboard/narrow cases and matching protected release remain separate gates. Keep older entries below as history, not competing instructions for a new implementation.
+
+The subsequent [React validation wizard checkpoint](../runtime/billing/STOCK_VALIDATION.md#react-wizard-and-recovery-source-checkpoint-15-october-2026) passes 663 Home cases, 445 design-system cases/14 snapshots, ten selected actual test-source roots and library checks. Open shared-dialog/validation-preview accessibility tests run without disabling rules. Carbon's closed DOM is retained for CSS transitions, so closed/narrow visibility still needs browser checks. These component/storage tests are not real browser saves, full-reload IndexedDB or hosted acceptance; native adapter 47 is unchanged and its previous tests were not rerun as new UI evidence.
+
+The newest [adapter 47 validation checkpoint](../runtime/billing/STOCK_VALIDATION.md#adapter-47-service-and-isolated-http-checkpoint-15-october-2026) adds 16 service-boundary cases, 643 Home tests/72 suites, a final 30-case confirmation/validation run, nine gateway/configuration checks, types/lint/format and a development build. Native source passes 96 mandatory-analytics fulfillment cases and the 674-case legacy-copy harness with analytics restored. Six actual HTTP scenarios and independent receipt/accounting/stock read-back pass with the version distinctions recorded in that contract. This is not validation-wizard UI, browser recovery or hosted publication acceptance. The older counts below remain historical observations.
+
+Python Billing tests are in [the addon tests](../runtime/billing/qorlia_billing_ui/tests/); they run inside a compatible Odoo installation with matching Bahmni modules and synthetic configuration. Running ordinary `pytest` without that runtime does not reproduce those tests.
+
+The isolated adapter 43 checkpoint passed 28 focused operation-form/action checks and 578 full addon tests with no failures/errors/skips. Native mandatory analytical configuration was restored and installed source hashes matched. This does not accept full fulfillment, production deployment or every module. Native environment/test procedures are operator-provided; never copy private database settings into a public script.
+
+The later [confirmation contract](../runtime/billing/STOCK_CONFIRMATION.md) adds 13 focused native cases, passing with mandatory analytics. The combined 591-case regression harness passes on a separate database copy with legacy fixtures' optional analytics, restored afterward. An initial full run under mandatory analytics produced 80 missing-allocation fixture errors. Do not hide that configuration difference or treat the optional-fixture suite as proof of every mandatory-analytics workflow. Never relax the running tester or production database to make a regression harness pass. Configuration-specific acceptance remains separate.
+
+The 15 October adapter 45 source checkpoint supersedes that earlier case count: 29 focused confirmation cases pass with mandatory analytics, and the combined 620-case legacy harness passes on the copy with optional analytics restored afterward. Native caller-attribution, actual-effect rollback and cancelled/deleted-RFQ recovery are covered. TypeScript/gateway source checks are separate from native acceptance; browser controls and actual HTTP/browser confirmation still require integration. Record the tested version rather than treating these historical counts as a permanent threshold.
+
+A later 15 October increment adds confirmation controls, shared recovery and actual isolated HTTP/browser acceptance. The Home suite passes 627 tests/71 suites and eight gateway/configuration checks. The browser exercised synthetic transfer review/save, native generated references, close/reload recovery, exact status/clear and parent refresh. Independent native reads checked receipt uniqueness and protected finance/physical stock. See [the contract's dated checkpoint](../runtime/billing/STOCK_CONFIRMATION.md). These tests did not publish or accept the new source through the protected tester gateway, and do not cover hospital-scale concurrency or every configuration.
+
+The subsequent protected-gateway staging check passes nine gateway/configuration cases and real gateway HTTP/static-browser acceptance on loopback. A temporary transport suppressed accepted responses; an explicit browser 503 left the identical request durable across reload, status recovery and receipt-checked clear. The first disconnect reached accepted UI and was not counted as an unknown state. This verifies the real gateway code with isolated native services, not the public HTTPS/container release. Fault injection and private credentials do not belong in product source. See the newest [confirmation checkpoint](../runtime/billing/STOCK_CONFIRMATION.md).
+
+## Synthetic workflow acceptance
+
+Obtain permission before creating/editing test records. Use clearly labelled records and record their identifiers privately as appropriate. Do not use real patients, financial records or an employee's private credentials.
+
+For a save, record the initial native state, intended change, endpoint/payload keys, response and saved state after reload. Independently verify relevant native records, not just the same frontend representation. Financial/stock changes need unchanged protected-record and accounting/inventory invariants where applicable.
+
+Cover:
+
+- Valid save and native rejection, including stale configuration/data.
+- Denied role, hidden record/company and expired session.
+- Double click, timeout/lost response and exact recovery where supported.
+- Closing the editor, unmount and full reload with a pending request.
+- Search/paging, empty results, loading/error states and parent refresh.
+- Keyboard navigation, focus restoration and narrow-screen readability.
+- Dates/time zones, quantities/units, batch/expiry and currencies as relevant.
+
+Never repeat a write merely because an observation timed out. Check the same process/request or authoritative saved state. A timeout is not a terminal outcome.
+
+## Report format
+
+The [expiry/response-loss browser checkpoint](../runtime/billing/STOCK_VALIDATION.md#browser-expiry-decline-and-lost-response-checkpoint-15-october-2026) distinguishes an accepted response aborted before UI delivery from merely ignoring a returned API value. It verifies full-reload/exact-status recovery without another save, plus scoped narrow/keyboard prompt behavior. Keep the original request and independently read the native outcome; do not invent another nonce to make recovery appear successful.
+
+```text
+Task / PR:
+Source SHA and backend/configuration version:
+Checks run, exact commands and results:
+Approved synthetic fixture:
+Expected and actual native outcome:
+Browser/API/native evidence:
+Denied/expiry/recovery cases:
+Untested cases and next gate:
+Reviewer/tester:
+```
+
+If a command fails, include the failure and cause. Do not claim skipped checks ran. Keep evidence free of secrets and identifiable private records.

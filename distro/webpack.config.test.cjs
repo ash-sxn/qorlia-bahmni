@@ -6,6 +6,23 @@ process.env.NX_TASK_TARGET_TARGET = "serve";
 const createConfig = require("./webpack.config");
 const historyApiFallback = require("connect-history-api-fallback");
 
+test("Billing database is an explicit build setting with the existing default", () => {
+  const previous = process.env.BAHMNI_BILLING_DATABASE;
+  const definition = () =>
+    createConfig({}, { mode: "development" }).plugins.find(
+      (plugin) => plugin.constructor.name === "DefinePlugin",
+    ).definitions["process.env.BAHMNI_BILLING_DATABASE"];
+  try {
+    delete process.env.BAHMNI_BILLING_DATABASE;
+    assert.equal(definition(), JSON.stringify("odoo"));
+    process.env.BAHMNI_BILLING_DATABASE = "qorlia_synthetic_copy";
+    assert.equal(definition(), JSON.stringify("qorlia_synthetic_copy"));
+  } finally {
+    if (previous === undefined) delete process.env.BAHMNI_BILLING_DATABASE;
+    else process.env.BAHMNI_BILLING_DATABASE = previous;
+  }
+});
+
 test("review routes serve the React entry only for HTML navigation", () => {
   const middleware = historyApiFallback(
     createConfig({}, { mode: "development" }).devServer.historyApiFallback,

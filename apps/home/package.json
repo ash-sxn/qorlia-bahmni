@@ -23,6 +23,9 @@
     "README.md",
     "LICENSE"
   ],
+  "dependencies": {
+    "luxon": "3.7.1"
+  },
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

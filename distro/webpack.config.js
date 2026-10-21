@@ -187,6 +187,9 @@ module.exports = (env, argv) => {
       new webpack.DefinePlugin({
         'process.env.PUBLIC_URL': JSON.stringify(publicPath),
         'process.env.PUBLIC_PATH': JSON.stringify(publicPath),
+        'process.env.BAHMNI_BILLING_DATABASE': JSON.stringify(
+          process.env.BAHMNI_BILLING_DATABASE ?? 'odoo',
+        ),
       }),
       new NxAppWebpackPlugin({
         tsConfig: './tsconfig.app.json',
