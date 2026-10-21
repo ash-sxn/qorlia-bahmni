@@ -1,5 +1,16 @@
 # Bahmni workflow parity ledger
 
+## 21 October complete prepared creation-values review source checkpoint
+
+[Source 85](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-85-prepared-values-review-source-checkpoint)
+adds a bounded complete native values/form review and typed reader, without
+allocating a record/reference or authorizing Save. Its 214 native cases pass
+with 126 matching Python files, 134 independently preserved tables and no journal
+table left installed. The actual typed client accepts 342 native responses over
+18 methods using mocked transport. Complete sequence-hook protection, effect
+review, public Save, durable UI and HTTP/browser acceptance remain unfinished.
+Gateway/review remain closed; source-83 committed-race evidence stays separate.
+
 ## 21 October creation recovery API source checkpoint
 
 [Candidate 84](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-84-creation-recovery-api-source-checkpoint)

@@ -2,6 +2,16 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Complete prepared creation-values review source checkpoint, 21 October 2026
+
+[Source 85](STOCK_INVENTORY_CREATE.md#candidate-85-prepared-values-review-source-checkpoint)
+adds native complete values/form review without allocating references or
+authorizing Save. Its 214 native cases pass with 126 matching Python files,
+134 independently preserved tables and no journal table left installed. The
+actual typed client accepts 342 native responses using mocked transport.
+Sequence-hook protection and complete effect/Save/UI parity remain unfinished;
+gateway/review stay closed, without HTTP/browser acceptance.
+
 ## Creation recovery source APIs checkpoint, 21 October 2026
 
 [Candidate 84](STOCK_INVENTORY_CREATE.md#candidate-84-creation-recovery-api-source-checkpoint)

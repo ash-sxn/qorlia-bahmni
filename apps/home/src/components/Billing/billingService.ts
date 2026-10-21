@@ -3845,6 +3845,63 @@ export async function previewInventoryDraftForm(
     exact,
   );
 }
+export interface InventoryCreationValuesReview extends InventoryDraftForm {
+  review_kind: 'native_create_values';
+  prepared_values: Record<string, ConfirmationValue>;
+  values_version: string;
+}
+export async function getInventoryCreationValuesReview(
+  seed: InventoryDraftSeed,
+  edits: InventoryHeaderEdit[],
+): Promise<InventoryCreationValuesReview> {
+  const exact = checkedInventoryDraftSeed(seed),
+    ledger = checkedInventoryHeaderEdits(edits);
+  const data = await stockCall<InventoryCreationValuesReview>(
+    'qorlia_inventory_create_values_review',
+    { seed: exact, edits: ledger },
+  );
+  if (
+    !confirmationKeys(data, [
+      'read_only',
+      'write_ready',
+      'version',
+      'seed',
+      'edits',
+      'domains',
+      'form',
+      'review_kind',
+      'prepared_values',
+      'values_version',
+    ]) ||
+    data.review_kind !== 'native_create_values' ||
+    !stockVersion(data.values_version) ||
+    !confirmationObject(data.prepared_values) ||
+    Object.keys(data.prepared_values).length === 0 ||
+    !validConfirmationValue(data.prepared_values) ||
+    Object.keys(data.prepared_values).some(
+      (name) => name === 'id' || !data.form?.fields?.[name],
+    ) ||
+    JSON.stringify(data).length > 4_000_000
+  )
+    throw new Error(
+      'Invalid complete native values review. Nothing was created.',
+    );
+  checkedInventoryDraftForm(
+    {
+      read_only: data.read_only,
+      write_ready: data.write_ready,
+      version: data.version,
+      seed: data.seed,
+      edits: data.edits,
+      domains: data.domains,
+      form: data.form,
+    },
+    exact.picking_type_id,
+    ledger,
+    exact,
+  );
+  return data;
+}
 export async function getInventoryDraftFormChoices(
   seed: InventoryDraftSeed,
   edits: InventoryHeaderEdit[],

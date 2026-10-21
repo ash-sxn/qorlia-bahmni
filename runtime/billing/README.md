@@ -3,7 +3,14 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
-Latest source checkpoint: [creation recovery APIs and typed calls](STOCK_INVENTORY_CREATE.md#candidate-84-creation-recovery-api-source-checkpoint)
+Latest source checkpoint: [complete prepared creation-values review](STOCK_INVENTORY_CREATE.md#candidate-85-prepared-values-review-source-checkpoint)
+returns native form/default/child values without allocating references, not a
+Save/effect proof. Its 214 native cases pass with 126 matching Python files,
+134 independently preserved tables and 342 actual typed-client response checks
+using mocked transport. Sequence-hook protection and complete effect/Save/UI
+remain unfinished, with gateway/review closed and no HTTP/browser acceptance.
+
+Previous source checkpoint: [creation recovery APIs and typed calls](STOCK_INVENTORY_CREATE.md#candidate-84-creation-recovery-api-source-checkpoint)
 add current-access status/reference/Stop without a creation writer or UI consumer.
 The 202-case native check passes with 124 matching Python files, 134 independently
 preserved tables and no journal table left installed. The actual typed client

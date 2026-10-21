@@ -2,6 +2,71 @@
 
 [README](../../README.md) · [Billing](README.md) · [Draft form](STOCK_INVENTORY_FORM.md) · [Inventory](STOCK_INVENTORY_WORKSPACE.md)
 
+## Candidate 85 prepared-values review source checkpoint
+
+[The review adapter](qorlia_billing_ui/models/stock_inventory_create_review.py)
+adds `qorlia_inventory_create_values_review` and the typed client
+`getInventoryCreationValuesReview`. It returns the complete native prepared
+create-values dictionary alongside the signed defaults, exact ordered edits,
+current native form and domains. This includes native default child commands
+and HTML normalization, rather than a manually reconstructed subset of fields.
+The result is bounded to four million JSON characters; an oversized complete
+review rejects instead of silently truncating it.
+
+This is explicitly **read-only, not write-ready**. `review_kind` is
+`native_create_values`. Its opaque `values_version` binds the actual database,
+actor, active companies, complete prepared form/values and all 134 guarded table
+fingerprints through the existing server-secret signature. It is not a
+`review_version`, complete-effect proof, Save authorization or predicted saved
+state. It allocates no root identity or native reference, requires no journal
+schema and never calls native create. A future complete writer still needs
+the native effect/recovery checks below; do not attach this values signature to
+the private journal as though that alone authorized Save.
+
+Twelve new native cases compare real receipt/delivery/internal forms and ordered
+edits with installed Odoo `Form._values_to_save()`, exercise complete default child
+commands, reject stale/tampered input and denied actors, check immutable inputs
+and distinguish values binding from Save proof. Create and both native sequence
+allocation entry points are guarded against calls during child-values review.
+The **214-case native regression passes with zero failures, errors or skips**:
+the twelve new cases plus the exact previous 202-case selection. All **126
+Python hashes** match both frozen and current source. The actual typed client
+accepts **342 recorded native responses across 18 methods**, including thirteen
+values-review responses, with full envelope/result checks and mocked transport.
+
+Independent committed SQL counts and full-row fingerprints match for all **134
+protected tables** before and after the run. A fresh query confirms the journal
+table is absent. The no-HTTP worker exited zero and was removed, without ports
+or an installed upgrade. Installed metadata remains `16.0.1.49.0`; mandatory
+analytics and SMS remained enabled. Source-83 committed-race evidence is separate,
+not a source-85 rerun of public Save, concurrency or browser behavior.
+
+Completed native log SHA-256:
+`44c3dfbf13345d836ae32fd7cf524180f0251d1f500140daca8640293722d1b3`.
+Typed client SHA-256:
+`27cd6aecce40674f326319d5853b7673cc807488c868833e6a6de48fb9d941c7`.
+Independent 134-table SQL SHA-256:
+`3b2b546a4afffdb312cf3d354d2214292c137868f6d6e74b6bba4f3b95a85139`.
+
+The first client test run caught a fixture that modelled Qorlia's HTTP 401 as an
+Odoo JSON-RPC session-expiry exception. The corrected fixture uses native error
+code 100; the existing distinct authentication behavior is unchanged. This was
+not a product authentication change. The final full Home suite passes **1,975
+cases across 113 suites**, including an additional empty-values rejection case.
+Two focused service suites pass 54 cases. Actual new test/service source types,
+scoped lint/format, three temporary gateway
+stub cases, 126-file Python AST/frozen-source checks and contributor links pass.
+The existing passing reservation-recovery fixture warning and gateway dependency
+deprecation warning remain visible. These frontend checks use test doubles and
+do not establish native HTTP, browser or release acceptance.
+
+The new method stays gateway-blocked. No Save/proof API, creation UI consumer,
+installed upgrade, schema change, native HTTP/browser acceptance, frontend
+build/server, review reopening, tunnel, deployment or purchase is included.
+The runtime sequence-hook boundary discussed below remains an enablement
+requirement, alongside complete effect/Save/UI parity. Passing the installed
+form selection does not establish safety for arbitrary added native hooks.
+
 ## Candidate 84 creation recovery API source checkpoint
 
 [The recovery adapter](qorlia_billing_ui/models/stock_inventory_create_recovery.py)
@@ -470,6 +535,47 @@ reference or treat a predicted next number as reserved. Native identity is
 assigned by the eventual native Save. The preparation helper avoids this problem
 by not calling create or assigning a reference; it does not solve the remaining
 creation-effect/recovery protocol by itself.
+
+### The allocation boundary includes linked native documents
+
+A further read-only audit of the installed Odoo source confirms root transfer
+creation is not the only allocation path. `stock_quant.py` uses `next_by_code`
+for package defaults, `stock_lot.py` for lot/serial defaults, `stock_rule.py` for
+procurement groups and `purchase.py` for purchase-order creation. Native picking
+autoconfirmation can enter linked move/procurement work. Protecting only the
+root picking type's `next_by_id` would therefore not establish complete preview
+safety. Neither sequence allocation entry point should be replaced with a
+fabricated success merely to obtain a passing creation test.
+
+The inspected staging database reports PostgreSQL 16.4. Its version-matched
+[sequence-function documentation](https://www.postgresql.org/docs/16/functions-sequence.html)
+confirms that rollback does not undo `nextval` or `setval`. Its
+[temporary-sequence documentation](https://www.postgresql.org/docs/16/sql-createsequence.html)
+describes session-local objects and unqualified-name resolution. This suggests
+an isolation direction to investigate, not a tested adapter: schema-qualified
+calls, date-range creation, repeated/nested allocations and connection reuse
+still need explicit treatment. No temporary overlay or sequence override is
+implemented by source 85, and no shared counter was reset or probed by advancing it.
+
+Any eventual effect review must retain actual native permissions, formatting,
+company/date behavior, linked effects and callback isolation. It must separately
+prove that shared business-reference counters are unchanged, that temporary
+state cannot escape into an ordinary Save, and that actual Save effects match
+the complete review apart from explicitly declared assigned-on-save values.
+Generated primary-key IDs and business-reference sequences are distinct;
+preserved table fingerprints alone prove neither sequence property. The
+current values review avoids native creation entirely and does not claim to
+solve this remaining effect-preview boundary.
+
+The current form-read boundary checks business values inside rollback and all
+raw table fields afterward. It is not a runtime interceptor for sequence calls
+inside an arbitrary native hook. Source-85 tests guard allocation entry points
+for the installed forms they exercise; they do not establish a universal ban on
+allocation by a newly added hook. Before enabling these form/review paths,
+sequence rejection or isolation must be tested at the native call boundary,
+including date-range allocation and linked defaults. Ordinary Save behavior,
+native default semantics and complete eventual workflow parity must be retained;
+an unsupported-path rejection alone is not the completed feature.
 
 ## Verification scope
 

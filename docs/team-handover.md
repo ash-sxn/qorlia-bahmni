@@ -1,6 +1,14 @@
 # New-team handover: Qorlia engineering
 
-Latest source checkpoint: [creation recovery APIs and typed calls](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-84-creation-recovery-api-source-checkpoint)
+Latest source checkpoint: [complete prepared creation-values review](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-85-prepared-values-review-source-checkpoint)
+returns native form/default/child values without allocating references. It is
+read-only, not a Save/effect proof. Its 214 native cases pass with 126 matching
+Python files and 134 independently preserved tables. The actual typed client
+accepts 342 native responses using mocked transport, not HTTP/browser acceptance.
+Sequence-hook protection and complete effect/Save/UI remain unfinished; review
+closure, deployment and contributor task bases stay unchanged.
+
+Previous source checkpoint: [creation recovery APIs and typed calls](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-84-creation-recovery-api-source-checkpoint)
 add current-access status/reference/Stop, not a creation writer or React consumer.
 The corrected 202-case native regression passes with 124 matching Python files,
 134 independently preserved tables and no journal table left installed. The

@@ -5,6 +5,14 @@
 Latest saved-transfer source: [native onchange and complete effect inspection](STOCK_INVENTORY_EDIT.md).
 It is separate from the unsaved draft path below and is not save approval.
 
+The [complete prepared-values review source](STOCK_INVENTORY_CREATE.md#candidate-85-prepared-values-review-source-checkpoint)
+returns native defaults/edits/child commands with the form, without allocating
+references or authorizing Save. Its 214 native cases pass with 126 matching
+Python files and 134 independently preserved tables. The actual typed client
+accepts 342 native responses using mocked transport, not HTTP/browser acceptance.
+Sequence-hook protection and complete effect/Save/UI remain unfinished. No new
+access is enabled.
+
 The [creation recovery source APIs](STOCK_INVENTORY_CREATE.md#candidate-84-creation-recovery-api-source-checkpoint)
 add current-access status/reference/Stop and matching typed calls. The 202-case
 native regression passes with 124 matching Python files, 134 independently
