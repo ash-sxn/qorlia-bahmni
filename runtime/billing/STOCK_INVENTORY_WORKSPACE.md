@@ -10,7 +10,9 @@ Its 150-case native check passes, with 116 matching source hashes, 134 preserved
 guards/independent tables and 214 native responses accepted by the actual client
 with transport mocked. Header-save recovery storage now shares the existing
 strict account/database stock slot. All 14 form/review/write methods remain
-gateway-blocked; the React header editor and dedicated pending-request UI are unfinished.
+gateway-blocked. React header editing and dedicated recovery have connected source
+and direct routes, not built/browser acceptance. Native presentation/collection
+gaps and the rest of Inventory remain open in the linked contract.
 This does not reopen review/deployment or shrink the remaining module scope.
 
 ## Candidate 79 full native save review in progress, 20 October 2026

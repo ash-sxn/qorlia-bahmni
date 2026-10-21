@@ -12,14 +12,17 @@ retained. New schema-9 browser storage shares the existing stock request slot,
 preserves the exact ordered edits/proofs/UUID and checks full generated-reference
 pages, fresh outcome and account/database before retirement. Storage doubles
 do not establish browser or concurrency acceptance. All 14 form/review/write
-methods stay gateway-blocked; the header editor and dedicated pending-request UI
-remain unfinished, and review/deployment stay closed. The
+methods stay gateway-blocked. The header editor and dedicated recovery now have
+connected source and Inventory/Billing routes, not built/browser acceptance.
+Native rich text, local-time/custom-widget and collection parity remain open,
+and review/deployment stay closed. The
 source-79 broad run ended with one native nested-deletion error, not a pass;
 the current tests distinguish successful stored-relation deletion from installed
 native computed-alias rejection. See the linked evidence limits.
 
-Home passes 1,792 cases/106 suites, including 42 added header-recovery storage
-cases (153 shared stock-storage cases total). Library and actual test-source
+Home passes 1,837 cases/108 suites, including 45 new header editor/field/routing/
+cache cases and the earlier 42 header-recovery storage cases (153 shared stock-
+storage cases total). Library and actual changed-test-source
 types, scoped lint/format, three gateway stub checks and all 46 linked contributor
 documents/785 local links pass. No new build, server, tunnel or deployment occurs.
 

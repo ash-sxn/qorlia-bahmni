@@ -21,6 +21,13 @@ const mockOperation = jest.fn();
 const mockValidation = jest.fn();
 const mockCancellation = jest.fn();
 const mockReturn = jest.fn();
+const mockHeader = jest.fn();
+jest.mock('../InventoryHeaderEditor', () => ({
+  InventoryHeaderEditor: (props: { close: () => void }) => {
+    mockHeader(props);
+    return <button onClick={props.close}>Close global header editor</button>;
+  },
+}));
 jest.mock('../PagedStockReturnModal', () => ({
   PagedStockReturnModal: (props: {
     close: () => void;
@@ -477,6 +484,23 @@ it('keeps load rejection distinct from an empty successful transfer', async () =
   ).toHaveTextContent('Stock access denied.');
   expect(detail).not.toHaveBeenCalled();
   expect(screen.queryByText(/No stock moves/)).not.toBeInTheDocument();
+});
+it('opens the native header editor with actual Inventory identity and refreshes details on return', async () => {
+  show();
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: 'Edit or recover transfer header',
+    }),
+  );
+  expect(mockHeader.mock.calls.at(-1)![0]).toMatchObject({
+    uid: 3,
+    transferId: 11,
+  });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close global header editor' }),
+  );
+  await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  expect(mockConfirmation).not.toHaveBeenCalled();
 });
 it('offers explicit reconnection on expiry and a separate return to the inventory list', async () => {
   detail.mockRejectedValue(new BillingSessionExpired());

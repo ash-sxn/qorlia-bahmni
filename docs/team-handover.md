@@ -6,8 +6,10 @@ pages and durable Stop. Candidate 80's 150-case native check passes with 116
 matching source hashes, 134 preserved guards and unchanged independent committed
 tables. The actual client accepts 214 recorded native responses across 14 methods
 with mocked transport. The existing stock recovery slot now retains exact
-header-save requests per account/database, but the editor and dedicated resume
-UI remain unfinished. All 14 form/review/write methods stay gateway-blocked.
+header-save requests per account/database. The editor and dedicated resume UI now
+have connected source and direct Inventory/Billing routes, not built/browser
+acceptance. Native rich text, local-time/custom widgets and collection interfaces
+remain open. All 14 form/review/write methods stay gateway-blocked.
 This does not reopen review/deployment or change contributor starter-task bases.
 
 Earlier backend source: [saved-transfer header onchange and effect inspection](../runtime/billing/STOCK_INVENTORY_EDIT.md)

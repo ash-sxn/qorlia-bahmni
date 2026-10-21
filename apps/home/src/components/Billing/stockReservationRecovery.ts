@@ -59,7 +59,7 @@ type RecoveryRecord = {
   request: StoredStockRequest;
   history: ValidationParent[];
 };
-type StoredStockRequest = StockWriteRequest | InventoryStoredSaveRequest;
+export type StoredStockRequest = StockWriteRequest | InventoryStoredSaveRequest;
 export const isInventoryStoredSaveRequest = (
   request: StoredStockRequest,
 ): request is InventoryStoredSaveRequest =>
@@ -620,6 +620,10 @@ export const loadStockWriteRecovery = async (
     );
   return request;
 };
+export const loadAnyStockWriteRecovery = async (
+  uid: number,
+): Promise<StoredStockRequest | null> =>
+  (await recoveryRecord(uid, 'read'))?.request ?? null;
 export async function loadInventoryStoredSaveRecovery(
   uid: number,
 ): Promise<InventoryStoredSaveRequest | null> {

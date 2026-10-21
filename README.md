@@ -58,8 +58,10 @@ source hashes matching and 134 guarded/independently checked tables unchanged.
 The actual typed client accepts 214 recorded native responses across all 14
 methods with mocked transport. Browser recovery storage shares the existing
 account/database-bound stock slot and preserves unknown outcomes. The React
-header editor and dedicated pending-request UI remain unfinished, all 14
-form/review/write methods stay gateway-blocked, and review/deployment stay closed.
+header editor and dedicated recovery UI now have connected source and direct
+Inventory/Billing routes. Rich text, local-time/custom-widget/collection parity
+and actual browser/native HTTP acceptance remain unfinished. All 14 methods
+stay gateway-blocked, and review/deployment stay closed.
 
 [Native save-review history](runtime/billing/STOCK_INVENTORY_SAVE.md) records the
 earlier frozen contracts and failed runs, not acceptance of the new writer.

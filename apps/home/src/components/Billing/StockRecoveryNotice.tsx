@@ -2,6 +2,7 @@ import { Button } from '@bahmni/design-system';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import styles from './BillingPage.module.scss';
+import { InventoryHeaderRecovery } from './InventoryHeaderRecovery';
 import { InventoryTransferDetails } from './InventoryTransferDetails';
 import { OrderDeliveriesPanel } from './OrderDeliveriesPanel';
 import { PagedStockCancellationModal } from './PagedStockCancellationModal';
@@ -17,7 +18,8 @@ import {
   isStockValidationRequest,
   isStockOperationRequest,
   isStockConfirmationRequest,
-  loadStockWriteRecovery,
+  loadAnyStockWriteRecovery,
+  isInventoryStoredSaveRequest,
 } from './stockReservationRecovery';
 
 type Props = {
@@ -41,14 +43,15 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
       | 'validation'
       | 'cancellation'
       | 'return'
+      | 'header'
       | 'details';
   } | null>(null);
   const opener = useRef<HTMLButtonElement>(null);
   const retryButton = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
   const saved = useQuery({
-    queryKey: ['billing', 'reservation-recovery', uid],
-    queryFn: () => loadStockWriteRecovery(uid),
+    queryKey: ['billing', 'reservation-recovery', uid, 'notice'],
+    queryFn: () => loadAnyStockWriteRecovery(uid),
     retry: false,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
@@ -70,6 +73,19 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
     focusFallback,
   ]);
   if (target?.orderId === false) {
+    if (target.kind === 'header')
+      return (
+        <InventoryHeaderRecovery
+          uid={uid}
+          transferId={target.transferId}
+          reconnect={reconnect}
+          close={() => {
+            restoreFocus.current = true;
+            setTarget(null);
+            void saved.refetch();
+          }}
+        />
+      );
     if (target.kind === 'details')
       return (
         <InventoryTransferDetails
@@ -152,23 +168,25 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
     );
   const request = saved.data;
   if (!request) return null;
-  const kind = isPagedStockCancellationRequest(request)
-    ? 'Transfer cancellation'
-    : isPagedStockReturnRequest(request)
-      ? 'Return creation'
-      : isStockValidationRequest(request)
-        ? 'Transfer validation'
-        : isStockOperationRequest(request)
-          ? 'Detailed operation'
-          : isStockConfirmationRequest(request)
-            ? 'Transfer confirmation'
-            : 'Stock preparation';
+  const kind = isInventoryStoredSaveRequest(request)
+    ? 'Transfer header save'
+    : isPagedStockCancellationRequest(request)
+      ? 'Transfer cancellation'
+      : isPagedStockReturnRequest(request)
+        ? 'Return creation'
+        : isStockValidationRequest(request)
+          ? 'Transfer validation'
+          : isStockOperationRequest(request)
+            ? 'Detailed operation'
+            : isStockConfirmationRequest(request)
+              ? 'Transfer confirmation'
+              : 'Stock preparation';
   return (
     <section className={styles.card} aria-label="Saved stock request">
       <h2>Check your saved stock request</h2>
       <p>
         {kind} ·{' '}
-        {request.order_id === false
+        {isInventoryStoredSaveRequest(request) || request.order_id === false
           ? 'Inventory'
           : `Order #${request.order_id}`}{' '}
         · Transfer #{request.transfer_id}
@@ -182,19 +200,23 @@ function RecoveryNotice({ uid, reconnect, focusFallback }: Props) {
         ref={opener}
         onClick={() =>
           setTarget({
-            orderId: request.order_id,
+            orderId: isInventoryStoredSaveRequest(request)
+              ? false
+              : request.order_id,
             transferId: request.transfer_id,
-            kind: isStockConfirmationRequest(request)
-              ? 'confirmation'
-              : isStockOperationRequest(request)
-                ? 'operation'
-                : isPagedStockValidationRequest(request)
-                  ? 'validation'
-                  : isPagedStockCancellationRequest(request)
-                    ? 'cancellation'
-                    : isPagedStockReturnRequest(request)
-                      ? 'return'
-                      : 'preparation',
+            kind: isInventoryStoredSaveRequest(request)
+              ? 'header'
+              : isStockConfirmationRequest(request)
+                ? 'confirmation'
+                : isStockOperationRequest(request)
+                  ? 'operation'
+                  : isPagedStockValidationRequest(request)
+                    ? 'validation'
+                    : isPagedStockCancellationRequest(request)
+                      ? 'cancellation'
+                      : isPagedStockReturnRequest(request)
+                        ? 'return'
+                        : 'preparation',
           })
         }
       >

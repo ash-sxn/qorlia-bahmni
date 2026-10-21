@@ -7,8 +7,67 @@
 This source adds a durable Save protocol for existing transfer headers and their
 native derived child changes. It does not create transfers, deploy the addon or
 open the review gateway. All 14 form/review/save/recovery methods stay blocked at
-that gateway. The React header editor and its durable pending-request UI remain
-unfinished. Do not infer a working browser Save flow from the new source methods.
+that gateway. React editor and dedicated recovery source now call saved-header methods,
+but no built/native-HTTP/browser Save flow is accepted or exposed by this change.
+
+## React editor and recovery source, 21 October 2026
+
+The Inventory detail source now opens **Edit or recover transfer header**. The
+Billing recovery notice resumes a stored header request directly, without
+inventing a Sales order or routing it to transfer confirmation.
+
+- `InventoryHeaderFields.tsx` renders visible native root field occurrences,
+  their server-computed readonly/required rules, conditional labels, group/page
+  context, selections and current values with existing Qorlia/Carbon controls.
+  It never evaluates native Python/domain/modifier expressions in the browser.
+- Relation searches begin on interaction, use the original version plus ordered
+  edits and the exact node, debounce input and preserve native 25-row ordering.
+  A selection must come from a returned page. Search text is not a selected ID;
+  hidden, readonly and disabled fields do not search or apply changes.
+- `InventoryHeaderEditor.tsx` applies native onchange on field commit. Unapplied
+  input blocks review and is not silently dropped when another field changes.
+  Reload, reconnect and close protect dirty edits with explicit discard.
+- Complete Save effects reuse the existing stock effect cards, including private
+  follower counts. Every ordered page and its original proof must be read before
+  Save is offered. Changed/failed pages hide the old review. One UUID is retained
+  durably before the first explicit Save; persistence failure never calls Save.
+- `InventoryHeaderRecovery.tsx` retains unknown outcomes after a lost connection,
+  permits only explicit exact-request retry and requires confirmation for Stop.
+  A Stop that loses to Save shows acceptance, never an undo claim. Accepted
+  generated references have bounded pages, and Finish rechecks their complete
+  native outcome through the existing recovery-retirement helper.
+- The notice reads the wider request union through `loadAnyStockWriteRecovery`
+  under the descendant cache key `['billing', 'reservation-recovery', uid,
+  'notice']`. Older order dialogs keep the narrower parent key/data contract.
+  Existing prefix invalidations refresh both without sharing incompatible data.
+  Account/transfer identity changes remount the editor rather than retaining the
+  prior account's controls.
+
+This is connected source, not accepted one-to-one presentation parity. HTML notes
+are edited as escaped source text, not an integrated rich-text editor. Date-time
+entry is explicitly UTC rather than the native account-local picker. Custom
+widgets currently use scalar controls; inspection of the installed native
+`stock_rescheduling_popover.js` confirms it also opens linked model/form actions,
+whose Qorlia destinations still need adapters. Root collections, chatter,
+followers, activities and package interfaces are not implemented by these scalar
+header controls. Existing stock-row/operation workflows are separate; header
+onchange can still affect linked rows, and those effects require full review.
+SPA-history navigation discard protection also needs implementation and browser
+verification; the current handlers protect explicit close/reload/reconnect and
+full-page unload, not every router transition. These gaps remain in the original
+parity goal, not excluded features.
+
+Component checks use the actual house controls, React Query and editor/recovery
+components with mocked services/storage. They cover explicit persistence-before-
+write, multipage effects, unknown-save remount/exact retry, Stop race semantics,
+reference retirement, dirty changes, native rules, safe HTML text, native choices,
+account identity, direct routing and cache separation. Automated axe checks on
+the loaded form are not a full accessibility audit. Real browser layout, keyboard
+and native HTTP/IndexedDB/multi-tab acceptance remain unverified. All 14 methods
+remain gateway-blocked; no build/server, review reopening or deployment occurs.
+Any later runtime verification must pin a matching candidate-80 addon/client and
+v2 review protocol on approved synthetic infrastructure. An older installed addon
+or hosted tester is not assumed to support these new source controls.
 
 ## Complete review before Save
 
@@ -76,9 +135,9 @@ competing pending-stock slot is introduced.
   UUID.
 
 Legacy stock dialogs deliberately fail closed on this new kind, rather than
-misrouting it as confirmation or clearing it. Their current global notice shows
-a recovery error for schema 9; its dedicated resume route and header editor are
-not yet implemented. There is no reachable new Save control in this checkpoint.
+misrouting it as confirmation or clearing it. The wider global notice now has a
+dedicated header-recovery source route, as described above. Its new Save controls
+remain unavailable on the closed gateway and existing hosted tester.
 Storage tests use an IndexedDB transaction double and mocked native transport,
 not a real browser/multi-tab/concurrency acceptance test. Native nonempty
 generated-reference coverage remains separate from client paging fixtures.
@@ -138,10 +197,11 @@ production model or permission was changed to make those assertions pass. The
 successful 150-case rerun verifies those corrected fixtures alongside the prior
 native suites; the failed packet remains retained.
 
-Current frontend checks pass: **1,792 Home cases/106 suites**, including 29
-Save/recovery client tests and 42 new header-recovery storage cases. The shared
+Current frontend checks pass: **1,837 Home cases/108 suites**, including 45 added
+header editor/field/routing/cache cases, 29 Save/recovery client tests and the
+earlier 42 header-recovery storage cases. The shared
 stock storage suite has 153 cases; the four form/edit/review/recovery client test
-files contain 137 cases. Library and actual recovery-test-source types, scoped
+files contain 137 cases. Library and actual changed-test-source types, scoped
 lint/format and 116 Python AST parses pass. Three temporary gateway stub checks verify that all 14 unfinished
 form/review/write routes remain blocked. Documentation checks cover 46 linked
 documents and 785 local links. These are not native HTTP or browser acceptance.

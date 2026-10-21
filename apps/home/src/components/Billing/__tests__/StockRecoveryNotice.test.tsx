@@ -9,9 +9,11 @@ import {
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { StockRecoveryNotice } from '../StockRecoveryNotice';
 import {
-  loadStockWriteRecovery,
+  loadAnyStockWriteRecovery,
+  type StoredStockRequest,
   type StockWriteRequest,
 } from '../stockReservationRecovery';
+import { headerRequest } from './inventoryHeaderFixture';
 import { request as cancellationRequest } from './stockCancellationPagedFixture';
 import { confirmationRequest } from './stockConfirmationFixture';
 import { request as pagedConfirmationRequest } from './stockConfirmationPagedFixture';
@@ -25,7 +27,7 @@ import { pagedValidationRequest } from './stockValidationPagedFixture';
 
 jest.mock('../stockReservationRecovery', () => ({
   ...jest.requireActual('../stockReservationRecovery'),
-  loadStockWriteRecovery: jest.fn(),
+  loadAnyStockWriteRecovery: jest.fn(),
 }));
 const mockPanel = jest.fn();
 const mockGlobalConfirmation = jest.fn();
@@ -35,6 +37,13 @@ const mockGlobalValidation = jest.fn();
 const mockGlobalCancellation = jest.fn();
 const mockGlobalReturn = jest.fn();
 const mockInventoryDetail = jest.fn();
+const mockHeaderRecovery = jest.fn();
+jest.mock('../InventoryHeaderRecovery', () => ({
+  InventoryHeaderRecovery: (props: { close: () => void }) => {
+    mockHeaderRecovery(props);
+    return <button onClick={props.close}>Close header recovery</button>;
+  },
+}));
 jest.mock('../InventoryTransferDetails', () => ({
   InventoryTransferDetails: (props: { close: () => void }) => {
     mockInventoryDetail(props);
@@ -89,7 +98,7 @@ jest.mock('../PagedStockConfirmationModal', () => ({
     return <button onClick={props.close}>Close global confirmation</button>;
   },
 }));
-let disk: StockWriteRequest | null;
+let disk: StoredStockRequest | null;
 jest.mock('../OrderDeliveriesPanel', () => ({
   OrderDeliveriesPanel: (props: {
     close: () => void;
@@ -113,7 +122,7 @@ jest.mock('../OrderDeliveriesPanel', () => ({
   },
 }));
 expect.extend(toHaveNoViolations);
-const load = jest.mocked(loadStockWriteRecovery);
+const load = jest.mocked(loadAnyStockWriteRecovery);
 const reconnect = jest.fn(),
   fallback = jest.fn();
 function show() {
@@ -136,6 +145,61 @@ beforeEach(() => {
   disk = returnRequest();
   load.mockImplementation(async () => disk);
   global.fetch = jest.fn();
+});
+it('resumes a schema-9 header save directly without inventing an order or confirmation action', async () => {
+  disk = headerRequest();
+  const view = show();
+  const open = await screen.findByRole('button', {
+    name: 'Open saved stock workflow',
+  });
+  expect(screen.getByText(/Transfer header save/)).toHaveTextContent(
+    'Inventory · Transfer #7',
+  );
+  fireEvent.click(open);
+  expect(mockHeaderRecovery.mock.calls.at(-1)![0]).toMatchObject({
+    uid: 3,
+    transferId: 7,
+  });
+  disk = null;
+  await act(async () => {
+    await view.client.invalidateQueries({
+      queryKey: ['billing', 'reservation-recovery', 3],
+    });
+  });
+  expect(
+    screen.getByRole('button', { name: 'Close header recovery' }),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close header recovery' }),
+  );
+  await waitFor(() => expect(fallback).toHaveBeenCalled());
+  expect(mockGlobalConfirmation).not.toHaveBeenCalled();
+  expect(mockPanel).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+});
+it('keeps the wider notice response out of the legacy order-recovery cache', async () => {
+  disk = headerRequest();
+  const view = show();
+  view.client.setQueryData(
+    ['billing', 'reservation-recovery', 3],
+    stockRequest(),
+  );
+  await screen.findByText(/Transfer header save/);
+  expect(
+    view.client.getQueryData(['billing', 'reservation-recovery', 3]),
+  ).toEqual(stockRequest());
+  expect(
+    view.client.getQueryData(['billing', 'reservation-recovery', 3, 'notice']),
+  ).toEqual(headerRequest());
+  disk = null;
+  await act(async () => {
+    await view.client.invalidateQueries({
+      queryKey: ['billing', 'reservation-recovery', 3],
+    });
+  });
+  await waitFor(() =>
+    expect(screen.queryByText(/Transfer header save/)).not.toBeInTheDocument(),
+  );
 });
 it('pins global return recovery and opens the real returned transfer without going through Sales', async () => {
   disk = { ...returnRequest(), order_id: false };

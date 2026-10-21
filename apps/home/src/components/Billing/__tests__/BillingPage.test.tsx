@@ -45,7 +45,10 @@ import {
   getBankHistory,
   getInventoryTransfers,
 } from '../billingService';
-import { loadStockWriteRecovery } from '../stockReservationRecovery';
+import {
+  loadStockWriteRecovery,
+  loadAnyStockWriteRecovery,
+} from '../stockReservationRecovery';
 import { correctionWorkflowFixture } from './correctionWorkflowFixture';
 import { creditWorkflowFixture } from './creditWorkflowFixture';
 import { customerStatementFixture } from './customerStatementFixture';
@@ -63,6 +66,7 @@ import { returnRequest } from './stockReturnPagedFixture';
 jest.mock('../stockReservationRecovery', () => ({
   ...jest.requireActual('../stockReservationRecovery'),
   loadStockWriteRecovery: jest.fn(),
+  loadAnyStockWriteRecovery: jest.fn(),
 }));
 
 jest.mock('../billingService', () => ({
@@ -190,6 +194,7 @@ describe('Billing workspace', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(loadStockWriteRecovery).mockResolvedValue(null);
+    jest.mocked(loadAnyStockWriteRecovery).mockResolvedValue(null);
     (useUserPrivilege as jest.Mock).mockReturnValue({
       userPrivileges: [],
       error: null,
@@ -210,13 +215,13 @@ describe('Billing workspace', () => {
     ]);
   });
   it('shows saved stock recovery on the default invoice tab without requiring an order search', async () => {
-    jest.mocked(loadStockWriteRecovery).mockResolvedValue(returnRequest());
+    jest.mocked(loadAnyStockWriteRecovery).mockResolvedValue(returnRequest());
     show();
     await screen.findByRole('region', { name: 'Saved stock request' });
     expect(
       screen.getByRole('tab', { name: 'Invoices and credit notes' }),
     ).toHaveAttribute('aria-selected', 'true');
-    expect(loadStockWriteRecovery).toHaveBeenCalledWith(3);
+    expect(loadAnyStockWriteRecovery).toHaveBeenCalledWith(3);
     expect(getChargeOrders).not.toHaveBeenCalled();
     expect(
       screen.getByRole('button', { name: 'Open saved stock workflow' }),
@@ -227,6 +232,7 @@ describe('Billing workspace', () => {
     show();
     await screen.findByLabelText(/Billing username/);
     expect(loadStockWriteRecovery).not.toHaveBeenCalled();
+    expect(loadAnyStockWriteRecovery).not.toHaveBeenCalled();
   });
   it('selects only checked rows and opens batch reports without automatically generating a PDF', async () => {
     (getInvoices as jest.Mock).mockResolvedValue([

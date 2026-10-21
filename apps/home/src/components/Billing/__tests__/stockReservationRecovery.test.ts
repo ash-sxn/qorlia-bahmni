@@ -17,6 +17,7 @@ import {
   clearStockOperationRecovery,
   loadStockOperationRecovery,
   loadStockWriteRecovery,
+  loadAnyStockWriteRecovery,
   persistStockOperationRecovery,
   clearStockConfirmationRecovery,
   loadStockConfirmationRecovery,
@@ -274,6 +275,7 @@ describe('stored Inventory header Save recovery', () => {
     await persistInventoryStoredSaveRecovery(3, exact);
     expect(fake.records.get(3)).toEqual(inventoryEnvelope(exact));
     expect(await loadInventoryStoredSaveRecovery(3)).toEqual(exact);
+    expect(await loadAnyStockWriteRecovery(3)).toEqual(exact);
     expect(await loadInventoryStoredSaveRecovery(4)).toBeNull();
     await persistInventoryStoredSaveRecovery(3, exact);
     state.session.uid = 4;

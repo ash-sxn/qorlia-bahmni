@@ -9,6 +9,7 @@ import {
   InventoryTransferLoad,
   PagedStockOperationSelection,
 } from './billingService';
+import { InventoryHeaderEditor } from './InventoryHeaderEditor';
 import { PagedStockCancellationModal } from './PagedStockCancellationModal';
 import { PagedStockConfirmationModal } from './PagedStockConfirmationModal';
 import { PagedStockOperationEditor } from './PagedStockOperationEditor';
@@ -58,6 +59,7 @@ function TransferDetails(
     | 'validation'
     | 'cancellation'
     | 'return'
+    | 'header'
     | PagedStockOperationSelection
     | null
   >(null);
@@ -103,7 +105,15 @@ function TransferDetails(
         }
         reload={() => setRevision((value) => value + 1)}
       />
-      {workflow === 'return' ? (
+      {workflow === 'header' ? (
+        <InventoryHeaderEditor
+          uid={props.uid}
+          transferId={props.transferId}
+          reconnect={props.reconnect}
+          returnFocus={returnFocus}
+          close={closeWorkflow}
+        />
+      ) : workflow === 'return' ? (
         <PagedStockReturnModal
           uid={props.uid}
           orderId={false}
@@ -155,7 +165,8 @@ function ReadTransfer({
       | 'preparation'
       | 'validation'
       | 'cancellation'
-      | 'return',
+      | 'return'
+      | 'header',
   ) => void;
   openOperation: (moveId: number, operationId: number | false) => void;
 }) {
@@ -213,7 +224,8 @@ function DetailPages({
       | 'preparation'
       | 'validation'
       | 'cancellation'
-      | 'return',
+      | 'return'
+      | 'header',
   ) => void;
   openOperation: (moveId: number, operationId: number | false) => void;
 }) {
@@ -367,6 +379,13 @@ function DetailPages({
         onClick={reload}
       >
         Reload inventory details
+      </Button>
+      <Button
+        kind="tertiary"
+        disabled={fetching}
+        onClick={() => openWrite('header')}
+      >
+        Edit or recover transfer header
       </Button>
       <Button
         kind="tertiary"

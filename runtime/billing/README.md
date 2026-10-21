@@ -9,9 +9,10 @@ pages and durable Stop. Candidate 80's 150-case native check passes, with 116
 matching Python hashes, 134 preserved guards/independent committed tables and
 214 matching native responses accepted by the actual client with mocked transport.
 Exact header-save recovery storage shares the existing account/database-bound
-stock slot. The React header editor and dedicated pending-request UI remain
-unfinished, all 14 form/review/write methods stay gateway-blocked, and
-review/deployment stay closed.
+stock slot. React header editing and dedicated recovery now have connected source
+and direct Inventory/Billing routes. Native rich-text, local-time/custom widgets,
+collections and actual browser acceptance remain unfinished. All 14 methods stay
+gateway-blocked, and review/deployment stay closed.
 
 Earlier backend source: [saved-transfer header onchange and effect inspection](STOCK_INVENTORY_EDIT.md)
 replays the real native origin and rolls back linked writes. The 116-case native

@@ -19,6 +19,7 @@ const models: Record<string, string> = {
   'stock.warehouse.orderpoint': 'Replenishment rule',
   'product.product': 'Product',
   'mail.message': 'Audit message',
+  'mail.followers': 'Followers',
   'mail.mail': 'Queued message',
   'mail.activity': 'Activity',
   'mail.notification': 'Notification',
@@ -85,7 +86,8 @@ export function StockConfirmationEffects({
     | 'preparation'
     | 'operation'
     | 'return creation'
-    | 'cancellation';
+    | 'cancellation'
+    | 'header save';
 }) {
   const validation = 'private_effect_counts' in effects;
   const privateCounts = validation
