@@ -2,6 +2,99 @@
 
 [README](../../README.md) · [Billing](README.md) · [Draft form](STOCK_INVENTORY_FORM.md) · [Inventory](STOCK_INVENTORY_WORKSPACE.md)
 
+## Candidate 84 creation recovery API source checkpoint
+
+[The recovery adapter](qorlia_billing_ui/models/stock_inventory_create_recovery.py)
+adds three named source methods and matching typed client calls, not a public
+creation writer or an enabled gateway:
+
+| Native source method | Typed client | Purpose |
+| --- | --- | --- |
+| `qorlia_inventory_create_status` | `getInventoryCreationStatus` | Compact unknown/accepted/stopped outcome without requiring a returned transfer ID |
+| `qorlia_inventory_create_references` | `getInventoryCreationReferences` | Bounded, version-pinned current-access reference pages |
+| `qorlia_inventory_create_stop` | `stopInventoryCreation` | Durable Stop, preserving prior acceptance rather than undoing creation |
+
+The original signed seed, ordered edits, review bindings and UUID are retained
+exactly. Existing journal database/actor/company/body checks apply. Acceptance
+does not vanish when a document is deleted or becomes unreadable. Before an ID
+or name is returned, the adapter checks current native model, record, label-field
+and active-company access. An unavailable reference contains false ID/name and
+an explicit unavailable flag, not a hidden raw ID. The accepted state's original
+value is historical, not a claim about the current document state. Unknown and
+stopped outcomes have no transfer, state or reference count. Complete reference
+pages have a server-secret-bound version; changing current labels or access
+requires restarting their pages. There is no generic receipt CRUD interface.
+
+The typed client validates exact request/response keys, original UUID, terminal
+flags, created-state vocabulary, root privacy and bounded complete reference
+pages. It neither invents a saved ID nor retries Stop after a lost response.
+No new Save/review API, browser persistence schema or React Create consumer is
+included. All three new methods and their private helpers remain gateway-blocked.
+
+The new native child-reference cases found a real read-boundary issue: native
+default-child onchange updates a product's audit author without changing its
+business values. The failed first run and separate diagnostic logs are retained.
+Native JSONB hash reconstruction, restoring only `write_uid`, exactly matches
+the original product row; no other protected table changed in the diagnostic.
+One earlier diagnostic reconstruction attempt failed in its own Python-to-JSON
+representation; the successful diagnostic retains native PostgreSQL JSONB text
+instead of reserializing values through Python. Neither diagnostic is a passing
+product regression.
+
+The shared read sandbox now checks all 134 tables for business changes inside
+the callback-isolated rollback boundary, then verifies every complete raw row,
+including all audit fields, is restored outside it. Native preparation uses the
+same business-value distinction inside that boundary. This is not permission to
+persist audit changes, omit tables, accept changed business values, consume
+sequence references in preview or reset counters. Explicit positive audit-only
+rollback and negative business-write cases retain full outside fingerprints and
+callback checks; actual default-child recovery cases exercise the native hook.
+
+The second run was stopped on two test-fixture errors, not accepted. Odoo's
+native `assertRaises` wrapper requires a single exception class, so each invalid
+paging case now states its exact expected exception instead of a tuple. The
+callback check also drains the fixture's earlier native tracking before taking
+its baseline, matching the read boundary's documented initial flush; callbacks
+created inside the sandbox still must not escape. The paging cases, native child
+rows, all callback objects and full outside-row checks remain in the selection.
+
+The complete Home suite passes **1,956 cases across 112 suites**. Three focused
+service suites pass 121 cases. Source and actual new test-source type checks,
+scoped lint/format, three gateway stub cases and contributor links pass. The
+Home run retains its existing undefined-query-data warning in a passing
+reservation-recovery fixture; no assertion or warning was suppressed. The first
+one-off type-check command had incompatible declaration-map flags; its corrected
+actual-source invocation reports no diagnostics. These frontend checks use
+test doubles and do not accept native HTTP, storage or browser behavior.
+
+The corrected native regression completed **202 cases, zero failures, errors or
+skips**: 16 new recovery/read-boundary cases and the unchanged 186-case selection.
+All **124 Python source hashes** match both the frozen worker and current source.
+The actual typed client accepts **309 recorded native responses across 17 named
+methods**, checking complete request envelopes and returned values with mocked
+transport. This includes ten creation-status, twelve reference-page and four
+Stop responses, not a real HTTP or browser session.
+
+Independent committed SQL counts and full-row hashes for all **134 protected
+tables** match before and after the run. A fresh independent query confirms the
+journal table is absent. The no-HTTP worker exited zero and was removed, with
+read-only source and no exposed ports. Mandatory analytics and SMS remained
+enabled; installed addon metadata remains `16.0.1.49.0`. Test-only journal DDL
+was rolled back, not installed in the shared database.
+
+Completed native log SHA-256:
+`076d47d5f18a4d2d155e1f6cf3ee227be76e61569ccdc1166c9354189d113827`.
+Typed client SHA-256:
+`a22ab015d3c84cda6185e7b510bfc3870b2ee4d6e8ebdabaa5cb4a1a1f3b3cf8`.
+Independent 134-table SQL SHA-256:
+`3b2b546a4afffdb312cf3d354d2214292c137868f6d6e74b6bba4f3b95a85139`.
+
+Source-83 committed-race evidence below is separate, not a source-84 race rerun.
+Complete sequence-safe review, public Save/proof, durable client/UI creation,
+child-form parity and HTTP/browser/release acceptance remain unfinished. Review,
+public access, installed runtime and deployment remain unchanged. No frontend
+build/server, native HTTP/browser acceptance, tunnel or purchase is included.
+
 ## Committed native recovery and concurrency, 21 October 2026
 
 [The opt-in native harness](../../scripts/test-inventory-creation-journal-concurrency.py)
@@ -299,8 +392,10 @@ transfer ID before native create has returned that ID.
 Source 83 above implements the private form of the protected request anchor:
 actor, request UUID/digest, original company scope, accepted/stopped outcome and
 native reference identities. It is not an ordinary ORM model or permission to
-upgrade the installed database. Public writer/proof integration and real
-committed/concurrent acceptance remain unfinished. Avoid
+upgrade the installed database. Public writer/proof integration remains
+unfinished. The committed source-83 harness above separately proves the three
+private-journal Save/Stop races and fresh-cursor recovery; it does not prove a
+public creation writer or source-84 current-access responses. Avoid
 retaining the full seed, notes or payload merely to identify a retry. A journal
 must survive ordinary business-record deletion and must not be editable through
 the native generic UI/RPC. The source-83 tests cover the private schema,
@@ -334,13 +429,31 @@ over remote dispatch. `odoo.service.model.retrying` rolls back/resets the native
 environment and retries recognized concurrency `OperationalError` codes,
 including SQLSTATE `40001`, up to five attempts. It converts ordinary integrity
 errors into validation errors instead. These source facts guide the private
-journal implementation; its implementation evidence is the source-83 checkpoint
-above, not proof of a successful real concurrent-create test. `TransactionCase`
+journal implementation. Source inspection alone is not concurrency proof; the
+separate committed source-83 harness above supplies that bounded evidence.
+`TransactionCase`
 uses one class cursor
 and per-test savepoints and closes without committing, so a passing class alone
 does not prove durable recovery across independent committed requests.
 
 ### Sequence boundary found in the installed source
+
+Read-only inspection of the installed `web/static/src/legacy/js/views/basic/basic_model.js`
+(`save`, around lines 1110 to 1215) confirms that a new form serializes all its
+prepared values and x2many commands, removes the ID, calls native `create` once
+on Save, then reloads the actual saved record. `form_controller.js` delegates to
+record Save through `basic_relational_model.js`. No stock-specific Save override
+was found in the inspected `stock/static/src` sources. The browser's
+`saveInProgress` flag prevents overlapping calls in that open client; it is not
+durable lost-response recovery across clients. The separate journal supplies
+that additional safety boundary.
+
+The next creation review must preserve this native boundary: review the complete
+native prepared form without allocating a root identity/reference, then perform
+one actual native creation on Save. Any review of prepared values must be named
+honestly, not described as an already executed creation-effect simulation. These
+source observations guide the remaining implementation; they are not a completed
+review/proof/writer or frontend acceptance checkpoint.
 
 Installed native `stock.picking.create` calls `sequence_id.next_by_id()` before
 assigning scheduling/autoconfirmation/followers. Installed

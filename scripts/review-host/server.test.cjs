@@ -207,6 +207,10 @@ test('review gate protects UI, clinical API and named Billing actions with isola
   for (const method of ['qorlia_return_paged_unknown', 'qorlia_return_paged_preview', '_qorlia_return_paged_preview', 'qorlia_inventory_form_load', 'qorlia_inventory_form_choices', 'qorlia_inventory_draft_load', 'qorlia_inventory_draft_onchange', 'qorlia_inventory_draft_choices', '_qorlia_inventory_draft_prepare', '_qorlia_inventory_draft_replay_values', '_qorlia_inventory_create_native', '_qorlia_inventory_creation_journal_ready', '_qorlia_inventory_creation_journal_setup', '_qorlia_inventory_creation_request', '_qorlia_inventory_creation_result', '_qorlia_inventory_creation_journal_read', '_qorlia_inventory_create_status', '_qorlia_inventory_creation_journal_apply', '_qorlia_inventory_create_once', '_qorlia_inventory_create_stop', 'qorlia_inventory_edit_load', 'qorlia_inventory_edit_onchange', 'qorlia_inventory_edit_choices', 'qorlia_inventory_edit_effects', 'qorlia_inventory_edit_save_review', 'qorlia_inventory_edit_save', 'qorlia_inventory_edit_save_status', 'qorlia_inventory_edit_save_references', 'qorlia_inventory_edit_save_stop', 'qorlia_inventory_unknown', 'search_read'])
     assert.equal((await rpc(`/web/dataset/call_kw/stock.picking/${method}`, allCookies,
       {model:'stock.picking',method,args:[],kwargs:{}})).status,404);
+  for (const method of ['qorlia_inventory_create_status', 'qorlia_inventory_create_references', 'qorlia_inventory_create_stop',
+    '_qorlia_inventory_creation_recovery', '_qorlia_inventory_creation_reference_labels', '_qorlia_inventory_creation_public_status'])
+    assert.equal((await rpc(`/web/dataset/call_kw/stock.picking/${method}`, allCookies,
+      {model:'stock.picking',method,args:[],kwargs:{}})).status,404);
   for (const [model, method] of [['stock.picking', 'action_cancel'], ['stock.move', '_action_cancel'],
     ['stock.picking', 'qorlia_cancellation_paged_unknown'], ['stock.picking', 'qorlia_cancellation_paged_preview'],
     ['stock.picking', '_qorlia_cancellation_execute'], ['stock.picking', 'button_validate'], ['stock.immediate.transfer', 'process'],

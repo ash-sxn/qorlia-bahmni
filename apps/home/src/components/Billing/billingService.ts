@@ -4209,6 +4209,141 @@ export type InventoryTransferDetailPage = InventoryTransferLoad & {
     | { section: 'operations'; rows: OrderTransfer['operations'] }
   );
 
+export interface InventoryCreationRequest {
+  seed: InventoryDraftSeed;
+  edits: InventoryHeaderEdit[];
+  review_version: string;
+  review_complete_token: string;
+  request_key: string;
+}
+export interface InventoryCreationStatus {
+  request_key: string;
+  accepted: boolean;
+  stopped: boolean;
+  state_after: 'draft' | 'waiting' | 'confirmed' | 'assigned' | false;
+  reference_count: number;
+  transfer:
+    | {
+        model: 'stock.picking';
+        id: number | false;
+        name: string | false;
+        available: boolean;
+      }
+    | false;
+}
+export function checkedInventoryCreationRequest(
+  value: InventoryCreationRequest,
+): InventoryCreationRequest {
+  if (
+    !confirmationKeys(value, [
+      'seed',
+      'edits',
+      'review_version',
+      'review_complete_token',
+      'request_key',
+    ]) ||
+    !stockVersion(value.review_version) ||
+    !stockVersion(value.review_complete_token) ||
+    typeof value.request_key !== 'string' ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+      value.request_key,
+    )
+  )
+    throw new Error('Keep the exact original transfer creation request.');
+  const exact = {
+    seed: checkedInventoryDraftSeed(value.seed),
+    edits: checkedInventoryHeaderEdits(value.edits),
+    review_version: value.review_version,
+    review_complete_token: value.review_complete_token,
+    request_key: value.request_key,
+  };
+  if (JSON.stringify(exact).length > 4_000_000)
+    throw new Error('Keep a bounded original transfer creation request.');
+  return exact;
+}
+async function inventoryCreationRecovery(
+  action: 'status' | 'stop',
+  request: InventoryCreationRequest,
+): Promise<InventoryCreationStatus> {
+  const exact = checkedInventoryCreationRequest(request);
+  const data = await stockCall<InventoryCreationStatus>(
+    `qorlia_inventory_create_${action}`,
+    { payload: exact },
+  );
+  if (
+    !confirmationKeys(data, [
+      'request_key',
+      'accepted',
+      'stopped',
+      'state_after',
+      'reference_count',
+      'transfer',
+    ]) ||
+    data.request_key !== exact.request_key ||
+    typeof data.accepted !== 'boolean' ||
+    typeof data.stopped !== 'boolean' ||
+    (data.accepted && data.stopped) ||
+    (action === 'stop' && !data.accepted && !data.stopped) ||
+    !stockCount(data.reference_count) ||
+    (data.accepted
+      ? !['draft', 'waiting', 'confirmed', 'assigned'].includes(
+          String(data.state_after),
+        ) ||
+        data.reference_count < 1 ||
+        data.transfer === false ||
+        !confirmationKeys(data.transfer, [
+          'model',
+          'id',
+          'name',
+          'available',
+        ]) ||
+        data.transfer.model !== 'stock.picking' ||
+        !validConfirmationReference('new:stock.picking:0', data.transfer) ||
+        (data.transfer.available && !data.transfer.name)
+      : data.state_after !== false ||
+        data.reference_count !== 0 ||
+        data.transfer !== false)
+  )
+    throw new Error(
+      'The creation outcome could not be verified. Keep the original request and check its status.',
+    );
+  return data;
+}
+export const getInventoryCreationStatus = (request: InventoryCreationRequest) =>
+  inventoryCreationRecovery('status', request);
+export const stopInventoryCreation = (request: InventoryCreationRequest) =>
+  inventoryCreationRecovery('stop', request);
+export async function getInventoryCreationReferences(
+  request: InventoryCreationRequest,
+  after = 0,
+  version: string | false = false,
+  limit = 50,
+): Promise<PagedStockConfirmationReferences> {
+  const exact = checkedInventoryCreationRequest(request);
+  if (
+    !stockCount(after) ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !(version === false || stockVersion(version)) ||
+    (after > 0 && version === false)
+  )
+    throw new Error(
+      'Use bounded creation reference pages and their original version.',
+    );
+  return checkedStockReferencePage(
+    await stockCall<PagedStockConfirmationReferences>(
+      'qorlia_inventory_create_references',
+      { payload: exact, after, version, limit },
+    ),
+    exact.request_key,
+    after,
+    version,
+    limit,
+    'inventory creation',
+  );
+}
+
 export interface InventoryStoredSaveRequest extends InventoryStoredSelection {
   review_version: string;
   review_complete_token: string;
@@ -6318,7 +6453,8 @@ function checkedStockReferencePage(
     | 'validation step'
     | 'return'
     | 'cancellation'
-    | 'inventory save',
+    | 'inventory save'
+    | 'inventory creation',
 ) {
   if (
     !confirmationKeys(data, [

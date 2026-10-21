@@ -5,6 +5,15 @@
 Latest saved-transfer source: [native onchange and complete effect inspection](STOCK_INVENTORY_EDIT.md).
 It is separate from the unsaved draft path below and is not save approval.
 
+The [creation recovery source APIs](STOCK_INVENTORY_CREATE.md#candidate-84-creation-recovery-api-source-checkpoint)
+add current-access status/reference/Stop and matching typed calls. The 202-case
+native regression passes with 124 matching Python files, 134 independently
+preserved tables and no journal table left installed. The actual typed client
+accepts 309 native responses using mocked transport, not HTTP/browser acceptance.
+The shared read sandbox permits audit-only native work inside rollback but
+verifies full raw-row preservation afterward.
+No creation writer/React consumer or new access is enabled.
+
 The [committed creation recovery harness](STOCK_INVENTORY_CREATE.md#committed-native-recovery-and-concurrency-21-october-2026)
 passes three real two-connection Save/Stop races and fresh-cursor history after
 committed native transfer deletion on unchanged source 83. This uses only a

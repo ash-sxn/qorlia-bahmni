@@ -1,5 +1,19 @@
 # Bahmni workflow parity ledger
 
+## 21 October creation recovery API source checkpoint
+
+[Candidate 84](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-84-creation-recovery-api-source-checkpoint)
+adds three named status/reference/Stop source APIs and typed calls with current
+model/record/field/company access checks, without a creation writer or React
+consumer. It also fixes native audit-only read/onchange rejection by enforcing
+business invariance inside rollback and complete raw-row preservation afterward.
+The corrected 202-case native regression passes with 124 matching Python files,
+134 independently preserved tables and no journal table left installed. The
+actual typed client accepts 309 native responses across 17 methods with mocked
+transport, not HTTP/browser acceptance. Earlier failed runs and diagnostics are
+retained separately. Source-83 committed-race proof stays separate. Creation
+review/Save/client/UI remain unfinished; gateway/review remain closed.
+
 ## 21 October committed native creation recovery and concurrency
 
 [The opt-in harness](../runtime/billing/STOCK_INVENTORY_CREATE.md#committed-native-recovery-and-concurrency-21-october-2026)

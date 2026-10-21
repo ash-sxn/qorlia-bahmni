@@ -1,5 +1,15 @@
 # New-team handover: Qorlia engineering
 
+Latest source checkpoint: [creation recovery APIs and typed calls](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-84-creation-recovery-api-source-checkpoint)
+add current-access status/reference/Stop, not a creation writer or React consumer.
+The corrected 202-case native regression passes with 124 matching Python files,
+134 independently preserved tables and no journal table left installed. The
+actual typed client accepts 309 native responses using mocked transport, not
+HTTP/browser acceptance. Its shared read boundary
+retains complete raw-row preservation after rollback, while permitting audit-only
+native work inside it. Source-83 committed-race proof is separate; review, deployment and
+contributor starter-task bases are unchanged.
+
 Newest native evidence: [committed creation recovery and concurrency](../runtime/billing/STOCK_INVENTORY_CREATE.md#committed-native-recovery-and-concurrency-21-october-2026)
 passes three real two-connection Save/Stop races and fresh-cursor history after
 committed native deletion. It uses unchanged source 83, not a new public writer.

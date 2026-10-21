@@ -19,7 +19,7 @@ class StockInventoryCreate(models.Model):
 
         def prepare():
             tables = self._qorlia_inventory_saved_tables()
-            before = self._qorlia_confirmation_stamp(tables)
+            before = self._qorlia_confirmation_stamp(tables, semantic=True)
             model, values, domains, warning = self._qorlia_inventory_draft_replay_values(seed, edits)
             # Default child relations arrive as JSON [id, label] pairs, not ORM relation IDs.
             native_values = self._qorlia_inventory_merge_fields(model, model.browse(), {}, values)
@@ -31,7 +31,7 @@ class StockInventoryCreate(models.Model):
             current = self._qorlia_inventory_draft_snapshot(model, seed, values, domains, warning, edits)
             form._check_company()
             self.env.cr.flush()
-            if self._qorlia_confirmation_stamp(tables) != before:
+            if self._qorlia_confirmation_stamp(tables, semantic=True) != before:
                 raise UserError('Preparing the native transfer changed stored data. Nothing was created.')
             return current, changes
 

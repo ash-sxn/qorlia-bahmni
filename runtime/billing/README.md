@@ -3,6 +3,13 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Latest source checkpoint: [creation recovery APIs and typed calls](STOCK_INVENTORY_CREATE.md#candidate-84-creation-recovery-api-source-checkpoint)
+add current-access status/reference/Stop without a creation writer or UI consumer.
+The 202-case native check passes with 124 matching Python files, 134 independently
+preserved tables and no journal table left installed. The actual typed client
+accepts 309 native responses with mocked transport, not HTTP/browser acceptance.
+Read rollback retains full raw-row preservation; gateway/review/deployment stay closed.
+
 Newest native evidence: [committed creation recovery and concurrency](STOCK_INVENTORY_CREATE.md#committed-native-recovery-and-concurrency-21-october-2026)
 passes three actual two-connection Save/Stop races and committed deleted-record
 history on unchanged source 83. Only a disposable synthetic copy received commits

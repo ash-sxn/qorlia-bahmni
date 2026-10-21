@@ -57,4 +57,5 @@ from . import test_stock_inventory_save
 from . import test_stock_inventory_save_write
 from . import test_stock_inventory_create
 from . import test_stock_inventory_create_journal
+from . import test_stock_inventory_create_recovery
 from . import test_stock_request_stop

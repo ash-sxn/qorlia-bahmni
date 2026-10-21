@@ -170,8 +170,9 @@ class StockInventoryForm(models.Model):
     def _qorlia_inventory_form_read(self, action):
         cr = self.env.cr
         cr.flush()
-        tables = self._qorlia_return_paged_tables()
+        tables = self._qorlia_inventory_saved_tables()
         before = self._qorlia_confirmation_stamp(tables)
+        business_before = self._qorlia_confirmation_stamp(tables, semantic=True)
         callbacks = {name: getattr(cr, name) for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}
         try:
             for name in callbacks:
@@ -179,8 +180,12 @@ class StockInventoryForm(models.Model):
             with closing(cr.savepoint()):
                 result = action()
                 cr.flush()
-                if self._qorlia_confirmation_stamp(tables) != before:
+                if self._qorlia_confirmation_stamp(tables, semantic=True) != business_before:
                     raise UserError('Reading the native transfer form changed stored data. Nothing was saved.')
+            # Native read/onchange can recompute identical business values with a new audit author.
+            self.env.invalidate_all()
+            if self._qorlia_confirmation_stamp(tables) != before:
+                raise UserError('The native form rollback did not restore every stored field. Nothing was accepted.')
             return result
         finally:
             for name, original in callbacks.items():

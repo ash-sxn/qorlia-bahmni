@@ -2,6 +2,18 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Creation recovery source APIs checkpoint, 21 October 2026
+
+[Candidate 84](STOCK_INVENTORY_CREATE.md#candidate-84-creation-recovery-api-source-checkpoint)
+adds three source status/reference/Stop methods and matching typed calls, not a
+creation writer, persistence schema or React consumer. Current access controls
+hide unavailable IDs/names without discarding original acceptance. The corrected
+202-case native regression passes with 124 matching Python files, 134 independently
+preserved tables and no journal table left installed. The actual typed client
+accepts 309 native responses using mocked transport, not HTTP/browser acceptance.
+Full raw-row preservation follows read rollback. Source-83 committed-race evidence
+stays separate. Creation review/Save/client/UI remain unfinished. Gateway/review remain closed.
+
 ## Committed creation recovery and concurrency, 21 October 2026
 
 [The native harness](STOCK_INVENTORY_CREATE.md#committed-native-recovery-and-concurrency-21-october-2026)

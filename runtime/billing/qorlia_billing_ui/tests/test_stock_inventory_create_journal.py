@@ -18,8 +18,7 @@ from ..hooks import post_init_hook
 from ..models.stock_inventory_create_journal import _TABLE, _PRIMARY_KEY
 
 
-@tagged('post_install', '-at_install')
-class StockInventoryCreateJournalTest(inventory.StockInventoryFixture, TransactionCase):
+class StockInventoryCreateJournalFixture(inventory.StockInventoryFixture):
     api = inventory.StockInventoryConfirmationTest.api
 
     @classmethod
@@ -52,6 +51,9 @@ class StockInventoryCreateJournalTest(inventory.StockInventoryFixture, Transacti
         return self.env['stock.picking']._qorlia_confirmation_stamp(
             self.env['stock.picking']._qorlia_inventory_saved_tables())
 
+
+@tagged('post_install', '-at_install')
+class StockInventoryCreateJournalTest(StockInventoryCreateJournalFixture, TransactionCase):
     def test_schema_setup_is_privileged_idempotent_and_not_an_orm_record_model(self):
         with self.assertRaises(AccessError):
             self.api()._qorlia_inventory_creation_journal_setup()
