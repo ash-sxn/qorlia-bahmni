@@ -2,6 +2,76 @@
 
 [README](../../README.md) · [Billing](README.md) · [Draft form](STOCK_INVENTORY_FORM.md) · [Inventory](STOCK_INVENTORY_WORKSPACE.md)
 
+## Committed native recovery and concurrency, 21 October 2026
+
+[The opt-in native harness](../../scripts/test-inventory-creation-journal-concurrency.py)
+now verifies committed history and real two-connection races on unchanged
+source 83. It is not a `TransactionCase`, a mocked journal lookup or an HTTP test.
+It refuses optimized Python, HTTP-enabled startup, an unapproved database-name
+shape or a missing exact database opt-in. An operator must provision a disposable
+synthetic database copy whose name matches `qorliaqa_create_journal_YYYYMMDD_rN`
+and set `QORLIA_COMMITTED_JOURNAL_TEST` to that exact name. This script commits
+test schema, users and business records in that copy. Never point it at an
+ordinary development, shared-demo or hospital database.
+
+It is a manual operator test, not part of ordinary local Python or Jest. Start
+the matching native Odoo shell with private configuration, `--no-http`, the
+disposable database selected and the exact opt-in environment variable set.
+Within that shell, run the repository script with `runpy.run_path`, passing
+`init_globals={'env': env}` and `run_name='__main__'`. The operator must archive
+the completed evidence and remove only that verified disposable copy afterward.
+Do not change the name guards, opt-in, source assertions or native permissions
+to run it on an existing shared database.
+
+Each worker opens an independent repeatable-read cursor and reads the unknown
+request before the first action. The harness wraps the real journal read only
+to hold the first terminal outcome uncommitted, and wraps native creation only
+to count calls while delegating to the actual implementation. PostgreSQL
+`pg_blocking_pids` must observe the second connection waiting on the first.
+Releasing the first commit causes a real immediate-key collision in the second
+transaction, actual SQLSTATE `40001`, and the installed native `retrying` loop
+rolls back/resets and starts a fresh attempt. No lookup, native result or SQL
+failure is fabricated, and no reference sequence is reset.
+
+| First action | Competing action | Committed result | Actual native creations |
+| --- | --- | --- | --- |
+| Save | Save | Both recover the same accepted outcome | 1 |
+| Stop | Save | Both recover the same stopped outcome | 0 |
+| Save | Stop | Both recover accepted; Stop does not undo creation | 1 |
+
+All three races pass: the first worker runs once, the second twice, with exactly
+one observed `40001` retry per race. Fresh committed cursors then check status,
+Save and Stop. Both created transfers are deleted through the actual native ORM
+and committed. Further fresh cursors still recover the original exact history
+without another native creation. Changed-body reuse rejects. Independent SQL
+confirms two accepted journal rows, one stopped row, no pending row and no
+remaining transfer matching the accepted IDs. Mandatory analytics and SMS stay
+enabled; installed addon metadata stays 49, with all 122 unchanged source hashes
+matching source 83. This supplements, not reruns or replaces, the 186-case
+rollback regression below.
+
+The one-off worker used read-only source/harness mounts, no HTTP and no exposed
+ports, exited zero and was removed. The existing synthetic source database has
+independently unchanged counts/full-row fingerprints for all 134 protected
+tables and no journal table. Only the disposable copy received committed schema
+and fixture data. Its final state was archived with a validated native dump
+before removing that exact database; the archive and complete log are private.
+No installed shared runtime upgrade, frontend build/server, review reopening,
+public deployment or purchase was made.
+
+Harness SHA-256:
+`c853cabb8f41afdd3e654804cbda554fb0bc52fe8b2a6f13de25fcf6ef3d9acb`.
+Completed native log SHA-256:
+`91b15c29599cad095313ec957c0cb1f259f9553b3cdd23b4ff5478b51eb852c9`.
+
+Remaining: sequence-safe complete creation review, public proof/Save/status/
+reference/Stop APIs with current access rules, durable client/UI integration,
+child-form and other native parity, HTTP/browser/release checks and hospital-scale
+contention. The three bounded races are not a load test or public creation-proof
+acceptance. Proof-shaped values here remain opaque private-journal bindings.
+Create/gateway/review stay disabled. No frontend tests/types/build were rerun;
+no frontend or addon implementation changed in this harness checkpoint.
+
 ## Candidate 83 private request journal source checkpoint
 
 [The private journal](qorlia_billing_ui/models/stock_inventory_create_journal.py)

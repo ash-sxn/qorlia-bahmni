@@ -1,5 +1,13 @@
 # New-team handover: Qorlia engineering
 
+Newest native evidence: [committed creation recovery and concurrency](../runtime/billing/STOCK_INVENTORY_CREATE.md#committed-native-recovery-and-concurrency-21-october-2026)
+passes three real two-connection Save/Stop races and fresh-cursor history after
+committed native deletion. It uses unchanged source 83, not a new public writer.
+Only a disposable synthetic copy received commits and was archived/removed;
+the existing source database is independently unchanged. Full creation review,
+public APIs, client/UI and HTTP/browser acceptance remain. Review, deployment
+and contributor starter bases stay unchanged.
+
 Current backend source: [private creation request journal](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-83-private-request-journal-source-checkpoint)
 adds atomic scoped recovery independent of a deleted transfer. Its 186-case
 native regression passes with 122 matching Python files, 134 independently

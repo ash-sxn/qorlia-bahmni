@@ -2,6 +2,17 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Committed creation recovery and concurrency, 21 October 2026
+
+[The native harness](STOCK_INVENTORY_CREATE.md#committed-native-recovery-and-concurrency-21-october-2026)
+passes real Save/Save, Stop/Save and Save/Stop races, plus fresh-cursor recovery
+after committed native deletion. All 122 source-83 addon files are unchanged.
+Independent SQL checks the committed journal results and unchanged existing
+source database. Only the disposable synthetic copy received committed test
+schema/fixtures and was archived/removed. This does not enable public Create,
+complete sequence-safe review/client/UI or prove HTTP/browser/load acceptance.
+Review, deployment and contributor starter-task bases remain unchanged.
+
 ## Private creation journal source checkpoint, 21 October 2026
 
 [Candidate 83](STOCK_INVENTORY_CREATE.md#candidate-83-private-request-journal-source-checkpoint)

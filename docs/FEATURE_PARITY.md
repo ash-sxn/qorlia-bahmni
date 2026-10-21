@@ -1,5 +1,19 @@
 # Bahmni workflow parity ledger
 
+## 21 October committed native creation recovery and concurrency
+
+[The opt-in harness](../runtime/billing/STOCK_INVENTORY_CREATE.md#committed-native-recovery-and-concurrency-21-october-2026)
+passes real Save/Save, Stop/Save and Save/Stop races, with independent repeatable-read
+connections, observed PostgreSQL waits and actual fresh-transaction retries.
+Fresh committed cursors retain history after native transfer deletion, with no
+duplicate creation or changed-body reuse. All 122 addon files match unchanged
+source 83. Independent SQL confirms the existing source database keeps all 134
+protected tables unchanged and has no journal table. The disposable committed
+copy was archived/removed, not installed in the shared runtime. This complements
+the separate 186-case regression, not a new full-addon/browser/public-proof pass.
+Sequence-safe review, public Create/client/UI and full parity remain unfinished.
+Review/deployment and contributor starter-task bases stay unchanged.
+
 ## 21 October private creation journal source checkpoint
 
 [Candidate 83](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-83-private-request-journal-source-checkpoint)

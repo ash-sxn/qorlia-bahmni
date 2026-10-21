@@ -51,6 +51,12 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
+Newest native evidence: [committed creation recovery and concurrency](runtime/billing/STOCK_INVENTORY_CREATE.md#committed-native-recovery-and-concurrency-21-october-2026)
+passes three real two-connection Save/Stop races and fresh-cursor recovery after
+committed transfer deletion on unchanged source 83. Only a disposable synthetic
+copy received commits and was archived/removed. Public Create, sequence-safe
+review, client/UI and HTTP/browser acceptance remain unfinished; review stays closed.
+
 Current backend source: [private creation request journal](runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-83-private-request-journal-source-checkpoint)
 adds atomic claims and accepted/stopped history independent of deleted transfers.
 Its 186-case native regression passes with 122 matching Python files, 134

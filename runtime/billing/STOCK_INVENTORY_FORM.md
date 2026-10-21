@@ -5,6 +5,12 @@
 Latest saved-transfer source: [native onchange and complete effect inspection](STOCK_INVENTORY_EDIT.md).
 It is separate from the unsaved draft path below and is not save approval.
 
+The [committed creation recovery harness](STOCK_INVENTORY_CREATE.md#committed-native-recovery-and-concurrency-21-october-2026)
+passes three real two-connection Save/Stop races and fresh-cursor history after
+committed native transfer deletion on unchanged source 83. This uses only a
+disposable synthetic copy, not a public review/Save API or client/UI acceptance.
+Create stays disabled pending the complete remaining integration.
+
 The current [private creation journal](STOCK_INVENTORY_CREATE.md#candidate-83-private-request-journal-source-checkpoint)
 passes 186 native cases with 122 matching Python files, 134 independently preserved
 tables and rollback-only test schema. The actual client accepts 269 native responses
