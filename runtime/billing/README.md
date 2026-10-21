@@ -3,6 +3,13 @@
 Original LGPL-3.0-or-later integration code, with native Bahmni/Odoo permissions.
 This is not an Indian chart of accounts or healthcare tax configuration.
 
+Newest UI source: [unsaved new-transfer form](STOCK_INVENTORY_FORM.md#react-unsaved-new-transfer-form-21-october-2026)
+connects native signed defaults, ordered onchange and draft relation searches
+from Inventory through shared Qorlia controls. Create remains disabled;
+creation/recovery, duplication, child editing and browser/native HTTP acceptance
+remain unfinished. All 14 unfinished routes stay gateway-blocked, with review
+and deployment closed.
+
 Newest source: [Inventory Save and recovery](STOCK_INVENTORY_WRITE.md)
 adds complete-review proofs, native Save, protected receipts, status, reference
 pages and durable Stop. Candidate 80's 150-case native check passes, with 116

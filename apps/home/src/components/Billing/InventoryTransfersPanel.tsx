@@ -1,6 +1,6 @@
 import { Button, TextInput } from '@bahmni/design-system';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './BillingPage.module.scss';
 import {
   BillingSessionExpired,
@@ -8,6 +8,7 @@ import {
   InventoryOperation,
   InventoryState,
 } from './billingService';
+import { InventoryDraftEditor } from './InventoryDraftEditor';
 import { InventoryTransferDetails } from './InventoryTransferDetails';
 import {
   formatTransferDate,
@@ -28,6 +29,9 @@ export function InventoryTransfersPanel({
   const [state, setState] = useState<InventoryState>('all');
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
+  const [newTransfer, setNewTransfer] = useState(false);
+  const newOpener = useRef<HTMLButtonElement>(null);
+  const focusNewOpener = useCallback(() => newOpener.current?.focus(), []);
   const openers = useRef(new Map<number, HTMLButtonElement>());
   const restoreFocus = useRef<number | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -74,6 +78,25 @@ export function InventoryTransfersPanel({
         without a charge order. Open a transfer to review its stock actions.
         Other native inventory views are still being integrated.
       </p>
+      <Button
+        ref={newOpener}
+        kind="tertiary"
+        onClick={() => setNewTransfer(true)}
+      >
+        Prepare new transfer
+      </Button>
+      {newTransfer ? (
+        <InventoryDraftEditor
+          uid={uid}
+          reconnect={reconnect}
+          returnFocus={focusNewOpener}
+          close={() => setNewTransfer(false)}
+          openTransfer={(id) => {
+            setNewTransfer(false);
+            setSelected(id);
+          }}
+        />
+      ) : null}
       <form
         className={styles.toolbar}
         onSubmit={(event) => {

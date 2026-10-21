@@ -5,6 +5,77 @@
 Latest saved-transfer source: [native onchange and complete effect inspection](STOCK_INVENTORY_EDIT.md).
 It is separate from the unsaved draft path below and is not save approval.
 
+## React unsaved new-transfer form, 21 October 2026
+
+The Inventory transfer list now has an explicit **Prepare new transfer** source
+entry. `InventoryDraftEditor.tsx` uses the existing native draft lifecycle and
+shared `InventoryHeaderFields`, not a new default generator or stock engine.
+This is an unsaved-form integration checkpoint, not completed creation:
+**Create transfer remains disabled**. Native creation review/Save/recovery,
+duplication and child/package editing are still required in the full parity goal.
+
+| UI interaction | Actual typed client | Existing native method |
+| --- | --- | --- |
+| Explicitly open or reload defaults | `getInventoryDraftForm` | `qorlia_inventory_draft_load` |
+| Commit one visible editable root field | `previewInventoryDraftForm` | `qorlia_inventory_draft_onchange` |
+| Search a relation in the edited form | `getInventoryDraftFormChoices` | `qorlia_inventory_draft_choices` |
+
+One original signed seed remains pinned for the open form. Each accepted edit is
+appended in order using the native occurrence/node, and searches receive the
+same seed and complete accepted ledger. A relation search string is not a
+selected record. Existing account-local date conversion, native warnings and
+hidden/readonly/required metadata apply through the shared controls. No order ID,
+caller context, administrator default or made-up transfer reference is supplied.
+
+The form has its own account/open-session query key. It does not automatically
+reload defaults on window focus, connectivity or another view's invalidation.
+The mounted default query is discarded on unmount rather than being reused as
+the next form's defaults. Reopening and explicit reload request fresh defaults;
+changing an account remounts the editor and ignores prior asynchronous results.
+No seed/edit ledger is written to analytics or browser persistence. In-memory
+query data is not a durable create/recovery record.
+
+Native onchange responses do not silently remove another unapplied input. If
+native rules hide or lock that field, the pending input stays explicit until
+discarded. Close, reload, reconnect and supported document links protect dirty
+input with a focused discard/keep decision. Full-page unload warns while dirty;
+full router-history blocking remains unfinished. A slow initial read can be
+closed without waiting for it to complete. Native rules block editing while an
+onchange is in flight; errors preserve the original seed and local input.
+
+The relation control dispatches to either the existing saved-selection or
+signed-draft service based on its actual typed selection. It preserves existing
+25-row pagination, interaction-only/debounced searching, account identity and
+exact returned-option selection. It does not send a new draft to a saved-form
+endpoint or create a dummy saved transfer to reuse a write path.
+
+The component tests exercise real Qorlia/Carbon controls and the actual SDK with
+mocked fetch responses restricted to the three named draft methods. They check
+seed identity, ordered requests, local-date serialization, relation pages,
+malformed acknowledgments, expiry/denial, retained input, discard/reload, account
+races, overlapping requests and fresh reopen. Entry-point tests connect the list
+to the editor and restore the opener; a document route opens its actual existing
+Inventory record, not a newly created record. Automated axe checks do not prove
+full browser layout, keyboard or clinical-user acceptance.
+
+The full Home suite passes **1,921 cases / 111 suites**; five focused suites pass
+**135 cases** in the default and US Pacific process zones. Library and authentic
+scoped test-source types, scoped lint/format and three temporary gateway stub
+checks pass. Contributor docs cover 46 documents/788 local links with no em
+dashes. These are source checks, not runtime acceptance.
+The defaults query uses the installed
+TanStack Query's `static` stale policy, not `Infinity`: a regression first proved
+that a broad Billing invalidation otherwise performs a second load during an
+open draft. The corrected case keeps one original seed; explicit reload still
+works. No dependency upgrade or custom cache interception was needed.
+Native candidate-76's prior 58-case
+evidence below remains backend evidence only, not acceptance of this new React
+consumer. Native Python and typed-client protocols are unchanged. All 14
+unfinished form/review/write routes remain gateway-blocked. Billing review stays
+closed, with no frontend build/server, native HTTP session, tunnel, deployment,
+persistent addon upgrade or purchase. Older installed demos/testers are not
+assumed to support this new source entry.
+
 ## Candidate 76 pinned new-transfer drafts, 20 October 2026
 
 This source adds the native **new, unsaved transfer** form lifecycle. It does

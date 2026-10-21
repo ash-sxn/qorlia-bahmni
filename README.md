@@ -51,6 +51,13 @@ No production credentials, paid AI account or new server is required to start le
 
 The goal is full native workflow/API parity in a consistent Qorlia interface. Billing is the current integration priority. The React login, shared home and module routes exist, but a rendered screen is not proof that every feature is accepted.
 
+Newest UI source: [unsaved Inventory new-transfer form](runtime/billing/STOCK_INVENTORY_FORM.md#react-unsaved-new-transfer-form-21-october-2026)
+connects native signed defaults, ordered onchange and draft relation search to
+shared Qorlia controls from the Inventory list. Create remains disabled;
+creation/recovery, duplication, child editing and runtime acceptance are not
+complete. All 14 unfinished form/review/write routes remain blocked, and review
+and deployment stay closed.
+
 Newest source: [Inventory Save and recovery](runtime/billing/STOCK_INVENTORY_WRITE.md)
 adds a complete-review proof, exact native Save, protected receipt, status,
 reference pages and durable Stop. Its 150-case native check passes with all 116

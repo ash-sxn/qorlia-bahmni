@@ -1,5 +1,13 @@
 # New-team handover: Qorlia engineering
 
+Newest UI source: [unsaved new-transfer form](../runtime/billing/STOCK_INVENTORY_FORM.md#react-unsaved-new-transfer-form-21-october-2026)
+connects signed defaults, ordered onchange and edited-form relation searches
+from Inventory through shared Qorlia controls. It does not create records;
+Create remains disabled pending native creation/recovery and child editing.
+Browser/native HTTP acceptance, review reopening and deployment are not included.
+All 14 unfinished form/review/write routes and contributor starter bases stay
+unchanged/closed. Read the linked verification limits, not just test counts.
+
 Newest source: [Inventory Save and recovery](../runtime/billing/STOCK_INVENTORY_WRITE.md)
 adds complete-review proofs, native Save, protected receipts, status, reference
 pages and durable Stop. Candidate 80's 150-case native check passes with 116

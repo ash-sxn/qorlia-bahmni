@@ -1,5 +1,24 @@
 # Bahmni workflow parity ledger
 
+## 21 October unsaved Inventory new-transfer React source
+
+[The new-transfer form](../runtime/billing/STOCK_INVENTORY_FORM.md#react-unsaved-new-transfer-form-21-october-2026)
+connects three existing native draft APIs from the Inventory list: signed
+defaults, ordered scalar onchange and edited-form relation searches. Shared
+Qorlia controls preserve the original seed, account-local dates, warnings,
+conditions, unapplied input and dirty-exit confirmation. Account changes ignore
+old asynchronous results; focus/connectivity do not silently replace defaults.
+Create remains disabled, and no saved transfer/order ID is invented. Creation
+review/Save/recovery, duplication, child/package/chatter interfaces and full
+router-history/browser/native HTTP acceptance remain in the original goal.
+
+Home passes 1,921 cases/111 suites. Five focused suites pass 135 cases in default
+and US Pacific process zones, with the actual SDK and mocked draft transport.
+Types, scoped lint/format, three temporary gateway cases and contributor docs
+(46 documents/788 links) pass. Native candidate-76's earlier 58-case evidence does not establish
+React runtime acceptance. Native backend/client source and all 14 blocked
+gateway routes are unchanged. Review and deployment stay closed.
+
 ## 21 October Inventory native Save verified, browser recovery storage source
 
 [Candidate 80](../runtime/billing/STOCK_INVENTORY_WRITE.md) adds complete-review

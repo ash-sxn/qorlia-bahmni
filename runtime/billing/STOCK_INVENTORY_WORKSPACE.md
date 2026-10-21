@@ -2,6 +2,16 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Unsaved new-transfer form source, 21 October 2026
+
+[Prepare new transfer](STOCK_INVENTORY_FORM.md#react-unsaved-new-transfer-form-21-october-2026)
+opens native signed defaults from the Inventory list. Root edits and relation
+searches preserve the original seed and ordered ledger using shared Qorlia
+controls. The form has no enabled Create/Save action and does not generate a
+reference or record. Creation review/recovery, duplication, child interfaces,
+router-history and real browser/native HTTP acceptance remain. No gateway,
+review, contributor-base or deployment change is included.
+
 ## Candidate 80 Save and recovery in progress, 21 October 2026
 
 [The durable Save protocol](STOCK_INVENTORY_WRITE.md) adds complete-review proofs,

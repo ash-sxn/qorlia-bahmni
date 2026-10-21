@@ -11,7 +11,9 @@ import { useState } from 'react';
 import styles from './BillingPage.module.scss';
 import {
   BillingSessionExpired,
+  getInventoryDraftFormChoices,
   getInventoryStoredFormChoices,
+  type InventoryDraftForm,
   type InventoryNativeForm,
   type InventoryStoredSelection,
   type InventoryHeaderEdit,
@@ -21,6 +23,10 @@ import {
   inventoryUtcDateTime,
 } from './inventoryDateTime';
 import { InventoryPlanningIssue } from './InventoryPlanningIssue';
+
+type HeaderSelection =
+  | InventoryStoredSelection
+  | Pick<InventoryDraftForm, 'seed' | 'edits'>;
 
 export function inventoryHeaderInputValue(
   type: string,
@@ -77,7 +83,7 @@ function InventoryHeaderChoice({
   reconnect,
 }: {
   uid: number;
-  selection: InventoryStoredSelection;
+  selection: HeaderSelection;
   node: number;
   label: string;
   value: number | false;
@@ -101,7 +107,16 @@ function InventoryHeaderChoice({
       term,
       offset,
     ],
-    queryFn: () => getInventoryStoredFormChoices(selection, node, term, offset),
+    queryFn: () =>
+      'seed' in selection
+        ? getInventoryDraftFormChoices(
+            selection.seed,
+            selection.edits,
+            node,
+            term,
+            offset,
+          )
+        : getInventoryStoredFormChoices(selection, node, term, offset),
     enabled: !disabled && active && !searching,
     retry: false,
     refetchOnWindowFocus: false,
@@ -195,7 +210,7 @@ export function InventoryHeaderFields({
 }: {
   uid: number;
   form: InventoryNativeForm;
-  selection: InventoryStoredSelection;
+  selection: HeaderSelection;
   local: Record<number, string>;
   disabled: boolean;
   edit: (node: number, value: string) => void;

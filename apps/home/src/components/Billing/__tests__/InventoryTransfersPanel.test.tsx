@@ -14,6 +14,33 @@ jest.mock('../billingService', () => ({
   getInventoryTransfers: jest.fn(),
 }));
 expect.extend(toHaveNoViolations);
+const mockDraft = jest.fn();
+jest.mock('../InventoryDraftEditor', () => ({
+  InventoryDraftEditor: (props: {
+    uid: number;
+    close: () => void;
+    returnFocus: () => void;
+    openTransfer: (id: number) => void;
+  }) => {
+    mockDraft(props);
+    return (
+      <div>
+        <p>New-transfer form for account {props.uid}</p>
+        <button
+          onClick={() => {
+            props.close();
+            props.returnFocus();
+          }}
+        >
+          Close synthetic new form
+        </button>
+        <button onClick={() => props.openTransfer(19)}>
+          Open synthetic predecessor
+        </button>
+      </div>
+    );
+  },
+}));
 jest.mock('../InventoryTransferDetails', () => ({
   InventoryTransferDetails: ({
     uid,
@@ -94,6 +121,38 @@ it('opens only the selected native transfer and restores its opener after return
       screen.getByRole('button', { name: 'Open transfer QORLIAQA/OUT/11' }),
     ).toHaveFocus(),
   );
+});
+it('opens native defaults only on explicit request and restores the new-form opener', async () => {
+  show();
+  await screen.findByText('QORLIAQA/OUT/11');
+  expect(mockDraft).not.toHaveBeenCalled();
+  const opener = screen.getByRole('button', { name: 'Prepare new transfer' });
+  fireEvent.click(opener);
+  expect(
+    screen.getByText('New-transfer form for account 3'),
+  ).toBeInTheDocument();
+  expect(mockDraft.mock.calls.at(-1)![0]).toMatchObject({ uid: 3, reconnect });
+  const back = screen.getByRole('button', { name: 'Close synthetic new form' });
+  back.focus();
+  fireEvent.click(back);
+  expect(
+    screen.queryByText('New-transfer form for account 3'),
+  ).not.toBeInTheDocument();
+  expect(opener).toHaveFocus();
+});
+it('routes a validated new-form linked document to its actual Inventory transfer, not a fabricated creation', async () => {
+  show();
+  await screen.findByText('QORLIAQA/OUT/11');
+  fireEvent.click(screen.getByRole('button', { name: 'Prepare new transfer' }));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Open synthetic predecessor' }),
+  );
+  expect(
+    screen.getByText('Selected inventory account 3, transfer 19'),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByText('New-transfer form for account 3'),
+  ).not.toBeInTheDocument();
 });
 it('filters native operation and status without treating status labels as row actions', async () => {
   show();
