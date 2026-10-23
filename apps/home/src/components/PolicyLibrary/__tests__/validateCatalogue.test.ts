@@ -138,4 +138,57 @@ describe('validateCatalogue', () => {
 
     expect(result.ok).toBe(true);
   });
+  it.each(['reviewedOn', 'sourceCheckedOn', 'reviewer'])(
+    'rejects a reviewed entry without %s',
+    (field) => {
+      const result = validateCatalogue(
+        [{ ...validEntry, [field]: null }],
+        APPROVED_HOSTS,
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        errors: [`Entry 1: a reviewed entry must have ${field}.`],
+      });
+    },
+  );
+
+  it('allows a draft entry without review details', () => {
+    const result = validateCatalogue(
+      [
+        {
+          ...validEntry,
+          reviewStatus: 'draft',
+          reviewedOn: null,
+          sourceCheckedOn: null,
+          reviewer: null,
+          reviewDueOn: null,
+        },
+      ],
+      APPROVED_HOSTS,
+    );
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects a review due date before the review date', () => {
+    const result = validateCatalogue(
+      [{ ...validEntry, reviewedOn: '2026-10-02', reviewDueOn: '2026-10-01' }],
+      APPROVED_HOSTS,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errors: ['Entry 1: reviewDueOn must not be before reviewedOn.'],
+    });
+  });
+
+  it('accepts a review due date that is already in the past', () => {
+    const result = validateCatalogue(
+      [{ ...validEntry, reviewedOn: '2025-12-02', reviewDueOn: '2026-06-02' }],
+      APPROVED_HOSTS,
+    );
+
+    expect(result.ok).toBe(true);
+  });
 });

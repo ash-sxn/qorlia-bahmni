@@ -15,6 +15,11 @@ const DATE_FIELDS = [
   'reviewedOn',
   'reviewDueOn',
 ] as const;
+const REVIEWED_REQUIRED_FIELDS = [
+  'reviewedOn',
+  'sourceCheckedOn',
+  'reviewer',
+] as const;
 const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 const JURISDICTIONS: readonly Jurisdiction[] = ['central', 'madhya_pradesh'];
@@ -141,6 +146,26 @@ export const validateCatalogue = (
         );
       }
     });
+
+    if (entry.reviewStatus === 'reviewed') {
+      REVIEWED_REQUIRED_FIELDS.forEach((field) => {
+        const value = entry[field];
+        if (typeof value !== 'string' || value.trim() === '') {
+          errors.push(`${label}: a reviewed entry must have ${field}.`);
+        }
+      });
+    }
+
+    const { reviewedOn, reviewDueOn } = entry;
+    if (
+      typeof reviewedOn === 'string' &&
+      typeof reviewDueOn === 'string' &&
+      isCalendarDate(reviewedOn) &&
+      isCalendarDate(reviewDueOn) &&
+      reviewDueOn < reviewedOn
+    ) {
+      errors.push(`${label}: reviewDueOn must not be before reviewedOn.`);
+    }
   });
 
   if (errors.length > 0) {
