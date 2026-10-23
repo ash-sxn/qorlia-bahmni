@@ -110,4 +110,32 @@ describe('validateCatalogue', () => {
       errors: [`Entry 1: ${field} "${value}" is not an allowed value.`],
     });
   });
+  it.each([
+    ['an impossible day', '2026-02-30'],
+    ['an impossible month', '2026-13-01'],
+    ['29 February in a non-leap year', '2026-02-29'],
+    ['a day-first format', '12/03/2026'],
+    ['a time as well as a date', '2026-03-12T10:00:00Z'],
+  ])('rejects a publishedOn date with %s', (_case, publishedOn) => {
+    const result = validateCatalogue(
+      [{ ...validEntry, publishedOn }],
+      APPROVED_HOSTS,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errors: [
+        'Entry 1: publishedOn must be a YYYY-MM-DD calendar date or null.',
+      ],
+    });
+  });
+
+  it('accepts 29 February in a leap year', () => {
+    const result = validateCatalogue(
+      [{ ...validEntry, publishedOn: '2028-02-29' }],
+      APPROVED_HOSTS,
+    );
+
+    expect(result.ok).toBe(true);
+  });
 });

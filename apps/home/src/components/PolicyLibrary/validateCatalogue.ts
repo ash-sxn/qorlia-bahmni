@@ -8,6 +8,14 @@ import {
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const TEXT_FIELDS = ['title', 'authority', 'summary'] as const;
+const DATE_FIELDS = [
+  'publishedOn',
+  'effectiveOn',
+  'sourceCheckedOn',
+  'reviewedOn',
+  'reviewDueOn',
+] as const;
+const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 const JURISDICTIONS: readonly Jurisdiction[] = ['central', 'madhya_pradesh'];
 const CATEGORIES: readonly PolicyCategory[] = [
@@ -30,6 +38,24 @@ const ALLOWED_VALUES: Record<string, readonly string[]> = {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isCalendarDate = (value: string): boolean => {
+  const match = ISO_DATE_PATTERN.exec(value);
+  if (!match) {
+    return false;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+};
 
 const isApprovedSourceUrl = (
   value: unknown,
@@ -100,6 +126,18 @@ export const validateCatalogue = (
       if (typeof value !== 'string' || !allowed.includes(value)) {
         errors.push(
           `${label}: ${field} "${String(value)}" is not an allowed value.`,
+        );
+      }
+    });
+
+    DATE_FIELDS.forEach((field) => {
+      const value = entry[field];
+      if (
+        value !== null &&
+        (typeof value !== 'string' || !isCalendarDate(value))
+      ) {
+        errors.push(
+          `${label}: ${field} must be a YYYY-MM-DD calendar date or null.`,
         );
       }
     });
