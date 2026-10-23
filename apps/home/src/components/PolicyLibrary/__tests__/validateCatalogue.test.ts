@@ -82,4 +82,32 @@ describe('validateCatalogue', () => {
       ],
     });
   });
+
+  it.each(['title', 'authority', 'summary'])('rejects an empty %s', (field) => {
+    const result = validateCatalogue(
+      [{ ...validEntry, [field]: '   ' }],
+      APPROVED_HOSTS,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errors: [`Entry 1: ${field} must be non-empty text.`],
+    });
+  });
+
+  it.each([
+    ['jurisdiction', 'delhi'],
+    ['category', 'sports'],
+    ['reviewStatus', 'reviwed'],
+  ])('rejects an unknown %s value', (field, value) => {
+    const result = validateCatalogue(
+      [{ ...validEntry, [field]: value }],
+      APPROVED_HOSTS,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errors: [`Entry 1: ${field} "${value}" is not an allowed value.`],
+    });
+  });
 });

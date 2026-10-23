@@ -1,6 +1,32 @@
-import { CatalogueResult, PolicyEntry } from './types';
+import {
+  CatalogueResult,
+  Jurisdiction,
+  PolicyCategory,
+  PolicyEntry,
+  ReviewStatus,
+} from './types';
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const TEXT_FIELDS = ['title', 'authority', 'summary'] as const;
+
+const JURISDICTIONS: readonly Jurisdiction[] = ['central', 'madhya_pradesh'];
+const CATEGORIES: readonly PolicyCategory[] = [
+  'digital_health',
+  'data_protection',
+  'government_schemes',
+  'facility_registration',
+];
+const REVIEW_STATUSES: readonly ReviewStatus[] = [
+  'draft',
+  'reviewed',
+  'needs_review',
+];
+
+const ALLOWED_VALUES: Record<string, readonly string[]> = {
+  jurisdiction: JURISDICTIONS,
+  category: CATEGORIES,
+  reviewStatus: REVIEW_STATUSES,
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -61,6 +87,22 @@ export const validateCatalogue = (
         `${label}: sourceUrl must be an https link to an approved source host.`,
       );
     }
+
+    TEXT_FIELDS.forEach((field) => {
+      const value = entry[field];
+      if (typeof value !== 'string' || value.trim() === '') {
+        errors.push(`${label}: ${field} must be non-empty text.`);
+      }
+    });
+
+    Object.entries(ALLOWED_VALUES).forEach(([field, allowed]) => {
+      const value = entry[field];
+      if (typeof value !== 'string' || !allowed.includes(value)) {
+        errors.push(
+          `${label}: ${field} "${String(value)}" is not an allowed value.`,
+        );
+      }
+    });
   });
 
   if (errors.length > 0) {
