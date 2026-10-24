@@ -191,4 +191,28 @@ describe('validateCatalogue', () => {
 
     expect(result.ok).toBe(true);
   });
+  it('rejects an unknown field', () => {
+    const result = validateCatalogue(
+      [{ ...validEntry, titel: 'A typo of title' }],
+      APPROVED_HOSTS,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errors: ['Entry 1: unknown field "titel".'],
+    });
+  });
+
+  it('rejects a missing field', () => {
+    const withoutNote = Object.fromEntries(
+      Object.entries(validEntry).filter(([key]) => key !== 'applicabilityNote'),
+    );
+
+    const result = validateCatalogue([withoutNote], APPROVED_HOSTS);
+
+    expect(result).toEqual({
+      ok: false,
+      errors: ['Entry 1: missing field "applicabilityNote".'],
+    });
+  });
 });

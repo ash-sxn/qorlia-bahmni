@@ -6,6 +6,24 @@ import {
   ReviewStatus,
 } from './types';
 
+const KNOWN_FIELDS: readonly (keyof PolicyEntry)[] = [
+  'id',
+  'title',
+  'authority',
+  'jurisdiction',
+  'category',
+  'summary',
+  'applicabilityNote',
+  'sourceUrl',
+  'publishedOn',
+  'effectiveOn',
+  'sourceCheckedOn',
+  'reviewStatus',
+  'reviewedOn',
+  'reviewDueOn',
+  'reviewer',
+];
+
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const TEXT_FIELDS = ['title', 'authority', 'summary'] as const;
 const DATE_FIELDS = [
@@ -103,6 +121,17 @@ export const validateCatalogue = (
       errors.push(`${label}: must be an object.`);
       return;
     }
+    Object.keys(entry).forEach((key) => {
+      if (!(KNOWN_FIELDS as readonly string[]).includes(key)) {
+        errors.push(`${label}: unknown field "${key}".`);
+      }
+    });
+
+    KNOWN_FIELDS.forEach((field) => {
+      if (!(field in entry)) {
+        errors.push(`${label}: missing field "${field}".`);
+      }
+    });
 
     const { id } = entry;
     if (typeof id !== 'string' || !SLUG_PATTERN.test(id)) {
