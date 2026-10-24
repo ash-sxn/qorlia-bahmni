@@ -25,8 +25,17 @@ const matchesQuery = (policy: PolicyEntry, query: string): boolean => {
   );
 };
 
+const matchesSelection = (value: string, selected: string): boolean =>
+  selected === 'all' || value === selected;
+
 export const filterPolicies = (
   policies: readonly PolicyEntry[],
   filters: PolicyFilters,
 ): PolicyEntry[] =>
-  policies.filter((policy) => matchesQuery(policy, filters.query));
+  policies.filter(
+    (policy) =>
+      matchesQuery(policy, filters.query) &&
+      matchesSelection(policy.jurisdiction, filters.jurisdiction) &&
+      matchesSelection(policy.category, filters.category) &&
+      matchesSelection(policy.reviewStatus, filters.reviewStatus),
+  );
