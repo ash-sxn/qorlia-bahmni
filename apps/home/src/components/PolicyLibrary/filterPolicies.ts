@@ -39,3 +39,34 @@ export const filterPolicies = (
       matchesSelection(policy.category, filters.category) &&
       matchesSelection(policy.reviewStatus, filters.reviewStatus),
   );
+
+const compareText = (a: string, b: string): number => {
+  if (a < b) {
+    return -1;
+  }
+  if (a > b) {
+    return 1;
+  }
+  return 0;
+};
+
+const compareNewestFirst = (a: string | null, b: string | null): number => {
+  if (a === b) {
+    return 0;
+  }
+  if (a === null) {
+    return 1;
+  }
+  if (b === null) {
+    return -1;
+  }
+  return compareText(b, a);
+};
+
+export const sortPolicies = (policies: readonly PolicyEntry[]): PolicyEntry[] =>
+  [...policies].sort(
+    (a, b) =>
+      compareNewestFirst(a.publishedOn, b.publishedOn) ||
+      compareText(a.title, b.title) ||
+      compareText(a.id, b.id),
+  );

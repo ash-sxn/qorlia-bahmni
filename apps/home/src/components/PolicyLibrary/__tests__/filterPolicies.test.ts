@@ -3,7 +3,9 @@ import {
   DEFAULT_FILTERS,
   filterPolicies,
   PolicyFilters,
+  sortPolicies,
 } from '../filterPolicies';
+
 import { PolicyEntry } from '../types';
 
 const ALL_STATUSES: PolicyFilters = { ...DEFAULT_FILTERS, reviewStatus: 'all' };
@@ -122,5 +124,41 @@ describe('filterPolicies filters', () => {
     });
 
     expect(result).toEqual([]);
+  });
+});
+
+describe('sortPolicies', () => {
+  it('puts the newest policy first and a missing date last', () => {
+    const shuffled = [...syntheticPolicies].reverse();
+
+    expect(ids(sortPolicies(shuffled))).toEqual([
+      'synthetic-mp-digital-health',
+      'synthetic-central-data-protection',
+      'synthetic-mp-scheme-draft',
+    ]);
+  });
+
+  it('breaks a date tie by title and then by id', () => {
+    const base = syntheticPolicies[0];
+    const policies = [
+      { ...base, id: 'b-second', title: 'Same title' },
+      { ...base, id: 'z-title', title: 'Zebra' },
+      { ...base, id: 'a-first', title: 'Same title' },
+    ];
+
+    expect(ids(sortPolicies(policies))).toEqual([
+      'a-first',
+      'b-second',
+      'z-title',
+    ]);
+  });
+
+  it('does not change the original list', () => {
+    const original = [...syntheticPolicies].reverse();
+    const before = [...original];
+
+    sortPolicies(original);
+
+    expect(original).toEqual(before);
   });
 });
