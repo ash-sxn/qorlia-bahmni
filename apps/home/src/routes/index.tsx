@@ -12,9 +12,15 @@ const BillingPage = lazy(() =>
     default: module.BillingPage,
   })),
 );
+const PolicyLibraryPage = lazy(() =>
+  import('../components/PolicyLibrary/PolicyLibraryPage').then((module) => ({
+    default: module.PolicyLibraryPage,
+  })),
+);
 
 export const routes: Routes = [
   { path: '/billing', component: BillingPage, name: 'Billing' },
+  { path: '/policies', component: PolicyLibraryPage, name: 'PolicyLibrary' },
   {
     path: '/',
     component: HomePage,
