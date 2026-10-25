@@ -11,6 +11,13 @@
   }
 }
 
+.notice {
+  margin: 1rem 0 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid $border-strong-01;
+  background: $layer-02;
+}
+
 .list {
   display: grid;
   gap: 1rem;

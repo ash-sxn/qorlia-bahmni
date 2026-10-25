@@ -1,10 +1,19 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { syntheticPolicies } from '../__fixtures__/syntheticPolicies';
+import { loadPolicyCatalogue } from '../policyCatalogue';
 import { PolicyLibraryPage } from '../PolicyLibraryPage';
 
 jest.mock('../../HomePageHeader', () => ({
   HomePageHeader: () => <div data-testid="home-page-header" />,
 }));
+
+jest.mock('../policyCatalogue', () => ({
+  loadPolicyCatalogue: jest.fn(),
+  usesSyntheticExamples: true,
+}));
+
+const mockLoadPolicyCatalogue = loadPolicyCatalogue as jest.Mock;
 
 const renderPage = () =>
   render(
@@ -14,6 +23,13 @@ const renderPage = () =>
   );
 
 describe('PolicyLibraryPage', () => {
+  beforeEach(() => {
+    mockLoadPolicyCatalogue.mockReturnValue({
+      ok: true,
+      entries: syntheticPolicies,
+    });
+  });
+
   it('shows the heading and the information-only note', () => {
     renderPage();
 
@@ -25,5 +41,46 @@ describe('PolicyLibraryPage', () => {
         'Information only. Confirm current requirements with the original authority.',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('labels the synthetic examples clearly', () => {
+    renderPage();
+
+    expect(
+      screen.getByText(
+        'Synthetic examples for development only. Not real guidance.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('shows only reviewed policies by default, newest first', () => {
+    renderPage();
+
+    const cards = screen.getAllByRole('listitem');
+    expect(cards).toHaveLength(2);
+    expect(
+      within(cards[0]).getByRole('heading', {
+        name: 'Synthetic example: MP digital health record guidance',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(cards[1]).getByRole('heading', {
+        name: 'Synthetic example: Central data protection notice',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows an error instead of a list when the catalogue is invalid', () => {
+    mockLoadPolicyCatalogue.mockReturnValue({
+      ok: false,
+      errors: ['Entry 1: duplicate id "x".'],
+    });
+
+    renderPage();
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Could not load the policy catalogue.',
+    );
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
 });
