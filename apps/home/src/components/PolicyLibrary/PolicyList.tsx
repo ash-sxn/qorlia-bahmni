@@ -5,7 +5,7 @@ import { formatPolicyDate } from './formatPolicyDate';
 import styles from './PolicyLibrary.module.scss';
 import { PolicyEntry, ReviewStatus } from './types';
 
-const STATUS_TAG_TYPES = {
+export const STATUS_TAG_TYPES = {
   reviewed: 'green',
   needs_review: 'purple',
   draft: 'gray',

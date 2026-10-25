@@ -18,6 +18,33 @@
   background: $layer-02;
 }
 
+.warning {
+  margin: 1rem 0 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid $support-warning;
+  background: $layer-02;
+}
+
+.dates {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+
+  dt {
+    color: $text-secondary;
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.page h2 {
+  margin: 2rem 0 0.5rem;
+  font-size: 1.25rem;
+}
+
 .search {
   max-width: 40rem;
   margin: 1.5rem 0 0;
