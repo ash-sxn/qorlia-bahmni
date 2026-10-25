@@ -24,6 +24,11 @@ const renderPage = () =>
   );
 
 describe('PolicyLibraryPage', () => {
+  beforeAll(() => {
+    // jsdom does not implement scrollIntoView, which the Carbon dropdown calls.
+    Element.prototype.scrollIntoView = jest.fn();
+  });
+
   beforeEach(() => {
     mockLoadPolicyCatalogue.mockReturnValue({
       ok: true,
@@ -100,6 +105,68 @@ describe('PolicyLibraryPage', () => {
 
     expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
     expect(screen.getByText('No matching policies.')).toBeInTheDocument();
+  });
+
+  it('shows how many policies match', () => {
+    renderPage();
+
+    expect(screen.getByText('2 results')).toBeInTheDocument();
+  });
+
+  it('filters by jurisdiction', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('combobox', { name: 'Jurisdiction' }));
+    await user.click(screen.getByRole('option', { name: 'Central' }));
+
+    const cards = screen.getAllByRole('listitem');
+    expect(cards).toHaveLength(1);
+    expect(within(cards[0]).getByText('Central')).toBeInTheDocument();
+    expect(screen.getByText('1 result')).toBeInTheDocument();
+  });
+
+  it('filters by category', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('combobox', { name: 'Category' }));
+    await user.click(screen.getByRole('option', { name: 'Digital health' }));
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+  });
+
+  it('shows drafts only when the user explicitly includes them', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(screen.queryByText('Draft')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: 'Review status' }));
+    await user.click(
+      screen.getByRole('option', { name: 'Include drafts and needs review' }),
+    );
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    expect(screen.getByText('Draft')).toBeInTheDocument();
+  });
+
+  it('clears the search and every filter at once', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Search policies' }),
+      'notice',
+    );
+    await user.click(screen.getByRole('combobox', { name: 'Jurisdiction' }));
+    await user.click(screen.getByRole('option', { name: 'Central' }));
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+
+    expect(
+      screen.getByRole('searchbox', { name: 'Search policies' }),
+    ).toHaveValue('');
+    expect(screen.getAllByRole('listitem')).toHaveLength(2);
   });
 
   it('tells the user when no policies have been published yet', () => {

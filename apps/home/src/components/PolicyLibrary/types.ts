@@ -1,12 +1,16 @@
-export type Jurisdiction = 'central' | 'madhya_pradesh';
+export const JURISDICTIONS = ['central', 'madhya_pradesh'] as const;
+export type Jurisdiction = (typeof JURISDICTIONS)[number];
 
-export type PolicyCategory =
-  | 'digital_health'
-  | 'data_protection'
-  | 'government_schemes'
-  | 'facility_registration';
+export const CATEGORIES = [
+  'digital_health',
+  'data_protection',
+  'government_schemes',
+  'facility_registration',
+] as const;
+export type PolicyCategory = (typeof CATEGORIES)[number];
 
-export type ReviewStatus = 'draft' | 'reviewed' | 'needs_review';
+export const REVIEW_STATUSES = ['draft', 'reviewed', 'needs_review'] as const;
+export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
 /** Date-only calendar value in YYYY-MM-DD form. */
 export type IsoDate = string;

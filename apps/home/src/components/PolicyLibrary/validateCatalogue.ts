@@ -1,9 +1,9 @@
 import {
   CatalogueResult,
-  Jurisdiction,
-  PolicyCategory,
+  CATEGORIES,
+  JURISDICTIONS,
   PolicyEntry,
-  ReviewStatus,
+  REVIEW_STATUSES,
 } from './types';
 
 const KNOWN_FIELDS: readonly (keyof PolicyEntry)[] = [
@@ -39,19 +39,6 @@ const REVIEWED_REQUIRED_FIELDS = [
   'reviewer',
 ] as const;
 const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-const JURISDICTIONS: readonly Jurisdiction[] = ['central', 'madhya_pradesh'];
-const CATEGORIES: readonly PolicyCategory[] = [
-  'digital_health',
-  'data_protection',
-  'government_schemes',
-  'facility_registration',
-];
-const REVIEW_STATUSES: readonly ReviewStatus[] = [
-  'draft',
-  'reviewed',
-  'needs_review',
-];
 
 const ALLOWED_VALUES: Record<string, readonly string[]> = {
   jurisdiction: JURISDICTIONS,

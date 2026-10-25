@@ -6,16 +6,18 @@ import { HomePageHeader } from '../HomePageHeader';
 import {
   DEFAULT_FILTERS,
   filterPolicies,
+  PolicyFilters,
   sortPolicies,
 } from './filterPolicies';
 import { loadPolicyCatalogue, usesSyntheticExamples } from './policyCatalogue';
+import { PolicyFilterBar } from './PolicyFilterBar';
 import styles from './PolicyLibrary.module.scss';
 import { PolicyList } from './PolicyList';
 
 export const PolicyLibraryPage = () => {
   const { t } = useTranslation();
   const catalogue = useMemo(() => loadPolicyCatalogue(), []);
-  const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState<PolicyFilters>(DEFAULT_FILTERS);
 
   const renderCatalogue = () => {
     if (!catalogue.ok) {
@@ -26,13 +28,11 @@ export const PolicyLibraryPage = () => {
       );
     }
 
-    if (filterPolicies(catalogue.entries, DEFAULT_FILTERS).length === 0) {
+    if (catalogue.entries.length === 0) {
       return <p className={styles.notice}>{t('POLICY_LIBRARY_EMPTY')}</p>;
     }
 
-    const policies = sortPolicies(
-      filterPolicies(catalogue.entries, { ...DEFAULT_FILTERS, query }),
-    );
+    const policies = sortPolicies(filterPolicies(catalogue.entries, filters));
 
     return (
       <>
@@ -42,10 +42,18 @@ export const PolicyLibraryPage = () => {
             labelText={t('POLICY_LIBRARY_SEARCH_LABEL')}
             placeholder={t('POLICY_LIBRARY_SEARCH_PLACEHOLDER')}
             closeButtonLabelText={t('POLICY_LIBRARY_SEARCH_CLEAR')}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            value={filters.query}
+            onChange={(event) =>
+              setFilters({ ...filters, query: event.target.value })
+            }
           />
         </div>
+        <PolicyFilterBar
+          filters={filters}
+          resultCount={policies.length}
+          onChange={setFilters}
+          onClear={() => setFilters(DEFAULT_FILTERS)}
+        />
         {policies.length > 0 ? (
           <PolicyList policies={policies} />
         ) : (

@@ -23,6 +23,31 @@
   margin: 1.5rem 0 0;
 }
 
+.filterBar {
+  margin: 1rem 0 0;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  max-width: 60rem;
+}
+
+.resultBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+
+  p {
+    margin: 0;
+    font-weight: 600;
+  }
+}
+
 .list {
   display: grid;
   gap: 1rem;
