@@ -18,6 +18,11 @@
   background: $layer-02;
 }
 
+.search {
+  max-width: 40rem;
+  margin: 1.5rem 0 0;
+}
+
 .list {
   display: grid;
   gap: 1rem;

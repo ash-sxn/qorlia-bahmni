@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { syntheticPolicies } from '../__fixtures__/syntheticPolicies';
 import { loadPolicyCatalogue } from '../policyCatalogue';
@@ -68,6 +69,48 @@ describe('PolicyLibraryPage', () => {
         name: 'Synthetic example: Central data protection notice',
       }),
     ).toBeInTheDocument();
+  });
+
+  it('filters the cards as the user types a search', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Search policies' }),
+      'notice',
+    );
+
+    const cards = screen.getAllByRole('listitem');
+    expect(cards).toHaveLength(1);
+    expect(
+      within(cards[0]).getByRole('heading', {
+        name: 'Synthetic example: Central data protection notice',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('says so when no policy matches the search', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Search policies' }),
+      'no such policy',
+    );
+
+    expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
+    expect(screen.getByText('No matching policies.')).toBeInTheDocument();
+  });
+
+  it('tells the user when no policies have been published yet', () => {
+    mockLoadPolicyCatalogue.mockReturnValue({ ok: true, entries: [] });
+
+    renderPage();
+
+    expect(
+      screen.getByText('No reviewed policies have been published yet.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('No matching policies.')).not.toBeInTheDocument();
   });
 
   it('shows an error instead of a list when the catalogue is invalid', () => {
