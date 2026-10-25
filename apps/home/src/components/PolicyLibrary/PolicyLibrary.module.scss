@@ -1,0 +1,12 @@
+@use "@carbon/react/scss/theme" as *;
+
+.page {
+  min-height: 100vh;
+  padding: 6rem clamp(1rem, 6vw, 6rem) 3rem;
+  background: $background;
+  color: $text-primary;
+
+  h1 {
+    margin: 0.5rem 0;
+  }
+}

@@ -7,6 +7,8 @@
   "HOME_NO_LOCATION_SELECTED": "No location selected",
   "HOME_NO_MODULES": "No modules available",
   "HOME_SELECT_LOCATION": "Select Location",
+  "POLICY_LIBRARY_INFO_NOTE": "Information only. Confirm current requirements with the original authority.",
+  "POLICY_LIBRARY_TITLE": "Policy library",
   "USER_CHANGE_PASSWORD_GLOBAL_ACTION": "Change Password",
   "USER_GLOBAL_ACTION_BUTTON": "User menu",
   "USER_GLOBAL_ACTION_ERROR": "Something went wrong. Please try again.",
