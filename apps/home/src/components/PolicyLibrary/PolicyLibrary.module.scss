@@ -10,3 +10,36 @@
     margin: 0.5rem 0;
   }
 }
+
+.list {
+  display: grid;
+  gap: 1rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  padding: 1rem 1.25rem;
+  border: 1px solid $border-subtle-01;
+  background: $layer-01;
+  overflow-wrap: anywhere;
+}
+
+.cardTitle {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  margin: 0 0 0.25rem;
+  color: $text-secondary;
+}
+
+.summary {
+  margin: 0.5rem 0 0;
+}
