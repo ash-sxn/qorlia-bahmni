@@ -1,7 +1,7 @@
 import type { Appointment } from '@bahmni/services';
 import { useUserPrivilege } from '@bahmni/widgets';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { getAllowedTransitions } from '../appointmentActions';
 import {
@@ -199,4 +199,69 @@ it('refreshes all appointment views after a status change', async () => {
   expect(mockInvalidateQueries).toHaveBeenCalledWith({
     queryKey: ['appointment-calendar'],
   });
+});
+
+it('shows start and end time columns with a fallback for a missing end', () => {
+  const start = Date.parse('2099-01-01T09:00:00Z');
+  const end = Date.parse('2099-01-01T09:30:00Z');
+  const details = {
+    service: { name: 'ENT OPD Consultation' },
+    provider: { name: 'Demo Provider' },
+    location: { name: 'OPD-1' },
+    status: 'Scheduled',
+  };
+  (useMutation as jest.Mock).mockReturnValue({
+    mutate: jest.fn(),
+    isPending: false,
+    isError: false,
+  });
+  (useQuery as jest.Mock).mockImplementation(({ queryKey }) => ({
+    data:
+      queryKey[0] === 'appointment-list-day'
+        ? [
+            {
+              ...details,
+              uuid: 'appointment-1',
+              patient: { uuid: 'patient-1', name: 'Ends Patient' },
+              startDateTime: start,
+              endDateTime: end,
+            },
+            {
+              ...details,
+              uuid: 'appointment-2',
+              patient: { uuid: 'patient-2', name: 'Open Patient' },
+              startDateTime: start + 60_000,
+            },
+          ]
+        : [],
+    isLoading: false,
+    isError: false,
+  }));
+  (useUserPrivilege as jest.Mock).mockReturnValue({
+    userPrivileges: [{ name: 'app:appointments' }],
+    isLoading: false,
+  });
+  render(
+    <MemoryRouter initialEntries={['/bahmni-v2/appointments/list']}>
+      <AppointmentListPage />
+    </MemoryRouter>,
+  );
+
+  expect(
+    screen.getByRole('columnheader', { name: 'Start time' }),
+  ).toBeVisible();
+  expect(screen.getByRole('columnheader', { name: 'End time' })).toBeVisible();
+  const endText = new Intl.DateTimeFormat(undefined, {
+    timeStyle: 'short',
+  }).format(new Date(end));
+  expect(
+    within(screen.getByRole('row', { name: /Ends Patient/ })).getByText(
+      endText,
+    ),
+  ).toBeVisible();
+  expect(
+    within(screen.getByRole('row', { name: /Open Patient/ })).getByText(
+      'Not specified',
+    ),
+  ).toBeVisible();
 });
