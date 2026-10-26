@@ -150,7 +150,7 @@ describe('medicationRequestService', () => {
       );
 
       expect(get).toHaveBeenLastCalledWith(
-        `/openmrs/ws/rest/v1/bahmnicore/drugOrders?patientUuid=${patientUUID}`,
+        `/openmrs/ws/rest/v1/bahmnicore/drugOrders?patientUuid=${patientUUID}&includeActiveVisit=true`,
       );
       expect(result).toEqual([
         expect.objectContaining({
@@ -161,6 +161,36 @@ describe('medicationRequestService', () => {
           readOnly: true,
         }),
       ]);
+    });
+
+    it('maps Bahmni duration words and JSON instructions in the legacy fallback', async () => {
+      (get as jest.Mock)
+        .mockRejectedValueOnce(
+          Object.assign(new Error('Server error'), { status: 500 }),
+        )
+        .mockResolvedValueOnce([
+          {
+            uuid: 'legacy-order-2',
+            drug: { name: 'Metformin 500 mg', uuid: 'drug-2' },
+            dosingInstructions: {
+              dose: 1,
+              doseUnits: 'Tablet',
+              frequency: 'Once a day',
+              route: 'Oral',
+              quantity: 10,
+              quantityUnits: 'Tablet',
+              administrationInstructions: '{"instructions":"As directed"}',
+            },
+            duration: 2,
+            durationUnits: 'Weeks',
+            effectiveStartDate: '2026-10-26T10:10:06Z',
+          },
+        ]);
+
+      const [medication] = await getPatientMedications(patientUUID);
+
+      expect(medication.duration).toEqual({ duration: 2, durationUnit: 'wk' });
+      expect(medication.instructions).toBe('As directed');
     });
 
     it('does not hide authorization errors behind the legacy fallback', async () => {
