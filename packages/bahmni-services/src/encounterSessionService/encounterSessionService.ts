@@ -6,6 +6,7 @@ import {
 } from '../constants/fhir';
 import { getActiveVisit, getEncounterByUuid } from '../encounterService';
 import { getAllFHIRSearchPages } from '../fhirSearchCompatibility';
+import { getVisitLocationUUID } from '../visitService';
 import {
   ENCOUNTER_SESSION_DURATION_GP_URL,
   ENCOUNTER_SEARCH_URL,
@@ -206,6 +207,7 @@ export async function filterByActiveVisit(
  * @param encounterTypeUUID - Encounter type UUID (optional, filters by type)
  * @param currentEpisodeEncounterUuids - The current episode of care's own known encounter UUIDs
  * @param savedEncounterUUID - Saved ID hint, always re-read and context-checked
+ * @param loginLocationUUID - Login department, resolved to its native parent visit location
  * @returns Promise resolving to active encounter or null
  */
 export async function findActiveEncounterInSession(
@@ -215,6 +217,7 @@ export async function findActiveEncounterInSession(
   encounterTypeUUID?: string,
   currentEpisodeEncounterUuids?: string[],
   savedEncounterUUID?: string,
+  loginLocationUUID?: string,
 ): Promise<Encounter | null> {
   if (!patientUUID) return null;
 
@@ -245,7 +248,12 @@ export async function findActiveEncounterInSession(
     encounterTypeUUID
   );
   if (encounters.length === 0 && !hasSavedHint) return null;
-  const activeVisit = await getActiveVisit(patientUUID);
+  const visitLocationUUID = loginLocationUUID
+    ? (await getVisitLocationUUID(loginLocationUUID)).uuid
+    : undefined;
+  const activeVisit = visitLocationUUID
+    ? await getActiveVisit(patientUUID, visitLocationUUID)
+    : await getActiveVisit(patientUUID);
   if (!activeVisit?.id) return null;
   const saved = hasSavedHint
     ? await readSavedEncounter(

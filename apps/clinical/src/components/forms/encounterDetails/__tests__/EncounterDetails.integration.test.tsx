@@ -2,6 +2,8 @@ import {
   getCookieByName,
   getFormattedError,
   getVisits,
+  getUserLoginLocation,
+  getVisitLocationUUID,
   getCurrentUser,
   getCurrentProvider,
 } from '@bahmni/services';
@@ -17,6 +19,8 @@ jest.mock('@bahmni/services', () => ({
   getCookieByName: jest.fn(),
   getFormattedError: jest.fn(),
   getVisits: jest.fn(),
+  getUserLoginLocation: jest.fn(),
+  getVisitLocationUUID: jest.fn(),
   getCurrentUser: jest.fn(),
   getCurrentProvider: jest.fn(),
   usePatientUUID: jest.fn(() => 'test-patient-uuid'),
@@ -147,6 +151,12 @@ describe('BasicForm Integration Tests', () => {
     (getCurrentUser as jest.Mock).mockResolvedValue(mockUser);
     (getCurrentProvider as jest.Mock).mockResolvedValue(mockProvider);
     (getVisits as jest.Mock).mockResolvedValue([mockActiveVisit]);
+    jest
+      .mocked(getUserLoginLocation)
+      .mockReturnValue({ uuid: '123', name: 'Test Location' });
+    jest
+      .mocked(getVisitLocationUUID)
+      .mockResolvedValue({ uuid: 'parent-location' });
     (getLocations as jest.Mock).mockResolvedValue([mockLocationData]);
 
     (useActivePractitioner as jest.Mock).mockReturnValue({
@@ -215,6 +225,11 @@ describe('BasicForm Integration Tests', () => {
       uuid: '789',
     });
     expect(store.isEncounterDetailsFormReady).toBe(true);
+    expect(getVisitLocationUUID).toHaveBeenCalledWith('123');
+    expect(getVisits).toHaveBeenCalledWith(
+      'test-patient-uuid',
+      'parent-location',
+    );
   }, 15000);
 
   test('handles location cookie not found error', async () => {
