@@ -2,6 +2,14 @@
 
 [README](../../README.md) · [Billing](README.md) · [Order transfer details](STOCK_TRANSFER_DETAILS.md) · [Cancellation](STOCK_CANCELLATION.md)
 
+## Opaque signed creation seed source checkpoint, 26 October 2026
+
+[Source 88](STOCK_INVENTORY_CREATE.md#candidate-88-opaque-signed-creation-seed-source-checkpoint)
+fixes the numeric signed-seed defect. All 245 selected native cases pass,
+including an actual V8 roundtrip, with 136 independently unchanged tables.
+Public creation review/Save, complete child/widget parity and durable UI remain
+required; no installed upgrade or new tester build is included.
+
 ## Private creation-effect preview source checkpoint, 21 October 2026
 
 [Source 87](STOCK_INVENTORY_CREATE.md#candidate-87-private-creation-effect-preview-source-checkpoint)

@@ -3723,9 +3723,7 @@ export interface InventoryDraftSeed {
   picking_type_id: number | false;
   version: string;
   signature: string;
-  values: Record<string, ConfirmationValue>;
-  domains: Record<string, ConfirmationValue>;
-  warning: Record<string, ConfirmationValue> | false;
+  payload: string;
 }
 export interface InventoryDraftForm {
   read_only: true;
@@ -3759,24 +3757,35 @@ function checkedInventoryHeaderEdits(edits: InventoryHeaderEdit[]) {
   return edits.map((edit) => ({ ...edit }));
 }
 function validInventoryDraftSeed(seed: InventoryDraftSeed) {
-  return (
-    confirmationKeys(seed, [
-      'picking_type_id',
-      'version',
-      'signature',
-      'values',
-      'domains',
-      'warning',
-    ]) &&
-    (seed.picking_type_id === false || stockId(seed.picking_type_id)) &&
-    stockVersion(seed.version) &&
-    stockVersion(seed.signature) &&
-    confirmationObject(seed.values) &&
-    confirmationObject(seed.domains) &&
-    (seed.warning === false || confirmationObject(seed.warning)) &&
-    validConfirmationValue(seed) &&
-    JSON.stringify(seed).length <= 2_000_000
-  );
+  if (
+    !(
+      confirmationKeys(seed, [
+        'picking_type_id',
+        'version',
+        'signature',
+        'payload',
+      ]) &&
+      (seed.picking_type_id === false || stockId(seed.picking_type_id)) &&
+      stockVersion(seed.version) &&
+      stockVersion(seed.signature) &&
+      typeof seed.payload === 'string' &&
+      JSON.stringify(seed).length <= 2_000_000
+    )
+  )
+    return false;
+  try {
+    // Inspect the envelope, but never reserialize the signed native payload.
+    const payload = JSON.parse(seed.payload);
+    return (
+      confirmationKeys(payload, ['values', 'domains', 'warning']) &&
+      confirmationObject(payload.values) &&
+      confirmationObject(payload.domains) &&
+      (payload.warning === false || confirmationObject(payload.warning)) &&
+      validConfirmationValue(payload)
+    );
+  } catch {
+    return false;
+  }
 }
 function checkedInventoryDraftSeed(
   seed: InventoryDraftSeed,

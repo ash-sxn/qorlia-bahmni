@@ -1,5 +1,16 @@
 # Bahmni workflow parity ledger
 
+## 26 October opaque signed creation seed source checkpoint
+
+[Source 88](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-88-opaque-signed-creation-seed-source-checkpoint)
+carries native creation values as an opaque signed string, so an actual
+JavaScript JSON roundtrip no longer breaks the seed signature. All 245 selected
+native cases pass, including an actual V8 roundtrip, with 136 independently
+unchanged tables. Full Home passes 1,984 tests. The typed SDK replay against
+candidate-88 responses, public effect review/Save, durable creation UI,
+child/widget parity and browser acceptance remain unfinished. No source-88
+installation, gateway access or new tester build is accepted.
+
 ## 21 October private creation-effect preview source checkpoint
 
 [Source 87](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-87-private-creation-effect-preview-source-checkpoint)

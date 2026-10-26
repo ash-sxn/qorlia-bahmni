@@ -87,7 +87,7 @@ class StockInventoryCreatePreparationTest(inventory.StockInventoryFixture, Trans
     def test_seed_edits_and_identity_cannot_be_replaced_during_preparation(self):
         loaded = self.load(self.out_type)
         for key, value in (('signature', '0' * 64), ('version', '0' * 64),
-                ('picking_type_id', self.in_type.id), ('values', {})):
+                ('picking_type_id', self.in_type.id), ('payload', '{"values":{},"domains":{},"warning":false}')):
             seed = dict(copy.deepcopy(loaded['seed']), **{key: value})
             with self.subTest(key=key), self.assertRaises(UserError):
                 self.api()._qorlia_inventory_draft_prepare(seed, [])

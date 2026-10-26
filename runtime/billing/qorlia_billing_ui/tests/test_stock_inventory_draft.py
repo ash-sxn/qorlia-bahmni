@@ -11,6 +11,7 @@ from odoo.tests import Form, TransactionCase, tagged
 
 from . import test_stock_inventory as inventory
 from . import test_stock_inventory_form as forms
+from ..models.stock_inventory_draft import _seed_payload
 
 
 @tagged('post_install', '-at_install')
@@ -127,9 +128,10 @@ class StockInventoryDraftTest(inventory.StockInventoryFixture, TransactionCase):
         replayed = self.api().qorlia_inventory_draft_onchange(wire_seed, [])
         self.assertEqual(replayed['form']['values'], current['form']['values'])
         self.assertEqual(replayed['version'], current['version'])
-        for mutate in (lambda item: item['values'].update(origin='QorliaQA Forged seed'),
-                lambda item: item['domains'].update(user_id=[]),
-                lambda item: item.update(warning={'message': 'forged'}),
+        payload = json.loads(current['seed']['payload'])
+        for mutate in (lambda item: item.update(payload=json.dumps(dict(payload, values={'origin': 'QorliaQA Forged seed'}))),
+                lambda item: item.update(payload=json.dumps(dict(payload, domains={'user_id': []}))),
+                lambda item: item.update(payload=json.dumps(dict(payload, warning={'message': 'forged'}))),
                 lambda item: item.update(version='0' * 64),
                 lambda item: item.update(picking_type_id=self.in_type.id),
                 lambda item: item.update(signature='0' * 64)):
@@ -138,7 +140,7 @@ class StockInventoryDraftTest(inventory.StockInventoryFixture, TransactionCase):
             with self.assertRaises(UserError):
                 self.api().qorlia_inventory_draft_onchange(seed, [])
         malformed = copy.deepcopy(current['seed'])
-        malformed['values']['origin'] = float('nan')
+        malformed['payload'] = '{"values":{"origin":NaN},"domains":{},"warning":false}'
         with self.assertRaises(ValidationError):
             self.api().qorlia_inventory_draft_onchange(malformed, [])
 
@@ -160,6 +162,55 @@ class StockInventoryDraftTest(inventory.StockInventoryFixture, TransactionCase):
         self.env.flush_all()
         with self.assertRaises(AccessError):
             self.env['stock.picking'].with_user(self.env.ref('base.public_user')).qorlia_inventory_draft_load()
+
+    def test_signed_payload_preserves_integral_float_default_children_on_json_roundtrip(self):
+        definition = self.env['stock.picking']._fields['move_ids_without_package']
+        default = lambda model: [Command.create({'product_id': self.product.id, 'name': 'QorliaQA Numeric defaults',
+            'product_uom_qty': 2.0, 'product_uom': self.product.uom_id.id,
+            'location_id': self.warehouse.lot_stock_id.id, 'location_dest_id': self.warehouse.lot_stock_id.id})]
+        with patch.object(definition, 'default', default):
+            current = self.load(self.internal_type)
+        seed = current['seed']
+        self.assertEqual(set(seed), {'picking_type_id', 'version', 'payload', 'signature'})
+        self.assertIn('"product_uom_qty": 2.0', seed['payload'])
+        wire_seed = json.loads(json.dumps(seed))
+        result = self.api().qorlia_inventory_draft_onchange(wire_seed, [])
+        self.assertEqual(result['seed'], seed)
+        self.assertEqual(result['form']['values'], current['form']['values'])
+        contents = _seed_payload(wire_seed)
+        # Native onchange prepends a clear command, so find the create command by its opcode.
+        creates = [command for command in contents['values']['move_ids_without_package']
+            if command[0] == Command.CREATE]
+        self.assertEqual(len(creates), 1)
+        quantity = creates[0][2]['product_uom_qty']
+        self.assertIs(type(quantity), float)
+        self.assertEqual(quantity, 2.0)
+
+    def test_semantically_equal_payload_reformatting_still_requires_its_original_signature(self):
+        current = self.load(self.out_type)
+        changed = dict(current['seed'], payload=json.dumps(_seed_payload(current['seed']), separators=(',', ':')))
+        self.assertNotEqual(changed['payload'], current['seed']['payload'])
+        self.assertEqual(_seed_payload(changed), _seed_payload(current['seed']))
+        with self.assertRaises(UserError):
+            self.api().qorlia_inventory_draft_onchange(changed, [])
+
+    def test_malformed_legacy_nonfinite_and_oversized_payloads_fail_before_native_replay(self):
+        current = self.load(self.out_type)
+        invalid = [dict(current['seed'], payload=value) for value in
+            (None, {}, 'null', '[]', '{}', '{',
+                '{"values":[],"domains":{},"warning":false}',
+                '{"values":{},"domains":[],"warning":false}',
+                '{"values":{},"domains":{},"warning":[]}',
+                '{"values":{"number":NaN},"domains":{},"warning":false}',
+                '{"values":{"number":1e400},"domains":{},"warning":false}', 'x' * 2_000_001)]
+        legacy = dict(current['seed'])
+        legacy.update(_seed_payload(legacy))
+        del legacy['payload']
+        invalid.append(legacy)
+        with patch.object(type(self.api()), '_qorlia_inventory_draft_source', side_effect=AssertionError('Malformed seed reached native replay')):
+            for seed in invalid:
+                with self.subTest(payload_type=type(seed.get('payload')).__name__), self.assertRaises(ValidationError):
+                    self.api().qorlia_inventory_draft_onchange(seed, [])
 
     def test_changed_native_view_or_configuration_invalidates_the_original_seed(self):
         current = self.load(self.out_type)
@@ -232,11 +283,11 @@ class StockInventoryDraftTest(inventory.StockInventoryFixture, TransactionCase):
                 self.env['stock.picking']._fields['scheduled_date'], 'default', lambda model: datetime(2026, 10, 20, 10)):
             native = Form(self.api())
             current = self.load()
-            self.assertTrue(current['seed']['values']['move_ids_without_package'])
+            self.assertTrue(json.loads(current['seed']['payload'])['values']['move_ids_without_package'])
             native.picking_type_id = self.internal_type
             current = self.edit(current, 'picking_type_id', self.internal_type.id)
             self.native_equal(current, native)
-            self.assertTrue(current['seed']['values']['move_ids_without_package'])
+            self.assertTrue(json.loads(current['seed']['payload'])['values']['move_ids_without_package'])
 
     def test_onchange_writes_are_rejected_rolled_back_and_callbacks_do_not_escape(self):
         picking = self.unlinked()

@@ -13,8 +13,29 @@ from .stock_confirmation_paged import _hash
 from .stock_inventory_form import _ATTRIBUTES, _SCALARS
 
 
-_PURPOSE = 'qorlia.inventory-new-form.v1'
-_SEED_KEYS = {'picking_type_id', 'version', 'values', 'domains', 'warning', 'signature'}
+_PURPOSE = 'qorlia.inventory-new-form.v2'
+_SEED_KEYS = {'picking_type_id', 'version', 'payload', 'signature'}
+
+
+def _seed_payload(seed):
+    if (not isinstance(seed, dict) or set(seed) != _SEED_KEYS
+            or not _hash(seed['version']) or not _hash(seed['signature'])
+            or not isinstance(seed['payload'], str)
+            or seed['picking_type_id'] is not False and
+                (type(seed['picking_type_id']) is not int or seed['picking_type_id'] <= 0)):
+        raise ValidationError('Use the original signed native new-transfer defaults.')
+    try:
+        if len(json.dumps(seed, allow_nan=False)) > 2_000_000:
+            raise ValueError()
+        payload = json.loads(seed['payload'])
+        if (not isinstance(payload, dict) or set(payload) != {'values', 'domains', 'warning'}
+                or not isinstance(payload['values'], dict) or not isinstance(payload['domains'], dict)
+                or not (payload['warning'] is False or isinstance(payload['warning'], dict))):
+            raise ValueError()
+        json.dumps(payload, allow_nan=False)
+    except (ValueError, TypeError, RecursionError, OverflowError):
+        raise ValidationError('Use bounded finite JSON in the original native form payload.')
+    return payload
 
 
 def _wire(value):
@@ -49,21 +70,12 @@ class StockInventoryDraft(models.Model):
             {key: seed[key] for key in _SEED_KEYS - {'signature'}}, {}, False)
 
     def _qorlia_inventory_draft_seed(self, seed):
-        if (not isinstance(seed, dict) or set(seed) != _SEED_KEYS
-                or not _hash(seed['version']) or not _hash(seed['signature'])
-                or not isinstance(seed['values'], dict) or not isinstance(seed['domains'], dict)
-                or not (seed['warning'] is False or isinstance(seed['warning'], dict))):
-            raise ValidationError('Use the original signed native new-transfer defaults.')
-        try:
-            if len(json.dumps(seed, allow_nan=False)) > 2_000_000:
-                raise ValueError()
-        except (ValueError, TypeError):
-            raise ValidationError('Use finite JSON values in the original native form seed.')
+        payload = _seed_payload(seed)
         model, spec, metadata, version = self._qorlia_inventory_draft_source(seed['picking_type_id'])
         if (not hmac.compare_digest(version, seed['version']) or not hmac.compare_digest(
                 self._qorlia_inventory_draft_signature(seed), seed['signature'])):
             raise UserError('The native defaults, account or configuration changed. Reload the new-transfer form.')
-        return model, spec, metadata
+        return model, spec, metadata, payload
 
     def _qorlia_inventory_draft_snapshot(self, model, seed, values, domains, warning, edits):
         form = model.new(values)
@@ -77,12 +89,13 @@ class StockInventoryDraft(models.Model):
         model, spec, metadata, version = self._qorlia_inventory_draft_source(picking_type_id)
         changed = _wire(model.onchange({}, [], spec))
         values = self.env['sale.order']._qorlia_from_onchange(model, changed.get('value', {}), metadata)
-        seed = {'picking_type_id': picking_type_id, 'version': version, 'values': values,
-            'domains': changed.get('domain') or {}, 'warning': changed.get('warning') or False}
+        payload = {'values': values, 'domains': changed.get('domain') or {}, 'warning': changed.get('warning') or False}
+        # Keep native numeric spelling inside a signed string across browser JSON round trips.
+        seed = {'picking_type_id': picking_type_id, 'version': version,
+            'payload': json.dumps(payload, allow_nan=False)}
         seed['signature'] = self._qorlia_inventory_draft_signature(seed)
-        if len(json.dumps(seed, allow_nan=False)) > 2_000_000:
-            raise UserError('These native defaults require a larger paged form contract before editing.')
-        return self._qorlia_inventory_draft_snapshot(model, seed, values, seed['domains'], seed['warning'], [])
+        _seed_payload(seed)
+        return self._qorlia_inventory_draft_snapshot(model, seed, values, payload['domains'], payload['warning'], [])
 
     @api.model
     def qorlia_inventory_draft_load(self, picking_type_id=False):
@@ -90,9 +103,9 @@ class StockInventoryDraft(models.Model):
         return self._qorlia_inventory_form_read(lambda: self._qorlia_inventory_draft_load(picking_type_id))
 
     def _qorlia_inventory_draft_replay_values(self, seed, edits):
-        model, spec, metadata = self._qorlia_inventory_draft_seed(seed)
+        model, spec, metadata, payload = self._qorlia_inventory_draft_seed(seed)
         self._qorlia_inventory_edit_ledger(edits)
-        values, domains, warning = copy.deepcopy(seed['values']), copy.deepcopy(seed['domains']), seed['warning']
+        values, domains, warning = payload['values'], payload['domains'], payload['warning']
         for index, edit in enumerate(edits):
             current = self._qorlia_inventory_draft_snapshot(model, seed, values, domains, warning, edits[:index])
             view = current['form']

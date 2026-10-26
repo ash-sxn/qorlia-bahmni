@@ -125,7 +125,7 @@ it('accepts historical success when the created transfer is now unavailable', as
 it('deep-copies the seed and ordered edits without modifying their signed representation', () => {
   const original = request(),
     copy = checkedInventoryCreationRequest(original);
-  copy.seed.values.note = 'Changed copy';
+  copy.seed.payload = '{}';
   copy.edits[0].value = 'Changed copy';
   expect(original).toEqual(request());
 });
@@ -147,7 +147,8 @@ it.each([
     if (kind === 'proof') value.review_complete_token = 'bad';
     if (kind === 'seed') value.seed.signature = 'bad';
     if (kind === 'seed-value')
-      Object.assign(value.seed.values, { value: Infinity });
+      value.seed.payload =
+        '{"values":{"value":1e309},"domains":{},"warning":false}';
     if (kind === 'node') Object.assign(value.edits[0], { node: true });
     if (kind === 'edit-extra') Object.assign(value.edits[0], { context: {} });
     if (kind === 'nan') value.edits[0].value = NaN;
