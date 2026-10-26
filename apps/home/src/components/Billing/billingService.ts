@@ -12707,6 +12707,7 @@ export const getInvoices = async (
   search: string,
   offset: number,
   invoiceIds?: number[],
+  { unpaidOnly = false }: { unpaidOnly?: boolean } = {},
 ) => {
   const result = await rpc<Invoice[]>(
     '/web/dataset/call_kw/account.move/search_read',
@@ -12718,6 +12719,14 @@ export const getInvoices = async (
         domain: [
           ['move_type', 'in', ['out_invoice', 'out_refund']],
           ...(invoiceIds ? [['id', 'in', invoiceIds]] : []),
+          // Cashier queue: posted customer bills that still have money to collect.
+          ...(unpaidOnly
+            ? [
+                ['move_type', '=', 'out_invoice'],
+                ['state', '=', 'posted'],
+                ['payment_state', 'in', ['not_paid', 'partial']],
+              ]
+            : []),
           ...(search
             ? [
                 '|',
