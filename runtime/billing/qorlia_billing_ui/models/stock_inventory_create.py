@@ -55,7 +55,7 @@ class StockInventoryCreate(models.Model):
         """Save-only native execution. It allocates real references, so never use it for read-only preview."""
         self = self._qorlia_inventory_context()
         current, values = self._qorlia_inventory_draft_prepare(seed, edits)
-        model, _spec, _metadata = self._qorlia_inventory_draft_seed(seed)
+        model, _spec, _metadata, _payload = self._qorlia_inventory_draft_seed(seed)
         cr = self.env.cr
         hooks = {name: (getattr(cr, name), list(getattr(cr, name)._funcs), copy.deepcopy(getattr(cr, name).data))
             for name in ('precommit', 'postcommit', 'prerollback', 'postrollback')}

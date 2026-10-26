@@ -115,7 +115,8 @@ class StockInventoryCreateValuesReviewTest(inventory.StockInventoryFixture, Tran
 
     def test_mutated_or_stale_seed_cannot_be_reviewed(self):
         current = self.load(self.out_type)
-        for name, value in (('signature', '0' * 64), ('version', '0' * 64), ('values', {})):
+        for name, value in (('signature', '0' * 64), ('version', '0' * 64),
+                ('payload', '{"values":{},"domains":{},"warning":false}')):
             changed = copy.deepcopy(current)
             changed['seed'][name] = value
             with self.subTest(name=name), self.assertRaises(UserError):
@@ -165,7 +166,7 @@ class StockInventoryCreateValuesReviewTest(inventory.StockInventoryFixture, Tran
         loaded = self.load(self.out_type)
         original = copy.deepcopy(loaded)
         result = self.review(loaded)
-        result['seed']['values'].clear()
+        result['seed']['payload'] = '{}'
         result['prepared_values'].clear()
         result['form']['values'].clear()
         self.assertEqual(loaded, original)

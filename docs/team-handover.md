@@ -1,6 +1,12 @@
 # New-team handover: Qorlia engineering
 
-Latest source checkpoint: [private creation-effect preview](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-87-private-creation-effect-preview-source-checkpoint)
+Latest source checkpoint: [opaque signed creation seed](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-88-opaque-signed-creation-seed-source-checkpoint)
+fixes the numeric signed-seed defect. All 245 selected native cases pass,
+including an actual V8 roundtrip, with 136 independently unchanged tables. Full
+Home passes 1,984 tests. There is no public creation Save, installed upgrade or
+new tester build. Contributor task bases stay unchanged.
+
+Previous source checkpoint: [private creation-effect preview](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-87-private-creation-effect-preview-source-checkpoint)
 passes 241 selected native cases with 130 matching Python files and 136 independently
 unchanged tables. Fresh Home checks pass 1,975 tests and library types. An actual
 JavaScript/native diagnostic proves a numeric signed-seed defect; client integration

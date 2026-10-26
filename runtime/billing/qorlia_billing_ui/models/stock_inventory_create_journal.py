@@ -15,7 +15,7 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 
 from .invoice_draft import _digest
 from .stock_confirmation_paged import _hash
-from .stock_inventory_draft import _SEED_KEYS
+from .stock_inventory_draft import _seed_payload
 from .stock_inventory_save import _SAVE_GRAPH, _SAVE_PRIVATE
 
 
@@ -67,13 +67,8 @@ class StockInventoryCreateJournal(models.Model):
         if not isinstance(payload, dict) or set(payload) != {'seed', 'edits', 'review_version', 'review_complete_token', 'request_key'}:
             raise ValidationError('Keep the exact native creation request and its original request key.')
         seed = payload['seed']
-        if (not isinstance(seed, dict) or set(seed) != _SEED_KEYS
-                or not _hash(seed['version']) or not _hash(seed['signature'])
-                or not isinstance(seed['values'], dict) or not isinstance(seed['domains'], dict)
-                or not (seed['warning'] is False or isinstance(seed['warning'], dict))
-                or seed['picking_type_id'] is not False and
-                    (type(seed['picking_type_id']) is not int or seed['picking_type_id'] <= 0)
-                or any(not _hash(payload[name]) for name in ('review_version', 'review_complete_token'))):
+        _seed_payload(seed)
+        if any(not _hash(payload[name]) for name in ('review_version', 'review_complete_token')):
             raise ValidationError('Keep the original signed defaults and creation review tokens.')
         self._qorlia_inventory_edit_ledger(payload['edits'])
         if any(not isinstance(edit, dict) or set(edit) != {'node', 'value'}

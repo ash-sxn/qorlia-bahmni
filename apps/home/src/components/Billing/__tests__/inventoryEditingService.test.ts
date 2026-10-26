@@ -38,6 +38,50 @@ beforeEach(() => {
   global.fetch = jest.fn();
 });
 
+it('preserves the exact opaque native payload through actual JavaScript JSON parsing and every draft call', async () => {
+  const draft = inventoryDraftForm();
+  draft.seed.payload =
+    '{"values":{"quantity":2.0,"zero":-0.0,"small":1e-07,"large":1e+21,"label":"नमस्ते"},"domains":{},"warning":false}';
+  const seed = JSON.parse(JSON.stringify(draft.seed));
+  expect(seed.payload).toBe(draft.seed.payload);
+  reply(JSON.parse(JSON.stringify(draft)));
+  await getInventoryDraftForm();
+  reply(JSON.parse(JSON.stringify(draft)));
+  await previewInventoryDraftForm(seed, []);
+  reply({ version: draft.version, edits: [], page: inventoryFormChoices() });
+  await getInventoryDraftFormChoices(seed, [], 3);
+  expect(
+    params()
+      .slice(1)
+      .map((call) => call.kwargs.seed.payload),
+  ).toEqual([draft.seed.payload, draft.seed.payload]);
+});
+
+it.each([
+  'null',
+  '[]',
+  '{}',
+  '{',
+  '{"values":{},"domains":{},"warning":[]}',
+  '{"values":{"number":NaN},"domains":{},"warning":false}',
+  '{"values":{"number":1e400},"domains":{},"warning":false}',
+])('rejects malformed opaque payload %s before fetch', async (payload) => {
+  await expect(
+    previewInventoryDraftForm({ ...inventoryDraftForm().seed, payload }, []),
+  ).rejects.toThrow();
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+it('requires a fresh matching-server draft rather than accepting the old mutable seed shape', async () => {
+  const seed = inventoryDraftForm().seed;
+  const { payload, ...envelope } = seed;
+  const legacy = { ...envelope, ...JSON.parse(payload) };
+  await expect(
+    previewInventoryDraftForm(legacy as never, []),
+  ).rejects.toThrow();
+  expect(fetch).not.toHaveBeenCalled();
+});
+
 it('uses the seven named native draft/saved methods without adding an order or a save request', async () => {
   const draft = inventoryDraftForm(),
     current = inventoryStoredPreview(),
@@ -146,7 +190,8 @@ it.each([
   if (kind === 'ready') Object.assign(data, { write_ready: true });
   if (kind === 'version') data.version = 'f'.repeat(64);
   if (kind === 'signature') data.seed.signature = 'bad';
-  if (kind === 'seed') data.seed.values.note = 'Replaced';
+  if (kind === 'seed')
+    data.seed.payload = data.seed.payload.replace('false', 'true');
   if (kind === 'edits') data.edits = [{ node: 2, value: 'Unrequested' }];
   if (kind === 'form') data.form.values.id = 7;
   if (kind === 'domains') Object.assign(data, { domains: [] });
@@ -176,8 +221,10 @@ it.each([
     let edits: unknown = [{ node: 2, value: 'Note' }];
     if (kind === 'seed-signature') seed.signature = 'bad';
     if (kind === 'seed-extra') Object.assign(seed, { author: 99 });
-    if (kind === 'seed-nonfinite') seed.values.quantity = Infinity;
-    if (kind === 'seed-bound') seed.values.note = 'x'.repeat(2_000_001);
+    if (kind === 'seed-nonfinite')
+      seed.payload =
+        '{"values":{"quantity":1e309},"domains":{},"warning":false}';
+    if (kind === 'seed-bound') seed.payload = 'x'.repeat(2_000_001);
     if (kind === 'ledger-shape')
       edits = [{ node: 2, value: 'Note', field: 'note' }];
     if (kind === 'ledger-node') edits = [{ node: true, value: 'Note' }];

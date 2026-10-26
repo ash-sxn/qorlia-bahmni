@@ -33,7 +33,9 @@ function fresh() {
     draft.form.fields[name] = { type, string: name };
     draft.form.layout.push({ ...draft.form.layout[2], field: name });
     draft.form.values[name] = value;
-    draft.seed.values[name] = value;
+    const payload = JSON.parse(draft.seed.payload);
+    payload.values[name] = value;
+    draft.seed.payload = JSON.stringify(payload);
   }
   return draft;
 }
@@ -242,7 +244,10 @@ it('does not replace the pinned defaults when another Billing workflow invalidat
   await edit();
   const original = clone(draft.seed);
   draft.seed.signature = 'f'.repeat(64);
-  draft.seed.values.origin = 'QorliaQA changed server default';
+  draft.seed.payload = draft.seed.payload.replace(
+    'native default',
+    'changed server default',
+  );
   draft.form.values.origin = 'QorliaQA changed server default';
   await act(async () => {
     await view.client.invalidateQueries({ queryKey: ['billing'] });
@@ -471,7 +476,10 @@ it('loads a fresh signed default set when reopened instead of reusing a discarde
   first.unmount();
   draft = fresh();
   draft.seed.signature = 'f'.repeat(64);
-  draft.seed.values.origin = 'QorliaQA fresh defaults';
+  draft.seed.payload = draft.seed.payload.replace(
+    'native default',
+    'fresh defaults',
+  );
   draft.form.values.origin = 'QorliaQA fresh defaults';
   render(
     <QueryClientProvider client={first.client}>

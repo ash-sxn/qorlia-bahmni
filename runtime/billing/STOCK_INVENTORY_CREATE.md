@@ -2,6 +2,41 @@
 
 [README](../../README.md) · [Billing](README.md) · [Draft form](STOCK_INVENTORY_FORM.md) · [Inventory](STOCK_INVENTORY_WORKSPACE.md)
 
+## Candidate 88 opaque signed creation seed source checkpoint
+
+This is a source-only checkpoint. It fixes the browser numeric representation
+blocker recorded under candidate 87 below. The [draft seed](qorlia_billing_ui/models/stock_inventory_draft.py)
+now carries native creation values as an opaque signed JSON string. The client
+may parse that string to check its schema, but must send the original string back
+unchanged. The native server checks the exact bounded envelope, signature,
+version and payload shape, and decodes the payload only after the signature
+passes. This keeps `2.0` distinct from `2` and preserves native default child
+commands without weakening the signature. Legacy object seeds, reformatted
+payloads, malformed, non-finite and oversized payloads are rejected before
+native replay.
+
+The first private no-HTTP native run on 23 October selected 245 cases, including
+an injected actual V8 roundtrip case. It finished with zero failures and one
+error. The error was in the new test itself: native onchange prepends a clear
+command (`[5, 0, 0]`) to `move_ids_without_package`, so reading the first command
+did not reach the created child line. The test now selects the create command by
+opcode. No product code changed. The rerun on 26 October in a new log directory
+**passes all 245 cases with zero failures, errors and skips**. The injected V8
+case confirms that the actual JavaScript JSON roundtrip is accepted by native
+onchange and values review, and that changing `2.0` to `2` in the payload is
+rejected. All 130 Python files were loaded from a read-only mount. All 136
+protected tables are unchanged after rollback, the creation journal remains
+absent and installed metadata remains 49. Mandatory analytics and SMS remain
+enabled. The no-HTTP worker exited zero and was removed.
+
+A full Home run passes 1,984 tests in 113 suites, and the four focused Inventory
+creation and draft suites pass 140 tests. The typed SDK has not been replayed
+against recorded candidate-88 native responses yet. There is still no public
+creation Save, creation UI, gateway enablement, installed upgrade, browser
+acceptance or tester publication.
+
+Native log SHA-256: `97eef552cfbf28dd817b96a90f7a524932315ccdf6dacda605571c777574b719`.
+
 ## Candidate 87 private creation-effect preview source checkpoint
 
 [Private sequence isolation](qorlia_billing_ui/models/sequence_preview.py) and

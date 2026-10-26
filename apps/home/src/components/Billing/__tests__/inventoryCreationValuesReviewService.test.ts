@@ -78,7 +78,8 @@ it.each([
     if (kind === 'missing-values')
       Object.assign(data, { prepared_values: false });
     if (kind === 'empty-values') data.prepared_values = {};
-    if (kind === 'wrong-seed') data.seed.values.note = 'QorliaQA Changed seed';
+    if (kind === 'wrong-seed')
+      data.seed.payload = data.seed.payload.replace('false', 'true');
     if (kind === 'wrong-edits')
       data.edits = [{ node: 2, value: 'QorliaQA Other edit' }];
     if (kind === 'saved-form') data.form.transfer_id = 77;

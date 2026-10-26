@@ -2,6 +2,7 @@
 # Copyright 2026 Qorlia contributors.
 from contextlib import closing
 import copy
+import json
 from datetime import datetime
 import uuid
 from unittest.mock import patch
@@ -118,7 +119,9 @@ class StockInventoryCreateJournalTest(StockInventoryCreateJournalFixture, Transa
         for name in ('review_version', 'review_complete_token'):
             variants.append(dict(copy.deepcopy(payload), **{name: 'c' * 64}))
         changed = copy.deepcopy(payload)
-        changed['seed']['values']['origin'] = 'QorliaQA Another body'
+        contents = json.loads(changed['seed']['payload'])
+        contents['values']['origin'] = 'QorliaQA Another body'
+        changed['seed']['payload'] = json.dumps(contents)
         variants.append(changed)
         variants.append(dict(copy.deepcopy(payload), edits=[{'node': 0, 'value': 'QorliaQA Another edit'}]))
         before = self.stamp()
