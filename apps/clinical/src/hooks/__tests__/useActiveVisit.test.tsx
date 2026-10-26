@@ -1,4 +1,9 @@
-import { getVisits, getFormattedError } from '@bahmni/services';
+import {
+  getVisits,
+  getFormattedError,
+  getUserLoginLocation,
+  getVisitLocationUUID,
+} from '@bahmni/services';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { usePatientVisit } from '../usePatientVisit';
 import { mockActiveVisit, mockVisitBundle } from './__mocks__/encounterMocks';
@@ -17,6 +22,8 @@ jest.mock('@bahmni/services', () => ({
     },
   }),
   getVisits: jest.fn(),
+  getUserLoginLocation: jest.fn(),
+  getVisitLocationUUID: jest.fn(),
   getFormattedError: jest.fn(),
 }));
 
@@ -39,6 +46,12 @@ describe('usePatientVisit', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest
+      .mocked(getUserLoginLocation)
+      .mockReturnValue({ uuid: 'login-location', name: 'OPD' });
+    jest
+      .mocked(getVisitLocationUUID)
+      .mockResolvedValue({ uuid: 'visit-location' });
   });
 
   it('should return loading state initially', async () => {
@@ -67,7 +80,7 @@ describe('usePatientVisit', () => {
     expect(result.current.activeVisit).toEqual(mockActiveVisit);
     expect(result.current.lastVisit).toBeNull();
     expect(result.current.error).toBeNull();
-    expect(mockedGetVisits).toHaveBeenCalledWith(patientUUID);
+    expect(mockedGetVisits).toHaveBeenCalledWith(patientUUID, 'visit-location');
   });
 
   it('should derive lastVisit as the most recently ended visit when no active visit', async () => {
@@ -143,7 +156,7 @@ describe('usePatientVisit', () => {
     });
 
     expect(mockedGetVisits).toHaveBeenCalledTimes(1);
-    expect(mockedGetVisits).toHaveBeenCalledWith(patientUUID);
+    expect(mockedGetVisits).toHaveBeenCalledWith(patientUUID, 'visit-location');
 
     const newPatientUUID = 'new-patient-uuid';
     const promise2 = Promise.resolve(allVisits);
@@ -156,7 +169,10 @@ describe('usePatientVisit', () => {
     });
 
     expect(mockedGetVisits).toHaveBeenCalledTimes(2);
-    expect(mockedGetVisits).toHaveBeenCalledWith(newPatientUUID);
+    expect(mockedGetVisits).toHaveBeenCalledWith(
+      newPatientUUID,
+      'visit-location',
+    );
   });
 
   it('should provide a refetch method that reloads data', async () => {
@@ -182,5 +198,96 @@ describe('usePatientVisit', () => {
     });
 
     expect(mockedGetVisits).toHaveBeenCalledTimes(2);
+  });
+
+  it('resolves the login department to its parent visit location before fetching', async () => {
+    mockedGetVisits.mockResolvedValue([mockActiveVisit] as any);
+    const { result } = renderHook(() => usePatientVisit(patientUUID));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(getVisitLocationUUID).toHaveBeenCalledWith('login-location');
+    expect(mockedGetVisits).toHaveBeenCalledWith(patientUUID, 'visit-location');
+  });
+
+  it('does not fall back to all facilities when location resolution fails', async () => {
+    jest
+      .mocked(getVisitLocationUUID)
+      .mockRejectedValueOnce(new Error('Location denied'));
+    const { result } = renderHook(() => usePatientVisit(patientUUID));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error?.message).toBe('Location denied');
+    expect(mockedGetVisits).not.toHaveBeenCalled();
+  });
+
+  it('hides the previous patient immediately and ignores its late response', async () => {
+    let finishOld!: (visits: any[]) => void;
+    mockedGetVisits.mockImplementation((patient) =>
+      patient === patientUUID
+        ? new Promise((resolve) => {
+            finishOld = resolve;
+          })
+        : Promise.resolve([]),
+    );
+    const { result, rerender } = renderHook(
+      ({ patient }) => usePatientVisit(patient),
+      {
+        initialProps: { patient: patientUUID },
+      },
+    );
+    await waitFor(() => expect(mockedGetVisits).toHaveBeenCalledTimes(1));
+    rerender({ patient: 'patient-two' });
+    expect(result.current.activeVisit).toBeNull();
+    expect(result.current.loading).toBe(true);
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => {
+      finishOld([mockActiveVisit]);
+    });
+    expect(result.current.activeVisit).toBeNull();
+    expect(result.current.error?.message).toBe('No active visit found');
+  });
+
+  it('clears the visit when the patient becomes null', async () => {
+    mockedGetVisits.mockResolvedValue([mockActiveVisit] as any);
+    const { result, rerender } = renderHook(
+      ({ patient }) => usePatientVisit(patient),
+      {
+        initialProps: { patient: patientUUID as string | null },
+      },
+    );
+    await waitFor(() =>
+      expect(result.current.activeVisit).toEqual(mockActiveVisit),
+    );
+    rerender({ patient: null });
+    expect(result.current.activeVisit).toBeNull();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error?.message).toBe('Invalid patient UUID');
+  });
+
+  it('refetches when login location changes and cannot publish the old location', async () => {
+    let finishOld!: (visits: any[]) => void;
+    jest
+      .mocked(getVisitLocationUUID)
+      .mockImplementation(async (location) => ({ uuid: `parent-${location}` }));
+    mockedGetVisits.mockImplementation((_patient, location) =>
+      location === 'parent-login-location'
+        ? new Promise((resolve) => {
+            finishOld = resolve;
+          })
+        : Promise.resolve([]),
+    );
+    const { result, rerender } = renderHook(() => usePatientVisit(patientUUID));
+    await waitFor(() => expect(mockedGetVisits).toHaveBeenCalledTimes(1));
+    jest
+      .mocked(getUserLoginLocation)
+      .mockReturnValue({ uuid: 'second-location', name: 'Clinic 2' });
+    rerender();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(mockedGetVisits).toHaveBeenLastCalledWith(
+      patientUUID,
+      'parent-second-location',
+    );
+    await act(async () => {
+      finishOld([mockActiveVisit]);
+    });
+    expect(result.current.activeVisit).toBeNull();
   });
 });

@@ -7,6 +7,7 @@ import {
   getConfig,
   getEncounterByUuid,
   getEncounterSessionSnapshot,
+  getUserLoginLocation,
   invokeCDSSRule,
 } from '@bahmni/services';
 import { useActivePractitioner, useNotification } from '@bahmni/widgets';
@@ -80,6 +81,7 @@ jest.mock('@bahmni/services', () => ({
   getConfig: jest.fn(),
   getEncounterByUuid: jest.fn(),
   getEncounterSessionSnapshot: jest.fn(),
+  getUserLoginLocation: jest.fn(),
 }));
 
 jest.mock('@bahmni/widgets', () => ({
@@ -146,6 +148,9 @@ const renderComponent = (
   );
 
 beforeEach(() => {
+  jest
+    .mocked(getUserLoginLocation)
+    .mockReturnValue({ uuid: 'login-department', name: 'OPD' });
   jest.mocked(useSubmittedEncounterForms).mockReturnValue({
     submittedFormUuids: new Set<string>(),
     isReady: true,
@@ -326,6 +331,64 @@ describe('ConsultationPad', () => {
   describe('activeEncounter wiring', () => {
     const EDIT_ENCOUNTER_UUID = 'edit-enc-uuid';
 
+    it('blocks saving and does not search all facilities without a login location', async () => {
+      jest.mocked(getUserLoginLocation).mockImplementation(() => {
+        throw new Error('No location');
+      });
+      renderComponent();
+      await screen.findByText(
+        'An error occurred while loading the consultation pad. Please try again later.',
+      );
+      expect(findActiveEncounterInSession).not.toHaveBeenCalled();
+      expect(screen.getByTestId('primary-button')).toBeDisabled();
+    });
+
+    it('revalidates a cached session before enabling saving', async () => {
+      queryClient.setQueryData(
+        [
+          'activeEncounter',
+          'patient-123',
+          'prac-uuid',
+          'encounter-type-uuid',
+          null,
+          undefined,
+          'login-department',
+        ],
+        { resourceType: 'Encounter', id: 'stale-encounter' },
+      );
+      jest
+        .mocked(findActiveEncounterInSession)
+        .mockReturnValue(new Promise(() => {}));
+      (mockRegistry[0].hasData as jest.Mock).mockReturnValue(true);
+      renderComponent();
+      await waitFor(() =>
+        expect(findActiveEncounterInSession).toHaveBeenCalled(),
+      );
+      expect(screen.getByTestId('primary-button')).toBeDisabled();
+    });
+
+    it('recovers a failed session lookup using reads only', async () => {
+      jest
+        .mocked(findActiveEncounterInSession)
+        .mockRejectedValueOnce(new Error('Lookup unavailable'))
+        .mockResolvedValue(null);
+      renderComponent();
+      await userEvent.click(
+        await screen.findByRole('button', {
+          name: 'Try again',
+        }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByText(
+            'An error occurred while loading the consultation pad. Please try again later.',
+          ),
+        ).not.toBeInTheDocument(),
+      );
+      expect(findActiveEncounterInSession).toHaveBeenCalledTimes(2);
+      expect(submitConsultation).not.toHaveBeenCalled();
+    });
+
     it('passes only a resolved MATCHED snapshot ID for native revalidation', async () => {
       jest.mocked(getEncounterSessionSnapshot).mockReturnValue({
         matchReasons: ['MATCHED'],
@@ -342,6 +405,7 @@ describe('ConsultationPad', () => {
           'encounter-type-uuid',
           undefined,
           'saved-encounter',
+          'login-department',
         ),
       );
     });
@@ -367,6 +431,7 @@ describe('ConsultationPad', () => {
             'encounter-type-uuid',
             undefined,
             undefined,
+            'login-department',
           ),
         );
       },
@@ -691,6 +756,7 @@ describe('ConsultationPad', () => {
           'encounter-type-uuid',
           ['encounter-1', 'encounter-2'],
           undefined,
+          'login-department',
         );
       });
     });
@@ -713,6 +779,7 @@ describe('ConsultationPad', () => {
           'encounter-type-uuid',
           undefined,
           undefined,
+          'login-department',
         );
       });
     });
@@ -735,6 +802,7 @@ describe('ConsultationPad', () => {
           'encounter-type-uuid',
           undefined,
           undefined,
+          'login-department',
         );
       });
     });

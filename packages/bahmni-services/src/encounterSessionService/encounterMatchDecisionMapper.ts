@@ -1,5 +1,6 @@
 import { Encounter } from 'fhir/r4';
 import { getActiveVisit } from '../encounterService';
+import { getVisitLocationUUID } from '../visitService';
 import {
   type MatchReasonCode,
   type EncounterMatchDecision,
@@ -48,7 +49,12 @@ export async function resolveEncounterMatchDecision(
   savedEncounterUUID?: string,
 ): Promise<EncounterMatchDecision> {
   // 1. Active visit? → NO → NO_ACTIVE_VISIT
-  const activeVisit = await getActiveVisit(patientUUID);
+  const visitLocationUUID = locationUUID
+    ? (await getVisitLocationUUID(locationUUID)).uuid
+    : undefined;
+  const activeVisit = visitLocationUUID
+    ? await getActiveVisit(patientUUID, visitLocationUUID)
+    : await getActiveVisit(patientUUID);
   if (!activeVisit?.id) {
     return { matched: false, encounter: null, reasons: ['NO_ACTIVE_VISIT'] };
   }
