@@ -14,9 +14,16 @@ import {
   getChargeOrders,
   getInvoices,
   getDocumentReports,
+  getOrderDeliveryPage,
+  getOrderTransferDetailPage,
   OrderWorkflow,
 } from '../billingService';
 import { ChargeOrdersPanel } from '../ChargeOrdersPanel';
+import { loadStockWriteRecovery } from '../stockReservationRecovery';
+import {
+  orderDeliveryPageFixture,
+  orderTransferDetailPageFixture,
+} from './orderDeliveryFixture';
 import { workflowFixture as mockWorkflowFixture } from './workflowFixture';
 
 jest.mock('../billingService', () => ({
@@ -25,6 +32,17 @@ jest.mock('../billingService', () => ({
   getChargeOrderLines: jest.fn(),
   getInvoices: jest.fn(),
   getDocumentReports: jest.fn(),
+  getOrderDeliveryPage: jest.fn(),
+  getOrderTransferDetailPage: jest.fn(),
+}));
+jest.mock('../stockReservationRecovery', () => ({
+  ...jest.requireActual('../stockReservationRecovery'),
+  loadStockWriteRecovery: jest.fn(),
+}));
+jest.mock('../PagedStockValidationModal', () => ({
+  PagedStockValidationModal: ({ close }: { close: () => void }) => (
+    <button onClick={close}>Return from complete validation</button>
+  ),
 }));
 jest.mock('../DraftOrderEditor', () => ({
   DraftOrderEditor: ({ saved }: { saved: (draft: BillingDraft) => void }) => (
@@ -121,6 +139,66 @@ const show = (
   );
 
 describe('Charge orders workspace', () => {
+  it('reloads delivered order quantities after returning from stock validation', async () => {
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View order QORLIAQA-ORDER' }),
+    );
+    const original = await screen.findByRole('table', {
+      name: 'Charge order items',
+    });
+    expect(
+      within(original).getAllByRole('row')[1].children[8],
+    ).toHaveTextContent('0');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'View stock transfers' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View transfer QORLIAQA/OUT/11',
+      }),
+    );
+    const validate = await screen.findByRole('button', {
+      name: 'Review transfer validation',
+    });
+    await waitFor(() => expect(validate).toBeEnabled());
+    fireEvent.click(validate);
+    jest
+      .mocked(getChargeOrderLines)
+      .mockResolvedValue([{ ...line, qty_delivered: 2 }] as Awaited<
+        ReturnType<typeof getChargeOrderLines>
+      >);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Return from complete validation' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Back to order details' }),
+    );
+    await waitFor(() => expect(getChargeOrderLines).toHaveBeenCalledTimes(2));
+    const refreshed = await screen.findByRole('table', {
+      name: 'Charge order items',
+    });
+    expect(
+      within(refreshed).getAllByRole('row')[1].children[8],
+    ).toHaveTextContent('2');
+  });
+  it('opens stock transfers with the selected saved order and returns to its details', async () => {
+    show();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View order QORLIAQA-ORDER' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'View stock transfers' }),
+    );
+    await screen.findByRole('table', {
+      name: 'Native transfers linked to this order',
+    });
+    expect(getOrderDeliveryPage).toHaveBeenCalledWith(9, 0, false, 25);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Back to order details' }),
+    );
+    await screen.findByRole('region', { name: 'Charge order details' });
+  });
   it('opens saved order reports and returns to the same selected order', async () => {
     (getDocumentReports as jest.Mock).mockResolvedValue([
       { key: 'quotation', name: 'Quotation / Order' },
@@ -144,6 +222,15 @@ describe('Charge orders workspace', () => {
   });
   beforeEach(() => {
     jest.clearAllMocks();
+    jest
+      .mocked(getOrderDeliveryPage)
+      .mockResolvedValue(orderDeliveryPageFixture());
+    jest
+      .mocked(getOrderTransferDetailPage)
+      .mockImplementation(async (_order, _id, section) =>
+        orderTransferDetailPageFixture(section),
+      );
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue(null);
     (getChargeOrders as jest.Mock).mockResolvedValue([order]);
     (getChargeOrderLines as jest.Mock).mockResolvedValue([line]);
     (getInvoices as jest.Mock).mockResolvedValue([]);

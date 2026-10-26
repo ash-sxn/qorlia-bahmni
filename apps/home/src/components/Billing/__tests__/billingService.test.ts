@@ -409,6 +409,23 @@ describe('billing API', () => {
     });
     expect(options.credentials).toBe('same-origin');
   });
+  it('uses the operator-configured database without adding a user-controlled database selector', async () => {
+    const previous = process.env.BAHMNI_BILLING_DATABASE;
+    try {
+      process.env.BAHMNI_BILLING_DATABASE = 'qorlia_synthetic_copy';
+      reply({ result: { uid: 3 } });
+      await signInToBilling('cashier', 'synthetic-password');
+      const [, options] = (fetch as jest.Mock).mock.calls[0];
+      expect(JSON.parse(options.body).params).toEqual({
+        db: 'qorlia_synthetic_copy',
+        login: 'cashier',
+        password: 'synthetic-password',
+      });
+    } finally {
+      if (previous === undefined) delete process.env.BAHMNI_BILLING_DATABASE;
+      else process.env.BAHMNI_BILLING_DATABASE = previous;
+    }
+  });
   it('distinguishes an expired ERP session from a service failure', async () => {
     expect(new BillingSessionExpired().message).toBe(
       'Your Billing session expired. Reconnect to continue.',

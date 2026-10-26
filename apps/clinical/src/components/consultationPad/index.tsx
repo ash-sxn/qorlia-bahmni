@@ -9,6 +9,7 @@ import {
   getConfig,
   getEncounterByUuid,
   getEncounterSessionSnapshot,
+  getUserLoginLocation,
   invokeCDSSRule,
   type CDSSCheckEventDetail,
   type CDSSServerConfig,
@@ -180,7 +181,18 @@ const ConsultationPad: React.FC<ConsultationPadProps> = ({
     : undefined;
 
   const { practitioner } = useActivePractitioner();
-  const { data: sessionEncounter, status: sessionEncounterStatus } = useQuery({
+  let loginLocationUUID: string | undefined;
+  try {
+    loginLocationUUID = getUserLoginLocation().uuid;
+  } catch {
+    // The query reports missing session location and keeps saving disabled.
+  }
+  const {
+    data: sessionEncounter,
+    status: sessionEncounterStatus,
+    isFetching: sessionEncounterFetching,
+    refetch: refetchSessionEncounter,
+  } = useQuery({
     queryKey: [
       'activeEncounter',
       patientId,
@@ -188,8 +200,11 @@ const ConsultationPad: React.FC<ConsultationPadProps> = ({
       selectedEncounterType?.uuid,
       activeEpisodeId,
       currentEpisodeEncounterUuids,
+      loginLocationUUID,
     ],
     queryFn: () => {
+      if (!loginLocationUUID)
+        throw new Error(t('ERROR_FETCHING_USER_LOCATION_DETAILS'));
       // A saved widget encounter is an ID hint, not trusted cached clinical data.
       const snapshot = getEncounterSessionSnapshot();
       const savedEncounterUUID =
@@ -205,9 +220,11 @@ const ConsultationPad: React.FC<ConsultationPadProps> = ({
         selectedEncounterType?.uuid,
         currentEpisodeEncounterUuids,
         savedEncounterUUID,
+        loginLocationUUID,
       );
     },
     staleTime: 0,
+    refetchOnMount: 'always',
     enabled: !!(patientId && practitioner?.uuid && selectedEncounterType?.uuid),
   });
   const {
@@ -236,7 +253,9 @@ const ConsultationPad: React.FC<ConsultationPadProps> = ({
     sourceEncounterUuid,
     sourceEncounter,
     sessionEncounter,
-    sessionEncounterStatus,
+    sessionEncounterStatus: sessionEncounterFetching
+      ? 'pending'
+      : sessionEncounterStatus,
   });
 
   const hasObservationData = useSyncExternalStore(subscribeAll, () =>
@@ -577,6 +596,14 @@ const ConsultationPad: React.FC<ConsultationPadProps> = ({
         <div className={styles.error}>
           <h3>{t('CONSULTATION_PAD_ERROR_TITLE')}</h3>
           <p>{t('CONSULTATION_PAD_ERROR_BODY')}</p>
+          {sessionEncounterStatus === 'error' && (
+            <Button
+              kind="tertiary"
+              onClick={() => void refetchSessionEncounter()}
+            >
+              {t('CONSULTATION_SESSION_RETRY')}
+            </Button>
+          )}
         </div>
       );
     return (

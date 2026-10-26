@@ -1,5 +1,1487 @@
 # Qorlia React frontend backend readiness
 
+## Global Inventory preparation (19 October 2026)
+
+[Candidate 69](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-69-global-preparation-19-october-2026)
+connects native check availability, unreserve, set/clear recorded quantities and
+exact UI recovery without an order. Home passes 1,574 cases/102 suites; corrected
+native verification remains pending. Remaining workflows and runtime/browser/
+release gates are in the guide. No review reopening, upgrade or deployment.
+
+## Global Inventory confirmation (19 October 2026)
+
+[Candidate 68](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-68-global-confirmation-19-october-2026)
+extends only complete paged confirmation to an explicit orderless identity,
+retaining the existing native engine, full write proofs/permissions and exact
+recovery. The Inventory entry point and direct recovery banner use the same
+dialog. Home passes 1,561 cases/102 suites. Native evidence and remaining global
+writes, current full regression, runtime/browser and release gates are in the
+guide. Installed metadata stays 49; no build/server, upgrade or deployment.
+
+## Global inventory pinned detail reads (19 October 2026)
+
+[Candidate 67](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md#candidate-67-global-details-19-october-2026)
+adds direct transfer load and complete move/operation paging, independently of
+Sales orders. Hidden linked data/labels reject instead of truncating the graph;
+native field/role/company checks and actual cursor membership remain. The React
+view pins both sections to one header/version/timezone, hides stale details,
+restores navigation focus and reuses the existing order view's extracted tables.
+Global details have no write actions, and read snapshots are not write proofs.
+Home passes 1,553 cases/102 suites; 50 native cases preserve 132 tables with 106
+matching Python hashes; matching-client replay accepts 72 native responses with
+transport mocked. Independent committed SQL agrees. Types, scoped lint and three
+source-gateway stub cases pass. Global reviewed write/recovery, remaining native
+fields/views, actual transport/browser/layout/IndexedDB, scale, full matching
+regression and release remain. Review stays closed; no build/server or deployment.
+
+## Global inventory transfer read flow (19 October 2026)
+
+[Candidate 66](../runtime/billing/STOCK_INVENTORY_WORKSPACE.md) adds the signed-in
+Inventory transfers tab, typed client, fixed protected gateway route and native
+reader without sales-order links. Native Stock User/Manager access, record-rule
+filtering/counts, active companies, ordering and combined Waiting semantics
+remain. Pages contain at most 25 headers, with account/context timezone dates.
+Denied/expired refreshes hide stale rows. No stock action is dispatched.
+Home passes 1,527 cases/100 suites; nine native cases preserve 132 tables with
+106 matching Python files; the client accepts 15 captured native responses with
+transport mocked. Independent committed SQL also agrees. Three source-gateway
+stub cases pass, alongside types/scoped lint. Global detail/write flows, more
+native filters/views, full matching regression, real HTTP/browser/layout,
+scale and release acceptance remain open. The earlier candidate-64 full run
+passes 928 cases with independently preserved 132 tables, not current-source
+acceptance. Review stays closed; no build/server, installed upgrade or deployment.
+
+## Private analytic cancellation and mixed native states (19 October 2026)
+
+[Candidate 65](../runtime/billing/STOCK_CANCELLATION.md#candidate-65-private-analytic-reference-and-mixed-state-coverage)
+fixes a reproduced cancellation parity gap: native deletion may be allowed even
+when a read rule hides the linked analytic entry. Public effects describe the
+private item without an identifier/name; the exact relationship remains signed
+server-side. Unlink denial still rejects. Other stock protocols retain strict
+dependency checks. Home passes 1,505 cases/98 suites, types and scoped lint/format.
+Forty native cases preserve 132 tables with 104 matching Python files;
+actual-client replay accepts 213 native responses with transport mocked.
+Independent committed-table SQL also agrees. Native evidence and remaining gates are maintained in the contract,
+separately from HTTP/browser/IndexedDB, global inventory and release acceptance.
+Review access remains closed; no frontend build/server or deployment.
+
+## Complete cancellation React consumer (19 October 2026)
+
+The [shared native-review consumer](../runtime/billing/STOCK_CANCELLATION.md#react-complete-cancellation-consumer-source-19-october-2026)
+now connects cancellation review/save/status/references/stop, schema-8 exact
+durable recovery and original-transfer resume from the signed-in Billing notice.
+It preserves all older protocols, native reasons/permissions and complete proof
+chains. Strict persistence/account checks precede save and stop; stopped requests
+cannot be presented as cancelled transfers. All pinned references, fresh outcome
+and account, and the exact unchanged slot gate clearing.
+Home passes 1,490 cases/98 suites, including 104 storage, 21 cancellation component
+and four actual-SDK dialog cases using doubles. Existing shared dialogs remain
+covered. Native verification is separate from real HTTP/browser/IndexedDB,
+concurrency/scale, wider parity and release gates. No build/server, review renewal
+or deployment is included.
+
+## Complete native cancellation API and client source (19 October 2026)
+
+[Candidate 64](../runtime/billing/STOCK_CANCELLATION.md#candidate-64-native-api-and-client-source)
+adds complete native effect review, exact save/status/reference/stop, matching
+typed clients and six fixed gateway routes. Stock cancellation remains distinct
+from stopping an uncertain browser request. Native permissions, protected
+financial rows, physical quantities and recovery receipts remain guarded.
+Client/source checks pass 51 cancellation cases, 1,423 Home cases/96 suites, both
+type checks, scoped lint and three gateway tests. Thirty native cases preserve
+132 tables with 103 matching Python hashes, and actual-client replay accepts 166
+frames with transport mocked. Independent committed-table SQL agrees. See the
+guide for separate native evidence and retained failed-run diagnostics. The later
+consumer above adds dedicated cancellation storage/UI; this is not
+runtime, browser or release acceptance. The earlier audit below predates the API.
+
+## Native cancellation contract audit (19 October 2026)
+
+[Transfer cancellation](../runtime/billing/STOCK_CANCELLATION.md) is the next
+identified missing stock API/UI. Installed-source inspection and read-only module
+inventory separate native unreservation/propagation/analytic deletion from stopping
+an uncertain request. Ten direct synthetic contract cases pass with 132-table
+preservation, mandatory analytics/SMS and 101 matching source files. Independent
+post-worker SQL matches all 132 guarded tables to the committed synthetic source.
+The retained first run's one failure/one error are test setup corrections, not
+weakened native guards or omitted cases.
+The passed return regression retains its own frozen source and acceptance scope.
+No raw cancellation route, writer, frontend control or review access is added.
+
+## Billing recovery entry and return lifecycle coverage (19 October 2026)
+
+The [signed-in Billing recovery entry](../runtime/billing/STOCK_RECOVERY.md#signed-in-billing-recovery-entry-19-october-2026)
+finds the existing pending stock request from the default tab and opens its
+original transfer workspace without submitting or clearing it. Storage failure,
+account changes and keyboard focus have explicit source tests. Native contracts,
+permissions and recovery-retirement checks are unchanged.
+Home passes 1,372 cases/95 suites; five focused entry/routing suites pass 106
+cases. Library/focused source-test types, scoped lint/format and docs checks pass.
+
+The [native lifecycle tests](../runtime/billing/RETURN_PAGED_WRITE.md#native-return-to-receipt-lifecycle-coverage-19-october-2026)
+join complete return creation to native operation/preparation and separate
+receipt/backorder/valuation, including 501 moves. The frozen candidate-63 full
+regression passes 898 cases, zero failures/errors/skips, with 132-table
+preservation and 100 matching Python files. Actual matching client replay accepts
+371 native JSON frames with transport mocked. Later cancellation source is not
+included; the earlier five-case run overlaps this evidence. This is not HTTP/browser,
+real IndexedDB, hosted or complete Billing acceptance. Review access stays closed.
+
+## Complete return creation and recovery source (19 October 2026)
+
+The [candidate-63 protocol](../runtime/billing/RETURN_PAGED_WRITE.md) adds exact
+save, compact accepted/stopped/unknown status, all saved reference pages and stop.
+Complete review proof and matching actual native effects precede protected
+acceptance; an accepted creation is never undone by stop. Earlier protocols and
+their payloads are unchanged. The dedicated schema-7 store now persists exact
+requests and gates retirement on all references, fresh native outcomes and account
+identity. The [React return consumer](../runtime/billing/RETURN_PAGED_WRITE.md#react-complete-return-consumer-source-19-october-2026)
+now connects complete form/effect paging, exact durable creation/recovery, all
+references and the separate physical-validation handoff. Generic resume routes
+returns explicitly; older typed dialogs still reject them. That UI checkpoint's Home checks
+pass 1,354 cases/94 suites, including 35 return component, three actual-SDK wire
+cases with transport/storage doubles and 71 storage
+cases. Native: 88 cases, 132-table preservation and 99 matching Python files.
+Client replay: 155 native responses with mocked transport. Actual browser/storage,
+runtime, concurrency, payload/scale and release acceptance remain unfinished.
+
+## Complete return form and review source (19 October 2026)
+
+Four named [native and typed-client APIs](../runtime/billing/RETURN_PAGED.md)
+reconstruct all native form rows, search pinned role/domain-bound locations and
+review edited rows followed by complete native effects in one proof chain.
+The old graph cap is not reused. Responses do not echo the full selected form.
+This checkpoint has no new return save/status/stop, recovery storage or React
+consumer, so write readiness stays false. Native quantity/unit/configuration and
+permission checks remain. Read the verification, failed diagnostic and remaining
+payload/performance/runtime gates before treating this as large-return acceptance.
+No frontend build/server, review reopening, installed upgrade or deployment.
+Home passes 1,240 cases/91 suites, with type/lint/format checks. The corrected
+scoped native run passes 56 cases and preserves 132 tables with 97 matching source
+hashes. Actual-client replay accepts 45 native JSON responses with mocked
+transport. This is not full-addon or real HTTP/browser/scale acceptance.
+
+## Complete validation React consumer source (19 October 2026)
+
+The new transfer validation/resume dialog connects all seven candidate-61 native
+APIs and schema-6 history. Complete ordered review, exact persist-before-save,
+saved prompt/reference paging, accepted terminal clear and explicit stop/restore
+replace the old size-limited path for new requests. Accepted legacy steps can
+hand off explicitly; unresolved older requests retain their own protocols.
+The [consumer guide](../runtime/billing/VALIDATION_PAGED_WRITE.md#react-complete-validation-consumer-source-19-october-2026)
+separates 26 new component cases and 152 cases in six focused suites from replay/native evidence
+and remaining real runtime/IndexedDB/browser, visual, concurrency and scale gates.
+No backend permission relaxation, build/server, review reopening or deployment.
+Home passes 1,184 cases/90 suites; library/focused source-test types and scoped
+lint/format pass. The parent charge-order refresh test now uses the new route.
+
+## Complete validation history storage source (19 October 2026)
+
+The existing account slot now stores the exact paged validation request plus its
+ordered prior native requests. A stopped child restores its exact parent/history
+atomically; it cannot erase earlier accepted preparation. Fresh native reads gate
+parent handoff, terminal clear and stopped restoration. Unknown/lost reads,
+transaction aborts and changed slots retain recovery. Older protocols are not
+converted. [Storage contract and evidence](../runtime/billing/STOCK_RECOVERY.md#complete-validation-history-source-19-october-2026).
+At this storage-only checkpoint the React consumer/resume routing was unfinished;
+the later source above connects it. No native addon changes, runtime/browser acceptance,
+review reopening, frontend build/server or deployment is included.
+Home passes 1,155 cases/89 suites; 47 storage cases, types and scoped lint pass.
+
+## Complete validation write/recovery candidate 61 (19 October 2026)
+
+Exact complete-review save, accepted/stopped status, prompt/reference pages and
+native stop preserve prior accepted actions through a stopped continuation.
+Author/company/order/prompt scope, proof rechecks, actual-effects comparison and
+metadata/stop-response guards remain. A stale ORM snapshot diagnostic is corrected
+by cache invalidation before load versioning, not relaxed stale-data checks.
+Home passes 1,135 cases/89 suites; types, scoped lint and gateway cases pass.
+The corrected scoped native run passes 50 cases with all 130 guarded tables
+preserved and 95 Python files matched; actual-client replay accepts 238 native
+responses with mocked transport. [Retained diagnostics and remaining gates](../runtime/billing/VALIDATION_PAGED_WRITE.md)
+are separate. New storage, React write UI and real runtime/concurrency acceptance
+remain; no current UI-limit removal, review reopening, build/server or deployment.
+
+## Complete validation review candidate 60 (19 October 2026)
+
+Compact complete-scope load and sequential rollback review cover saved native
+input-prompt rows and all resulting effects under one ordered, purpose-bound
+proof chain. The existing effects/label/financial privacy and native guards remain.
+Both APIs return `write_ready: false`; a matching larger writer is not implemented.
+Home passes 1,109 cases/88 suites, types/scoped lint and gateway unit cases pass.
+The scoped native run passes 36 cases with 130-table preservation and 93 matching
+Python hashes. The actual client accepts 69 native JSON responses with mocked
+replay transport. Retained failed diagnostics and remaining gates are separate in
+[the protocol guide](../runtime/billing/VALIDATION_PAGED.md). No UI size-limit
+removal, review reopening, installed upgrade, build/server or deployment.
+
+## Saved validation recovery consumer source (19 October 2026)
+
+The transfer resume path now uses compact native status plus complete pinned
+saved-prompt/reference pages, without loading the capped editable transfer graph.
+All reference pages and a fresh exact terminal outcome are required before durable
+clear. Small continuations explicitly return to the original writer's editable
+load/review, not the compact scope version. Unknown/missing/consumed outcomes,
+SMS blocking, old requests and large-write limits remain distinct. The focused
+reader/routing/original validation UI run passes 88 cases; types and scoped lint
+pass. [Evidence and remaining gates](../runtime/billing/VALIDATION_RECOVERY_PAGING.md#react-saved-step-reader-source-19-october-2026).
+Full Home suite: 1,073 cases/87 suites pass. No browser/IndexedDB/runtime
+acceptance, review reopening, build/server or deployment.
+
+## Compact saved-validation recovery candidate 59 (19 October 2026)
+
+Three read-only APIs/typed clients/source routes recover original step receipts
+without the legacy full-graph status dependency, with paged saved prompts and
+business references. Native permissions, author/company/order scope, missing/
+consumed prompts and old write protocols remain distinct. Home passes 1,049
+cases/86 suites, types and scoped source checks pass. All 23 scoped native cases
+pass with 130-table preservation, mandatory analytics/SMS and 91 matching Python
+hashes; 27 recorded native JSON responses pass the actual client with mocked
+replay transport. This is not a larger validation writer, React migration,
+installed upgrade, actual HTTP/browser/storage acceptance or deployment. See
+[the contract and evidence](../runtime/billing/VALIDATION_RECOVERY_PAGING.md).
+
+## Complete operation consumer source (19 October 2026)
+
+New create/edit/removal uses existing complete native form/onchange/choice,
+review/save/status/reference clients and exact stop/recovery. Every effect page
+and terminal proof precede durable dispatch; readonly/visibility/domains/warnings,
+ordered edits and old pending protocols remain. Native current recovery is not
+an editable load. Exact accepted receipt identity/state/count and complete
+references precede clear. Only operation editing's old UI size lock is removed;
+validation/native eligibility/pending guards remain. Whole-second UTC expiry
+conversion is corrected in both editors without rounding non-zero fractions.
+Home passes 1,012 cases/85 suites, including 26 new editor/recovery and 12 input
+cases. Types and scoped checks pass. This is JSDOM with SDK/storage doubles, not
+actual browser/gateway/IndexedDB or installed-upgrade acceptance. No native/API/
+schema change, build/server, gate reopening, tunnel or deployment. Large
+validation/returns and full parity remain. Read [the source contract](../runtime/billing/STOCK_OPERATION_PAGING.md#react-operation-consumer-source-19-october-2026).
+
+## Complete preparation consumer source (19 October 2026)
+
+All four preparation actions now use the existing complete paged native clients
+and schema-5 recovery from transfer details. The shared confirmation/preparation
+dialog separates fresh writable loads from compact recovery, preserves exact
+actions/nonces/proofs, reads every effect/reference page and connects native stop.
+Legacy pending routes remain; only preparation's old transfer-size UI lock is
+removed. Home passes 970 cases/83 suites, including 24 new preparation cases and
+the preserved 25 confirmation cases. Types, scoped lint/format/diff and three
+gateway unit cases pass. No native/schema/gateway change, build/server, review
+reopening, upgrade or deployment. Actual gateway/browser/IndexedDB acceptance,
+paged operation editing, large validation/returns and full parity remain. See
+[the consumer and evidence scope](../runtime/billing/STOCK_RESERVATION_PAGING.md#react-preparation-consumer-source-19-october-2026).
+
+## Native stock save-stop HTTP races (18 October 2026)
+
+Actual client/native HTTP passes save-first and stop-first for confirmation,
+reservation and operation requests, with both requests observed in database lock
+queues. Lost-stop-response, expired-session and re-authentication recovery pass.
+Independent post-close SQL verifies eight exact requests, five accepted receipts,
+three stop markers, restored stock in all six fixtures, 117 final table hashes
+and all 89 Python files/hashes matched to `b0862d6a`. This uses source 58 on the
+installed-50 synthetic copy, not an upgrade. Earlier observer failures and
+read-only recovery are retained. The private diagnostic is stopped without
+published ports. Matching-writer rollout, broader configuration/scale and actual
+protected-gateway/browser/IndexedDB acceptance remain. No build/server for frontend
+review, expired-gate reopening or deployment. Read [the scoped evidence](../runtime/billing/STOCK_REQUEST_STOP.md#native-http-race-and-recovery-checkpoint-18-october-2026).
+
+## Exact pending stock-request stop candidate 58 (16 October 2026)
+
+Three named native/client/source-gateway methods stop an author's exact
+unaccepted paged stock request without reversing an accepted action. Confirmation
+source connects explicit stop acknowledgment to exact storage clear and retains
+recovery after response loss, expiry or storage failure. All 16 scoped native cases
+pass with 117-table preservation, mandatory analytics/SMS and 89 matched Python
+hashes. The client accepts 15 captured native JSON frames with mocked transport.
+Home passes 944 cases/82 suites, with 25 confirmation component cases. Types,
+scoped lint/format/diff, three gateway unit cases and contributor links pass.
+The separate full native run passes 830 cases, zero failures/errors/skips, with
+117-table preservation, mandatory analytics/SMS and 89 Python hashes matched to
+commit `b0862d6a`. It uses source 58 on installed-49 synthetic data with no HTTP,
+not a runtime upgrade. Real HTTP save/stop races, matching-writer rollout and
+actual browser/storage acceptance remain gates. No build/server, review reopening,
+upgrade or deployment. Read [the contract](../runtime/billing/STOCK_REQUEST_STOP.md).
+
+## Complete confirmation consumer source (16 October 2026)
+
+New confirmation requests use compact native state, sequential effect pages,
+terminal-proof save, exact status/retry and pinned references through the five
+existing typed APIs and schema-5 recovery. Older pending requests retain the old
+dialog. Only confirmation's legacy UI size lock is removed; native permissions,
+snapshot checks and shared pending locks remain. Home passes 920 tests/81 suites;
+five focused suites pass 126 cases, types/lint/format/diff and three gateway unit
+cases pass. These are SDK/storage-double component tests, not actual browser/
+gateway/IndexedDB acceptance. No build, review reopening or deployment. Rejected
+request cancellation and other stock consumers remain. Read
+[the exact flow and release gates](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#react-confirmation-consumer-source-16-october-2026).
+
+## Complete-review client recovery storage (16 October 2026)
+
+The existing per-account slot accepts all three complete paged stock request
+kinds under database-bound schema 5, preserving terminal proofs, exact requests,
+older schemas and strict commit/abort behavior. Legacy dialog loaders reject new
+kinds rather than dispatching them through old APIs. Home passes 903 tests,
+including 27 storage cases. Native code and module version are unchanged.
+This is storage-source integration with an IndexedDB double, not migrated React
+dialogs/routing, real browser durability/concurrency or a runtime upgrade. Read
+[the consumer contract and acceptance gates](../runtime/billing/STOCK_RECOVERY.md).
+
+## Complete operation inventory candidate 57 (16 October 2026)
+
+The new operation form path now uses complete checked inventory for load,
+onchange, readiness and review/save. A seventh named API and typed client handle
+native choice search against the matching new form version. Legacy contracts,
+native domains/groups and search bounds remain. Home passes 895 tests/80 suites;
+types, scoped lint/format/AST and three gateway unit cases pass. The first native
+56-case run retains two test-assumption failures, zero errors/skips and 117-table
+rollback preservation. The corrected run passes all 56 cases, zero failures/
+errors/skips, with 117-table preservation, mandatory analytics/SMS and all 88
+Python hashes matched. The typed client accepts 285 captured native JSON frames
+with mocked transport, covering all seven APIs. Read
+[the protocol and exact remaining gates](../runtime/billing/STOCK_OPERATION_PAGING.md#candidate-57-complete-operation-inventory-16-october-2026).
+Separate actual client/native HTTP checks pass four accepted operation requests
+over seven effect pages on 2,001 quants, including native choice search, exact
+duplicate/lost-response recovery and deletion. Post-close SQL verifies receipts,
+restored stock, 116 accounted guard tables, 25-table per-row checks, source hashes
+and no late writes. The private diagnostic is stopped without published ports.
+The separate [full native addon run](../runtime/billing/STOCK_OPERATION_PAGING.md#full-native-candidate-57-regression-16-october-2026)
+passes all 814 cases, zero failures/errors/skips, with 117-table preservation,
+mandatory analytics/SMS and all 88 Python hashes matched to source `71c04d26`.
+It uses installed-49 synthetic data without HTTP, not an upgrade or verification
+of the later client-only dialog/recovery source.
+This is not UI migration, actual protected gateway/browser or a runtime upgrade.
+
+## Complete reservation inventory scope candidate 56 (16 October 2026)
+
+The new paged reservation load/review path now checks every relevant stock quant
+through 500-row keyset batches and a chained full-scope digest. The shared legacy
+reader remains capped by default. Eight native regressions cover tail-row
+visibility/field access, stale scope, source boundaries, large inventory saves
+and prior accepted-request recovery. After a retained test-fixture correction,
+all 38 native reservation cases pass with zero failures/errors/skips, 117-table
+preservation, mandatory analytics/SMS and all 88 Python hashes matched. AST/diff,
+the unchanged 36 client cases and three gateway unit cases pass. Separate actual
+client/native HTTP checks pass four logical accepted actions over ten effect
+pages on 2,001 quants, including stale-tail rejection and exact duplicate/lost-
+response/re-authentication/deleted-reference recovery. Independent post-close SQL
+verifies all receipts, source hashes, original identities, restored stock totals
+and no late writes. This is not an inventory browser, migrated operation form,
+actual protected gateway/browser or UI/runtime release. Read
+[the exact scope and remaining gates](../runtime/billing/STOCK_INVENTORY_SCOPE.md).
+
+## Paged reservation backend/client candidate 55 (16 October 2026)
+
+Five named methods and typed clients/source-gateway routes now cover complete
+paged native Check availability, Unreserve, Set quantities and Clear quantities,
+with purpose-bound proof/receipts and compact recovery. Existing native rules,
+financial/physical guards and the 2,000-quant guard remain. Home passes 886 tests
+in 80 suites, including 36 new client cases; types/lint/format and three gateway
+tests pass. The first native run retains one preview-state guard error among 135
+cases. A shared pending-audit baseline correction passes two focused regressions,
+with 117-table preservation. The corrected combined run passes all 136 cases,
+zero failures/errors/skips, preserving all 117 checked tables with mandatory
+analytics and SMS still enabled. All 88 Python hashes match the candidate.
+The actual typed client accepts 152 captured native JSON frames with mocked
+transport. A separate real native HTTP run completes ten logical accepted actions
+over 24 effect pages across small, 501-move and 2,001-operation fixtures, including
+lost-response/duplicate/deleted-reference recovery. Post-close independent SQL
+verifies exact receipts, original stock identities/totals and source hashes.
+Retained observer failures and the initial recovered action's weaker before-image
+evidence are explicit. The separate full source-55 addon regression passes all
+798 cases, zero failures/errors/skips, with 117-table preservation and all 88
+Python hashes matched to commit `62c8e4cd`. This is not candidate-56 acceptance. Read
+[the contract and remaining gates](../runtime/billing/STOCK_RESERVATION_PAGING.md).
+No React dialog/recovery migration, reopened review access, installed upgrade,
+actual gateway/browser or public/tester deployment is claimed.
+
+## Native operation HTTP and recovery checkpoint (16 October 2026)
+
+Source 54 and the actual typed client pass 11 accepted operation requests over
+26 effect pages on reserved, 501-move and 2,001-operation synthetic transfers.
+Tests cover exact duplicate and withheld-response recovery, deleted references,
+anonymous/cross-author denial and re-authentication status. Independent post-close
+SQL verifies all receipts/hashes, preserved physical/protected business values,
+unrelated 25-table rows, accounted 116-table changes and no late writes. Read
+[the scoped evidence](../runtime/billing/STOCK_OPERATION_PAGING.md#native-http-operation-and-recovery-checkpoint-16-october-2026).
+This is source-54 on installed-50, not an installed upgrade, full-addon result,
+actual gateway/browser, representative scale or a tester release. Review stays closed.
+
+## Complete candidate-54 native regression (16 October 2026)
+
+The full addon passes 785 cases with zero failures/errors/skips on the isolated
+installed-49 synthetic copy, without HTTP or a persistent upgrade. Original rows
+across all 117 checked tables remain after rollback, with mandatory analytics and
+native SMS enabled. All 87 Python hashes match source commit `150409d6`.
+See [the exact full-run evidence](../runtime/billing/STOCK_OPERATION_PAGING.md#full-native-candidate-54-regression-16-october-2026).
+This does not verify the newer candidate 55, gateway/browser, production scale or
+complete product parity. Review remains closed.
+
+## Paged operation backend/client candidate 54 (16 October 2026)
+
+The new six-method protocol reuses native create/edit/delete and complete
+rollback effects, adds sequential terminal proof, actual-save comparison,
+purpose-bound receipts, compact recovery and paged generated references. Typed
+clients and named source-gateway routes are connected; the legacy protocol stays
+capped. Shared financial/configuration guards now cover relation tables too.
+See [the protocol and precise limits](../runtime/billing/STOCK_OPERATION_PAGING.md).
+
+The initial 48-case run retains its one assertion-helper error. The corrected
+combined run passes 258 stock cases. Final relation-guard source passes 106
+confirmation/operation cases, with all 116 guarded tables preserved after
+rollback, mandatory analytics enabled and 87 matching Python source hashes.
+These are separate scoped runs on source-54/installed-49 synthetic data without
+HTTP, not a final full-addon or installed-upgrade result.
+The actual typed client accepts 218 recorded native JSON frames and exact
+argument mappings; transport alone is mocked. This is not real HTTP/session
+acceptance. Home passes 850 tests/79 suites; the typed-client pair passes 102
+cases, three gateway unit cases pass, and types/lint/format/parsing/diff/links pass.
+React dialog/recovery migration, real client/native HTTP, protected-gateway/
+browser, installed-upgrade and performance acceptance remain unfinished.
+Review stays closed, with no UI build or public/tester update.
+
+## Compact stock operation form candidate 53 (16 October 2026)
+
+The form reader now reuses complete paged-reader stock scope rather than the
+capped full-transfer loader. Existing load/onchange/choice contracts and native
+field rules remain, with explicit inspection-only flags for oversized transfers.
+Small save/status contracts remain unchanged; complete large operation effects
+and recovery are not implemented. See [implementation and limits](../runtime/billing/STOCK_OPERATION_FORMS.md).
+
+The initial implementation passes 770 full-addon cases; the final inspection-flag
+and strengthened row-check revision passes 33 native form cases. No failures,
+errors or skips in either run. Both preserve 25 monitored tables after rollback
+with mandatory analytics retained, using source-53 on installed-49 synthetic
+data without HTTP. Final Python source hashes match the retained native log.
+Home passes 810 tests/78 suites; types, scoped lint/format, parsing/diff and
+contributor-document links pass. These are distinct scoped runs, not a final
+full-addon rerun. Earlier source-52 HTTP evidence does not cover these production
+changes. No review reopening, UI build/browser, protected-gateway/native HTTP,
+installed upgrade or tester update has occurred.
+
+## Full-addon native regression with mandatory analytics (16 October 2026)
+
+The final native addon run passes **765 cases, zero failures/errors/skips**, with
+mandatory analytics never disabled. It preserves original rows in 25 monitored
+stock/finance/bank/analytic-configuration/company tables after rollback. Source-52
+models run on the isolated installed-49 copy with `--no-http`, not an installed-52
+upgrade or a new UI/runtime release.
+
+The earlier 764-case run has 80 missing-allocation fixture errors. The next
+765-case run has three remaining cash-basis/adjustment fixture errors. Corrected
+positive fixtures now supply all native mandatory allocations for actual
+accounts, with explicit defaults for generated adjustments. A new rejection/
+success regression retains mandatory plans and guards against partial writes.
+No production model/API/SDK or validation guard changes. Read [the precise result
+and retained failures](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#full-addon-mandatory-analytics-regression-16-october-2026).
+
+This supersedes the earlier missing-clean-full-addon status for this source and
+synthetic native configuration only. Broader deployment, installed upgrade,
+gateway/browser, performance and remaining workflow/UI gates are still open.
+
+## Large confirmation native HTTP and independent recovery (16 October 2026)
+
+Actual TypeScript/source-52 native HTTP now reviews/saves 501 moves over six
+effect pages and 2,001 operations over 21 pages, with exact request status/replay.
+A three-batch case reserves seven of ten units and traverses three generated
+references; its deliberately withheld accepted response recovers once.
+Independent post-close SQL verifies all receipts, native operation/unit/lot
+identities, unchanged physical quantity/stored finance/configuration and no late
+changes across 24 monitored tables. Mandatory analytics and SMS stay enabled.
+
+The first 501-move verifier flags its selected product's audit stamp. Exact
+original-row hash reconstruction proves all business values unchanged; subsequent
+read-only recovery submits no save. The failed verifier and an expired-transport
+attempt are retained. Read [the exact cases, timing observations and boundaries](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#large-native-http-and-recovery-checkpoint-16-october-2026).
+
+The copy remains installed-50 with source-52 models. Its HTTP container/tunnels
+are closed; there is no reopened UI gate, native protected-gateway/browser test,
+installed-52 upgrade, accepted hospital-scale performance or public/tester update.
+Other large stock actions and confirmation review/recovery UI remain unfinished.
+
+## Paged transfer read consumer source (16 October 2026)
+
+The React transfer panel now consumes bounded summary and move/operation APIs
+using a pinned root snapshot, separate section cursors and guarded stale/error
+reloads. Component checks traverse 101 transfers, 501 moves and 2,001 operations,
+retain off-page selection after writes and reset on account/order changes.
+Existing native values/units and order refresh behavior are preserved. See the
+[consumer checkpoint](../runtime/billing/STOCK_TRANSFER_DETAILS.md#react-api-consumer-checkpoint-16-october-2026).
+
+Home passes **809 tests/78 suites**, including 35 transfer/paging cases. Library
+and focused actual-source/test types, scoped lint/format, diff and documentation
+links pass. Earlier native and gateway results remain unchanged-source evidence,
+not freshly rerun native/backend acceptance in this checkpoint.
+
+This updates API-consumer source, not native code, SDK or deployed runtime.
+Large signed-action dialogs remain capped, explicitly disabled for those graphs;
+the source-52 confirmation review/recovery UI is not yet connected. No gate is
+reopened, browser run performed, frontend built or protected tester updated.
+Earlier native and HTTP evidence below is not relabelled as this integration's
+browser acceptance. Wider configuration, gateway/native, scale and release gates
+remain open.
+
+## Paged confirmation client and scoped native HTTP (16 October 2026)
+
+The typed client and five named source-gateway routes now cover the source-52
+protocol. Fresh Home verification passes **788 tests/77 suites**, including 62
+new paged-service cases; library and actual-source/test types, scoped lint/format,
+three gateway unit cases and documentation-link checks pass. Review/clinical
+gates, cookies, exact database and raw/private-action denial remain unchanged.
+
+Actual TypeScript/native HTTP on a non-public installed-50 copy reports 501/2,001
+compact counts and reviews five native effects across three pages on a separate
+small manual transfer. Skipped/premature proofs reject. Overlapping identical
+saves produce one receipt, a withheld accepted response recovers via the exact
+request, old source-50 saved statuses work, and anonymous/logout/re-login checks
+pass. Its accepted reference page is empty, not nonempty-paging HTTP acceptance.
+Read [the full scope and failure investigation](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#client-and-native-http-checkpoint).
+
+Independent SQL verifies the purpose/actor/company/request-bound sole receipt,
+unchanged physical and ledger/bank rows, zero done/reserved/delivered quantity for this case and
+preserved unrelated rows in 20 tables. The initial verifier flags selected-order
+audit metadata; restoring only the prior audit date/user reconstructs its exact
+original whole-row hash. No financial/business field is dropped from that check.
+Read-only recovery exits 0 without another mutation, and the failed run remains.
+Original installed-49/copy rows and hosted tester-43 stock/finance remain unchanged;
+SMS and mandatory analytics are retained. Computed invoice totals are not recalculated.
+
+The temporary backend/socket are closed and review stays 410. There is no React
+consumer, actual protected-gateway/native/browser check, full large-write or
+nonempty-reference HTTP acceptance, installed-52 upgrade, scale acceptance or
+public/tester deployment. Native source and its earlier 237-plus-corrected-one
+case evidence are unchanged, not a fresh full-addon run.
+
+## Paged native confirmation backend candidate (16 October 2026)
+
+Source 52 adds compact loading and complete sequential HMAC-bound effects review,
+terminal proof, native save/status recovery and paged generated references for
+large transfers. It reuses the existing native action and rollback engine; legacy
+APIs and their graph limits are unchanged. Read the [contract and exact evidence
+split](../runtime/billing/STOCK_CONFIRMATION_PAGING.md#native-validation-checkpoint).
+
+The broad run has 237 passes and one test-harness error among 238 cases. The
+corrected reference-page case then passes separately against byte-identical
+adapter code. That covers 238 distinct cases across runs, not a clean single
+238-case post-fix rerun/full-addon suite. All 501 moves and 2,001 operations are
+reviewed and saved in native tests, with exact recovery, permission/stale/token
+checks and preserved stock/financial boundaries. Original rows in 18 tables and
+mandatory analytics survive rollback. Protected tester/validation stored data are
+independently unchanged. The two earlier harness failures remain recorded.
+
+This is a backend-only source candidate on installed-49 synthetic data. Typed
+client/gateway integration, actual HTTP/concurrency, installed upgrade, React
+page display/browser recovery, representative scale and release acceptance remain.
+No UI gate reopening, published endpoint or tester upgrade occurs; review stays 410.
+
+## Complete transfer detail read candidate (16 October 2026)
+
+Source 51 adds bounded move/operation pages linked to the summary's order-wide
+snapshot. Native permissions are checked across the complete linked graph before
+counts; operation units/batches/references are preserved. The actual TypeScript
+client/native HTTP reads every one of 501 moves and 2,001 operations, with exact
+native value comparison, empty/end/foreign cursors, stale/cross-section snapshots,
+session handling, retained signed-action caps and old saved-status compatibility.
+Independent SQL verifies 20 stock/finance/bank tables are unchanged. This is a
+source candidate on installed-50 private data, not an installed-51 upgrade.
+
+Current-source native shared-stock regression passes 222 cases (25 read/detail
+plus 197 action cases), with zero failures/errors/skips, mandatory analytics and
+18-table preservation on installed-49 data. The focused 25 cases overlap this
+run; neither is an installed-51/full-addon run. Home-726/76 suites pass, with
+type/lint/format and three gateway unit tests.
+The corrected HTTP run exits 0; the first run's duplicate-logout cleanup failure
+is retained rather than ignored. React migration, complete larger signed writes,
+actual gateway/browser checks, wider configurations and realistic scale remain.
+Review stays closed (410), no frontend build/public deployment, and original
+tester/validation/return data are not upgraded. See [the contract and exact
+acceptance boundary](../runtime/billing/STOCK_TRANSFER_DETAILS.md).
+
+## Paging TypeScript/native HTTP and copied upgrade (16 October 2026)
+
+A separate synthetic copy is installed at source 50, with rotated signing identity
+and no published ports. The actual TypeScript client/native HTTP passes 101-transfer
+paging with native header equality, end/foreign cursors, empty orders, accurate
+501-move/2,001-operation counts and retained detail rejection. Signed confirmation
+and operation saves on an off-page transfer invalidate old pages; overlapping
+identical confirmations resolve once. Parent-label changes invalidate pages and
+hidden off-page records reject the first page without leaking partial counts.
+Access errors retain the generic redacted permission message. Anonymous/logout,
+second-session continuation and re-authentication checks pass.
+
+Fifteen copied source-49 requests pass status and exact replay through installed-50
+HTTP, including operation save; four completed forms remain read-only. Independent
+SQL verifies author/company/request-bound hashes and one receipt per new action,
+preserved original rows in 18 tables, unchanged finance/bank rows and physical
+stock, zero reservation/delivery/valuation, mandatory analytics/SMS and access-rule
+cleanup. One recorded done unit is still preparation, not completed stock.
+
+Fresh Home verification passes 720 tests/75 suites, nine transfer-service tests,
+focused source/test types and scoped ESLint. Earlier native-213/gateway-three
+results are unchanged-source evidence, not fresh full-addon installed-50 tests.
+The initial access verifier's error-class assumption was corrected without
+loosening product policy. The private server/socket are closed, copied fixtures
+retained and original tester-43/validation-48/return-49 preserved. Review stays 410;
+no frontend build, React migration, public deployment or actual gateway/browser
+acceptance. Nested details, broader configurations, scale and full Billing remain.
+Read [the complete boundary and evidence](../runtime/billing/STOCK_TRANSFER_PAGING.md#native-http-client-and-copied-upgrade-checkpoint-16-october-2026).
+
+## Transfer paging backend candidate (16 October 2026)
+
+Source 50 adds bounded native order-transfer summaries with order-wide permission
+checks and stale-page detection. Selected stock actions load only their linked
+transfer's detail after that complete check, rather than the legacy full list.
+The final native shared-stock suite passes 213 cases, including 16 paging/read
+cases, 101 linked transfers, signed confirmation recovery, inherited display-label
+changes, hidden off-page data and preserved detail caps. Mandatory analytics,
+existing browser/return receipts, stored finance/valuation and quants are preserved.
+Fifteen old source-49 requests recover through native status; eleven exact save
+replays succeed in a database-enforced read-only transaction. Operation save is
+not included in that read-only replay check because it locks rows.
+All 719 Home tests in 75 suites, library/focused source-test type checks, scoped
+ESLint and three review-host tests pass. Actual HTTP paging and installed-upgrade
+acceptance are still pending. React still uses the legacy list and retains
+its cap; nested detail paging and performance acceptance remain. No deployment or
+browser acceptance is claimed; the owner-closed gate remains 410. Read the
+[contract and exact limits](../runtime/billing/STOCK_TRANSFER_PAGING.md).
+
+## Return native HTTP completion and valuation (15 October 2026)
+
+Four API-created returns now complete through actual TypeScript/native HTTP:
+manual customer, manual supplier, same-company internal chained and automatic
+standard-cost customer. Original batches are prepared through native operation
+APIs, then individually reviewed native validation commits preserve the actual
+receipt/terminal boundaries. Final two-unit quantities, zero reservation,
+delivered progress and case-specific valuations are independently checked.
+
+The automatic fixture starts with a valued native inventory adjustment, then its
+original delivery and return. Posted values +40, -20 and +8 leave native stock
+valuation and its ledger at 28, with mandatory analytic allocations. Overlapping
+identical terminal requests create one return journal/valuation, not duplicates.
+Manual return valuation creates no journal; the internal fixture creates neither.
+There is no automatic customer financial refund, payment or reconciliation.
+
+Independent SQL verifies request/author/company/order hashes, one-time prompts,
+one linked return, batches and quantity/valuation/journal relations. All earlier
+stored financial/quant rows and unrelated original-copy records are preserved.
+Done operation forms are read-only, new-nonce completion rejects and exact accepted
+operation/step/create recovery still works. Computed invoice totals are not
+independently recalculated; wider configurations remain unverified.
+
+Diagnostic sessions/socket are closed and the temporary HTTP container stopped.
+Mandatory analytics/SMS settings, validation-48 and hosted-tester-43 baselines
+remain unchanged; the actual UI gate stays 410. No product code/runtime version,
+frontend build or new Home/full-addon run is claimed. Actual protected-gateway
+return acceptance, React editor/durable recovery, browser checks, notifications
+and scale remain open. Order-transfer paging is another concrete backend gap:
+the current endpoint rejects orders with more than 100 transfers. See [the case
+matrix and exact limits](../runtime/billing/STOCK_RETURNS.md#native-http-return-completion-and-valuation-checkpoint-15-october-2026).
+
+## Return native HTTP/client checkpoint, review gate closed (15 October 2026)
+
+A separate installed-49 private database/runtime passes the actual TypeScript
+service against native HTTP for outgoing, incoming and chained return form,
+location search, review, creation and exact status. It uses the pinned image and
+matching source, rotated copied signing identity and no published ports. An
+SSH Unix-domain diagnostic socket provides operator transport, not a browser
+review route or the protected gateway.
+
+Overlapping saves from two authenticated sessions resolve to one linked return
+and receipt through native serialization handling. A real accepted response
+withheld at the client-transport boundary is recovered by the same request's
+status/retry. Altered requests reject; anonymous/logout and re-authentication
+paths retain the same accepted return. This is not browser session/storage proof.
+
+Independent SQL verifies exact request/author/company/order hashes and return IDs,
+one uncompleted return per original, zero return valuation, unchanged delivered
+and physical stock, and native chained unreservation. Complete stored rows in
+six financial tables and unrelated quants match the original copy. Computed
+invoice totals are not independently recalculated. SMS configuration is preserved;
+synthetic contacts have no delivery destinations. External notification delivery
+is still not accepted.
+
+The diagnostic sessions/socket are closed and temporary HTTP container stopped.
+Its private database/evidence remain; existing validation-48 and hosted-tester-43
+baselines are unchanged. The actual UI gate remains 410. There is no new UI,
+public deployment or frontend build/test run; the earlier 152 native and 715 Home
+results are not relabelled as fresh runs. Protected-gateway return acceptance,
+React editor/durable recovery, wider native HTTP configurations, browser checks,
+notifications and scale remain open. See [the precise checkpoint](../runtime/billing/STOCK_RETURNS.md#native-http-client-and-concurrent-return-checkpoint-15-october-2026).
+
+## Return lifecycle backend verification, gate kept closed (15 October 2026)
+
+Eight additional native regressions connect API-created returns to atomic and
+per-RPC validation, one-time receipt prompt consumption, manual valuation and
+standard-cost automatic journal/analytics. They also cover cancellation,
+deletion, revoked original-transfer access and two separately reviewed returns.
+The installed engine can unreserve the earlier unfinished return; native defaults
+must not be replaced with a sum of requested quantities.
+
+The final combined isolated run passes 152 selected cases, with mandatory
+analytics, no test failures/errors/skips and earlier browser states/receipts
+preserved. Source/test hashes match the executed snapshot. The initial 150-case
+run had one incorrect remaining-quantity expectation; the corrected expectation,
+direct native regression and per-step case pass in the final expanded run.
+Independent read-only checks preserve earlier completed stock/valuation/receipt
+fixtures and protected stored accounting. The hosted adapter-43 baseline is
+separately unchanged; computed invoice totals are not independently recalculated.
+Nine gateway/configuration checks and 28 contributor guides/505 local links pass.
+
+These are tests/docs changes only. Native source remains 49, isolated HTTP
+metadata 48 and protected tester 43. No schema/runtime/frontend-build upgrade,
+public deployment or gate renewal occurs. The actual local gate still returns
+410, as requested by the owner. Known bootstrap/native warnings remain; no new
+Home suite/build, full legacy addon run, real HTTP/browser or separate-transaction
+concurrency acceptance is claimed. Return UI/recovery and full Billing remain
+open. See [the detailed lifecycle scope](../runtime/billing/STOCK_RETURNS.md#return-lifecycle-regression-scope-15-october-2026).
+
+## Signed return create/status candidate (15 October 2026)
+
+Source 49 adds native signed return creation and exact status/retry, using a
+distinct return receipt kind in the existing private stock metadata store.
+Selection, current scope and reviewed public/private effects are rechecked under
+locks and after the native action. The result identifies the actual native
+return; it does not claim physical completion or a financial refund. New native
+execution dates are distinguished from preserved or unexpected scheduling.
+
+The focused 36 and combined 144 mandatory-analytics native cases pass with no
+failures/errors/skips and prior browser receipts preserved. Home passes 715
+tests/75 suites, with nineteen return service cases. Nine gateway/configuration
+checks, library and actual-source test types and scoped lint/format pass. Five
+named source routes preserve review/clinical gates and ERP-session isolation;
+raw transient-wizard creation and caller contexts remain unavailable.
+
+Three additional native save scenarios capture thirteen real load/review/create/
+status responses accepted by the actual TypeScript service, including unknown
+and accepted states in outgoing, incoming and chained flows. This is native
+payload compatibility, not live HTTP/browser acceptance. Independent read-only
+checks preserve earlier stock, valuation, receipts and protected stored
+accounting, with the hosted adapter-43 baseline unchanged. Computed invoice totals
+are not independently recalculated. Documentation checks pass for 28 guides and
+504 local links. No new build or full legacy addon run is claimed.
+
+Native test/source hashes match the candidate. This is disposable non-HTTP
+execution of new source, not a persistent installation: isolated database
+metadata/validation HTTP remains 48 and the protected tester remains 43. No new
+schema, release, public deployment or review-gate renewal is claimed. Durable
+browser return recovery/editor, actual HTTP/browser acceptance, separate-cursor
+concurrency, wider configurations, notifications and scale remain open. See the
+[return contract](../runtime/billing/STOCK_RETURNS.md).
+
+## Stock returns: native review and typed source contracts (15 October 2026)
+
+The next Billing increment reconstructs the installed native reverse-transfer
+form, pages permitted locations and projects native return creation inside a
+rolled-back transaction. The TypeScript client validates original move/product
+association, exact quantities/location and permission-filtered effects. Three
+named gateway routes preserve existing review/clinical gates and ERP-cookie
+isolation; raw wizard calls and unimplemented return save/status are blocked.
+
+Final isolated native regression passes 133 fulfillment/return cases with
+mandatory analytics, no failures/errors/skips and earlier browser receipts
+preserved. Home passes 710 tests/75 suites, including fourteen return contract
+cases; nine gateway/configuration checks and scoped source types/lint pass.
+Nine actual native load/location/review payloads across outgoing, partial and
+incoming scenarios pass the actual TypeScript service. Preview preserves its
+transactional-row fingerprint. Independent reads preserve earlier stock,
+valuation, receipts and protected stored accounting, with a separate unchanged
+hosted-tester baseline. This is payload compatibility, not live HTTP acceptance
+or independent recalculation of computed invoice totals.
+Tests also distinguish creation from completion, automatic valuation only on
+completion, native quantity-update versus financial refund, and genuine native
+single-location roles. See [the detailed contract](../runtime/billing/STOCK_RETURNS.md).
+
+This is not a return save/status or interactive frontend integration. Signed
+creation, duplicate-safe recovery, React controls and real HTTP/browser
+acceptance remain gates. Native tests are not a new tester release. No schema,
+runtime or frontend-build upgrade is claimed; the isolated database stays 48
+and the protected tester stays 43. The local review gate remains expired,
+returning 410. No production/public-demo deployment or gate renewal occurs.
+
+## Completed receipt browser checkpoint and native valuation regression (15 October 2026)
+
+The isolated adapter-48 React/gateway path now completes a five-unit incoming
+receipt through its actual native batch review. Finish checks and clears the
+exact continuation, then reloads Done with five recorded units and no reservation.
+Independent read-only assertions verify one correctly scoped batch, reviewed
+prices/expiry, warehouse stock ten to fifteen and one native standard-cost
+valuation of five/value twenty. Customer delivery stays zero and manual valuation
+creates no journal. Original batch metadata, unrelated stock, earlier receipts,
+protected stored accounting and financial/analytic counts remain unchanged.
+
+Twelve native step cases pass with mandatory analytics, adding full-batch receipt
+and balanced posted-journal/analytics regressions with duplicate-safe retry/status.
+The combined mandatory-analytics fulfillment run passes 108 cases with no failures,
+errors or skips. Home passes 696 cases/74 suites, including 24 modal cases. Library
+types, lint/format and twelve actual test-source roots pass. Final independent reads
+preserve the four completed fixtures and separately match protected tester stock,
+stored accounting and operation/preparation baselines. This is native
+automatic-valuation evidence, not its browser acceptance.
+See [the exact checkpoint and limits](../runtime/billing/STOCK_VALIDATION.md#browser-completed-receipt-and-native-automatic-valuation-regression-15-october-2026).
+
+The temporary loopback gate expires and returns 410 without renewal. No application
+runtime/build or hosted tester upgrade occurs. Automatic journal browser acceptance,
+session expiry, wider configurations/roles, reports/multi-transfer, notifications,
+scale and matching-source protected release remain open. Tester remains adapter 43;
+production/public demo unchanged.
+
+## Completed delivery and backorder browser checkpoint (15 October 2026)
+
+The isolated adapter-48 React/gateway path now completes prepared and immediate
+five-unit deliveries and a separate two-unit partial delivery with exactly one
+three-unit backorder. Independent native reads verify delivered progress, stock,
+one valuation layer per completed transfer and scoped receipts. Unrelated stock,
+protected stored accounting, prior browser receipts and financial/analytic counts
+remain unchanged. These are manual-valuation fixtures, not automatic journal proof.
+
+A reproduced stale order-line cache is fixed in the shared stock-modal close path.
+Full/immediate browser returns now show five delivered without page/order refresh.
+Home passes 696 tests/74 suites; 50 focused cases, scoped lint, library types,
+twelve test-source roots and build `7cc4dd5ec31fb26f` pass. The build includes nine
+unrelated clinical working files, so it is not a clean source-only release artifact.
+See [the evidence and remaining gates](../runtime/billing/STOCK_VALIDATION.md#browser-completed-delivery-and-order-refresh-checkpoint-15-october-2026).
+
+Receipt completion, automatic-valuation journal browser acceptance, session expiry,
+wider roles/configurations, scale and matching protected publication remain.
+The protected tester stays adapter 43; production/public demo and access gates are unchanged.
+
+## Browser expiry decline and lost-response recovery (15 October 2026)
+
+The isolated adapter-48 React build now verifies three separate native actions:
+Validate, immediate preparation and expiry decline. Five prepared units remain
+assigned with zero delivered; Finish reloads the actual quantities. A later
+intentional Validate on that prepared fixture has its real accepted HTTP response
+aborted before the UI receives it. The exact durable request survives full reload;
+explicit status restores its receipt and native expiry prompt without another save.
+
+Independent reads verify the captured request digest, author/company/order scope,
+one new receipt rather than duplicated effects, unchanged preparation/physical
+stock/protected stored accounting and no delivery/valuation. A scoped 390 by 844
+prompt check covers width, table scrolling, keyboard controls, native focus cycling
+and keyboard close/fallback focus. Interception and viewport overrides are removed.
+See [the exact evidence and limits](../runtime/billing/STOCK_VALIDATION.md#browser-expiry-decline-and-lost-response-checkpoint-15-october-2026).
+
+No source/runtime upgrade or public release occurs here. Prior 695 Home checks and
+build remain prior evidence. Delivery/backorder/receipt completion, valuation and
+session-expiry browser paths, broader roles/configuration, scale and matching-source
+protected publication remain. Tester stays adapter 43; production/public demo unchanged.
+
+## React validation steps and isolated receipt browser acceptance (15 October 2026)
+
+Fresh React validations now use adapter 48's per-RPC preview/save/status contract.
+The actual accepted action supplies the next prompt. Schema 4 shares the existing
+stock recovery slot; a strict transaction replaces only its exact accepted prior
+request before a continuation is sent. Pending legacy atomic requests retain their
+original contract. Home passes 695 tests/74 suites, including 57 focused validation,
+storage and transfer cases; 19 storage cases also pass with a non-default database.
+
+Real local browser receipt saves preserve native intermediate prices and stop at
+backorder. Full reload and tab reopen recover the identical request without replay;
+closing that saved prompt clears recovery and reloads transfers. Independent
+read-only assertions verify two author/company/order-bound receipts, one-time prompt
+consumption, saved prices, unchanged stock/protected accounting stored fields and
+financial counts, and no delivery/valuation. See the [precise acceptance boundary](../runtime/billing/STOCK_VALIDATION.md#react-per-step-migration-and-receipt-browser-checkpoint-15-october-2026).
+
+Actual browser immediate/expiry/terminal/valuation and transport-loss cases remain,
+as do complete keyboard/narrow checks, wider configurations and matching protected
+publication. The development build includes unrelated clinical working files and
+is not a clean release artifact. Tester remains adapter 43; production/public demo
+unchanged. Historical migration-pending statements below describe older checkpoints.
+
+## Native validation intermediate-persistence correction (15 October 2026)
+
+Separate native HTTP requests prove receipt prices/immediate quantities can persist
+before the following backorder/expiry prompt is closed. Terminal-only atomic review
+is therefore not complete close/cancel parity. Adapter 48 adds per-RPC preview/save/status,
+private author/company-bound continuations and one-time prompt consumption. Ten focused
+and 106 combined fulfillment cases pass with mandatory analytics on another copy.
+Strict service/gateway contracts, 680 Home cases, eleven actual test-source roots
+and nine gateway/configuration checks pass separately.
+
+The 684-case legacy optional-analytics harness passes on the copy and restores
+mandatory analytics. Actual loopback protected gateway/TypeScript HTTP and independent
+native read-back verify both intermediate commits, exact receipts and concurrent
+identical processing without duplicate effects. Physical stock, delivery, valuation
+and protected finance remain unchanged. The main adapter-43 snapshot matches its
+prior baseline. Types/lint/diff and development build `2acf15ee3936b933` pass; it
+includes nine preserved clinical working files, not a source-only release artifact.
+
+React/storage has not migrated. Preserve pending atomic requests rather than
+reinterpret them as steps. Browser save/close/reload, loss/expiry and visual/accessibility
+acceptance remain, followed by matching-source protected publication. Tester remains
+adapter 43; production/public demo unchanged. See the
+[step contract](../runtime/billing/STOCK_VALIDATION.md#native-intermediate-persistence-audit-and-adapter-48-step-contract).
+
+## React validation controls source checkpoint (15 October 2026)
+
+The redesigned transfer screen now opens native validation choices and signed
+effect review, with exact save/status controls and durable schema 3 recovery.
+Receipt rows/locations retain native read-only behavior. Immediate/backorder
+defaults come from the native descriptor; expiry decline can accept preparation
+without completing delivery. Notification setup remains explicitly blocked.
+
+The existing per-account stock slot preserves legacy request kinds and blocks
+overwrites. New validation envelopes also bind the configured Billing database;
+legacy records are not silently assigned new provenance. Mocked component/storage
+checks cover unknown results, exact retry/status, expiry, definitive rejection,
+identity changes, durable storage timing, unmount and focus return. Automated
+accessibility also exposed and corrected the shared Modal wrapper semantics.
+
+Home passes 663 tests/73 suites; the design system passes 445 tests/40 suites and
+14 snapshots. Library/touched-test types, lint/format, nine gateway/configuration
+checks and build `909dd84767977248` pass. Actual browser saves/reload/IndexedDB,
+visual/narrow-layout acceptance and protected publication remain pending. Native
+adapter 47 is unchanged and was not retested as though this were a backend change.
+Its prior HTTP evidence remains scoped below. Hosted tester stays adapter 43.
+
+## Adapter 47 service and real isolated gateway HTTP (15 October 2026)
+
+The actual TypeScript validation boundary and four named gateway APIs now have
+isolated native HTTP evidence. Fresh adapter 47 gateway saves cover partial
+delivery/backorder, receipt metadata, declined expiry and automatic valuation.
+Earlier adapter 46 full/immediate saves, including a lost accepted response, are
+recovered through their exact receipts and identical retries under adapter 47.
+Concurrent identical backorder requests create one remainder. Gateway checks use
+real clinical/ERP sessions and preserve existing access, context, method and
+cookie boundaries. This is local loopback gateway acceptance, not public HTTPS
+or browser acceptance.
+
+Actual wire validation found a native translated-name object in a backorder's
+product-template relation label. Adapter 47 resolves that snapshot label to text
+with permission checks and native language fallback. No quantities, prices,
+accounting values or native date rules were discarded to make the parser pass.
+Ordinary confirmation retains its narrower effect contract.
+
+All 96 native fulfillment cases pass with mandatory analytics; the 674-case legacy
+addon harness passes on the copy with optional analytics restored to mandatory.
+Home passes 643 tests/72 suites, plus final focused confirmation/validation checks,
+source and test-source types, lint/format, nine gateway/configuration tests and a
+development build. Native mounted source hashes match. Synthetic native/API
+read-back covers quantities, delivery, one posted balanced stock journal and its
+analytics, while protected finance and unrelated stock remain unchanged.
+
+React wizard controls, shared pending-stock recovery integration and browser saves
+remain unfinished, along with notifications, native reports/multi-transfer flows,
+broader permissions/configurations and production scaling. The running protected
+tester stays adapter 43, not adapter 47. Production/public demo are unchanged.
+See [the current validation contract](../runtime/billing/STOCK_VALIDATION.md).
+
+## Adapter 46 native validation save/status source (15 October 2026)
+
+Terminal validation review now signs its ordered decisions, visible/private native
+effects and outcome. Exact save repeats that review under locks, compares actual
+native replay effects, and records one author/company-bound receipt in the same
+transaction. Status and identical retry preserve the actual completed or merely
+prepared outcome. System-group receipt metadata cannot be forged through generic
+ORM create/write and does not widen stock/accounting privileges.
+
+Seventeen save cases and 96 combined native fulfillment cases pass with mandatory
+analytics unchanged on the separate
+copy, including posted automatic valuation/analytics, private financial visibility,
+receipt prices/expiry/quantity, one backorder, replay protection and changed-effect
+rollback. Known completion times/references are assigned at execution without
+discarding scheduling dates or monetary values. Delayed-save and out-of-window
+timestamp checks pass. The copy alone was backed up and upgraded to adapter 46.
+
+The full 674-case addon regression separately passes with legacy optional-analytics
+fixtures in the copy only, restored to mandatory afterward. Tested/mounted hashes
+match. Nine existing gateway/configuration regressions pass, and the independent
+main-tester snapshot exactly matches its preceding protected state. Read/export
+policies of older receipt fields are outside this increment's privacy acceptance.
+
+This is not real RPC concurrency, HTTP/browser recovery, gateway/service or React
+validation acceptance. Those integrations and notification/report/multi-transfer,
+broader permission/configuration and scaling gates remain. The protected tester
+stays adapter 43; production/public demo are unchanged. See [the contract](../runtime/billing/STOCK_VALIDATION.md).
+
+## Native validation review source checkpoint (15 October 2026)
+
+The next fulfillment source adds saved-order-scoped validation load and ordered
+wizard replay inside rollback preview. Native permissions and `show_validate`
+govern eligibility. Receipt/internal review, immediate, backorder and expiry
+steps are projected from native actions, not client-provided model/method/context.
+Unsupported reports/multi-transfer actions reject; notification setup is blocked
+pending its own integration. Force-send email and immediate SMS are stopped before
+dispatch during this preview. No charges or notification-setting changes are accepted.
+
+Expanded native effect capture includes stock valuation, posted journal lines,
+reconciliation, sale progress and analytics. Hidden financial/audit dependencies
+remain private change counts, not additional user permissions or leaked rows.
+Prior audit work is flushed before the baseline; the full replay then rolls back
+state and isolated callbacks. Fifteen preview cases and 79 combined native cases
+pass with mandatory analytics unchanged and no failures/errors/skips on the copy.
+
+The full 657-case addon regression separately passes with the legacy fixtures'
+optional analytics in the copy only, restored to mandatory afterward. It is not
+proof of every mandatory-analytics workflow. Matched source/mounted hashes and an
+exact independent main-tester protected snapshot are recorded. Nine existing
+gateway/configuration regressions pass without adding validation routes.
+
+This is native source evidence, not HTTP/browser or hosted delivery acceptance.
+Signed terminal review, exact atomic save/status receipts, shared browser recovery,
+gateway/service contracts and house-style wizard controls remain to implement.
+Broader native configurations, notifications, roles/companies and scale also remain.
+The hosted tester stays adapter 43; production/public demo are unchanged. See the
+[validation contract](../runtime/billing/STOCK_VALIDATION.md) for API shapes and gates.
+
+## Protected-gateway confirmation staging checkpoint (15 October 2026)
+
+The protected gateway's database restriction is now operator-configured and exact,
+with the existing `odoo` default. A different client-supplied database is rejected;
+invalid operator settings fail startup. Review/clinical/ERP gates, cookie isolation,
+named methods and context restrictions remain. Nine gateway/configuration checks
+pass, including default/custom database and denial regressions.
+
+Real gateway HTTP and a compiled static browser build on loopback now cover the
+confirmation flow against the separate native database copy. An accepted-response
+loss was recovered by HTTP status/exact retry. Browser transfer 376 additionally
+received an explicit injected 503 for its identical saved request, retained that
+request across reload, recovered the same native references and cleared only after
+receipt-checked Finish. The earlier disconnect reached accepted UI and was not
+counted as proof of an unknown state. Independent reads match the one native receipt
+and upstream move, with protected finance/physical stock and delivery unchanged.
+
+Build `139db930700308d8` used the separate database setting. This is protected-gateway
+code acceptance on loopback staging, not publication to the public HTTPS tester.
+Temporary local transport provided fault injection; it was not added to the product.
+Tester remains adapter 43; production/public demo are unchanged. Pre-login date-format
+401 logging, broader role/company cases, scale and native full fulfillment remain.
+See [confirmation evidence](../runtime/billing/STOCK_CONFIRMATION.md).
+
+## Confirmation React and isolated HTTP/browser checkpoint (15 October 2026)
+
+The house-style transfer dialog now integrates native load, rollback effect review,
+save and receipt/status recovery. The existing durable stock slot explicitly stores
+confirmation schema 2 without reinterpreting schema 1 reservation/operation records.
+Requests persist before HTTP; unknown outcomes and expiry keep exact recovery data.
+Definitive rejections require a fresh load/review. Busy/double-click/unmount and
+keyboard-focus paths have frontend regressions.
+
+Actual TypeScript-to-native HTTP on a non-public database copy confirms two
+concurrent exact requests plus retry produce one receipt/one upstream move. Actual
+local browser acceptance on synthetic order S05170/transfer 368 covers review/save,
+real generated references, close-before-Finish, full-reload recovery, status,
+receipt-checked clear and authoritative parent refresh. Independent native read-back
+confirms unchanged protected finance/physical stock and zero delivered quantities.
+This is not acceptance of every sales/procurement configuration.
+
+The operator build setting `BAHMNI_BILLING_DATABASE` defaults to `odoo`; the separate
+copy is selected without changing backend database filters, roles or session gates.
+627 Home tests/71 suites, eight gateway/configuration checks, library/touched-test
+source types, scoped lint/format and the development distribution build pass. Browser
+logs include pre-login date-format 401s and server-restart/HMR warnings. An initial
+read-back connection failed transiently; a live-forward/native-service check and
+read-only retry passed, without reissuing a write.
+
+The tester remains on adapter 43 and stock-operation-edit-r2. Protected-gateway
+publication, broader role/company/browser-fault tests and scale acceptance remain.
+Global capture/locks and JSON receipt limits remain; full fulfillment/wizards,
+returns/POS/synchronization and whole-product parity are not complete. See
+[confirmation integration](../runtime/billing/STOCK_CONFIRMATION.md).
+
+## Confirmation save/status source checkpoint (15 October 2026)
+
+Adapter 45 implements exact author/company-bound receipts, recovery/status,
+deterministic native locks, repeated signed preview and actual-effect comparison,
+created native document references and record/callback rollback. Native caller-owned
+compute flush fixes a reproduced second-message administrator attribution mismatch.
+A two-batch regression forces the problematic administrator flush environment.
+
+Twenty-nine focused native cases pass on the separate copy with mandatory analytics.
+Combined 620 native cases pass with legacy fixtures' optional analytics there only,
+restored afterward. Earlier failed fixture/attribution iterations are not accepted
+releases. Source TypeScript contracts and named gateway methods have fourteen focused
+service tests, 609 Home tests/70 suites, types, lint, gateway checks and build passing.
+This is not actual HTTP, browser or hospital-scale concurrency acceptance.
+
+Final-source simultaneous identical requests yield two accepted responses and one
+receipt/upstream move through native RPC retry. Sixteen captured native contracts
+from four additional synthetic cases pass the actual service validator, including
+native audit pseudo-relations. Source/mounted hashes match and the independent main
+tester snapshot is unchanged. This still does not establish real HTTP acceptance.
+
+The tester still uses adapter 43 and stock-operation-edit-r2. Confirmation controls,
+the shared durable recovery slot and protected HTTP/browser publication remain open.
+Global capture/fingerprints, coarse locks and per-transfer JSON receipts need scaling
+work before production. Native validation/wizards/returns and whole-product parity
+remain separate unfinished requirements. See [confirmation integration](../runtime/billing/STOCK_CONFIRMATION.md).
+
+## Native confirmation load/rollback-preview source checkpoint (14 October 2026)
+
+Adapter 44 source adds scoped native load and rollback preview with complete
+stock/product/supply/audit graph capture, native company/record/field rules and
+client-context filtering. SHA-256 fingerprints bind native state/configuration;
+HMAC binds private audit effects without exposing their content or signing secret.
+Generated identities/references and creation metadata are canonicalized separately
+from native scheduling dates. Native stored free quantity is part of the review.
+Pre-commit and other callback queues are isolated/restored.
+
+Sixteen focused native cases pass with mandatory analytics on the separate copy.
+Combined 607 native cases pass with legacy financial fixtures' optional analytics
+in that copy only, restored afterward. This is native model-method acceptance,
+not HTTP/gateway/browser/save acceptance. Failed size/context/callback/timestamp
+iterations are retained as private evidence, not labelled successful releases.
+
+Exact source/mounted hashes match. Independent main-tester snapshot remains equal
+to its preceding baseline: six operation/sixteen preparation receipts, no operation,
+physical ten/demand five, zero reserved/done/delivered and unchanged protected
+accounting/valuation/bank/other stock. Main analytics remains mandatory.
+
+write_ready=false: actual save/receipts/recovery, TypeScript/gateway/React,
+concurrent locking, performance/multi-company and complete fulfillment gates
+remain. The running tester still uses adapter 43 and stock-operation-edit-r2;
+no production/public-demo deployment or unrelated clinical change is made.
+See [confirmation contract](../runtime/billing/STOCK_CONFIRMATION.md).
+
+## Native confirmation contract checkpoint (14 October 2026)
+
+Thirteen focused native engine contracts pass on the isolated adapter 43 stack,
+without failures/errors/skips and with mandatory analytics restored. They cover
+manual/at-confirm reservation, move merging, preceding/waiting dependencies,
+make-to-order supply, vendor RFQs, automatic replenishment, whole packages, push
+chains, native failures and rolled-back preview records/callback queues.
+
+The combined 591-case suite passes without failures/errors/skips on a separate
+database/filestore copy, using legacy financial fixtures' optional analytics and
+restoring mandatory afterward. The first full run under mandatory analytics had
+80 missing-allocation fixture errors. This distinction remains documented, not
+treated as mandatory-configuration financial acceptance. No live tester rule was
+relaxed for the corrected harness. Final independent tester read-back exactly
+matches the earlier native snapshot: six operation/sixteen preparation receipts,
+no operation and unchanged stock, demand/delivery, protected finance/valuation/bank.
+
+Confirmation can create more than a single transfer's operations. It can generate
+supply documents and native audit messages, merge away IDs and trigger automatic
+replenishment even for make-to-stock. A reviewed action needs native configuration,
+linked document and procurement effects in its version/locking/recovery scope.
+See [confirmation integration](../runtime/billing/STOCK_CONFIRMATION.md).
+
+No confirmation endpoint or React button is exposed by this source checkpoint;
+installed adapter, protected tester package and production/public demo are unchanged.
+API/browser confirmation acceptance and all remaining fulfillment/product gates
+are open. Do not count native contract tests as completed fulfillment parity.
+
+## Final protected operation choice acceptance (14 October 2026)
+
+The protected review now serves stock-operation-edit-r2-20261014 from fb910d43
+plus nine preserved clinical hashes. Build 01c92a12bdb90486, 83 served assets,
+1988 source files and licences match. Archive SHA-256 is
+c89577d86fd10b02fb2d4fd68d2a44a9a825778c306e401f9591d559bebae9d0.
+Existing gates/code/expiry/destinations and earlier rollback artifacts remain.
+Hosted operation contracts, rollback preview, deleted-row receipts/status/exact
+retries, named-route denial and earlier stock/checkpoint/attachment/ledger/eight
+Excel checks pass.
+
+Actual browser house clear produces an unset batch in native preview; reselect
+restores its label and expiry. Unsaved discard returns to clean parent state,
+without saving or retaining a pending request. A fresh independent native snapshot
+exactly matches the prior browser-final snapshot: six operation receipts, sixteen
+preparation receipts, no operation, physical ten/demand five, zero reserved/done/
+delivered, confirmed transfer and unchanged protected finance/valuation/bank/stock.
+
+Frontend checks: 595 Home/69 suites, seven test-source types, library types,
+touched lint/diff and build. Native adapter 43 is unchanged; its installed-hash-
+matched 28 focused/578 full pass was not rerun for a frontend-only correction.
+This supersedes pending choice acceptance below, not full Billing or fulfillment
+acceptance. Package/large-catalog cases and whole-product gates remain open.
+
+## Protected manual operation editor acceptance (14 October 2026)
+
+stock-operation-edit-20261014 is published from 59ba37b6 plus nine preserved
+clinical hashes. Build 744405c851222e3f, 83 served assets, source/licences match;
+gates/code/expiry/destinations and prior rollback packages remain unchanged.
+Hosted native form/choice/rollback review, deleted-row receipts/status/identical
+retries, named-route denials and prior stock/checkpoint/attachment/ledger/eight
+Excel checks pass before browser writes.
+
+Browser create/edit/delete preview/save pass. Parent reload shows recorded two,
+then three, then zero done units. Close-before-Finish and full reload preserve exact
+create/delete recovery; deletion is accepted even after its row is gone. Independent
+native reads prove six operation receipts (three private API/three browser), sixteen
+unchanged preparation receipts, no remaining operation, ten physical/five demanded
+units, zero final reserved/done/delivered and unchanged protected finance/valuation/
+bank/other stock. No financial or delivery browser action.
+
+Visual review prompted a choice-control correction in source: the house ComboBox
+clear now clears the native selection, with no duplicate button or unused paging.
+Search typing still preserves selection. Fresh 595 Home/69 suites, seven test-source
+and library types, touched lint/diff and build 01c92a12bdb90486 pass. This correction
+still needs publication and actual browser clear/reselect acceptance. Native 43
+source is unchanged; prior installed-hash-matched 28/578 native pass is not rerun
+for a frontend-only correction. Whole-product and fulfillment gates remain open.
+
+## Native operation editor source/private API checkpoint (14 October 2026)
+
+The integrated React editor and adapter 43 now support scoped new/saved operation
+load, ordered native onchange, paged choices, rollback effects review and atomic
+create/edit/delete. Native permissions, field visibility/readonly, quantity/price
+constraints, company identities and locked review versions apply. Receipts bind
+the exact author/company request and recover after deletion without loading the
+deleted row. Recording preparation does not validate delivery or post accounting.
+
+The browser uses one durable per-account recovery slot shared with reservations.
+Typing a relation search does not clear its native value; clearing is explicit.
+It blocks duplicate saves, persists before HTTP, preserves unknown outcomes on
+unmount/reload, and reloads parent transfers after acceptance/close. House controls,
+readonly/hidden fields, UTC seconds, units, native pricing/balance and quant effects
+are covered by source tests. Package and large-data browser acceptance are open.
+
+594 Home tests/69 suites, 45 focused tests, seven source-based test/fixture type
+checks, library types, touched lint/diff, seven gateway guards and development
+build 744405c851222e3f pass. Installed adapter source/test hashes match local files;
+28 focused/578 full native tests pass without failures/errors/skips. Mandatory
+analytics is restored and the isolated service is running.
+
+Actual private TypeScript create/edit/delete previews/saves/status/identical retry
+and deleted-row recovery pass. Independent native read-back verifies exactly three
+operation receipts, sixteen unchanged preparation receipts, no remaining operation,
+ten physical/five demanded units, zero reserved/recorded done/delivered, confirmed
+transfer and unchanged protected records/finance/valuation/bank/other stock.
+
+The protected tester frontend remains stock-quantities-20261014. Editor publication
+and real hosted/browser save/recovery are pending. Full fulfillment, Billing and
+product parity are not complete. Production/public demo and nine preserved clinical
+edits are unchanged. The linked contributor guides describe source architecture,
+not a ready production deployment or permission to operate private infrastructure.
+
+## Native stock-operation form private API acceptance (14 October 2026)
+
+Adapter 42 adds order/transfer/move-scoped form load, native onchange and paged
+choice APIs for existing operations and unsaved operation defaults. The installed
+stock operation views, action context, move-line write/reservation behavior,
+product-expiry and Bahmni price/balance/batch hooks were inspected. The serial
+action's next-serial write is not invoked just to load form context. Native role,
+field, record and company checks apply; units, locations, batches, packages and
+owner choices use their operation domains. Hidden inventory fails closed instead
+of returning a partial balance. Ordered edits preserve cost markup followed by
+manual sale-price overrides. Onchange writes and transaction callbacks roll back.
+
+The TypeScript boundary validates identities, version, fields, native rules,
+relation labels and choice pages. Only three named form routes are added to the
+gateway source; no generic stock write route. No new dependency or component
+library. This form contract deliberately returns write_ready=false: atomic
+create/edit/delete previews, exact receipts/recovery, the actual React editor,
+hosted/browser acceptance and completed-operation corrections are still pending.
+It is not a released manual stock editor or complete fulfillment parity. The
+tester UI remains stock-quantities-20261014 until the integrated editor is ready.
+
+569 Home/66 suites, nine new boundary cases, source-based test/library types,
+implementation lint/diff, seven gateway/configuration guards and build
+ef34d8037cdb141f pass. Final adapter 42 passes 16 focused and 566 full native tests,
+zero failures/errors/skips. Mandatory analytics restored, installed source/test
+hashes match and service running. Earlier 562/565-test passes preceded the final
+whole-package field distinction; the 566-test run verifies that final source.
+First failed runs restored adapter 41. Native name search (not unsearchable
+display_name or the internal Query object) and independent fixture creation fix
+the observed search/fixture failures.
+
+Actual private TypeScript HTTP defaults, quantity/balance and batch onchanges,
+native lot search, stale-version and hidden-field denial pass. The existing client
+masks AccessError details with a generic permission error; the HTTP verifier now
+checks that policy instead of expecting raw native text. Repeated load and native
+read-back match the pre-form baseline: sixteen existing stock receipts, no new
+operation, unchanged quantities/reservations/delivery, eight protected records,
+financial/valuation counts, bank #37 and other stock. A capture helper first used
+a host-only path from inside the container; the corrected stdin capture succeeds,
+without application changes or repeating any saved stock action. Temporary SSH
+forward stopped. New form routes/UI are not published to the tester host yet.
+Purchase-linked defaults, completed stock corrections and large catalog/browser
+acceptance remain unverified.
+Production/public demo and the nine preserved clinical edits are unchanged.
+
+## Native recorded-quantity preparation protected acceptance (14 October 2026)
+
+Adapter 41 extends the existing reviewed stock workflow with native Set quantities
+and Clear quantities. Installed picking/move button visibility and implementations
+were inspected, together with Bahmni operation/pricing/expiry views and onchange
+hooks. Set fills eligible zero-done moves from their reservations and requires
+the native batch/serial conditions. Clear affects eligible moves whose recorded
+quantity matches reservation; partial entries remain. Neither action delivers,
+validates, posts an invoice or changes physical inventory. Native Stock User and
+field/write permissions are enforced, without requiring unrelated create/unlink
+permissions for quantity-only actions. Draft/finished/hidden/unsupported cases
+remain denied. Preview/recovery/retry reuse the existing locked native pipeline.
+
+Package-level relations now return labels instead of raw IDs, matching the client
+schema; hidden package relations fail closed. The review shows package metadata
+when present. The modal is named Stock preparation review and the order action
+Review stock preparation. Buttons retain the Qorlia house styles and controls.
+
+560 Home tests/65 suites, five source-based test/fixture type checks, library types,
+touched lint/diff, seven gateway/configuration checks and development build
+ed33b71e43152280 pass. Final adapter 41 passes 17 focused and 550 full native tests,
+zero failures/errors/skips, mandatory analytics restored, source/test hashes match
+installed files and service running. The first added unbatched fixture incorrectly
+changed an already reserved batch, releasing its reservation; corrected fixture
+uses native unbatched inventory. Earlier failure restored adapter 40. Final fresh
+run also tests malformed action types. Backups retained.
+
+Actual private TypeScript HTTP reserve/set/clear/unreserve preview/save/status and
+identical retries pass. Independent native read-back verifies four new receipts,
+ten physical/five demanded units, zero final reservation/recorded done/delivery,
+confirmed transfer, unchanged eight protected records, financial/valuation counts,
+bank #37 and other stock. Temporary SSH forward stopped.
+
+Published protected artifact stock-quantities-20261014 from f7b26e7d plus the nine
+unchanged clinical hashes. Build ed33b71e43152280 and all 83 served assets match;
+source archive 4a9672d96825d55243f54c1f577cdce72ef1bc5c52d48d7ad3202ea7c19252a2.
+Access gates/code/expiry/destinations remain unchanged, with the previous artifact
+and compose retained for rollback. Hosted exact receipt/status/identical retry,
+denied stock routes and prior transfer/checkpoint/attachment/ledger/eight Excel
+regressions pass before browser writes.
+
+The browser completes native reserve, Set quantities, Clear quantities and
+unreserve previews/saves. Set preserves five reserved units and ten physical
+units while recording five done units. Clear removes those recorded quantities
+without releasing the reservation. Units, batch and expiry remain native.
+Closing before Finish, full page reload, exact request recovery/status/finish
+and refreshed parent quantities pass for Set. Independent native read-back
+confirms eight new receipts since the pre-increment baseline (four private API,
+four browser), sixteen total, zero final reservation/recorded done/delivery,
+confirmed transfer, no remaining operations and unchanged protected records,
+financial/valuation counts, bank #37 and other stock. No invoice/payment or
+delivery browser action. Package relations have native/service/UI tests, not
+browser acceptance on a packaged fixture. Large-inventory and injected browser
+failure/expiry cases remain unverified.
+
+Manual quantity/batch/location/package editing, pricing/expiry onchange UI,
+confirmation with procurement/replenishment effects, native validation/Bahmni
+wizards, backorders/returns/paging/POS/synchronization and full product parity
+remain unfinished. This is native quantity preparation, not a substitute for
+those workflows. Production/public demo and unrelated clinical edits unchanged.
+
+## Final protected reservation r2 acceptance (14 October 2026)
+
+Published stock-reservation-r2-20261014, source 3a22cb20 plus nine unchanged
+clinical hashes, build 97d821d9ad88cda2. All 83 hosted/source/licence assets match;
+archive hash 3e3a8e948c18bfc9ece9e2ee1237b5ab77de4564bbbd4a61ea750d54d90736d0.
+Gates/code/expiry/backends unchanged, prior artifacts retained for rollback.
+Final hosted TypeScript receipts/status/idempotent retry/access checks and prior
+transfer/checkpoint/attachment/ledger/eight Excel regressions pass. An earlier
+r2 verifier overlapped the browser reservation write and failed its unchanged-read
+assertion; the quiescent final replay passes without changing source or replaying
+new writes.
+
+Browser r2 reserve preview/save, refreshed parent quantities after closing before
+Finish, exact recovery across full page reload, status/finish and unreserve
+preview/save/reload pass. No invoice/payment or delivery browser action.
+Independent native read-back verifies eight receipts for four total synthetic
+reserve/unreserve cycles, zero final reservation/delivery, ten physical units,
+five-unit demand, confirmed transfer and no remaining operations. Financial/
+valuation counts, eight protected records, bank #37 and other stock unchanged.
+Model/test hashes match installed adapter 40. 554 Home/65 suites, five source-based
+types and touched lint/build pass; native 40's earlier 544-test result is unchanged,
+not rerun for the UI-only close fix. Temporary SSH forward stopped.
+
+This supersedes the hosted/browser pending gates below, not complete fulfillment.
+Confirmation/edit/validation/Bahmni wizards/backorders/returns/paging/POS/sync,
+large-inventory and injected browser failure/expiry acceptance remain unfinished.
+PR #4 draft; production/public demo and unrelated clinical edits unchanged.
+
+## Protected reservation browser checks and close-refresh correction (14 October 2026)
+
+Published stock-reservation-20261014 from 849a891b plus the nine preserved
+clinical edits. All 83 hosted/source/licence assets match. Protected TypeScript
+checks recover four accepted stock requests and safely replay their identical
+receipts, deny anonymous/clinical-missing/malformed/raw stock routes, and retain
+the earlier transfer, checkpoint, attachment, ledger and eight Excel checks.
+Shared access code/expiry/destinations remain unchanged; previous build retained.
+
+Browser native batch/expiry/unit preview, reserve save, close/reopen recovery,
+receipt status/finish, unreserve preview/save and finish reload pass on the synthetic
+order. No invoice/payment/delivery action. Closing before Finish exposed stale
+quantities in the underlying table. The corrected close handler invalidates the
+selected order read as well as recovery, with a regression test. Fresh 554 Home/
+65-suite checks pass and build 97d821d9ad88cda2 succeeds. The close-refresh correction
+still needs publication/browser replay. Native adapter 40 is unchanged; its earlier
+544-test result is not a rerun for this frontend-only fix. Large-data and injected
+browser failure/expiry cases remain open. Full fulfillment/product parity unfinished.
+
+## Native reservation source and private HTTP acceptance (14 October 2026)
+
+Adapter 40 adds order-scoped transfer load, native action_assign/do_unreserve
+preview, exact-request save and receipt status. Native visibility, ACL/field/
+record/company checks apply. Preview runs in a rollback savepoint with callback
+quarantine. Product, unit, removal-policy, source inventory and linked operation
+snapshots are locked/rechecked. Hidden inventory and unsupported large inventories
+fail explicitly. Preview shows native lot/package/owner effects, operation units
+and product stock units without pretending reservation is delivery.
+
+React uses the existing modal/buttons/tables/styles. Committed IndexedDB recovery
+precedes a write, is per Billing account, cannot overwrite another pending request
+and clears only the exact accepted request. Duplicate clicks, storage failure,
+unknown outcomes, identical retry, expiry and leaving the screen are covered.
+No automatic write retry or new dependency. Backend receipt fields cannot be
+forged or copied. Receipt write stamps are flushed before the saved response;
+the first HTTP run caught a version-only response/read-back mismatch, corrected
+before hosted publication. An initial version-transform runner failed its guard
+and restored adapter 39; the corrected runner verifies actual adapter 40.
+
+553 Home tests/65 suites, five source-based test/fixture type checks, Home library
+types, touched lint/diff and seven gateway checks pass. Development build:
+f72d38d5548c8fdd (existing browser-data/bundle-size warnings). Final native adapter
+passes 11 focused and 544 full tests, zero failures/errors/skips, mandatory
+analytics restored and service restarted. Backup/rollback retained.
+
+Actual TypeScript/private HTTP checks complete two reserve/unreserve cycles with
+rolled-back previews, accepted saves, status recovery and identical retries.
+Independent native read-back finds exactly four receipts, no detailed operations
+left, ten physical units, five demanded units, zero reservation/delivery and a
+confirmed, not completed, transfer. Eight protected records, financial/valuation
+counts, bank #37 and other stock are unchanged. Only isolated synthetic inventory
+was seeded. Hosted controls/browser save acceptance are still pending at this
+source checkpoint; the current tester frontend is the earlier read-only build.
+
+Mark-as-todo, quantity/batch edits, native validation/Bahmni wizards, partial
+delivery/backorders, returns, full paging, POS and clinical-to-ERP sync remain.
+This is not complete fulfillment, Billing or product parity. Production/public
+demo and nine unrelated clinical edits remain unchanged. PR #4 stays draft.
+
+## Protected order transfer read-path acceptance (14 October 2026)
+
+The saved charge-order screen now opens a Qorlia transfer list/detail view through
+the named qorlia_order_deliveries API. Native stock and sale-stock view/model
+contracts and the installed Bahmni stock overrides were inspected. Transfers are
+linked through stock moves' procurement groups, not a manually assigned header.
+The reader preserves native statuses, backorders, demand/reserved/done quantities,
+each move/operation's own unit, batch/serial names, operation expiry, locations,
+packages and owner. Recorded done quantities are not labelled completed transfers.
+
+Native read/field/record/company checks apply to every linked transfer, operation
+and relation. Hidden records fail closed instead of returning an incomplete graph.
+The caller's author/company-bound snapshot is returned; there is no stock mutation
+endpoint. Complete transfer paging beyond 100 transfers, 500 moves or 2,000 total
+operations remains required. React uses existing design controls and styles, hides
+stale details during failed refresh and handles expiry/reconnect and disappeared
+transfer links. No new dependency or patient/order synchronisation is introduced.
+
+533 Home tests/62 suites, four source-based test/fixture types, Home library types,
+touched lint/diff, seven gateway/config checks and build 32fc2d8bf3c29bde pass.
+Final adapter 38 passes seven focused and 533 full native tests without failures,
+errors or skips. Mandatory analytics restored, service running and source/model
+hashes match. Earlier failed fixture setup/linkage attempts restored the previous
+module and service. Native backup/rollback remains available.
+
+An independently checked persisted synthetic draft transfer shows 12 demanded
+units, six recorded done units and 0.5 dozen on its detailed operation, with no
+completed transfer. Fixture creation preserves stock quants, financial counts,
+eight protected records and bank #37. Actual private and hosted TypeScript clients
+match the native graph and repeated reads. Temporary SSH forward stopped.
+Protected order-transfers-20261014 uses 1131088a plus nine unchanged clinical
+hashes, build above and 83 matching JS/CSS/source/licence assets. Source archive:
+bbfc67d1021e23e09f37e3570732b9fc8347c9cb8ffdc725289d4279f945193b.
+Shared code, expiry, destinations and gates are unchanged; prior package retained.
+Hosted checks deny raw stock validation, malformed and unauthenticated requests;
+checkpoint/attachment/ledger/protected-record reads and all eight Excel variants
+also pass. Browser signed-in module entry, order-to-transfer navigation, exact
+unit/batch/expiry/location reads, refresh and return to the selected order pass.
+No stock or financial browser writes. Empty/error/expiry/removed-transfer checks
+are source tests, not browser acceptance claims.
+
+Reservation, quantity/batch editing, native validation wizards, backorders/returns
+and read paging are still needed for complete fulfillment. Whole Billing/clinical/
+external parity and the broader goal remain incomplete. PR #4 is draft; production/
+public demo and nine clinical edits unchanged.
+
 ## Protected Excel r2 acceptance (14 October 2026)
 
 checkpoint-excel-r2-20261014 is published from 89f8da53 plus the same nine
@@ -2474,8 +3956,7 @@ Start visit action produced one FHIR Encounter POST returning 201 and one
 OPEN_VISIT audit POST returning 200. Complete network captures were not
 truncated. Independent native reads confirm one active OPD visit,
 `f769b1e9-b6a4-4da6-907f-89da6c9a6e83`, with zero clinical encounters. Patient
-creation, dashboard access and visit open persisted as audit IDs 155, 156 and
-157. The redesigned audit filter displays all three messages translated with
+creation, dashboard access and visit open persisted as audit IDs 155, 156 and 157. The redesigned audit filter displays all three messages translated with
 their actual patient ID, user and visit type. Screenshot:
 `audit-native-writer-20261007.png` in the private staging evidence directory.
 The empty consultation was cancelled, not saved as clinical content.
@@ -2541,10 +4022,10 @@ following status GET fails. Missing or external configuration fails closed.
 The already approved isolated staging browser submitted two clearly labelled
 concept fixtures. Independent native status reads returned:
 
-| Import ID | Native status | Successful rows | Failed rows |
-| --- | --- | --- | --- |
-| 1 | COMPLETED | 1 | 0 |
-| 2 | COMPLETED_WITH_ERRORS | 0 | 1 |
+| Import ID | Native status         | Successful rows | Failed rows |
+| --------- | --------------------- | --------------- | ----------- |
+| 1         | COMPLETED             | 1               | 0           |
+| 2         | COMPLETED_WITH_ERRORS | 0               | 1           |
 
 The valid concept UUID is `e775e6d0-7b5f-4d70-a286-eb0b383f2e73`, named
 `QorliaQA CSV Concept 20261007`. Native search for the invalid fixture returns

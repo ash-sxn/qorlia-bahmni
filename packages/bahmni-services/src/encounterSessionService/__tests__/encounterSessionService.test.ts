@@ -5,6 +5,7 @@ import {
   FHIR_ENCOUNTER_TYPE_CODE_SYSTEM,
 } from '../../constants/fhir';
 import { getActiveVisit, getEncounterByUuid } from '../../encounterService';
+import { getVisitLocationUUID } from '../../visitService';
 import {
   ENCOUNTER_SEARCH_URL,
   ENCOUNTER_SESSION_DURATION_GP_URL,
@@ -18,6 +19,7 @@ import {
 
 // Mock the encounterService
 jest.mock('../../encounterService');
+jest.mock('../../visitService');
 jest.mock('../../api');
 const mockGetActiveVisit = getActiveVisit as jest.MockedFunction<
   typeof getActiveVisit
@@ -414,6 +416,75 @@ describe('encounterSessionService', () => {
 
   describe('findActiveEncounterInSession', () => {
     beforeEach(() => jest.clearAllMocks());
+
+    it('uses the parent visit location, not the first active visit at another facility', async () => {
+      const other = {
+        resourceType: 'Encounter',
+        id: 'other-encounter',
+        partOf: { reference: 'Encounter/other-visit' },
+        period: { start: '2026-10-07T11:00:00Z' },
+      };
+      const own = {
+        ...other,
+        id: 'own-encounter',
+        partOf: { reference: 'Encounter/own-visit' },
+        period: { start: '2026-10-07T10:00:00Z' },
+      };
+      jest.mocked(get).mockResolvedValue({
+        resourceType: 'Bundle',
+        entry: [{ resource: other }, { resource: own }],
+      });
+      jest
+        .mocked(getVisitLocationUUID)
+        .mockResolvedValue({ uuid: 'parent-location' });
+      mockGetActiveVisit.mockImplementation(
+        async (_patient, location) =>
+          ({
+            resourceType: 'Encounter',
+            id: location === 'parent-location' ? 'own-visit' : 'other-visit',
+          }) as Encounter,
+      );
+      await expect(
+        findActiveEncounterInSession(
+          'patient-123',
+          'provider-123',
+          30,
+          'type-123',
+          undefined,
+          undefined,
+          'login-department',
+        ),
+      ).resolves.toEqual(own);
+      expect(getVisitLocationUUID).toHaveBeenCalledWith('login-department');
+      expect(mockGetActiveVisit).toHaveBeenCalledWith(
+        'patient-123',
+        'parent-location',
+      );
+    });
+
+    it('keeps a failed parent-location read unavailable instead of selecting an unscoped visit', async () => {
+      jest.mocked(get).mockResolvedValue({
+        resourceType: 'Bundle',
+        entry: [
+          { resource: { resourceType: 'Encounter', id: 'encounter-123' } },
+        ],
+      });
+      jest
+        .mocked(getVisitLocationUUID)
+        .mockRejectedValueOnce(new Error('Location unavailable'));
+      await expect(
+        findActiveEncounterInSession(
+          'patient-123',
+          'provider-123',
+          30,
+          'type-123',
+          undefined,
+          undefined,
+          'login-department',
+        ),
+      ).rejects.toThrow('Location unavailable');
+      expect(mockGetActiveVisit).not.toHaveBeenCalled();
+    });
 
     describe('saved encounter handoff', () => {
       const now = new Date('2026-10-05T10:00:00Z');

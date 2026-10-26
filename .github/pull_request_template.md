@@ -1,98 +1,49 @@
-> [!NOTE]
-> Thank you for your contribution. Please find the details of this pull request below.
+## Task and scope
 
-**JIRA** → [BAH-#](https://bahmni.atlassian.net/browse/BAH-#)
+- Issue:
+- Approved base branch / starting SHA:
+- Workflow and user problem:
+- Native expected behaviour:
+- What changed, and what is out of scope:
 
-### **Description**
+## Architecture and API
 
-<!--- Provide a concise and informative summary of the PR. Briefly describe what functionality is being introduced, modified, or fixed, and the broader context or objective behind it. --> 
+- Pages/services/native models changed:
+- Endpoint, method, payload keys, identities and units:
+- Configuration and privileges:
+- Accepted, rejected and unknown-save handling:
+- Shared-file coordination:
 
----
+## Evidence
 
-### **Key Features**
-<!--- Summarize each major feature added or enhanced. --> 
-<!--- State user-facing or workflow-impacting changes. --> 
-<!--- Mention any significant UX, UI, or accessibility improvements. --> 
+List exact commands/results. Do not claim a check ran if it was skipped.
 
----
+- Focused and adjacent tests:
+- Source and test-source types:
+- Lint, formatting and diff check:
+- Build:
+- Native runtime version/tests, if applicable:
+- Approved synthetic browser/API save and native read-back:
+- Denied role, expiry, double-click and recovery:
+- Keyboard, narrow layout, focus and translations:
+- Remaining/unverified cases:
 
-### **Implementation Details**
+## Review and release
 
-* **UI Components**
-  <!--- Briefly explain any new or updated UI components. Mention if they are added to Storybook. --> 
-  <!--- Describe any UX flows introduced or updated. --> 
+- Maintainer reviewer:
+- Designated tester and replay steps:
+- Clinical/accounting reviewer, if needed:
+- Rollback:
+- Parity/readiness documentation updated:
+- Source accepted or actually released? State which.
 
-* **State Management**
-  <!--- Mention any local/global state changes, if applicable. --> 
+## Safety checklist
 
-* **Custom Hooks**
-  <!--- Mention any new custom hooks added, if applicable. --> 
+- [ ] One bounded workflow and existing house design/services.
+- [ ] Required native permissions and data semantics preserved.
+- [ ] No secrets, private records, unlicensed assets or private operations files.
+- [ ] Licences, attribution and source notices retained.
+- [ ] No unrelated changes or production deployment.
+- [ ] Independent review/tester replay requested.
 
-* **API Integration**
-  <!--- List API endpoints integrated or modified. --> 
-  <!--- Note any request/response mapping changes or error handling updates. --> 
-
-* **Performance & Optimization**
-  <!--- Outline any performance-related enhancements, such as debouncing, lazy loading, etc. --> 
-
-* **Internationalisation**
-  <!--- Mention if locale dictionary updates or label translations were added. --> 
-
-* **Accessibility**
-  <!--- State any WCAG compliance or keyboard navigation improvements, if applicable. --> 
-
-* **Limitations**
-  <!--- Call out any known limitations or areas deferred to future stories. --> 
-
----
-
-### **Testing & Type Definitions**
-
-* **Unit Tests**
-  <!--- Indicate coverage for core logic, component rendering, and edge cases. --> 
-
-* **Integration Tests**
-  <!--- Highlight any full-flow tests, especially for user interaction and state updates. --> 
-
-* **Type Definitions**
-  <!--- Mention any new or updated TypeScript types or interfaces. --> 
-  <!--- Confirm type safety and strict mode adherence. --> 
-
----
-
-### **Screenshots**
-
-| Feature / State | Screenshot |
-|------------------|------------|
-| Example: Empty State | Attach image or paste screenshot here |
-| Example: Search Result | Attach image or paste screenshot here |
-| Example: Validation Error | Attach image or paste screenshot here |
-
-_Note: Please ensure sensitive information is not included in screenshots._
-
----
-
-### **Next Steps**
-<!--- Describe follow-up stories, technical enhancements, or integration tasks. --> 
-<!--- Mention any coordination required with backend or product teams. --> 
-
----
-
-> [!IMPORTANT]
-> **Checklist**
->
-> - [ ] Code adheres to project linting and formatting standards.
-> - [ ] New components added to Storybook.
-> - [ ] Tests written and passing (unit + integration).
-> - [ ] Labels and text support i18n.
-> - [ ] Follows accessibility and responsive design guidelines.
-> - [ ] PR reviewed by at least one other developer.
-
----
-
-### **Reviewer(s)**
-
-@bahnew/developers 
-_Kindly review the proposed changes when convenient. Your feedback is appreciated._
-
----
+Read [CONTRIBUTING](../CONTRIBUTING.md) and [Testing guide](../docs/testing-guide.md). For this fork the GitHub issue is the task reference; no invented upstream JIRA ticket is required.

@@ -12,9 +12,11 @@ const cookieNamed = (header = '', name) =>
   header.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name}=`)) || '';
 const gatePage = (message = '') => `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Qorlia tester access</title><style>body{margin:0;background:#f2f5f2;color:#202723;font:18px system-ui;display:grid;place-items:center;min-height:100vh}main{box-sizing:border-box;max-width:480px;width:90%;padding:36px;background:white;border:1px solid #d6e0d9;border-radius:24px}h1{color:#20543b}label,input,button{display:block;box-sizing:border-box;width:100%}input{margin:12px 0 20px;padding:14px;font:inherit;border:1px solid #9db4a4;border-radius:10px}button{padding:14px;background:#20543b;color:white;border:0;border-radius:10px;font:inherit;cursor:pointer}small{display:block;line-height:1.6;color:#526158}p{line-height:1.5}.error{color:#a3261b}</style><main><h1>Qorlia</h1><h2>Tester access</h2><p>Enter the shared testing code. Then sign in with your test account.</p><p class="error" role="alert">${message}</p><form action="/review-access" method="post"><label for="code">Testing access code</label><input id="code" name="code" type="password" autocomplete="off" required maxlength="128"><button>Open the review build</button></form><p><small>Test environment only. Use synthetic records, not real patient information.</small></p></main></html>`;
 
-function createReviewApp({ code, signingKey, expiresAt, backend, billing, staticDir }) {
+function createReviewApp({ code, signingKey, expiresAt, backend, billing, staticDir, billingDatabase = 'odoo' }) {
   if (!code || code.length < 20 || !signingKey || signingKey.length < 32 || !Number.isFinite(expiresAt))
     throw new Error('Review access secrets and expiry are required.');
+  if (typeof billingDatabase !== 'string' || !billingDatabase.trim() || billingDatabase.length > 63)
+    throw new Error('One configured Billing database is required.');
   const app = express();
   app.disable('x-powered-by');
   const attempts = new Map();
@@ -78,6 +80,24 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
       ...['load', 'preview', 'save', 'choices'].map((action) =>
         `/web/dataset/call_kw/sale.order/qorlia_draft_${action}`),
       ...['load', 'run'].map((action) => `/web/dataset/call_kw/sale.order/qorlia_order_workflow_${action}`),
+      '/web/dataset/call_kw/sale.order/qorlia_order_deliveries',
+      '/web/dataset/call_kw/sale.order/qorlia_order_delivery_page',
+      '/web/dataset/call_kw/sale.order/qorlia_order_transfer_detail_page',
+      ...['load', 'preview', 'run', 'status'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_transfer_${action}`),
+      ...['load', 'onchange', 'choices', 'preview', 'save', 'status'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_operation_${action}`),
+      ...['load', 'onchange', 'choices', 'review', 'save', 'status', 'references', 'stop'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_operation_paged_${action}`),
+      ...['load', 'review', 'save', 'status', 'references', 'stop'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_reservation_paged_${action}`),
+      ...['load', 'preview', 'save', 'status'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_confirmation_${action}`),
+      ...['load', 'review', 'save', 'status', 'references', 'stop'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_confirmation_paged_${action}`),
+      ...['load', 'preview', 'save', 'status'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_validation_${action}`),
+      ...['preview', 'save', 'status'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_validation_step_${action}`),
+      ...['compact_status', 'prompt_page', 'reference_page'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_validation_step_${action}`),
+      ...['load', 'review', 'save', 'status', 'stop', 'prompt_page', 'reference_page'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_validation_paged_${action}`),
+      ...['load', 'locations', 'preview', 'save', 'status'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_return_${action}`),
+      ...['load', 'lines', 'locations', 'review', 'save', 'status', 'stop', 'references'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_return_paged_${action}`),
+      ...['load', 'review', 'save', 'status', 'references', 'stop'].map((action) => `/web/dataset/call_kw/stock.picking/qorlia_cancellation_paged_${action}`),
+      '/web/dataset/call_kw/stock.picking/qorlia_inventory_transfers',
+      ...['load', 'detail_page'].map(action => `/web/dataset/call_kw/stock.picking/qorlia_inventory_transfer_${action}`),
       ...['load', 'choices', 'preview', 'save', 'status'].map((action) => `/web/dataset/call_kw/sale.order/qorlia_advance_${action}`),
       ...['load', 'post'].map((action) => `/web/dataset/call_kw/account.move/qorlia_invoice_workflow_${action}`),
       ...['load', 'preview', 'save', 'choices'].map((action) => `/web/dataset/call_kw/account.move/qorlia_invoice_draft_${action}`),
@@ -123,12 +143,14 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
       next();
     } catch { res.status(503).json({ error: 'Hospital session verification is unavailable.' }); }
   }, (req, res, next) => {
-    // Only named atomic file uploads/recovery need the larger bound; authentication runs first.
+    // Larger bodies stay limited to named uploads or complete return selections, after authentication.
     const upload = ['/web/dataset/call_kw/account.move/qorlia_invoice_note',
       '/web/dataset/call_kw/account.move/qorlia_invoice_note_status',
       '/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_attachment_save',
       '/web/dataset/call_kw/account.bank.statement/qorlia_checkpoint_attachment_status'].includes(req.path);
-    express.json({ limit: upload ? '15mb' : '32kb' })(req, res, next);
+    const completeReturn = ['review', 'save', 'status', 'stop', 'references'].some(action =>
+      req.path === `/web/dataset/call_kw/stock.picking/qorlia_return_paged_${action}`);
+    express.json({ limit: upload ? '15mb' : completeReturn ? '1mb' : '32kb' })(req, res, next);
   }, (req, res, next) => {
     // Expose only named adapter actions, never raw financial create/write/confirm calls.
     const params = req.body?.params;
@@ -140,7 +162,7 @@ function createReviewApp({ code, signingKey, expiresAt, backend, billing, static
         (!Array.isArray(params.args) || params.args.length || !params.kwargs ||
           typeof params.kwargs !== 'object' || Array.isArray(params.kwargs) ||
           Object.keys(params.kwargs).includes('context'))) ||
-      (req.path.endsWith('/authenticate') && params.db !== 'odoo')) return res.sendStatus(400);
+      (req.path.endsWith('/authenticate') && params.db !== billingDatabase)) return res.sendStatus(400);
     next();
   }, createProxyMiddleware({
     target: billing, changeOrigin: true, secure: true,
@@ -200,6 +222,7 @@ if (require.main === module) {
     expiresAt: Date.parse(process.env.REVIEW_EXPIRES),
     backend: process.env.BAHMNI_API_ORIGIN,
     billing: process.env.BAHMNI_BILLING_ORIGIN,
+    billingDatabase: process.env.BAHMNI_BILLING_DATABASE,
     staticDir: '/app/static',
   }).listen(8080, '0.0.0.0', () => console.log('Qorlia review gateway listening on port 8080'));
 }

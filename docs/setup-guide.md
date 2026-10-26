@@ -1,321 +1,112 @@
-# Bahmni Apps Frontend Setup Guide
+# Local development setup
 
-This guide provides comprehensive instructions for setting up the Bahmni Apps Frontend application for both development and production environments.
+[README](../README.md) · [Previous: orientation](developer-start-here.md) · [Next: architecture](architecture.md)
 
-## Introduction
+This guide is for contributing to the existing application. It does not authorize deploying a hospital, changing production or buying infrastructure. Begin with the frontend and approved synthetic backend. Local backend installation is a separate operator task.
 
-Bahmni Apps Frontend is a React TypeScript monorepo application for Bahmni's modules, built with Nx, Webpack, and Carbon Design System. It includes Progressive Web App (PWA) support for offline capabilities.
+## 1. Tools and your own account
 
-## Prerequisites
+Install Git, Node.js 22, Yarn Classic 1.22, a code editor and a browser with developer tools. Test/build libraries are declared project dependencies, not separate paid products. Docker, Python and Java are needed only for assigned backend work.
 
-Before you begin, ensure you have the following installed:
-
-- **Node.js** (v22.x or later recommended)
-
-  - [Download Node.js](https://nodejs.org/en/download/)
-  - Verify installation: `node --version`
-
-- **Yarn** (v1.22.x or later recommended)
-
-  - [Installation instructions](https://yarnpkg.com/getting-started/install)
-  - Verify installation: `yarn --version`
-
-- **Docker** and **Docker Compose**
-
-  - [Install Docker](https://docs.docker.com/get-docker/)
-  - [Install Docker Compose](https://docs.docker.com/compose/install/)
-  - Verify installation: `docker --version` and `docker compose --version`
-
-- **Git**
-  - [Install Git](https://git-scm.com/downloads)
-  - Verify installation: `git --version`
-
-### GitHub Personal Access Token (PAT)
-
-You'll need a GitHub Personal Access Token to access the GitHub Container Registry:
-
-1. Go to your GitHub account settings: [https://github.com/settings/tokens](https://github.com/settings/tokens)
-2. Click "Generate new token" (classic)
-3. Give your token a descriptive name
-4. Select the following scopes:
-   - `repo` (Full control of private repositories)
-   - `read:packages` (Download packages from GitHub Package Registry)
-5. Click "Generate token"
-6. **Important**: Copy and save your token immediately as it won't be shown again
-
-## Environment Setup
-
-### 1. Clone Required Repositories
+Use your own GitHub account with two-factor authentication. Accept the repository invitation before pushing. Public HTTPS cloning needs no private-repository token. Never use someone else's login, Codex session, cookies or SSH key. Request only the necessary scoped access if a package genuinely needs authentication.
 
 ```bash
-# Clone the Bahmni Docker repository
-git clone git@github.com:bahnew/bahmni-docker.git
-# If you want to clone using the web URL
-# Clone Bahmni-docker from Bahnew repository(https://github.com/bahnew/bahmni-docker)
-# git clone https://github.com/bahnew/bahmni-docker.git
-cd bahmni-docker
-
-# Clone the Bahmni Apps Frontend repository (in a separate terminal)
-git clone https://github.com/Bahmni/bahmni-apps-frontend.git
+git --version
+node --version
+yarn --version
 ```
 
-### 2. Authenticate with GitHub Container Registry
+Do not install Yarn 2/3/4 or replace the lockfile as an onboarding workaround. Download tools from their official publishers. Ask the maintainer for help when a command or permission is unclear.
+
+## 2. Clone the correct baseline
 
 ```bash
-export GITHUB_PAT=<your-token-here>
-# Login to GitHub Container Registry using your Personal Access Token
-echo $GITHUB_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+git clone https://github.com/ash-sxn/qorlia-bahmni.git
+cd qorlia-bahmni
+git fetch origin
+git switch --create codex/your-task origin/codex/qorlia-fork-foundation
+git rev-parse HEAD
+yarn install --frozen-lockfile
 ```
 
-Replace `GITHUB_PAT` with your GitHub Personal Access Token and `YOUR_GITHUB_USERNAME` with your GitHub username.
+Replace `your-task` with an agreed name. The base above is the current starter-task base, not a permanent convention. Confirm it in your issue. Use a fresh clone, not another developer's working folder. Record the starting SHA (commit identifier), tool versions and installation result.
 
-### 3. Bring Up EMR Components
+`yarn install` downloads project dependencies. `--frozen-lockfile` prevents an accidental dependency-version rewrite. Installation may set up Git hooks. If it fails, record the package/error. Do not delete the lockfile or upgrade everything.
 
-After setting up the repositories and authenticating with GitHub Container Registry, you need to start the EMR components:
+## 3. Request the environment pack privately
+
+Ask for the approved synthetic clinical backend origin, matching installed modules, compatible configuration, account/roles, login location, permission to create synthetic records, and access expiry. If needed, request a reviewed 40-character Standard configuration commit.
+
+Billing additionally needs a compatible Odoo backend, adapter version and separate ERP account. Do not request it for an unrelated frontend task.
+
+The source code is not the database. A page can compile without a backend, but its workflow cannot be accepted that way. A public demo is not blanket permission to create records. Never publish the environment pack or copy private Compose files into GitHub.
+
+## 4. Configure and run
+
+The proxy is in [webpack.config.js](../distro/webpack.config.js). Its default clinical target is `https://localhost/`, which requires an actual compatible backend there.
+
+On macOS/Linux, after receiving approved values:
 
 ```bash
-# Navigate to the bahmni-docker/bahmni-standard directory
-cd bahmni-docker/bahmni-standard
-
-# Start all EMR components with the latest images
-docker compose --env-file .env.dev up -d
+export BAHMNI_API_ORIGIN='https://your-approved-synthetic-backend.example'
+# Only if the environment needs a pinned Standard V2 configuration:
+# export BAHMNI_STANDARD_CONFIG_REF='the-reviewed-40-character-commit-sha'
+# Only for an assigned Billing task:
+# export BAHMNI_BILLING_ORIGIN='https://your-approved-billing-backend.example'
+# Only if the operator's approved ERP database is not the default 'odoo':
+# export BAHMNI_BILLING_DATABASE='your_approved_synthetic_database'
+NX_DAEMON=false yarn nx serve @bahmni/distro --skipSync
 ```
 
-This command will pull the latest images for all EMR components and start them in detached mode. You can verify that the containers are running with:
+These example values are placeholders, not test servers. A moving branch name is not a pinned configuration reference.
 
-```bash
-docker ps
+`BAHMNI_BILLING_DATABASE` is a build-time, non-secret deployment setting, not a user-facing database selector. Restart the development server or rebuild after changing it. The ERP server must independently restrict permitted databases and enforce authentication/authorization. This setting does not grant access. Never put a password or connection string in it or in any browser build variable.
+
+For the protected review host, the operator must set the same `BAHMNI_BILLING_DATABASE` on the gateway process. The gateway defaults to `odoo` and rejects authentication for every other database, including a name submitted manually by the client. A custom frontend build alone cannot change that server-side allowlist. Keep the review access gate, clinical session check and native ERP account restrictions in place.
+
+Windows PowerShell uses:
+
+```powershell
+$env:BAHMNI_API_ORIGIN = 'https://your-approved-synthetic-backend.example'
+$env:NX_DAEMON = 'false'
+yarn nx serve @bahmni/distro --skipSync
 ```
 
-Wait for all services to start up completely. Open your browser and navigate to the Bahmni EMR URL and open any Active patient (typically start from <http://localhost/bahmni/home>). After login, register a patient and start a visit. Now navigate to the clinical module, and go to New - Active queue. You will see the new dashboard being rendered. 
+Set optional variables with the same `$env:NAME = 'value'` syntax. POSIX-style environment prefixes in other guides require Git Bash/WSL or equivalent PowerShell assignments. Every Windows/native dependency combination is not accepted yet; report exact failures.
 
-## Development Setup Options
+The server normally listens on loopback port 3000. Keep it loopback-only. Do not add a tunnel or bind `0.0.0.0` without operator approval and the appropriate access gate.
 
-There are two methods for local development. Choose the one that best fits your workflow:
+## 5. Sign in on the exact local host
 
-### Method 1: Mounting the Built Artifact (Docker-based)
+Open `http://127.0.0.1:3000/bahmni-v2/login`. Sign in with the approved synthetic account and correct location. Open `/bahmni-v2/home/`, then your module.
 
-This method allows you to build the application locally and mount it into the Docker container:
+`localhost`, `127.0.0.1` and a public demo are different browser hosts for cookies. Stay on one host. Do not manually copy a `JSESSIONID` from another environment. React login creates the local session through the configured proxy.
 
-1. **Configure Docker Compose and .env**:
+Billing is inside the signed-in workspace at `/bahmni-v2/home/billing`. ERP and clinical sessions are separate. The proxy intentionally does not forward clinical credentials to Odoo. A browser-owned Basic authentication popup is not the normal Qorlia login. Report its URL/status rather than guessing a password.
 
-   - In the .env.dev, the `BAHMNI_APPS_FRONTEND_PATH` must point to the **root directory** of your bahmni-apps-frontend repository (not to the distro subdirectory). The volume mount in docker-compose.yml will automatically append `/distro/dist/` to this path.
-   - If you're using a custom Bahmni configuration, update `CONFIG_VOLUME` to point to your config directory (e.g., `../bahmni-config/standard-config`).
-   - The volume mount for bahmni-apps-frontend is **already active** in `docker-compose.yml` and does not need to be uncommented:
-     ```yaml
-     bahmni-apps-frontend:
-       volumes:
-         - "${BAHMNI_APPS_FRONTEND_PATH:?}/distro/dist/:/usr/local/apache2/htdocs/bahmni-new"
-     ```
+The development-only design preview contains sample data. It is not proof that saving or deployment works.
 
-2. **Build the Application**:
+## 6. Verify before changing code
 
-   In your bahmni-apps-frontend directory:
+Record your issue, base SHA, tool versions, successful route and approved environment. Inspect one permitted read request in the browser Network panel. Record the endpoint/method and expected result, without cookies or patient details.
 
-   ```bash
-   # Install dependencies
-   yarn
-
-   # Build the application for production (uses the workspace build script)
-   yarn build
-
-   # Alternatively build only the `distro` app via nx
-   yarn nx build distro
-   ```
-
-3. **Start the Docker Services**:
-
-   In the bahmni-docker/bahmni-standard directory:
-
-   ```bash
-   # Start all EMR components with the latest images
-   docker compose --env-file .env.dev up -d
-
-   # Or, to update only the bahmni-apps-frontend service
-   docker compose --env-file .env.dev up -d bahmni-apps-frontend
-   ```
-
-4. **Access the Application**:
-
-   Open your browser and navigate to the Bahmni EMR URL and open any Active patient (typically start from <http://localhost/bahmni/home>).
-
-5. **Development Workflow**:
-
-   With this setup, every time you rebuild the application using `yarn build`, the changes will be automatically available in the browser without restarting the Docker container. Simply refresh your browser after the build completes.
-
-### Method 2: Using Hot Reload (Local Development Server)
-
-This method provides a faster development experience with hot reloading:
-
-1. **Start the Development Server**:
-
-   In your bahmni-apps-frontend directory:
-
-   ```bash
-   # Install dependencies (if not already done)
-   yarn
-
-   # Start the development server
-   yarn nx serve distro
-   ```
-
-   This will start the development server at [http://127.0.0.1:3000](http://127.0.0.1:3000).
-
-   The development proxy uses `https://localhost/` by default and listens only on `127.0.0.1`. For the synthetic Qorlia demo, use `BAHMNI_API_ORIGIN=https://demo-bahmni.qorlia.com`. Its current Standard installation lacks the V2 app configuration. For local testing only, add `BAHMNI_STANDARD_CONFIG_REF=<pinned-standard-config-commit>` to fetch the official Standard V2 files from GitHub while all other requests still go to the demo. Pin a reviewed commit, do not use a moving branch. This does not install or change configuration on the demo server. Check that the config's concepts, privileges and routes match the backend before trusting a workflow.
-
-   With the server running, this quick check must print `true` for both requests:
-
-   ```bash
-   curl -fsS http://127.0.0.1:3000/bahmni_config/openmrs/apps/home/v2/extension.json | jq -e 'has("clinical") and has("registrationNew")'
-   curl -fsS http://127.0.0.1:3000/bahmni_config/openmrs/apps/clinical/v2/app.json | jq -e 'has("dashboards") and has("actions")'
-   ```
-
-2. **Set Up Authentication**:
-
-   To authorize API requests to the backend:
-
-   a. Login to Bahmni EMR in another browser tab (typically <https://localhost/bahmni/home>)
-
-   b. After successful login, open browser developer tools (F12 or right-click > Inspect)
-
-   c. Go to the Application tab > Cookies
-
-   d. Find and copy the value of the `JSESSIONID` cookie
-
-   e. In your localhost:3000 tab, use developer tools to create a new cookie:
-
-   - Name: `JSESSIONID`
-   - Value: (paste the copied value)
-
-3. **Development Workflow**:
-
-   With this setup, any changes you make to the source code will be immediately reflected in the browser with hot module reloading.
-
-## Additional Commands
-
-### Building for Production
-
-```bash
-# Build the application for production
-yarn nx build distro
-```
-
-The build artifacts will be stored in the `dist/` directory.
-
-### Linting and Formatting
-
-```bash
-# Run ESLint to check for code quality issues
-yarn nx run-many -t lint
-
-# Fix ESLint issues automatically
-yarn nx run-many -t lint --fix
-```
-
-## Code Quality Tools
-
-The project includes several tools to maintain code quality and consistency across the codebase.
-
-### Husky Pre-commit Hooks
-
-Husky is used to set up Git hooks that run automatically at specific points in the Git workflow. The project uses a pre-commit hook to ensure code quality before commits are made.
-
-#### Setup
-
-Husky is automatically installed and configured when you run `yarn install` through the `prepare` script in package.json.
-
-The pre-commit hook is configured to run lint-staged, which runs linters and formatters on staged files.
-
-#### Lint-staged Configuration
-
-Lint-staged is configured in package.json to run ESLint and Prettier on staged TypeScript files.
-
-This ensures that all TypeScript files are properly linted and formatted before they are committed to the repository.
-
-### ESLint Configuration
-
-ESLint is configured using the new flat config format in the `eslint.config.ts` file.
-
-This configuration:
-
-- Applies to all JavaScript and TypeScript files
-- Uses the recommended configurations for JavaScript, TypeScript, and React
-- Sets up React version detection
-- Configures specific rules for React prop types
-
-### Prettier Configuration
-
-Prettier is configured in the `.prettierrc.json` file.
-
-This configuration ensures consistent code formatting across the project, with rules for:
-
-- Using 2 spaces for indentation
-- Maximum line width of 80 characters
-- Trailing commas in multi-line structures
-- Semicolons at the end of statements
-- Spaces around brackets in object literals
-- Parentheses around arrow function parameters
-
-### Testing
-
-```bash
-# Run tests all tests
-yarn nx run-many -t test 
-
-# Run specific module test
-yarn nx test <module/packagename>
-
-yarn nx test clinical
-
-# Run tests in watch mode
-yarn test:watch
-```
-
-### Storybook
-
-Storybook provides an isolated environment for developing and showcasing UI components. It's a great tool for component-driven development and visual testing.
-
-```bash
-# Start Storybook development server
-yarn storybook
-
-# Build Storybook as a static web application
-yarn build-storybook
-```
-
-The Storybook development server will run on [http://localhost:6006](http://localhost:6006) by default.
+Run the module checks in [Testing guide](testing-guide.md). Compare the assigned workflow with native Bahmni/Odoo before inventing behaviour.
 
 ## Troubleshooting
 
-### Common Issues
+| Symptom               | Check first                                                      | Do not                                           |
+| --------------------- | ---------------------------------------------------------------- | ------------------------------------------------ |
+| Old UI opens          | `/bahmni-v2/`, branch, host and running process                  | Treat legacy `/bahmni/home` as the redesigned UI |
+| Sign-in unavailable   | Clinical session endpoint, backend reachability and proxy origin | Disable authentication                           |
+| Missing menu/config   | Modules, privileges and compatible V2 config                     | Hardcode a menu or use a random moving branch    |
+| Billing access denied | Both sessions, gateway, adapter version and role                 | Forward clinical cookies or add `sudo`           |
+| Port occupied         | Identify the process and owner first                             | Kill all Node processes                          |
+| Nx circular graph     | Direct focused Jest checks; inspect the graph                    | Rewrite unrelated dependencies                   |
+| Webpack “data” error  | Supply Nx build-target context using the testing guide           | Change application code for a command error      |
+| Expired tester access | Request gate renewal                                             | Treat expiry as a patient/accounting defect      |
 
-1. **Authentication Failures with GitHub Container Registry**:
+## Backend and build boundaries
 
-   - Ensure your Personal Access Token has the correct scopes
-   - Check that your token hasn't expired
-   - Verify you're using the correct username
+Distribution output is `distro/dist`. Use the [build check](testing-guide.md#build-check). A development bundle is not a production release.
 
-2. **Docker Compose Errors**:
-
-   - Ensure all required environment variables are set in `.env.dev`
-   - Check for port conflicts with other running services
-
-3. **API Authorization Issues**:
-   - Verify the JSESSIONID cookie is correctly set
-   - Ensure the Bahmni backend services are running
-
-### Getting Help
-
-If you encounter issues not covered in this guide:
-
-- Check the [GitHub repository issues](https://github.com/Bahmni/bahmni-apps-frontend/issues)
-- Consult the [Bahmni community forums](https://talk.openmrs.org/c/software/bahmni/35)
-
-## Additional Resources
-
-- [React Documentation](https://react.dev/)
-- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
-- [Carbon Design System](https://carbondesignsystem.com/)
-- [Webpack Documentation](https://webpack.js.org/concepts/)
-- [Docker Documentation](https://docs.docker.com/)
-- [Bahmni Documentation](https://bahmni.atlassian.net/wiki/spaces/BAH/overview)
+Do not blindly start latest upstream images. Native adapters require matching versions, schema, configuration, licences and pinned dependencies. Backend work requires separate synthetic databases, backups and native tests. See [Billing](../runtime/billing/README.md), [Reports](../runtime/reports/README.md) and [Backend readiness](BACKEND_READINESS.md). Private deployment procedures come from the operator.
