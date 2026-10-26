@@ -423,6 +423,45 @@ type LegacyDrugOrder = {
 const legacyLabel = (value?: LegacyLabel): string =>
   typeof value === 'string' ? value : (value?.name ?? value?.display ?? '');
 
+// Bahmni names duration units in words; the medication table expects FHIR codes.
+const LEGACY_DURATION_UNIT_CODES: Record<string, string> = {
+  second: 's',
+  seconds: 's',
+  minute: 'min',
+  minutes: 'min',
+  hour: 'h',
+  hours: 'h',
+  day: 'd',
+  days: 'd',
+  week: 'wk',
+  weeks: 'wk',
+  month: 'mo',
+  months: 'mo',
+  year: 'a',
+  years: 'a',
+};
+
+const legacyDurationUnit = (value?: LegacyLabel): string => {
+  const label = legacyLabel(value);
+  return LEGACY_DURATION_UNIT_CODES[label.toLowerCase()] ?? label;
+};
+
+// Bahmni stores administration instructions as JSON, e.g. {"instructions":"As directed"}.
+const legacyInstructions = (value?: string): string => {
+  if (!value?.trim().startsWith('{')) return value ?? '';
+  try {
+    const parsed = JSON.parse(value) as {
+      instructions?: unknown;
+      additionalInstructions?: unknown;
+    };
+    return [parsed.instructions, parsed.additionalInstructions]
+      .filter((part): part is string => typeof part === 'string' && !!part)
+      .join('. ');
+  } catch {
+    return value;
+  }
+};
+
 const legacyMedicationStatus = (order: LegacyDrugOrder): MedicationStatus => {
   if (order.dateStopped || order.action?.toLowerCase() === 'discontinue') {
     return MedicationStatus.Stopped;
@@ -463,7 +502,7 @@ const toReadOnlyMedication = (order: LegacyDrugOrder): MedicationRequest => {
       typeof order.duration === 'number'
         ? {
             duration: order.duration,
-            durationUnit: legacyLabel(order.durationUnits),
+            durationUnit: legacyDurationUnit(order.durationUnits),
           }
         : undefined,
     quantity: {
@@ -480,7 +519,8 @@ const toReadOnlyMedication = (order: LegacyDrugOrder): MedicationRequest => {
       order.creatorName ||
       'Unknown',
     instructions:
-      order.instructions || dosing?.administrationInstructions || '',
+      order.instructions ||
+      legacyInstructions(dosing?.administrationInstructions),
     asNeeded: dosing?.asNeeded ?? false,
     isImmediate: false,
     note: order.commentToFulfiller,
@@ -528,8 +568,9 @@ export async function getPatientMedications(
     return formatMedications(bundle);
   } catch (error) {
     if ((error as { status?: number }).status !== 500) throw error;
+    // Bahmni leaves out the currently open visit unless asked to include it.
     const orders = await get<LegacyDrugOrder[]>(
-      `${OPENMRS_REST_V1}/bahmnicore/drugOrders?patientUuid=${encodeURIComponent(patientUUID)}`,
+      `${OPENMRS_REST_V1}/bahmnicore/drugOrders?patientUuid=${encodeURIComponent(patientUUID)}&includeActiveVisit=true`,
     );
     return orders
       .filter(
