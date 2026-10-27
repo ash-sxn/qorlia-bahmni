@@ -110,6 +110,30 @@ describe('PolicyDetailPage', () => {
     ).toHaveAttribute('href', '/home/policies');
   });
 
+  it('links back to the list with the search and filters the user had', () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/policies/synthetic-mp-digital-health',
+            state: { librarySearch: '?q=digital&jurisdiction=madhya_pradesh' },
+          },
+        ]}
+      >
+        <Routes>
+          <Route path="/policies/:policyId" element={<PolicyDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'Back to policy library' }),
+    ).toHaveAttribute(
+      'href',
+      '/home/policies?q=digital&jurisdiction=madhya_pradesh',
+    );
+  });
+
   it('shows a useful not-found state for an unknown id', () => {
     renderDetail('does-not-exist');
 

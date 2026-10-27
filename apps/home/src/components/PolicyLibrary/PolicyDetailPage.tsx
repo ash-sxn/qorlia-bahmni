@@ -1,7 +1,7 @@
 import { Tag } from '@bahmni/design-system';
 import { useTranslation } from '@bahmni/services';
 import { ReactNode, useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { HomePageHeader } from '../HomePageHeader';
 import { formatPolicyDate } from './formatPolicyDate';
 import { loadPolicyCatalogue, usesSyntheticExamples } from './policyCatalogue';
@@ -12,9 +12,16 @@ import { IsoDate, PolicyEntry } from './types';
 
 const LIBRARY_PATH = '/home/policies';
 
+/** The list's query string, passed in router state when a card is opened. */
+const getLibrarySearch = (state: unknown): string => {
+  const search = (state as { librarySearch?: unknown } | null)?.librarySearch;
+  return typeof search === 'string' && search.startsWith('?') ? search : '';
+};
+
 export const PolicyDetailPage = () => {
   const { t, i18n } = useTranslation();
   const { policyId } = useParams<{ policyId: string }>();
+  const location = useLocation();
   const catalogue = useMemo(() => loadPolicyCatalogue(), []);
 
   const notProvided = t('POLICY_LIBRARY_NOT_PROVIDED');
@@ -105,7 +112,9 @@ export const PolicyDetailPage = () => {
     <>
       <HomePageHeader />
       <main className={styles.page}>
-        <Link to={LIBRARY_PATH}>{t('POLICY_LIBRARY_BACK')}</Link>
+        <Link to={`${LIBRARY_PATH}${getLibrarySearch(location.state)}`}>
+          {t('POLICY_LIBRARY_BACK')}
+        </Link>
         {renderContent()}
       </main>
     </>

@@ -40,7 +40,8 @@
   }
 }
 
-.page h2 {
+// Only the detail page's section headings; card titles are h2s nested inside the list.
+.page > h2 {
   margin: 2rem 0 0.5rem;
   font-size: 1.25rem;
 }

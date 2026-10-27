@@ -1,6 +1,6 @@
 import { Tag } from '@bahmni/design-system';
 import { useTranslation } from '@bahmni/services';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { formatPolicyDate } from './formatPolicyDate';
 import styles from './PolicyLibrary.module.scss';
 import { PolicyEntry, ReviewStatus } from './types';
@@ -17,13 +17,19 @@ interface PolicyListProps {
 
 export const PolicyList = ({ policies }: PolicyListProps) => {
   const { t, i18n } = useTranslation();
+  const { search } = useLocation();
 
   return (
     <ul className={styles.list}>
       {policies.map((policy) => (
         <li key={policy.id} className={styles.card}>
           <h2 className={styles.cardTitle}>
-            <Link to={`/home/policies/${policy.id}`}>{policy.title}</Link>
+            <Link
+              to={`/home/policies/${policy.id}`}
+              state={{ librarySearch: search }}
+            >
+              {policy.title}
+            </Link>
           </h2>
           <div className={styles.meta}>
             <span>

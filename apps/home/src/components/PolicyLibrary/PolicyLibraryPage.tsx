@@ -1,8 +1,9 @@
 import { Search } from '@bahmni/design-system';
 import { useTranslation } from '@bahmni/services';
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { HomePageHeader } from '../HomePageHeader';
+import { filtersFromParams, filtersToParams } from './filterParams';
 import {
   DEFAULT_FILTERS,
   filterPolicies,
@@ -17,7 +18,11 @@ import { PolicyList } from './PolicyList';
 export const PolicyLibraryPage = () => {
   const { t } = useTranslation();
   const catalogue = useMemo(() => loadPolicyCatalogue(), []);
-  const [filters, setFilters] = useState<PolicyFilters>(DEFAULT_FILTERS);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filters = filtersFromParams(searchParams);
+  // Replace rather than push, so typing a search does not add a history entry per keystroke.
+  const setFilters = (next: PolicyFilters) =>
+    setSearchParams(filtersToParams(next), { replace: true });
 
   const renderCatalogue = () => {
     if (!catalogue.ok) {

@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { syntheticPolicies } from '../__fixtures__/syntheticPolicies';
 import { loadPolicyCatalogue } from '../policyCatalogue';
 import { PolicyLibraryPage } from '../PolicyLibraryPage';
@@ -16,10 +16,15 @@ jest.mock('../policyCatalogue', () => ({
 
 const mockLoadPolicyCatalogue = loadPolicyCatalogue as jest.Mock;
 
-const renderPage = () =>
+const CurrentSearch = () => (
+  <output data-testid="current-search">{useLocation().search}</output>
+);
+
+const renderPage = (url = '/policies') =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <PolicyLibraryPage />
+      <CurrentSearch />
     </MemoryRouter>,
   );
 
@@ -167,6 +172,36 @@ describe('PolicyLibraryPage', () => {
       screen.getByRole('searchbox', { name: 'Search policies' }),
     ).toHaveValue('');
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
+  });
+
+  it('restores the search and filters from the URL', () => {
+    renderPage('/policies?q=notice&jurisdiction=central');
+
+    expect(
+      screen.getByRole('searchbox', { name: 'Search policies' }),
+    ).toHaveValue('notice');
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByText('1 result')).toBeInTheDocument();
+  });
+
+  it('keeps the search and filters in the URL', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Search policies' }),
+      'notice',
+    );
+    await user.click(screen.getByRole('combobox', { name: 'Jurisdiction' }));
+    await user.click(screen.getByRole('option', { name: 'Central' }));
+
+    expect(screen.getByTestId('current-search')).toHaveTextContent(
+      '?q=notice&jurisdiction=central',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+
+    expect(screen.getByTestId('current-search')).toBeEmptyDOMElement();
   });
 
   it('tells the user when no policies have been published yet', () => {
