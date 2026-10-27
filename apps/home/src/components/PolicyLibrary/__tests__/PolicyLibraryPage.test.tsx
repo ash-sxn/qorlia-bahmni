@@ -204,6 +204,25 @@ describe('PolicyLibraryPage', () => {
     expect(screen.getByTestId('current-search')).toBeEmptyDOMElement();
   });
 
+  it('keeps every character when the user types quickly', async () => {
+    const user = userEvent.setup({ delay: null });
+    renderPage();
+
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Search policies' }),
+      'notice',
+    );
+    await user.click(screen.getByRole('combobox', { name: 'Jurisdiction' }));
+    await user.click(screen.getByRole('option', { name: 'Central' }));
+
+    expect(
+      screen.getByRole('searchbox', { name: 'Search policies' }),
+    ).toHaveValue('notice');
+    expect(screen.getByTestId('current-search')).toHaveTextContent(
+      '?q=notice&jurisdiction=central',
+    );
+  });
+
   it('tells the user when no policies have been published yet', () => {
     mockLoadPolicyCatalogue.mockReturnValue({ ok: true, entries: [] });
 

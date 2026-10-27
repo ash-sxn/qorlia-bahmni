@@ -1,6 +1,6 @@
 import { Search } from '@bahmni/design-system';
 import { useTranslation } from '@bahmni/services';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HomePageHeader } from '../HomePageHeader';
 import { filtersFromParams, filtersToParams } from './filterParams';
@@ -19,10 +19,18 @@ export const PolicyLibraryPage = () => {
   const { t } = useTranslation();
   const catalogue = useMemo(() => loadPolicyCatalogue(), []);
   const [searchParams, setSearchParams] = useSearchParams();
-  const filters = filtersFromParams(searchParams);
+  // React Router applies URL updates as transitions, so a search box bound to the URL
+  // drops characters when someone types quickly. The box keeps its own text and the
+  // URL mirrors it, which is enough for Back and refresh because the page remounts.
+  const [query, setQuery] = useState(
+    () => filtersFromParams(searchParams).query,
+  );
+  const filters: PolicyFilters = { ...filtersFromParams(searchParams), query };
   // Replace rather than push, so typing a search does not add a history entry per keystroke.
-  const setFilters = (next: PolicyFilters) =>
+  const setFilters = (next: PolicyFilters) => {
+    setQuery(next.query);
     setSearchParams(filtersToParams(next), { replace: true });
+  };
 
   const renderCatalogue = () => {
     if (!catalogue.ok) {
