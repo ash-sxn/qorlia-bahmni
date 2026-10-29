@@ -22,3 +22,7 @@ export const loadPolicyCatalogue = (): CatalogueResult =>
   usesSyntheticExamples
     ? validateCatalogue(syntheticPolicies, SYNTHETIC_APPROVED_HOSTS)
     : validateCatalogue(publishedCatalogue, APPROVED_SOURCE_HOSTS);
+
+/** True when there is at least one valid entry, so the Home tile is worth showing. */
+export const hasPolicyEntries = (result: CatalogueResult): boolean =>
+  result.ok && result.entries.length > 0;
