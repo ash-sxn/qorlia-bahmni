@@ -1,5 +1,18 @@
 # Bahmni workflow parity ledger
 
+## 29 October cashier visit billing source checkpoint
+
+The Cashier view gains a "Visits to bill" queue: quotations synced from Bahmni
+orders, confirmed orders still to invoice and draft customer bills. Billing a
+visit runs the existing reviewed native actions in order (confirm, regular
+invoice, post) and opens Take payment for the resulting bill. Each pass re-reads
+the native state first, so a pass that stopped part way continues from where it
+stopped. Unbalanced bills, bills the user may not post and credit notes are never
+posted or collected. The cashier can add a consultation fee from products named
+"Consultation" through the native draft onchange and versioned save. Full Home
+passes 2,022 tests. This is source only: not browser-tested against an Odoo with
+the adapter installed, not deployed, and no demo or staging change.
+
 ## 26 October opaque signed creation seed source checkpoint
 
 [Source 88](../runtime/billing/STOCK_INVENTORY_CREATE.md#candidate-88-opaque-signed-creation-seed-source-checkpoint)

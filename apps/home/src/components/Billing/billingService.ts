@@ -12707,7 +12707,10 @@ export const getInvoices = async (
   search: string,
   offset: number,
   invoiceIds?: number[],
-  { unpaidOnly = false }: { unpaidOnly?: boolean } = {},
+  {
+    unpaidOnly = false,
+    draftOnly = false,
+  }: { unpaidOnly?: boolean; draftOnly?: boolean } = {},
 ) => {
   const result = await rpc<Invoice[]>(
     '/web/dataset/call_kw/account.move/search_read',
@@ -12725,6 +12728,13 @@ export const getInvoices = async (
                 ['move_type', '=', 'out_invoice'],
                 ['state', '=', 'posted'],
                 ['payment_state', 'in', ['not_paid', 'partial']],
+              ]
+            : []),
+          // Cashier queue: customer bills created but not yet finalised.
+          ...(draftOnly
+            ? [
+                ['move_type', '=', 'out_invoice'],
+                ['state', '=', 'draft'],
               ]
             : []),
           ...(search
@@ -12806,7 +12816,7 @@ export const getInvoices = async (
 export const getChargeOrders = async (
   search: string,
   offset: number,
-  status: 'draft' | 'confirmed' | 'all',
+  status: 'draft' | 'confirmed' | 'all' | 'toBill',
 ) => {
   const result = await rpc<ChargeOrder[]>(
     '/web/dataset/call_kw/sale.order/search_read',
@@ -12818,13 +12828,23 @@ export const getChargeOrders = async (
         domain: [
           ...(status === 'all'
             ? []
-            : [
+            : status === 'toBill'
+              ? // Cashier queue: visit charges not yet invoiced, including
+                // confirmed orders whose invoice step has not run.
                 [
-                  'state',
-                  'in',
-                  status === 'draft' ? ['draft', 'sent'] : ['sale', 'done'],
-                ],
-              ]),
+                  '|',
+                  ['state', 'in', ['draft', 'sent']],
+                  '&',
+                  ['state', 'in', ['sale', 'done']],
+                  ['invoice_status', '=', 'to invoice'],
+                ]
+              : [
+                  [
+                    'state',
+                    'in',
+                    status === 'draft' ? ['draft', 'sent'] : ['sale', 'done'],
+                  ],
+                ]),
           ...(search
             ? [
                 '|',

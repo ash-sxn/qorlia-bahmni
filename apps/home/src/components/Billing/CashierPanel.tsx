@@ -72,8 +72,7 @@ export function CashierPanel({
         <div>
           <h2 id="cashier-heading">Bills to collect</h2>
           <p className={cashier.subtle}>
-            Finalised bills with an amount still due. Draft bills are finalised
-            in Accounting first.
+            Finalised bills with an amount still due.
           </p>
         </div>
         {bills.isSuccess ? (

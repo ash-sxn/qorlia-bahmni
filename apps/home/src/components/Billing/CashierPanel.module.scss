@@ -91,6 +91,26 @@
   white-space: nowrap;
 }
 
+.feeRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+
+  p {
+    margin: 0;
+  }
+}
+
+.section {
+  margin-top: 2rem;
+
+  h3 {
+    margin: 0 0 0.25rem;
+  }
+}
+
 .pager {
   display: flex;
   justify-content: flex-end;
