@@ -122,6 +122,8 @@
   "APPOINTMENTS_CONFIRM_CHECK_IN": "Confirmar llegada",
   "APPOINTMENTS_DAY_VIEW": "Día",
   "APPOINTMENTS_EDIT": "Editar cita",
+  "APPOINTMENTS_RESET": "Restablecer",
+  "APPOINTMENTS_CONFIRM_RESET": "¿Restablecer esta cita a Programada?",
   "APPOINTMENTS_EDITED": "Cita actualizada. Se ha renovado el calendario.",
   "APPOINTMENTS_EDIT_ERROR": "No se pudo actualizar la cita. Inténtelo de nuevo.",
   "APPOINTMENTS_EDIT_LOAD_ERROR": "No se pudo cargar la cita. Inténtelo de nuevo.",
