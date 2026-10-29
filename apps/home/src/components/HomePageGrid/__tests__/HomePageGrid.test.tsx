@@ -31,6 +31,11 @@ describe('HomePageGrid', () => {
         label: 'Billing',
         url: '/bahmni-v2/home/billing',
       }),
+      expect.objectContaining({
+        id: 'qorlia.policy-library',
+        label: 'Policy library',
+        url: '/bahmni-v2/home/policies',
+      }),
     ]);
   });
 
@@ -42,6 +47,9 @@ describe('HomePageGrid', () => {
     );
 
     expect(props.reviewUrls['bahmni.clinical']).toBe('/bahmni-v2/clinical/');
+    expect(props.reviewUrls['qorlia.policy-library']).toBe(
+      '/bahmni-v2/home/policies',
+    );
     expect(props.reviewUrls['bahmni.orders']).toBe(
       '/bahmni-v2/clinical/orders',
     );

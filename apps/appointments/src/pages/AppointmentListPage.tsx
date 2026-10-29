@@ -22,6 +22,7 @@ import {
   getAllowedTransitions,
   type TransitionConfig,
 } from './appointmentActions';
+import { formatAppointmentEndTime } from './appointmentTime';
 import { EditAppointmentForm } from './EditAppointmentForm';
 import styles from './styles/index.module.scss';
 
@@ -430,7 +431,16 @@ export const AppointmentListPage = () => {
                   <table>
                     <thead>
                       <tr>
-                        <th scope="col">{t('APPOINTMENTS_TIME')}</th>
+                        <th scope="col">
+                          {t(
+                            awaiting
+                              ? 'APPOINTMENTS_TIME'
+                              : 'APPOINTMENTS_START_TIME',
+                          )}
+                        </th>
+                        {!awaiting && (
+                          <th scope="col">{t('APPOINTMENTS_END_TIME')}</th>
+                        )}
                         <th scope="col">{t('APPOINTMENTS_PATIENT')}</th>
                         <th scope="col">{t('APPOINTMENTS_SERVICE')}</th>
                         <th scope="col">{t('APPOINTMENTS_PROVIDER')}</th>
@@ -450,6 +460,14 @@ export const AppointmentListPage = () => {
                               timeStyle: 'short',
                             }).format(new Date(appointment.startDateTime))}
                           </td>
+                          {!awaiting && (
+                            <td>
+                              {formatAppointmentEndTime(
+                                appointment.startDateTime,
+                                appointment.endDateTime,
+                              ) ?? t('APPOINTMENTS_NOT_SPECIFIED')}
+                            </td>
+                          )}
                           <td>
                             <a
                               href={`/bahmni-v2/clinical/${appointment.patient.uuid}`}

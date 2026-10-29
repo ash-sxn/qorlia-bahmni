@@ -6,6 +6,7 @@ import styles from './styles/HomePageGrid.module.scss';
 
 const reviewUrls = {
   'qorlia.billing': '/bahmni-v2/home/billing',
+  'qorlia.policy-library': '/bahmni-v2/home/policies',
   'bahmni.registration.new': '/bahmni-v2/registration/search',
   'bahmni.programs': '/bahmni-v2/clinical/programs',
   'bahmni.clinical': '/bahmni-v2/clinical/',
@@ -21,7 +22,7 @@ const reviewUrls = {
     '/bahmni-v2/patient-documents/search?encounterType=RADIOLOGY&topLevelConcept=All%20Radiology%20orders',
 };
 
-const billingModules: Module[] = [
+const qorliaModules: Module[] = [
   {
     id: 'qorlia.billing',
     extensionPointId: HOME_EXTENSION_POINT,
@@ -30,6 +31,16 @@ const billingModules: Module[] = [
     url: '/bahmni-v2/home/billing',
     order: 14,
     icon: 'fa-file-invoice-dollar',
+    exclusiveOnlineModule: true,
+  },
+  {
+    id: 'qorlia.policy-library',
+    extensionPointId: HOME_EXTENSION_POINT,
+    type: 'link',
+    label: 'Policy library',
+    url: '/bahmni-v2/home/policies',
+    order: 15,
+    icon: 'fa-book-open',
     exclusiveOnlineModule: true,
   },
 ];
@@ -51,7 +62,7 @@ export const HomePageGrid: React.FC = () => (
         process.env.NODE_ENV !== 'production' ? reviewUrls : undefined
       }
       testId="home-modules"
-      additionalModules={billingModules}
+      additionalModules={qorliaModules}
     />
   </div>
 );
