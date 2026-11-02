@@ -1,5 +1,14 @@
 import { render, screen } from '@testing-library/react';
+import { syntheticPolicies } from '../../PolicyLibrary/__fixtures__/syntheticPolicies';
+import { loadPolicyCatalogue } from '../../PolicyLibrary/policyCatalogue';
 import { HomePageGrid } from '../HomePageGrid';
+
+// Only the loader is replaced, so each test can choose an empty or filled catalogue.
+jest.mock('../../PolicyLibrary/policyCatalogue', () => ({
+  ...jest.requireActual('../../PolicyLibrary/policyCatalogue'),
+  loadPolicyCatalogue: jest.fn(),
+}));
+const mockLoadPolicyCatalogue = loadPolicyCatalogue as jest.Mock;
 
 // The grid's behaviour (loading / error / empty / tile rendering) is owned by
 // ModuleTileGrid in @bahmni/widgets and tested there. What home is responsible
@@ -14,6 +23,13 @@ jest.mock('@bahmni/widgets', () => ({
 }));
 
 describe('HomePageGrid', () => {
+  beforeEach(() => {
+    mockLoadPolicyCatalogue.mockReturnValue({
+      ok: true,
+      entries: syntheticPolicies,
+    });
+  });
+
   it('delegates to ModuleTileGrid with the home extension point and home i18n keys', () => {
     render(<HomePageGrid />);
 
@@ -36,6 +52,56 @@ describe('HomePageGrid', () => {
         label: 'Policy library',
         url: '/bahmni-v2/home/policies',
       }),
+    ]);
+  });
+
+  it('gives the Qorlia tiles translation keys', () => {
+    render(<HomePageGrid />);
+
+    const props = JSON.parse(
+      screen.getByTestId('module-tile-grid-mock').dataset.props!,
+    );
+
+    expect(props.additionalModules).toEqual([
+      expect.objectContaining({
+        id: 'qorlia.billing',
+        translationKey: 'HOME_TILE_BILLING',
+      }),
+      expect.objectContaining({
+        id: 'qorlia.policy-library',
+        translationKey: 'HOME_TILE_POLICY_LIBRARY',
+      }),
+    ]);
+  });
+
+  it('hides the Policy library tile while the catalogue has no entries', () => {
+    mockLoadPolicyCatalogue.mockReturnValue({ ok: true, entries: [] });
+
+    render(<HomePageGrid />);
+
+    const props = JSON.parse(
+      screen.getByTestId('module-tile-grid-mock').dataset.props!,
+    );
+
+    expect(props.additionalModules).toEqual([
+      expect.objectContaining({ id: 'qorlia.billing' }),
+    ]);
+  });
+
+  it('hides the Policy library tile when the catalogue fails validation', () => {
+    mockLoadPolicyCatalogue.mockReturnValue({
+      ok: false,
+      errors: ['bad entry'],
+    });
+
+    render(<HomePageGrid />);
+
+    const props = JSON.parse(
+      screen.getByTestId('module-tile-grid-mock').dataset.props!,
+    );
+
+    expect(props.additionalModules).toEqual([
+      expect.objectContaining({ id: 'qorlia.billing' }),
     ]);
   });
 
