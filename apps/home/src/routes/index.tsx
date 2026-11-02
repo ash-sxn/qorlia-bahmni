@@ -22,6 +22,11 @@ const PolicyDetailPage = lazy(() =>
     default: module.PolicyDetailPage,
   })),
 );
+const InsuranceDeskPage = lazy(() =>
+  import('../components/InsuranceDesk/InsuranceDeskPage').then((module) => ({
+    default: module.InsuranceDeskPage,
+  })),
+);
 
 export const routes: Routes = [
   { path: '/billing', component: BillingPage, name: 'Billing' },
@@ -31,6 +36,7 @@ export const routes: Routes = [
     component: PolicyDetailPage,
     name: 'PolicyDetail',
   },
+  { path: '/insurance', component: InsuranceDeskPage, name: 'InsuranceDesk' },
   {
     path: '/',
     component: HomePage,

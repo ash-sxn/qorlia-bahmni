@@ -15,4 +15,10 @@ describe('home routes', () => {
       }),
     );
   });
+
+  it('opens the insurance desk list', () => {
+    expect(routes).toContainEqual(
+      expect.objectContaining({ path: '/insurance', name: 'InsuranceDesk' }),
+    );
+  });
 });
