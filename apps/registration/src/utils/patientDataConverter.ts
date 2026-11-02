@@ -104,10 +104,19 @@ export const convertToAddressData = (
 
   const addressData: AddressData = {};
   Object.keys(address).forEach((key) => {
+    // The form never edits the address validity dates. The address section
+    // sends missing values as '', and OpenMRS rejects an empty date with a
+    // bare 400, so every edit of a saved patient would fail.
     if (
-      ['links', 'resourceVersion', 'preferred', 'voided', 'display'].includes(
-        key,
-      )
+      [
+        'links',
+        'resourceVersion',
+        'preferred',
+        'voided',
+        'display',
+        'startDate',
+        'endDate',
+      ].includes(key)
     )
       return;
 
