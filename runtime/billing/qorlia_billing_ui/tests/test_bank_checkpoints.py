@@ -1,5 +1,9 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
+import base64
+import io
 import uuid
+import zipfile
+from xml.etree import ElementTree
 from odoo import Command
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
@@ -235,3 +239,101 @@ class BankCheckpointTest(TransactionCase):
         self.assertEqual(self.checkpoints.qorlia_checkpoint_analysis(self.prefix, journal_type='cash')['total_count'], 1)
         other = self.env['res.company'].create({'name': self.prefix + ' other'})
         self.assertFalse(self.checkpoints.with_context(allowed_company_ids=[other.id]).qorlia_checkpoint_analysis(self.prefix)['rows'])
+
+    def _xlsx_cells(self, exported):
+        self.assertEqual(exported['filename'], 'Qorlia_Checkpoints.xlsx')
+        content = base64.b64decode(exported['content'])
+        self.assertEqual(len(content), exported['byte_count'])
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            ns = {'s': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+            strings = [''.join(item.itertext()) for item in ElementTree.fromstring(archive.read('xl/sharedStrings.xml')).findall('s:si', ns)]
+            sheet = ElementTree.fromstring(archive.read('xl/worksheets/sheet1.xml'))
+            self.assertFalse(sheet.findall('.//s:f', ns), 'Labels must not become Excel formulas.')
+            self.assertFalse(sheet.findall('.//s:hyperlink', ns), 'Labels must not become external links.')
+            cells = {}
+            for cell in sheet.findall('.//s:c', ns):
+                value = cell.find('s:v', ns)
+                if value is not None:
+                    cells[cell.attrib['r']] = strings[int(value.text)] if cell.attrib.get('t') == 's' else float(value.text)
+            return cells
+
+    def test_analysis_excel_native_values_both_axes_and_all_measures_without_writes(self):
+        first = self.checkpoint(self.entry(date='2026-01-03', amount=100), balance_start=50, balance_end_real=150)
+        second = self.checkpoint(self.entry(date='2026-02-10', amount=-200), balance_start=150, balance_end_real=-50)
+        before = (first | second).read(['write_date', 'balance_start', 'balance_end', 'balance_end_real'])
+        analysis = self.checkpoints.qorlia_checkpoint_analysis(self.prefix)
+        for measure in ('count', 'balance_start', 'balance_end', 'balance_end_real'):
+            expected = [row[measure] for row in analysis['rows']]
+            for transposed in (False, True):
+                cells = self._xlsx_cells(self.checkpoints.qorlia_checkpoint_analysis_export(
+                    analysis['version'], measure=measure, transposed=transposed, search=self.prefix))
+                self.assertEqual(cells['A7'], 'Snapshot: ' + analysis['version'])
+                if transposed:
+                    self.assertEqual([cells['B10'], cells['C10'], cells['D10']], expected + [sum(expected)])
+                else:
+                    self.assertEqual([cells['B10'], cells['B11'], cells['B12']], expected + [sum(expected)])
+        self.assertEqual((first | second).read(['write_date', 'balance_start', 'balance_end', 'balance_end_real']), before)
+
+    def test_analysis_excel_rejects_stale_filters_values_authors_and_invalid_options(self):
+        checkpoint = self.checkpoint()
+        version = self.checkpoints.qorlia_checkpoint_analysis(self.prefix)['version']
+        for kwargs in ({'version': False}, {'version': 'f' * 63}, {'version': ['f' * 64]},
+                {'measure': 'write_date'}, {'measure': []}, {'transposed': 1}, {'transposed': 'true'}):
+            with self.assertRaises(ValidationError):
+                self.checkpoints.qorlia_checkpoint_analysis_export(**{'version': version, 'search': self.prefix, **kwargs})
+        with self.assertRaises(UserError):
+            self.checkpoints.qorlia_checkpoint_analysis_export(version, search=self.prefix, period='day')
+        checkpoint.balance_end_real += 1
+        with self.assertRaises(UserError):
+            self.checkpoints.qorlia_checkpoint_analysis_export(version, search=self.prefix)
+        user = self.env['res.users'].with_context(no_reset_password=True).create({'name': self.prefix,
+            'login': uuid.uuid4().hex, 'groups_id': [Command.set(self.env.ref('account.group_account_readonly').ids)]})
+        reader = self.checkpoints.with_user(user)
+        own_version = reader.qorlia_checkpoint_analysis(self.prefix)['version']
+        with self.assertRaises(UserError):
+            reader.qorlia_checkpoint_analysis_export(self.checkpoints.qorlia_checkpoint_analysis(self.prefix)['version'], search=self.prefix)
+        self._xlsx_cells(reader.qorlia_checkpoint_analysis_export(own_version, search=self.prefix))
+
+    def test_analysis_excel_rechecks_hidden_records_and_denies_public_user(self):
+        checkpoint = self.checkpoint()
+        user = self.env['res.users'].with_context(no_reset_password=True).create({'name': self.prefix,
+            'login': uuid.uuid4().hex, 'groups_id': [Command.set(self.env.ref('account.group_account_readonly').ids)]})
+        reader = self.checkpoints.with_user(user)
+        version = reader.qorlia_checkpoint_analysis(self.prefix)['version']
+        self.env['ir.rule'].create({'name': self.prefix + ' hidden export entry',
+            'model_id': self.env.ref('account.model_account_bank_statement_line').id,
+            'domain_force': "[('id', '!=', %s)]" % checkpoint.line_ids[0].id})
+        with self.assertRaises(AccessError):
+            reader.qorlia_checkpoint_analysis_export(version, search=self.prefix)
+        with self.assertRaises(AccessError):
+            self.checkpoints.with_user(self.env.ref('base.public_user')).qorlia_checkpoint_analysis_export(version, search=self.prefix)
+
+    def test_analysis_excel_empty_currency_and_hostile_labels_are_literal(self):
+        self.checkpoint(self.entries.browse())
+        self.journal.name = '=HYPERLINK("https://example.invalid","unsafe")'
+        self.checkpoint(self.entry(date='2026-01-03'))
+        analysis = self.checkpoints.qorlia_checkpoint_analysis(self.prefix)
+        cells = self._xlsx_cells(self.checkpoints.qorlia_checkpoint_analysis_export(analysis['version'], search=self.prefix))
+        self.assertEqual(cells['B9'], 'No journal (No journal currency)')
+        self.assertTrue(cells['C9'].startswith('=HYPERLINK('))
+        self.assertEqual(cells['B10'], 0)
+        self.assertEqual(cells['C10'], 'No checkpoints')
+        missing = self.checkpoints.qorlia_checkpoint_analysis('No matching ' + self.prefix)
+        with self.assertRaises(UserError):
+            self.checkpoints.qorlia_checkpoint_analysis_export(missing['version'], search=missing['search'])
+
+    def test_analysis_excel_separates_currency_columns_and_preserves_date_filter(self):
+        self.checkpoint(self.entry(date='2026-01-03', amount=100))
+        foreign = self.env.ref('base.USD')
+        if foreign == self.env.company.currency_id:
+            foreign = self.env.ref('base.EUR')
+        foreign.active = True
+        journal = self.env['account.journal'].create({'name': self.prefix + ' foreign',
+            'code': uuid.uuid4().hex[:5], 'type': 'cash', 'currency_id': foreign.id,
+            'default_account_id': self.bank.id, 'suspense_account_id': self.suspense.id})
+        self.checkpoint(self.entry(date='2026-01-03', journal_id=journal.id, amount=25))
+        analysis = self.checkpoints.qorlia_checkpoint_analysis(self.prefix, date_from='2026-01-03', date_to='2026-01-03')
+        cells = self._xlsx_cells(self.checkpoints.qorlia_checkpoint_analysis_export(analysis['version'], search=self.prefix,
+            date_from='2026-01-03', date_to='2026-01-03'))
+        self.assertEqual((cells['B10'], cells['C10'], cells['B11'], cells['C11']), (100, 25, 100, 25))
+        self.assertEqual(cells['A5'], 'Group: month | From: 2026-01-03 | Through: 2026-01-03')
