@@ -846,6 +846,7 @@ describe('Billing workspace', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: 'Record payment' }),
     );
+    fireEvent.click(await screen.findByRole('button', { name: 'Done' }));
     expect(
       await screen.findByText('Payment recorded for INV/QA/7. Fully paid.'),
     ).toBeVisible();

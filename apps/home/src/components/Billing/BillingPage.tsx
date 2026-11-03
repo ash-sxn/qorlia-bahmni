@@ -30,6 +30,7 @@ import {
 } from './billingService';
 import { BillTarget, BillVisitModal } from './BillVisitModal';
 import { CashierPanel } from './CashierPanel';
+import { CashierPaymentModal } from './CashierPaymentModal';
 import { ChargeOrdersPanel } from './ChargeOrdersPanel';
 import { CorrectionWorkflowModal } from './CorrectionWorkflowModal';
 import { CreditWorkflowModal } from './CreditWorkflowModal';
@@ -87,6 +88,7 @@ export function BillingPage() {
   const [editInvoice, setEditInvoice] = useState<number | false | null>(null);
   const [paymentInvoice, setPaymentInvoice] = useState<number | null>(null);
   const [billTarget, setBillTarget] = useState<BillTarget | null>(null);
+  const [cashierPayment, setCashierPayment] = useState<number | null>(null);
   const [creditInvoice, setCreditInvoice] = useState<number | null>(null);
   const [reversalInvoice, setReversalInvoice] = useState<number | null>(null);
   const [correctionInvoice, setCorrectionInvoice] = useState<number | null>(
@@ -175,6 +177,7 @@ export function BillingPage() {
       setEditInvoice(null);
       setPaymentInvoice(null);
       setBillTarget(null);
+      setCashierPayment(null);
       setCreditInvoice(null);
       setCorrectionInvoice(null);
       setInvoiceNotice('');
@@ -318,6 +321,7 @@ export function BillingPage() {
                       setJournalInvoice(null);
                       setPaymentInvoice(null);
                       setBillTarget(null);
+                      setCashierPayment(null);
                       setCreditInvoice(null);
                       setInvoiceNotice('');
                       await session.refetch();
@@ -360,7 +364,7 @@ export function BillingPage() {
                     notice={invoiceNotice}
                     takePayment={(invoiceId) => {
                       setInvoiceNotice('');
-                      setPaymentInvoice(invoiceId);
+                      setCashierPayment(invoiceId);
                     }}
                     print={setReportInvoice}
                     reconnect={() => {
@@ -989,7 +993,7 @@ export function BillingPage() {
                   close={() => setBillTarget(null)}
                   pay={(invoiceId) => {
                     setBillTarget(null);
-                    setPaymentInvoice(invoiceId);
+                    setCashierPayment(invoiceId);
                   }}
                   finished={(message) => {
                     setBillTarget(null);
@@ -997,6 +1001,34 @@ export function BillingPage() {
                   }}
                   reconnect={() => {
                     setBillTarget(null);
+                    queryClient.removeQueries({ queryKey: ['billing'] });
+                    void session.refetch();
+                  }}
+                />
+              ) : null}
+              {cashierPayment !== null ? (
+                <CashierPaymentModal
+                  uid={session.data!.uid as number}
+                  invoiceId={cashierPayment}
+                  close={() => setCashierPayment(null)}
+                  moreOptions={() => {
+                    setCashierPayment(null);
+                    setPaymentInvoice(cashierPayment);
+                  }}
+                  completed={(result) => {
+                    setCashierPayment(null);
+                    setInvoiceNotice(
+                      `Payment recorded for ${invoiceName(result.invoice)}. ${result.invoice.open_amount > 0 ? `Still due: ${money(result.invoice.open_amount, result.invoice.currency[1])}.` : 'Fully paid.'}`,
+                    );
+                    void queryClient.invalidateQueries({
+                      predicate: (query) =>
+                        query.queryKey[0] === 'billing' &&
+                        query.queryKey[1] !== 'session',
+                    });
+                  }}
+                  reconnect={() => {
+                    setCashierPayment(null);
+                    setInvoiceNotice('');
                     queryClient.removeQueries({ queryKey: ['billing'] });
                     void session.refetch();
                   }}
