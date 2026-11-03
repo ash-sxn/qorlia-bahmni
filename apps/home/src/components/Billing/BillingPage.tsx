@@ -28,7 +28,9 @@ import {
   Invoice,
   signInToBilling,
 } from './billingService';
+import { BillTarget, BillVisitModal } from './BillVisitModal';
 import { CashierPanel } from './CashierPanel';
+import { CashierPaymentModal } from './CashierPaymentModal';
 import { ChargeOrdersPanel } from './ChargeOrdersPanel';
 import { CorrectionWorkflowModal } from './CorrectionWorkflowModal';
 import { CreditWorkflowModal } from './CreditWorkflowModal';
@@ -43,6 +45,7 @@ import { InvoiceWorkflowModal } from './InvoiceWorkflowModal';
 import { PaymentWorkflowModal } from './PaymentWorkflowModal';
 import { ReversalWorkflowModal } from './ReversalWorkflowModal';
 import { StockRecoveryNotice } from './StockRecoveryNotice';
+import { ToBillPanel } from './ToBillPanel';
 
 const label = (value: string) => value.replaceAll('_', ' ');
 
@@ -84,6 +87,8 @@ export function BillingPage() {
   const [statementInvoice, setStatementInvoice] = useState<number | null>(null);
   const [editInvoice, setEditInvoice] = useState<number | false | null>(null);
   const [paymentInvoice, setPaymentInvoice] = useState<number | null>(null);
+  const [billTarget, setBillTarget] = useState<BillTarget | null>(null);
+  const [cashierPayment, setCashierPayment] = useState<number | null>(null);
   const [creditInvoice, setCreditInvoice] = useState<number | null>(null);
   const [reversalInvoice, setReversalInvoice] = useState<number | null>(null);
   const [correctionInvoice, setCorrectionInvoice] = useState<number | null>(
@@ -171,6 +176,8 @@ export function BillingPage() {
       setJournalInvoice(null);
       setEditInvoice(null);
       setPaymentInvoice(null);
+      setBillTarget(null);
+      setCashierPayment(null);
       setCreditInvoice(null);
       setCorrectionInvoice(null);
       setInvoiceNotice('');
@@ -313,6 +320,8 @@ export function BillingPage() {
                       setConversationInvoice(null);
                       setJournalInvoice(null);
                       setPaymentInvoice(null);
+                      setBillTarget(null);
+                      setCashierPayment(null);
                       setCreditInvoice(null);
                       setInvoiceNotice('');
                       await session.refetch();
@@ -338,19 +347,32 @@ export function BillingPage() {
                 />
               ) : null}
               {view === 'cashier' ? (
-                <CashierPanel
-                  uid={session.data!.uid as number}
-                  notice={invoiceNotice}
-                  takePayment={(invoiceId) => {
-                    setInvoiceNotice('');
-                    setPaymentInvoice(invoiceId);
-                  }}
-                  print={setReportInvoice}
-                  reconnect={() => {
-                    queryClient.removeQueries({ queryKey: ['billing'] });
-                    void session.refetch();
-                  }}
-                />
+                <>
+                  <ToBillPanel
+                    uid={session.data!.uid as number}
+                    bill={(target) => {
+                      setInvoiceNotice('');
+                      setBillTarget(target);
+                    }}
+                    reconnect={() => {
+                      queryClient.removeQueries({ queryKey: ['billing'] });
+                      void session.refetch();
+                    }}
+                  />
+                  <CashierPanel
+                    uid={session.data!.uid as number}
+                    notice={invoiceNotice}
+                    takePayment={(invoiceId) => {
+                      setInvoiceNotice('');
+                      setCashierPayment(invoiceId);
+                    }}
+                    print={setReportInvoice}
+                    reconnect={() => {
+                      queryClient.removeQueries({ queryKey: ['billing'] });
+                      void session.refetch();
+                    }}
+                  />
+                </>
               ) : (
                 <Tabs
                   selectedIndex={tab}
@@ -961,6 +983,54 @@ export function BillingPage() {
                         query.queryKey[0] === 'billing' &&
                         query.queryKey[1] !== 'session',
                     });
+                  }}
+                />
+              ) : null}
+              {billTarget !== null ? (
+                <BillVisitModal
+                  uid={session.data!.uid as number}
+                  target={billTarget}
+                  close={() => setBillTarget(null)}
+                  pay={(invoiceId) => {
+                    setBillTarget(null);
+                    setCashierPayment(invoiceId);
+                  }}
+                  finished={(message) => {
+                    setBillTarget(null);
+                    setInvoiceNotice(message);
+                  }}
+                  reconnect={() => {
+                    setBillTarget(null);
+                    queryClient.removeQueries({ queryKey: ['billing'] });
+                    void session.refetch();
+                  }}
+                />
+              ) : null}
+              {cashierPayment !== null ? (
+                <CashierPaymentModal
+                  uid={session.data!.uid as number}
+                  invoiceId={cashierPayment}
+                  close={() => setCashierPayment(null)}
+                  moreOptions={() => {
+                    setCashierPayment(null);
+                    setPaymentInvoice(cashierPayment);
+                  }}
+                  completed={(result) => {
+                    setCashierPayment(null);
+                    setInvoiceNotice(
+                      `Payment recorded for ${invoiceName(result.invoice)}. ${result.invoice.open_amount > 0 ? `Still due: ${money(result.invoice.open_amount, result.invoice.currency[1])}.` : 'Fully paid.'}`,
+                    );
+                    void queryClient.invalidateQueries({
+                      predicate: (query) =>
+                        query.queryKey[0] === 'billing' &&
+                        query.queryKey[1] !== 'session',
+                    });
+                  }}
+                  reconnect={() => {
+                    setCashierPayment(null);
+                    setInvoiceNotice('');
+                    queryClient.removeQueries({ queryKey: ['billing'] });
+                    void session.refetch();
                   }}
                 />
               ) : null}
