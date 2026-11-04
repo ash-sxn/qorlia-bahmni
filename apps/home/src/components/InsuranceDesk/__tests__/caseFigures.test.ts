@@ -1,5 +1,7 @@
 import { syntheticCases } from '../__fixtures__/syntheticCases';
 import {
+  exceededDecisionLimit,
+  formatCaseDate,
   formatRupees,
   hasOpenQuery,
   outstandingAmount,
@@ -53,6 +55,38 @@ describe('caseFigures', () => {
       expect(
         hasOpenQuery(caseById('synthetic-cashless-settled-with-tds')),
       ).toBe(false);
+    });
+  });
+
+  describe('exceededDecisionLimit', () => {
+    const decision = (
+      kind: 'preauthorisation' | 'enhancement' | 'final',
+      decidedAt: string | null,
+    ) => ({
+      kind,
+      requestedAmount: 100,
+      requestedAt: '2026-10-01T10:00:00+05:30',
+      decision:
+        decidedAt === null ? ('pending' as const) : ('approved' as const),
+      approvedAmount: decidedAt === null ? null : 100,
+      decidedAt,
+    });
+
+    it.each([
+      ['preauthorisation', '2026-10-01T11:00:00+05:30', null],
+      ['preauthorisation', '2026-10-01T11:01:00+05:30', 1],
+      ['final', '2026-10-01T13:00:00+05:30', null],
+      ['final', '2026-10-01T13:01:00+05:30', 3],
+      ['enhancement', '2026-10-02T10:00:00+05:30', null],
+      ['final', null, null],
+    ] as const)('%s decided at %s gives %s', (kind, decidedAt, expected) => {
+      expect(exceededDecisionLimit(decision(kind, decidedAt))).toBe(expected);
+    });
+  });
+
+  describe('formatCaseDate', () => {
+    it('keeps the calendar day', () => {
+      expect(formatCaseDate('2026-10-28', 'en-US')).toBe('Oct 28, 2026');
     });
   });
 

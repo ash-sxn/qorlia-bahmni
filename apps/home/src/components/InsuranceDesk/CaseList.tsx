@@ -1,5 +1,6 @@
 import { Tag } from '@bahmni/design-system';
 import { useTranslation } from '@bahmni/services';
+import { Link, useLocation } from 'react-router-dom';
 import {
   formatCaseDateTime,
   formatRupees,
@@ -9,7 +10,7 @@ import {
 import styles from './InsuranceDesk.module.scss';
 import { CaseStatus, InsuranceCase } from './types';
 
-const STATUS_TAG_TYPES = {
+export const STATUS_TAG_TYPES = {
   admitted: 'gray',
   preauthorisation_pending: 'blue',
   preauthorisation_approved: 'teal',
@@ -30,6 +31,7 @@ interface CaseListProps {
 
 export const CaseList = ({ cases }: CaseListProps) => {
   const { t, i18n } = useTranslation();
+  const { search } = useLocation();
 
   return (
     <ul className={styles.list}>
@@ -39,7 +41,12 @@ export const CaseList = ({ cases }: CaseListProps) => {
         return (
           <li key={insuranceCase.id} className={styles.card}>
             <h2 className={styles.cardTitle}>
-              {insuranceCase.patientDisplayName}
+              <Link
+                to={`/home/insurance/${insuranceCase.id}`}
+                state={{ deskSearch: search }}
+              >
+                {insuranceCase.patientDisplayName}
+              </Link>
             </h2>
             <div className={styles.meta}>
               <Tag type={STATUS_TAG_TYPES[insuranceCase.status]} size="sm">

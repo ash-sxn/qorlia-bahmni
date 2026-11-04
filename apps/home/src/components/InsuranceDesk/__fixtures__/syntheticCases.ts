@@ -150,6 +150,15 @@ export const syntheticCases: InsuranceCase[] = [
         decidedAt: null,
       },
     ],
+    documents: [
+      { type: 'Synthetic health card', stage: 'admission', state: 'received' },
+      { type: 'Synthetic itemised bill', stage: 'discharge', state: 'sent' },
+      {
+        type: 'Synthetic pharmacy bill',
+        stage: 'discharge',
+        state: 'pending',
+      },
+    ],
     queries: [
       {
         raisedAt: october(5, '09:00'),
@@ -242,11 +251,29 @@ export const syntheticCases: InsuranceCase[] = [
         bankReference: 'SYN-NEFT-0008',
       },
     ],
+    documents: [
+      { type: 'Synthetic health card', stage: 'admission', state: 'received' },
+      {
+        type: 'Synthetic pre-authorisation form',
+        stage: 'preauthorisation',
+        state: 'sent',
+      },
+      {
+        type: 'Synthetic discharge summary',
+        stage: 'claim_submission',
+        state: 'sent',
+      },
+      {
+        type: 'Synthetic implant bill',
+        stage: 'claim_submission',
+        state: 'not_applicable',
+      },
+    ],
   }),
   makeCase('0009', 'cashless-short-paid-with-tds', {
     status: 'short_paid',
     statusRecordedAt: october(27),
-    dischargedAt: october(5, '11:00'),
+    dischargedAt: october(5, '13:00'),
     payerName: 'Synthetic Insurer B',
     tpaName: null,
     payerReference: 'SYN-AUTH-0009',
@@ -259,7 +286,8 @@ export const syntheticCases: InsuranceCase[] = [
     },
     authorisations: [
       approvedPreauthorisation(150000, 150000),
-      approvedFinal(200000, 180000),
+      // Decided four and a half hours after the request, so the page flags it.
+      { ...approvedFinal(200000, 180000), decidedAt: october(5, '12:30') },
     ],
     deductions: [{ category: 'sub_limit', amount: rupees(20000), note: null }],
     payments: [
