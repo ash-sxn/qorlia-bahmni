@@ -5,6 +5,7 @@ import {
   formatRupees,
   hasOpenQuery,
   outstandingAmount,
+  overdueDecisionLimit,
   settledAmount,
 } from '../caseFigures';
 
@@ -81,6 +82,42 @@ describe('caseFigures', () => {
       ['final', null, null],
     ] as const)('%s decided at %s gives %s', (kind, decidedAt, expected) => {
       expect(exceededDecisionLimit(decision(kind, decidedAt))).toBe(expected);
+    });
+  });
+
+  describe('overdueDecisionLimit', () => {
+    const request = (
+      kind: 'preauthorisation' | 'enhancement' | 'final',
+      decidedAt: string | null = null,
+    ) => ({
+      kind,
+      requestedAmount: 100,
+      requestedAt: '2026-10-01T10:00:00+05:30',
+      decision:
+        decidedAt === null ? ('pending' as const) : ('approved' as const),
+      approvedAmount: decidedAt === null ? null : 100,
+      decidedAt,
+    });
+
+    it.each([
+      ['preauthorisation', '2026-10-01T11:00:00+05:30', null],
+      ['preauthorisation', '2026-10-01T11:01:00+05:30', 1],
+      ['final', '2026-10-01T13:00:00+05:30', null],
+      ['final', '2026-10-01T13:01:00+05:30', 3],
+      ['enhancement', '2026-10-02T10:00:00+05:30', null],
+    ] as const)('pending %s at %s gives %s', (kind, now, expected) => {
+      expect(overdueDecisionLimit(request(kind), Date.parse(now))).toBe(
+        expected,
+      );
+    });
+
+    it('does not flag a request that already has a decision', () => {
+      expect(
+        overdueDecisionLimit(
+          request('preauthorisation', '2026-10-01T10:30:00+05:30'),
+          Date.parse('2026-10-02T10:00:00+05:30'),
+        ),
+      ).toBeNull();
     });
   });
 

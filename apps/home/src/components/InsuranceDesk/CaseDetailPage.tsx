@@ -125,7 +125,11 @@ export const CaseDetailPage = () => {
           <dt>{t('INSURANCE_DESK_AMOUNT_PATIENT_RESPONSIBILITY')}</dt>
           <dd>{formatAmount(amounts.patientResponsibility)}</dd>
           <dt>{t('INSURANCE_DESK_AMOUNT_RECEIVED')}</dt>
-          <dd>{formatAmount(amounts.received)}</dd>
+          <dd>
+            {insuranceCase.claimRoute === 'cashless'
+              ? formatAmount(amounts.received)
+              : t('INSURANCE_DESK_NOT_APPLICABLE')}
+          </dd>
           {insuranceCase.claimRoute === 'cashless' && (
             <>
               <dt>{t('INSURANCE_DESK_AMOUNT_TDS')}</dt>
