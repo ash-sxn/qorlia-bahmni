@@ -47,6 +47,20 @@ export const exceededDecisionLimit = ({
   return elapsed > limit * 60 * 60 * 1000 ? limit : null;
 };
 
+/** The limit in hours when a request still has no decision and has passed it, otherwise null. */
+export const overdueDecisionLimit = (
+  { kind, requestedAt, decidedAt }: Authorisation,
+  now: number = Date.now(),
+): number | null => {
+  const limit = DECISION_LIMIT_HOURS[kind];
+  if (limit === undefined || decidedAt !== null) {
+    return null;
+  }
+
+  const elapsed = now - new Date(requestedAt).getTime();
+  return elapsed > limit * 60 * 60 * 1000 ? limit : null;
+};
+
 /** Always Indian digit grouping, because the amounts are rupees whatever the UI language is. */
 export const formatRupees = (value: Paise): string =>
   new Intl.NumberFormat('en-IN', {

@@ -186,6 +186,9 @@ describe('CaseDetailPage', () => {
     const amounts = sectionAfter('Amounts');
     expect(factIn(amounts, 'Billed')).toHaveTextContent('₹62,000');
     expect(factIn(amounts, 'Approved')).toHaveTextContent('Not recorded');
+    expect(factIn(amounts, 'Received in bank')).toHaveTextContent(
+      'Not applicable',
+    );
     expect(screen.queryByText('TDS deducted')).not.toBeInTheDocument();
     expect(
       screen.queryByText('Outstanding from payer'),
@@ -193,6 +196,18 @@ describe('CaseDetailPage', () => {
     expect(
       screen.queryByRole('heading', { name: 'Payments' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('says not recorded on a cashless case with no bank receipt yet', () => {
+    const unpaidCase = syntheticCases.find(
+      ({ claimRoute, amounts }) =>
+        claimRoute === 'cashless' && amounts.received === null,
+    )!;
+    renderDetail(unpaidCase.id);
+
+    expect(
+      factIn(sectionAfter('Amounts'), 'Received in bank'),
+    ).toHaveTextContent('Not recorded');
   });
 
   it('shows the authorisation history in order', () => {
@@ -229,6 +244,32 @@ describe('CaseDetailPage', () => {
     expect(
       within(items[0]).queryByText(/based on recorded times/),
     ).not.toBeInTheDocument();
+  });
+
+  it('flags a pending pre-authorisation past its limit as overdue', () => {
+    const now = jest
+      .spyOn(Date, 'now')
+      .mockReturnValue(Date.parse('2026-10-01T11:01:00+05:30'));
+
+    renderDetail('synthetic-cashless-preauthorisation-pending');
+
+    expect(
+      screen.getByText(
+        'Overdue: no decision within 1 hour, based on recorded times.',
+      ),
+    ).toBeInTheDocument();
+    now.mockRestore();
+  });
+
+  it('does not flag a pending pre-authorisation inside its limit', () => {
+    const now = jest
+      .spyOn(Date, 'now')
+      .mockReturnValue(Date.parse('2026-10-01T10:30:00+05:30'));
+
+    renderDetail('synthetic-cashless-preauthorisation-pending');
+
+    expect(screen.queryByText(/^Overdue:/)).not.toBeInTheDocument();
+    now.mockRestore();
   });
 
   it('shows the deductions with their notes', () => {

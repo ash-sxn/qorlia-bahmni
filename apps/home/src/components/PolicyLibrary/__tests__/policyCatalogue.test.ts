@@ -21,6 +21,23 @@ describe('policyCatalogue', () => {
     expect(result.ok && result.entries).toHaveLength(3);
   });
 
+  it('has no synthetic examples in a production build', () => {
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const catalogue = require('../policyCatalogue');
+
+      expect(catalogue.loadPolicyCatalogue()).toEqual({
+        ok: true,
+        entries: [],
+      });
+    });
+
+    process.env.NODE_ENV = previous;
+  });
+
   describe('hasPolicyEntries', () => {
     it('is true when the catalogue is valid and has at least one entry', () => {
       expect(
