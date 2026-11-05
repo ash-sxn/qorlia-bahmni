@@ -15,4 +15,19 @@ describe('home routes', () => {
       }),
     );
   });
+
+  it('opens the insurance desk list', () => {
+    expect(routes).toContainEqual(
+      expect.objectContaining({ path: '/insurance', name: 'InsuranceDesk' }),
+    );
+  });
+
+  it('opens an insurance case detail page by id', () => {
+    expect(routes).toContainEqual(
+      expect.objectContaining({
+        path: '/insurance/:caseId',
+        name: 'InsuranceCaseDetail',
+      }),
+    );
+  });
 });

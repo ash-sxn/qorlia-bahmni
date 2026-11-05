@@ -1,4 +1,6 @@
 import { render, screen } from '@testing-library/react';
+import { syntheticCases } from '../../InsuranceDesk/__fixtures__/syntheticCases';
+import { loadCases } from '../../InsuranceDesk/caseCatalogue';
 import { syntheticPolicies } from '../../PolicyLibrary/__fixtures__/syntheticPolicies';
 import { loadPolicyCatalogue } from '../../PolicyLibrary/policyCatalogue';
 import { HomePageGrid } from '../HomePageGrid';
@@ -9,6 +11,12 @@ jest.mock('../../PolicyLibrary/policyCatalogue', () => ({
   loadPolicyCatalogue: jest.fn(),
 }));
 const mockLoadPolicyCatalogue = loadPolicyCatalogue as jest.Mock;
+
+jest.mock('../../InsuranceDesk/caseCatalogue', () => ({
+  ...jest.requireActual('../../InsuranceDesk/caseCatalogue'),
+  loadCases: jest.fn(),
+}));
+const mockLoadCases = loadCases as jest.Mock;
 
 // The grid's behaviour (loading / error / empty / tile rendering) is owned by
 // ModuleTileGrid in @bahmni/widgets and tested there. What home is responsible
@@ -28,6 +36,7 @@ describe('HomePageGrid', () => {
       ok: true,
       entries: syntheticPolicies,
     });
+    mockLoadCases.mockReturnValue({ ok: true, cases: syntheticCases });
   });
 
   it('delegates to ModuleTileGrid with the home extension point and home i18n keys', () => {
@@ -52,6 +61,11 @@ describe('HomePageGrid', () => {
         label: 'Policy library',
         url: '/bahmni-v2/home/policies',
       }),
+      expect.objectContaining({
+        id: 'qorlia.insurance-desk',
+        label: 'Insurance desk',
+        url: '/bahmni-v2/home/insurance',
+      }),
     ]);
   });
 
@@ -71,6 +85,10 @@ describe('HomePageGrid', () => {
         id: 'qorlia.policy-library',
         translationKey: 'HOME_TILE_POLICY_LIBRARY',
       }),
+      expect.objectContaining({
+        id: 'qorlia.insurance-desk',
+        translationKey: 'HOME_TILE_INSURANCE_DESK',
+      }),
     ]);
   });
 
@@ -85,6 +103,25 @@ describe('HomePageGrid', () => {
 
     expect(props.additionalModules).toEqual([
       expect.objectContaining({ id: 'qorlia.billing' }),
+      expect.objectContaining({ id: 'qorlia.insurance-desk' }),
+    ]);
+  });
+
+  it.each([
+    ['has no cases', { ok: true, cases: [] }],
+    ['fails validation', { ok: false, errors: ['bad case'] }],
+  ])('hides the Insurance desk tile when the list %s', (_case, result) => {
+    mockLoadCases.mockReturnValue(result);
+
+    render(<HomePageGrid />);
+
+    const props = JSON.parse(
+      screen.getByTestId('module-tile-grid-mock').dataset.props!,
+    );
+
+    expect(props.additionalModules).toEqual([
+      expect.objectContaining({ id: 'qorlia.billing' }),
+      expect.objectContaining({ id: 'qorlia.policy-library' }),
     ]);
   });
 
@@ -102,6 +139,7 @@ describe('HomePageGrid', () => {
 
     expect(props.additionalModules).toEqual([
       expect.objectContaining({ id: 'qorlia.billing' }),
+      expect.objectContaining({ id: 'qorlia.insurance-desk' }),
     ]);
   });
 
@@ -115,6 +153,9 @@ describe('HomePageGrid', () => {
     expect(props.reviewUrls['bahmni.clinical']).toBe('/bahmni-v2/clinical/');
     expect(props.reviewUrls['qorlia.policy-library']).toBe(
       '/bahmni-v2/home/policies',
+    );
+    expect(props.reviewUrls['qorlia.insurance-desk']).toBe(
+      '/bahmni-v2/home/insurance',
     );
     expect(props.reviewUrls['bahmni.orders']).toBe(
       '/bahmni-v2/clinical/orders',

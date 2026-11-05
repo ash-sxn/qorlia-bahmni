@@ -2,6 +2,7 @@ import { type Module } from '@bahmni/services';
 import { ModuleTileGrid } from '@bahmni/widgets';
 import React, { useMemo } from 'react';
 import { HOME_EXTENSION_POINT } from '../../constants/app';
+import { hasCases, loadCases } from '../InsuranceDesk/caseCatalogue';
 import {
   hasPolicyEntries,
   loadPolicyCatalogue,
@@ -11,6 +12,7 @@ import styles from './styles/HomePageGrid.module.scss';
 const reviewUrls = {
   'qorlia.billing': '/bahmni-v2/home/billing',
   'qorlia.policy-library': '/bahmni-v2/home/policies',
+  'qorlia.insurance-desk': '/bahmni-v2/home/insurance',
   'bahmni.registration.new': '/bahmni-v2/registration/search',
   'bahmni.programs': '/bahmni-v2/clinical/programs',
   'bahmni.clinical': '/bahmni-v2/clinical/',
@@ -50,13 +52,26 @@ const policyLibraryModule: Module = {
   exclusiveOnlineModule: true,
 };
 
+const insuranceDeskModule: Module = {
+  id: 'qorlia.insurance-desk',
+  extensionPointId: HOME_EXTENSION_POINT,
+  type: 'link',
+  label: 'Insurance desk',
+  translationKey: 'HOME_TILE_INSURANCE_DESK',
+  url: '/bahmni-v2/home/insurance',
+  order: 16,
+  icon: 'fa-file-medical',
+  exclusiveOnlineModule: true,
+};
+
 export const HomePageGrid: React.FC = () => {
-  // Production has no approved policies yet, so the tile would open an empty page.
+  // Production has no approved policies or cases yet, so these tiles would open empty pages.
   const qorliaModules = useMemo(
-    () =>
-      hasPolicyEntries(loadPolicyCatalogue())
-        ? [billingModule, policyLibraryModule]
-        : [billingModule],
+    () => [
+      billingModule,
+      ...(hasPolicyEntries(loadPolicyCatalogue()) ? [policyLibraryModule] : []),
+      ...(hasCases(loadCases()) ? [insuranceDeskModule] : []),
+    ],
     [],
   );
 
