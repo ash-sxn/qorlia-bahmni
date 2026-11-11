@@ -5,6 +5,7 @@ import {
   formatCaseDate,
   formatCaseDateTime,
   formatRupees,
+  overdueDecisionLimit,
 } from './caseFigures';
 import styles from './InsuranceDesk.module.scss';
 import { AuthorisationDecision, DocumentState, InsuranceCase } from './types';
@@ -45,6 +46,7 @@ export const CaseRecords = ({ insuranceCase }: CaseRecordsProps) => {
         <ul className={styles.records}>
           {authorisations.map((authorisation) => {
             const limit = exceededDecisionLimit(authorisation);
+            const overdueLimit = overdueDecisionLimit(authorisation);
 
             return (
               <li
@@ -92,6 +94,13 @@ export const CaseRecords = ({ insuranceCase }: CaseRecordsProps) => {
                   <p className={styles.warning}>
                     {t('INSURANCE_DESK_AUTHORISATION_OVER_LIMIT', {
                       count: limit,
+                    })}
+                  </p>
+                )}
+                {overdueLimit !== null && (
+                  <p className={styles.warning}>
+                    {t('INSURANCE_DESK_AUTHORISATION_OVERDUE', {
+                      count: overdueLimit,
                     })}
                   </p>
                 )}
