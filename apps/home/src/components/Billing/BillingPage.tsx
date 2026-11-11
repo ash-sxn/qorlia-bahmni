@@ -30,13 +30,13 @@ import {
 } from './billingService';
 import { BillTarget, BillVisitModal } from './BillVisitModal';
 import { CashierPanel } from './CashierPanel';
-import { DayEndPanel } from './DayEndPanel';
 import { CashierPaymentModal } from './CashierPaymentModal';
 import { ChargeOrdersPanel } from './ChargeOrdersPanel';
 import { CorrectionWorkflowModal } from './CorrectionWorkflowModal';
 import { CreditWorkflowModal } from './CreditWorkflowModal';
 import { CustomerPaymentsPanel } from './CustomerPaymentsPanel';
 import { CustomerStatementModal } from './CustomerStatementModal';
+import { DayEndPanel } from './DayEndPanel';
 import { InventoryTransfersPanel } from './InventoryTransfersPanel';
 import { InvoiceConversationModal } from './InvoiceConversationModal';
 import { InvoiceDraftEditor } from './InvoiceDraftEditor';

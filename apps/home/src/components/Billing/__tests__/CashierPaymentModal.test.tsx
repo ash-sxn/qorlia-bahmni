@@ -6,8 +6,8 @@ import {
   previewPaymentWorkflow,
   recordPaymentWorkflow,
 } from '../billingService';
-import { printBill, printReceipt } from '../cashierPrint';
 import { CashierPaymentModal, orderMethods } from '../CashierPaymentModal';
+import { printBill, printReceipt } from '../cashierPrint';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
 import {
   paymentValuesFixture,
