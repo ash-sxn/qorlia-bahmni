@@ -1,4 +1,5 @@
 import {
+  BillingActionRejected,
   BillingDraft,
   DraftLine,
   getBillingDraft,
@@ -16,6 +17,10 @@ import {
   billVisit,
   canAddCharges,
   finaliseInvoice,
+  MAX_PRICED_PRODUCTS,
+  needsDepartment,
+  priceProducts,
+  setOrderDepartment,
 } from '../cashierBilling';
 
 jest.mock('../billingService', () => ({
@@ -355,5 +360,102 @@ describe('addOrderProduct', () => {
       'could not be prepared',
     );
     expect(saveBillingDraft).not.toHaveBeenCalled();
+  });
+});
+
+describe('departments and fee prices', () => {
+  const line = (
+    overrides: Partial<DraftLine['values']> = {},
+    id: number | false = 1,
+  ): DraftLine => ({
+    id,
+    values: {
+      product_id: 20,
+      name: 'Complete blood count',
+      display_type: false,
+      sequence: 10,
+      product_uom: 1,
+      product_uom_qty: 1,
+      price_unit: 300,
+      discount: 0,
+      tax_id: [],
+      lot_id: false,
+      expiry_date: false,
+      analytic_distribution: false,
+      ...overrides,
+    },
+    totals: { price_subtotal: 300, price_tax: 0, price_total: 300 },
+  });
+  const draft = (lines: DraftLine[]) =>
+    ({ id: 4, version: 'v1', lines }) as unknown as BillingDraft;
+
+  it('recognises only an analytic refusal as a missing department', () => {
+    expect(
+      needsDepartment(
+        new BillingActionRejected(
+          'One or more lines require a 100% analytic distribution.',
+        ),
+      ),
+    ).toBe(true);
+    expect(needsDepartment(new BillingActionRejected('Other rule'))).toBe(
+      false,
+    );
+    expect(needsDepartment(new Error('analytic'))).toBe(false);
+  });
+
+  it('puts lines without a department on the chosen one and keeps the rest', async () => {
+    jest
+      .mocked(getBillingDraft)
+      .mockResolvedValue(
+        draft([
+          line(),
+          line({ analytic_distribution: { '9': 100 } }, 2),
+          line({ display_type: 'line_note', product_id: false }, 3),
+        ]),
+      );
+    jest.mocked(saveBillingDraft).mockImplementation(async (saved) => saved);
+
+    const saved = await setOrderDepartment(4, 5, 'key-2');
+
+    expect(
+      saved.lines.map((item) => item.values.analytic_distribution),
+    ).toEqual([{ '5': 100 }, { '9': 100 }, false]);
+    expect(saveBillingDraft).toHaveBeenCalledWith(saved, 'key-2');
+  });
+
+  it('prices each product on one unsaved line without saving', async () => {
+    jest.mocked(getBillingDraft).mockResolvedValue(draft([line()]));
+    jest
+      .mocked(previewBillingDraft)
+      .mockImplementationOnce(async (next) => next)
+      .mockImplementation(async (next) =>
+        draft([
+          next.lines[0],
+          line(
+            {
+              product_id: next.lines[1].values.product_id,
+              price_unit: next.lines[1].values.product_id === 30 ? 400 : 650,
+            },
+            false,
+          ),
+        ]),
+      );
+
+    const prices = await priceProducts(4, [30, 31]);
+
+    expect([...prices]).toEqual([
+      [30, 400],
+      [31, 650],
+    ]);
+    expect(saveBillingDraft).not.toHaveBeenCalled();
+  });
+
+  it('does not price long product lists', async () => {
+    const ids = Array.from(
+      { length: MAX_PRICED_PRODUCTS + 1 },
+      (_, i) => i + 1,
+    );
+    expect((await priceProducts(4, ids)).size).toBe(0);
+    expect(getBillingDraft).not.toHaveBeenCalled();
   });
 });

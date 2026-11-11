@@ -1,7 +1,9 @@
 import {
+  BillingActionRejected,
   BillingDraft,
   DraftLine,
   getBillingDraft,
+  getInvoiceDraftChoices,
   getInvoiceWorkflow,
   getOrderWorkflow,
   OrderWorkflow,
@@ -170,4 +172,83 @@ export async function addOrderProduct(
     { field: 'product_id', line: index },
   );
   return saveBillingDraft(draft, requestKey);
+}
+
+/**
+ * True when Billing refused the bill because its lines need a department
+ * (an analytic distribution). Hospitals that report by department require one.
+ */
+export const needsDepartment = (error: unknown) =>
+  error instanceof BillingActionRejected && /analytic/i.test(error.message);
+
+/** The departments (analytic accounts) the Billing account may use. */
+export const getDepartments = () =>
+  getInvoiceDraftChoices(false, 'analytic', '');
+
+/**
+ * Puts every charge line that has no department on the chosen one, in full.
+ * The native save checks the order version, so a changed order is refused.
+ */
+export async function setOrderDepartment(
+  orderId: number,
+  departmentId: number,
+  requestKey: string,
+): Promise<BillingDraft> {
+  const draft = await getBillingDraft(orderId);
+  const distribution = { [String(departmentId)]: 100 };
+  return saveBillingDraft(
+    {
+      ...draft,
+      lines: draft.lines.map((line) =>
+        line.values.display_type || line.values.analytic_distribution
+          ? line
+          : {
+              ...line,
+              values: { ...line.values, analytic_distribution: distribution },
+            },
+      ),
+    },
+    requestKey,
+  );
+}
+
+// Pricing asks Billing once per product, so only short lists are priced.
+export const MAX_PRICED_PRODUCTS = 6;
+
+/**
+ * The unit price Billing would put on each product for this order, read with
+ * native onchange on an unsaved line. Nothing is saved.
+ */
+export async function priceProducts(
+  orderId: number,
+  productIds: number[],
+): Promise<Map<number, number>> {
+  const prices = new Map<number, number>();
+  if (!productIds.length || productIds.length > MAX_PRICED_PRODUCTS)
+    return prices;
+  let draft = await getBillingDraft(orderId);
+  const sequence =
+    Math.max(0, ...draft.lines.map((line) => line.values.sequence)) + 10;
+  draft = await previewBillingDraft(
+    { ...draft, lines: [...draft.lines, blankLine(sequence)] },
+    { field: 'order_line' },
+  );
+  const index = draft.lines.length - 1;
+  for (const productId of productIds) {
+    const priced = await previewBillingDraft(
+      {
+        ...draft,
+        lines: draft.lines.map((line, i) =>
+          i === index
+            ? { ...line, values: { ...line.values, product_id: productId } }
+            : line,
+        ),
+      },
+      { field: 'product_id', line: index },
+    );
+    const line = priced.lines[index];
+    if (line?.values.product_id === productId)
+      prices.set(productId, line.values.price_unit);
+  }
+  return prices;
 }

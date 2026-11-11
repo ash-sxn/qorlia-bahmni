@@ -18,6 +18,10 @@ import {
   billVisit,
   canAddCharges,
   finaliseInvoice,
+  getDepartments,
+  needsDepartment,
+  priceProducts,
+  setOrderDepartment,
 } from './cashierBilling';
 import cashier from './CashierPanel.module.scss';
 import { DraftOrderEditor } from './DraftOrderEditor';
@@ -66,6 +70,7 @@ export function BillVisitModal({
   const [blocked, setBlocked] = useState('');
   const [editing, setEditing] = useState(false);
   const [feeChoices, setFeeChoices] = useState<[number, string][] | null>(null);
+  const [feePrices, setFeePrices] = useState<Map<number, number>>(new Map());
   const busyRef = useRef(false);
   const orderId = target.kind === 'order' ? target.order.id : null;
   const workflow = useQuery({
@@ -111,6 +116,18 @@ export function BillVisitModal({
   const expired =
     failure instanceof BillingSessionExpired ||
     loadError instanceof BillingSessionExpired;
+  // A department can only be added while the visit charges are still a draft.
+  const departmentNeeded =
+    needsDepartment(failure) &&
+    target.kind === 'order' &&
+    !!workflow.data?.can_confirm;
+  const departments = useQuery({
+    queryKey: ['billing', 'cashier-departments', uid],
+    queryFn: getDepartments,
+    enabled: departmentNeeded,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const reload = async () => {
     setFailure(null);
@@ -162,16 +179,34 @@ export function BillVisitModal({
 
   const findFees = () =>
     guarded(async () => {
+      if (target.kind !== 'order') return;
       setStage('adding');
-      setFeeChoices(
-        await getDraftChoices(
-          'product',
-          CONSULTATION_SEARCH,
-          target.kind === 'order' && target.order.shop_id
-            ? target.order.shop_id[0]
-            : false,
-        ),
+      const choices = await getDraftChoices(
+        'product',
+        CONSULTATION_SEARCH,
+        target.order.shop_id ? target.order.shop_id[0] : false,
       );
+      // A missing price only hides the amount; the fee can still be added.
+      setFeePrices(
+        await priceProducts(
+          target.order.id,
+          choices.map(([id]) => id),
+        ).catch(() => new Map<number, number>()),
+      );
+      setFeeChoices(choices);
+    });
+
+  const chooseDepartment = (departmentId: number) =>
+    guarded(async () => {
+      if (target.kind !== 'order') return;
+      setStage('adding');
+      await setOrderDepartment(
+        target.order.id,
+        departmentId,
+        crypto.randomUUID(),
+      );
+      await Promise.all([workflow.refetch(), lines.refetch()]);
+      settle(await billVisit(target.order.id, setStage));
     });
 
   const addFee = (productId: number) =>
@@ -343,7 +378,7 @@ export function BillVisitModal({
         order?.can_confirm &&
         (order.automation.delivery || order.automation.legacy_delivery) ? (
           <p className={cashier.subtle}>
-            Medicines on this bill are issued from stock when the bill is
+            Any medicines on this bill are issued from stock when the bill is
             created.
           </p>
         ) : null}
@@ -378,6 +413,9 @@ export function BillVisitModal({
                   onClick={() => void addFee(id)}
                 >
                   Add {name}
+                  {feePrices.has(id)
+                    ? ` · ${money(feePrices.get(id) as number, currency)}`
+                    : ''}
                 </Button>
               ))
             )}
@@ -398,7 +436,36 @@ export function BillVisitModal({
           </p>
         ) : null}
         {blocked ? <p role="alert">{blocked}</p> : null}
-        {failure && !expired ? (
+        {departmentNeeded ? (
+          <section aria-label="Choose department" className={cashier.review}>
+            <p>
+              This hospital records a department on every bill. Choose the
+              department for this visit.
+            </p>
+            {departments.isPending ? (
+              <p role="status">Loading departments...</p>
+            ) : departments.isError || !departments.data?.length ? (
+              <p role="alert">
+                No department is available to your Billing account. Ask your
+                Billing administrator.
+              </p>
+            ) : (
+              <div className={cashier.feeRow}>
+                {departments.data.map(([id, name]) => (
+                  <Button
+                    key={id}
+                    kind="tertiary"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => void chooseDepartment(id)}
+                  >
+                    {name}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </section>
+        ) : failure && !expired ? (
           <div role="alert">
             <p>{failure.message}</p>
             <p>
@@ -410,7 +477,7 @@ export function BillVisitModal({
 
         <div className={styles.toolbar}>
           <Button
-            disabled={!ready || busy || !!blocked}
+            disabled={!ready || busy || !!blocked || departmentNeeded}
             onClick={() => void createBill()}
           >
             {failure

@@ -2,10 +2,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { BillingSessionExpired, getInvoices, Invoice } from '../billingService';
 import { CashierPanel } from '../CashierPanel';
+import { printBill } from '../cashierPrint';
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
   getInvoices: jest.fn(),
+}));
+jest.mock('../cashierPrint', () => ({
+  printBill: jest.fn().mockResolvedValue(undefined),
 }));
 
 const bill = (overrides: Partial<Invoice> = {}): Invoice => ({
@@ -82,7 +86,22 @@ it('lists due amounts, totals the page and opens payment or printing', async () 
   );
   fireEvent.click(screen.getByRole('button', { name: 'Print INV/QA/9' }));
   expect(takePayment).toHaveBeenCalledWith(7);
-  expect(print).toHaveBeenCalledWith(9);
+  expect(printBill).toHaveBeenCalledWith(9);
+  expect(print).not.toHaveBeenCalled();
+});
+
+it('offers other formats when the bill PDF cannot be opened', async () => {
+  jest.mocked(printBill).mockRejectedValueOnce(new Error('blocked'));
+  jest.mocked(getInvoices).mockResolvedValue([bill()]);
+  const { print } = show();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Print INV/QA/7' }),
+  );
+  expect(
+    await screen.findByText(/The bill PDF could not be opened/),
+  ).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Other formats' }));
+  expect(print).toHaveBeenCalledWith(7);
 });
 
 it('searches by patient or bill and pages through long queues', async () => {

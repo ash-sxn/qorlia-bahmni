@@ -86,9 +86,17 @@
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.5rem;
-  white-space: nowrap;
+  // Tables grow a cell to fit its content, so the buttons only wrap onto a
+  // second line when the cell has a limit.
+  max-width: 8.5rem;
+  margin-left: auto;
+
+  :global(.cds--btn) {
+    padding-inline-end: 0.75rem;
+  }
 }
 
 .feeRow {
@@ -151,4 +159,48 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+.dayEndReport {
+  h3 {
+    margin: 1rem 0 0.75rem;
+  }
+}
+
+.noPrint {
+  @media print {
+    display: none !important;
+  }
+}
+
+// While the day-end report prints, only that report is on the page.
+@media print {
+  :global(body.qorlia-print-day-end) * {
+    visibility: hidden;
+  }
+
+  :global(body.qorlia-print-day-end) .dayEnd,
+  :global(body.qorlia-print-day-end) .dayEnd * {
+    visibility: visible;
+  }
+
+  :global(body.qorlia-print-day-end) .dayEnd {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    border: 0;
+    margin: 0;
+  }
+
+  :global(body.qorlia-print-day-end) .dayEnd form {
+    display: none;
+  }
+}
+
+// Seven columns fit a narrow desk screen once the cell padding is tighter.
+.compact {
+  th,
+  td {
+    padding-inline: 0.625rem;
+  }
 }

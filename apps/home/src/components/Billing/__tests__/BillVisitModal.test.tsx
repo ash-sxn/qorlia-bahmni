@@ -7,6 +7,7 @@ import {
   within,
 } from '@testing-library/react';
 import {
+  BillingActionRejected,
   ChargeOrder,
   ChargeOrderLine,
   getChargeOrderLines,
@@ -16,7 +17,14 @@ import {
   OrderWorkflow,
 } from '../billingService';
 import { BillTarget, BillVisitModal } from '../BillVisitModal';
-import { addOrderProduct, billVisit, finaliseInvoice } from '../cashierBilling';
+import {
+  addOrderProduct,
+  billVisit,
+  finaliseInvoice,
+  getDepartments,
+  priceProducts,
+  setOrderDepartment,
+} from '../cashierBilling';
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
@@ -30,6 +38,9 @@ jest.mock('../cashierBilling', () => ({
   billVisit: jest.fn(),
   finaliseInvoice: jest.fn(),
   addOrderProduct: jest.fn(),
+  priceProducts: jest.fn(),
+  getDepartments: jest.fn(),
+  setOrderDepartment: jest.fn(),
 }));
 jest.mock('../DraftOrderEditor', () => ({
   DraftOrderEditor: ({ close }: { close: () => void }) => (
@@ -108,6 +119,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(getOrderWorkflow).mockResolvedValue(workflow());
   jest.mocked(getChargeOrderLines).mockResolvedValue([line()]);
+  jest.mocked(priceProducts).mockResolvedValue(new Map());
 });
 
 it('shows the visit charges and total, then bills and opens payment', async () => {
@@ -300,4 +312,91 @@ it('opens the existing charge editor and returns to the review', async () => {
   expect(
     await screen.findByRole('button', { name: 'Create bill · ₹300.00' }),
   ).toBeVisible();
+});
+
+it('shows the price of each consultation fee before it is added', async () => {
+  jest.mocked(getDraftChoices).mockResolvedValue([
+    [30, 'Consultation'],
+    [31, 'Specialist Consultation'],
+  ]);
+  jest.mocked(priceProducts).mockResolvedValue(new Map([[30, 400]]));
+  show();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Add consultation fee' }),
+  );
+  expect(
+    await screen.findByRole('button', { name: 'Add Consultation · ₹400.00' }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole('button', { name: 'Add Specialist Consultation' }),
+  ).toBeVisible();
+  expect(priceProducts).toHaveBeenCalledWith(2, [30, 31]);
+});
+
+it('still offers fees when their prices cannot be read', async () => {
+  jest.mocked(getDraftChoices).mockResolvedValue([[30, 'Consultation']]);
+  jest.mocked(priceProducts).mockRejectedValue(new Error('No answer'));
+  show();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Add consultation fee' }),
+  );
+  expect(
+    await screen.findByRole('button', { name: 'Add Consultation' }),
+  ).toBeVisible();
+});
+
+it('asks for a department when Billing requires one, then finishes the bill', async () => {
+  jest
+    .mocked(billVisit)
+    .mockRejectedValueOnce(
+      new BillingActionRejected(
+        'One or more lines require a 100% analytic distribution.',
+      ),
+    )
+    .mockResolvedValueOnce({ kind: 'pay', invoiceId: 12 });
+  jest.mocked(getDepartments).mockResolvedValue([
+    [5, 'OPD'],
+    [6, 'Laboratory'],
+  ]);
+  jest.mocked(setOrderDepartment).mockResolvedValue({} as never);
+  const { pay } = show();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Create bill · ₹300.00' }),
+  );
+  expect(
+    await screen.findByText(/records a department on every bill/),
+  ).toBeVisible();
+  expect(
+    screen.getByRole('button', { name: 'Continue billing' }),
+  ).toBeDisabled();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'OPD' }));
+  await waitFor(() => expect(pay).toHaveBeenCalledWith(12));
+  expect(setOrderDepartment).toHaveBeenCalledWith(2, 5, expect.any(String));
+  expect(billVisit).toHaveBeenCalledTimes(2);
+});
+
+it('does not offer departments once the visit charges are confirmed', async () => {
+  jest
+    .mocked(getOrderWorkflow)
+    .mockResolvedValue(workflow({ can_confirm: false, state: 'sale' }));
+  jest
+    .mocked(finaliseInvoice)
+    .mockRejectedValue(
+      new BillingActionRejected('Lines require a 100% analytic distribution.'),
+    );
+  jest
+    .mocked(billVisit)
+    .mockRejectedValue(
+      new BillingActionRejected('Lines require a 100% analytic distribution.'),
+    );
+  show();
+  await screen.findByRole('row', { name: /Complete blood count/ });
+  const finalise = screen.getByRole('button', { name: 'Finalise and collect' });
+  await waitFor(() => expect(finalise).toBeEnabled());
+  fireEvent.click(finalise);
+  expect(
+    await screen.findByText('Lines require a 100% analytic distribution.'),
+  ).toBeVisible();
+  expect(getDepartments).not.toHaveBeenCalled();
 });

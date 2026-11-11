@@ -30,6 +30,7 @@ import {
 } from './billingService';
 import { BillTarget, BillVisitModal } from './BillVisitModal';
 import { CashierPanel } from './CashierPanel';
+import { DayEndPanel } from './DayEndPanel';
 import { CashierPaymentModal } from './CashierPaymentModal';
 import { ChargeOrdersPanel } from './ChargeOrdersPanel';
 import { CorrectionWorkflowModal } from './CorrectionWorkflowModal';
@@ -367,6 +368,13 @@ export function BillingPage() {
                       setCashierPayment(invoiceId);
                     }}
                     print={setReportInvoice}
+                    reconnect={() => {
+                      queryClient.removeQueries({ queryKey: ['billing'] });
+                      void session.refetch();
+                    }}
+                  />
+                  <DayEndPanel
+                    uid={session.data!.uid as number}
                     reconnect={() => {
                       queryClient.removeQueries({ queryKey: ['billing'] });
                       void session.refetch();

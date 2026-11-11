@@ -12,10 +12,62 @@ import {
   recordPaymentWorkflow,
 } from './billingService';
 import cashier from './CashierPanel.module.scss';
+import { printBill, printReceipt } from './cashierPrint';
 import { BillingReportsModal } from './InvoiceReportsModal';
 
 // Cheques need dates and references the simple form does not ask for.
 const CHEQUE_METHODS = ['pdc', 'check_printing'];
+
+// A front desk uses a few methods. The rest stay one click away, and the
+// methods this browser used last come first.
+const SHOWN_METHODS = 4;
+const RECENT_METHODS_KEY = 'qorlia.cashier.recentJournals';
+
+const readRecentMethods = (): number[] => {
+  try {
+    const value: unknown = JSON.parse(
+      window.localStorage.getItem(RECENT_METHODS_KEY) ?? '[]',
+    );
+    return Array.isArray(value)
+      ? value.filter((id): id is number => Number.isInteger(id))
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const rememberMethod = (journalId: number) => {
+  try {
+    window.localStorage.setItem(
+      RECENT_METHODS_KEY,
+      JSON.stringify(
+        [
+          journalId,
+          ...readRecentMethods().filter((id) => id !== journalId),
+        ].slice(0, SHOWN_METHODS),
+      ),
+    );
+  } catch {
+    // Without storage the order simply stays as Billing lists it.
+  }
+};
+
+/** Recently used methods first, then Billing's own order. */
+export const orderMethods = (
+  journals: [number, string][],
+  recent: number[],
+): [number, string][] => {
+  const rank = (id: number) => {
+    const index = recent.indexOf(id);
+    return index === -1 ? recent.length : index;
+  };
+  return journals
+    .map((journal, index) => ({ journal, index }))
+    .sort(
+      (a, b) => rank(a.journal[0]) - rank(b.journal[0]) || a.index - b.index,
+    )
+    .map(({ journal }) => journal);
+};
 
 type Props = {
   uid: number;
@@ -51,6 +103,9 @@ export function CashierPaymentModal({
     kind: 'payment' | 'invoice';
     id: number;
   } | null>(null);
+  const [printFailure, setPrintFailure] = useState('');
+  const [allMethods, setAllMethods] = useState(false);
+  const [recentMethods] = useState(readRecentMethods);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Error | null>(null);
   const [uncertain, setUncertain] = useState(false);
@@ -132,7 +187,9 @@ export function CashierPaymentModal({
     if (!review?.can_record || uncertain) return;
     void run(async () => {
       try {
-        setRecorded(await recordPaymentWorkflow(review));
+        const result = await recordPaymentWorkflow(review);
+        if (review.values) rememberMethod(review.values.journal_id);
+        setRecorded(result);
       } catch (error) {
         setUncertain(true);
         throw error;
@@ -147,6 +204,17 @@ export function CashierPaymentModal({
     setFailure(null);
     const refreshed = await current.refetch();
     if (!refreshed.isError) setUncertain(false);
+  };
+
+  const print = (task: () => Promise<void>) => {
+    setPrintFailure('');
+    task().catch((error: unknown) =>
+      setPrintFailure(
+        error instanceof BillingSessionExpired
+          ? 'Your Billing session expired. Reconnect to print.'
+          : 'The PDF could not be opened. Try again, or choose another format.',
+      ),
+    );
   };
 
   if (printing)
@@ -184,17 +252,13 @@ export function CashierPaymentModal({
           </p>
           <div className={styles.toolbar}>
             {receipt ? (
-              <Button
-                onClick={() => setPrinting({ kind: 'payment', id: receipt.id })}
-              >
+              <Button onClick={() => print(() => printReceipt(receipt.id))}>
                 Print receipt
               </Button>
             ) : null}
             <Button
               kind="tertiary"
-              onClick={() =>
-                setPrinting({ kind: 'invoice', id: recorded.invoice.id })
-              }
+              onClick={() => print(() => printBill(recorded.invoice.id))}
             >
               Print bill
             </Button>
@@ -202,11 +266,36 @@ export function CashierPaymentModal({
               Done
             </Button>
           </div>
+          {printFailure ? (
+            <div role="alert">
+              <p>{printFailure}</p>
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() =>
+                  setPrinting(
+                    receipt
+                      ? { kind: 'payment', id: receipt.id }
+                      : { kind: 'invoice', id: recorded.invoice.id },
+                  )
+                }
+              >
+                Other print formats
+              </Button>
+            </div>
+          ) : null}
         </section>
       </Modal>
     );
   }
 
+  const orderedMethods = orderMethods(payment?.journals ?? [], recentMethods);
+  const shownMethods = allMethods
+    ? orderedMethods
+    : orderedMethods.filter(
+        ([id], index) => index < SHOWN_METHODS || id === values?.journal_id,
+      );
+  const hiddenMethods = orderedMethods.length - shownMethods.length;
   const journalName = (id: number | false) =>
     payment?.journals.find(([journal]) => journal === id)?.[1] ?? 'Not set';
   const afterPayment = review?.values ? due - review.values.amount : 0;
@@ -260,7 +349,7 @@ export function CashierPaymentModal({
                   disabled={busy || uncertain}
                 >
                   <legend>Paid by</legend>
-                  {payment.journals.map(([id, name]) => (
+                  {shownMethods.map(([id, name]) => (
                     <Button
                       key={id}
                       type="button"
@@ -272,6 +361,16 @@ export function CashierPaymentModal({
                       {name}
                     </Button>
                   ))}
+                  {hiddenMethods > 0 ? (
+                    <Button
+                      type="button"
+                      size="md"
+                      kind="ghost"
+                      onClick={() => setAllMethods(true)}
+                    >
+                      More methods ({hiddenMethods})
+                    </Button>
+                  ) : null}
                 </fieldset>
                 {cheque ? (
                   <p role="status">

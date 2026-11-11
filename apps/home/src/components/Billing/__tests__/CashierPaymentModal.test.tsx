@@ -6,7 +6,8 @@ import {
   previewPaymentWorkflow,
   recordPaymentWorkflow,
 } from '../billingService';
-import { CashierPaymentModal } from '../CashierPaymentModal';
+import { printBill, printReceipt } from '../cashierPrint';
+import { CashierPaymentModal, orderMethods } from '../CashierPaymentModal';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
 import {
   paymentValuesFixture,
@@ -18,6 +19,10 @@ jest.mock('../billingService', () => ({
   getPaymentWorkflow: jest.fn(),
   previewPaymentWorkflow: jest.fn(),
   recordPaymentWorkflow: jest.fn(),
+}));
+jest.mock('../cashierPrint', () => ({
+  printReceipt: jest.fn().mockResolvedValue(undefined),
+  printBill: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('../InvoiceReportsModal', () => ({
   BillingReportsModal: ({
@@ -126,7 +131,9 @@ it('collects the full amount in cash, then offers the receipt', async () => {
     await screen.findByText(/₹500.00 received for INV\/QA\/7. Fully paid./),
   ).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Print receipt' }));
-  expect(screen.getByText('Printing payment 41')).toBeVisible();
+  expect(printReceipt).toHaveBeenCalledWith(41);
+  fireEvent.click(screen.getByRole('button', { name: 'Print bill' }));
+  expect(printBill).toHaveBeenCalledWith(7);
   expect(completed).not.toHaveBeenCalled();
 });
 
@@ -244,4 +251,20 @@ it('does not offer payment on a bill that does not balance', async () => {
   expect(
     screen.queryByRole('button', { name: 'Review payment' }),
   ).not.toBeInTheDocument();
+});
+
+describe('orderMethods', () => {
+  const journals: [number, string][] = [
+    [1, 'Bank'],
+    [2, 'Cash'],
+    [3, 'Card'],
+  ];
+
+  it('keeps Billing order without history', () => {
+    expect(orderMethods(journals, []).map(([id]) => id)).toEqual([1, 2, 3]);
+  });
+
+  it('puts recently used methods first, most recent first', () => {
+    expect(orderMethods(journals, [3, 2]).map(([id]) => id)).toEqual([3, 2, 1]);
+  });
 });

@@ -5,6 +5,7 @@ import { invoiceName, money } from './billingFormat';
 import styles from './BillingPage.module.scss';
 import { BillingSessionExpired, getInvoices } from './billingService';
 import cashier from './CashierPanel.module.scss';
+import { printBill } from './cashierPrint';
 
 const PAGE_SIZE = 25;
 
@@ -36,6 +37,7 @@ export function CashierPanel({
   const [search, setSearch] = useState('');
   const [submittedSearch, setSubmittedSearch] = useState('');
   const [offset, setOffset] = useState(0);
+  const [printFailure, setPrintFailure] = useState<number | null>(null);
   const bills = useQuery({
     queryKey: ['billing', 'cashier', uid, submittedSearch, offset],
     queryFn: () =>
@@ -134,7 +136,7 @@ export function CashierPanel({
       ) : null}
 
       {rows.length ? (
-        <div className={styles.tableScroll}>
+        <div className={`${styles.tableScroll} ${cashier.compact}`}>
           <table>
             <caption className={cashier.visuallyHidden}>
               Bills waiting for payment
@@ -183,22 +185,41 @@ export function CashierPanel({
                         </Tag>
                       )}
                     </td>
-                    <td className={cashier.actions}>
-                      <Button
-                        size="sm"
-                        onClick={() => takePayment(bill.id)}
-                        aria-label={`Take payment for ${name}`}
-                      >
-                        Take payment
-                      </Button>
-                      <Button
-                        size="sm"
-                        kind="ghost"
-                        onClick={() => print(bill.id)}
-                        aria-label={`Print ${name}`}
-                      >
-                        Print
-                      </Button>
+                    <td>
+                      <div className={cashier.actions}>
+                        <Button
+                          size="sm"
+                          onClick={() => takePayment(bill.id)}
+                          aria-label={`Take payment for ${name}`}
+                        >
+                          Take payment
+                        </Button>
+                        <Button
+                          size="sm"
+                          kind="ghost"
+                          onClick={() => {
+                            setPrintFailure(null);
+                            printBill(bill.id).catch(() =>
+                              setPrintFailure(bill.id),
+                            );
+                          }}
+                          aria-label={`Print ${name}`}
+                        >
+                          Print
+                        </Button>
+                      </div>
+                      {printFailure === bill.id ? (
+                        <p role="alert" className={cashier.subtle}>
+                          The bill PDF could not be opened.{' '}
+                          <Button
+                            kind="ghost"
+                            size="sm"
+                            onClick={() => print(bill.id)}
+                          >
+                            Other formats
+                          </Button>
+                        </p>
+                      ) : null}
                     </td>
                   </tr>
                 );

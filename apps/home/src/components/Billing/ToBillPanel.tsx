@@ -214,14 +214,16 @@ export function ToBillPanel({
                       {row.status}
                     </Tag>
                   </td>
-                  <td className={cashier.actions}>
-                    <Button
-                      size="sm"
-                      onClick={() => bill(row.target)}
-                      aria-label={`${row.action} ${row.reference} for ${row.patient}`}
-                    >
-                      {row.action}
-                    </Button>
+                  <td>
+                    <div className={cashier.actions}>
+                      <Button
+                        size="sm"
+                        onClick={() => bill(row.target)}
+                        aria-label={`${row.action} ${row.reference} for ${row.patient}`}
+                      >
+                        {row.action}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
