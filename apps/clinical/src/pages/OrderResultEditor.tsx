@@ -304,6 +304,8 @@ const ResultField = ({
                 ])
               }
             />
+            {/* An empty units string means no units, so `||` is intended. */}
+            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
             {(concept.units || abnormal) && (
               <span id={`${id}-hint`}>
                 {abnormal

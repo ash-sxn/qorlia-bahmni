@@ -3,7 +3,10 @@
   "compilerOptions": {
     "outDir": "./out-tsc/jest",
     "jsx": "react-jsx",
-    "types": ["jest", "node"]
+    "types": [
+      "jest",
+      "node"
+    ]
   },
   "include": [
     "jest.config.ts",
@@ -18,7 +21,9 @@
     "src/**/*.spec.js",
     "src/**/*.test.jsx",
     "src/**/*.spec.jsx",
-    "src/**/*.d.ts"
+    "src/**/*.d.ts",
+    "src/**/__mocks__/**/*.ts",
+    "src/**/__mocks__/**/*.tsx"
   ],
   "references": [
     {

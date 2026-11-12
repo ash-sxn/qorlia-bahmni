@@ -70,7 +70,9 @@ describe('billing API', () => {
     await expect(getBillingSession()).rejects.toThrow(
       'Invalid billing response',
     );
-    await expect(getInvoices('', 0)).rejects.toThrow('Invalid billing response');
+    await expect(getInvoices('', 0)).rejects.toThrow(
+      'Invalid billing response',
+    );
     await expect(postInvoiceWorkflow(invoiceWorkflowFixture())).rejects.toThrow(
       'Invalid billing response',
     );

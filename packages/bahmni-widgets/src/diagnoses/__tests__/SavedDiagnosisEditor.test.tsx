@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import {
   getDiagnosesPage,
   getSavedDiagnosis,
@@ -12,12 +14,23 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import english from '../../../../../apps/clinical/public/locales/locale_en.json';
 import { usePatientUUID } from '../../hooks/usePatientUUID';
 import { useNotification } from '../../notification';
 import { useHasPrivilege } from '../../userPrivileges/useHasPrivilege';
 import { useUserPrivilege } from '../../userPrivileges/useUserPrivilege';
 import DiagnosesTable from '../DiagnosesTable';
+
+// The editor's labels live in the clinical app. Read them from disk rather than
+// importing them, so widgets does not depend on the clinical app.
+const english: Record<string, string> = JSON.parse(
+  readFileSync(
+    resolve(
+      __dirname,
+      '../../../../../apps/clinical/public/locales/locale_en.json',
+    ),
+    'utf8',
+  ),
+);
 
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
