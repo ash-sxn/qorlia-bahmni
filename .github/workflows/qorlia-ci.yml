@@ -1,0 +1,71 @@
+name: Qorlia CI
+
+# Runs on every pull request and on every push to main.
+# Pull requests check only the projects their changes affect; main and manual
+# runs check everything.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: qorlia-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint, types, tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      NX_NO_CLOUD: "true"
+      IBM_TELEMETRY_DISABLED: "true"
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Choose what to check
+        id: scope
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "nx=affected --base=origin/${{ github.base_ref }} --head=HEAD" >> "$GITHUB_OUTPUT"
+          else
+            echo "nx=run-many --all" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Lint
+        run: npx nx ${{ steps.scope.outputs.nx }} -t lint --parallel=2
+
+      - name: Type check
+        run: npx nx ${{ steps.scope.outputs.nx }} -t typecheck --parallel=2
+
+      - name: Unit tests
+        run: npx nx ${{ steps.scope.outputs.nx }} -t test --parallel=1
+
+      - name: Build
+        run: npx nx ${{ steps.scope.outputs.nx }} -t build --parallel=1
+
+      - name: Keep the production build
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: qorlia-frontend-${{ github.sha }}
+          path: dist/
+          retention-days: 14
+          if-no-files-found: warn
