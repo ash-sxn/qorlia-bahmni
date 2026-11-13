@@ -19,6 +19,7 @@ const reviewUrls = {
   'qorlia.insurance-desk': '/bahmni-v2/home/insurance',
   'qorlia.patient-record': '/bahmni-v2/home/records',
   'qorlia.referral-network': '/bahmni-v2/home/referrals',
+  'qorlia.hospital-overview': '/bahmni-v2/home/overview',
   'bahmni.registration.new': '/bahmni-v2/registration/search',
   'bahmni.programs': '/bahmni-v2/clinical/programs',
   'bahmni.clinical': '/bahmni-v2/clinical/',
@@ -97,6 +98,20 @@ const referralNetworkModule: Module = {
   exclusiveOnlineModule: true,
 };
 
+// The grid hides the tile without Get Visits. Each section on the page checks its own privilege.
+const hospitalOverviewModule: Module = {
+  id: 'qorlia.hospital-overview',
+  extensionPointId: HOME_EXTENSION_POINT,
+  type: 'link',
+  label: 'Hospital overview',
+  translationKey: 'HOME_TILE_HOSPITAL_OVERVIEW',
+  url: '/bahmni-v2/home/overview',
+  order: 17,
+  icon: 'fa-hospital',
+  requiredPrivilege: 'Get Visits',
+  exclusiveOnlineModule: true,
+};
+
 export const HomePageGrid: React.FC = () => {
   // Production has no approved policies, cases or verified referral entries yet, so these
   // tiles would open empty pages.
@@ -107,6 +122,7 @@ export const HomePageGrid: React.FC = () => {
       ...(hasReferralEntries(loadDirectory()) ? [referralNetworkModule] : []),
       ...(hasPolicyEntries(loadPolicyCatalogue()) ? [policyLibraryModule] : []),
       ...(hasCases(loadCases()) ? [insuranceDeskModule] : []),
+      hospitalOverviewModule,
     ],
     [],
   );

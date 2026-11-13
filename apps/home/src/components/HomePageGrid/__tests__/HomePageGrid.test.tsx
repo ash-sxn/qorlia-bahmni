@@ -116,6 +116,12 @@ describe('HomePageGrid', () => {
         label: 'Insurance desk',
         url: '/bahmni-v2/home/insurance',
       }),
+      expect.objectContaining({
+        id: 'qorlia.hospital-overview',
+        label: 'Hospital overview',
+        url: '/bahmni-v2/home/overview',
+        requiredPrivilege: 'Get Visits',
+      }),
     ]);
   });
 
@@ -143,6 +149,10 @@ describe('HomePageGrid', () => {
         id: 'qorlia.insurance-desk',
         translationKey: 'HOME_TILE_INSURANCE_DESK',
       }),
+      expect.objectContaining({
+        id: 'qorlia.hospital-overview',
+        translationKey: 'HOME_TILE_HOSPITAL_OVERVIEW',
+      }),
     ]);
   });
 
@@ -159,6 +169,7 @@ describe('HomePageGrid', () => {
       expect.objectContaining({ id: 'qorlia.billing' }),
       expect.objectContaining({ id: 'qorlia.patient-record' }),
       expect.objectContaining({ id: 'qorlia.insurance-desk' }),
+      expect.objectContaining({ id: 'qorlia.hospital-overview' }),
     ]);
   });
 
@@ -178,6 +189,7 @@ describe('HomePageGrid', () => {
       expect.objectContaining({ id: 'qorlia.billing' }),
       expect.objectContaining({ id: 'qorlia.patient-record' }),
       expect.objectContaining({ id: 'qorlia.policy-library' }),
+      expect.objectContaining({ id: 'qorlia.hospital-overview' }),
     ]);
   });
 
@@ -197,6 +209,7 @@ describe('HomePageGrid', () => {
       expect.objectContaining({ id: 'qorlia.billing' }),
       expect.objectContaining({ id: 'qorlia.patient-record' }),
       expect.objectContaining({ id: 'qorlia.insurance-desk' }),
+      expect.objectContaining({ id: 'qorlia.hospital-overview' }),
     ]);
   });
 
@@ -213,6 +226,9 @@ describe('HomePageGrid', () => {
     );
     expect(props.reviewUrls['qorlia.insurance-desk']).toBe(
       '/bahmni-v2/home/insurance',
+    );
+    expect(props.reviewUrls['qorlia.hospital-overview']).toBe(
+      '/bahmni-v2/home/overview',
     );
     expect(props.reviewUrls['bahmni.orders']).toBe(
       '/bahmni-v2/clinical/orders',
