@@ -124,10 +124,13 @@ export function CashierPaymentModal({
   const due = payment?.invoice.open_amount ?? 0;
   const enteredAmount = amount ?? (values ? String(values.amount) : '');
   const parsedAmount = Number(enteredAmount);
+  // A credit note pays money back to the patient, never more than is owed.
+  const refund = payment?.invoice.move_type === 'out_refund';
   const validAmount =
     enteredAmount.trim() !== '' &&
     Number.isFinite(parsedAmount) &&
-    parsedAmount > 0;
+    parsedAmount > 0 &&
+    (!refund || parsedAmount <= due);
   const expired =
     failure instanceof BillingSessionExpired ||
     current.error instanceof BillingSessionExpired;
@@ -239,16 +242,19 @@ export function CashierPaymentModal({
         open
         passiveModal
         size="sm"
-        modalHeading="Payment recorded"
+        modalHeading={refund ? 'Refund recorded' : 'Payment recorded'}
         onRequestClose={() => completed(recorded)}
       >
         <section aria-label="Payment result">
           <p className={cashier.notice} role="status">
             {money(review?.values ? review.values.amount : 0, currency)}{' '}
-            received for {invoiceName(recorded.invoice)}.{' '}
+            {refund ? 'paid back for' : 'received for'}{' '}
+            {invoiceName(recorded.invoice)}.{' '}
             {stillDue > 0
-              ? `Still due: ${money(stillDue, currency)}.`
-              : 'Fully paid.'}
+              ? `${refund ? 'Still to pay back' : 'Still due'}: ${money(stillDue, currency)}.`
+              : refund
+                ? 'Refund complete.'
+                : 'Fully paid.'}
           </p>
           <div className={styles.toolbar}>
             {receipt ? (
@@ -307,7 +313,7 @@ export function CashierPaymentModal({
       size="sm"
       modalHeading={
         payment
-          ? `Collect payment · ${invoiceName(payment.invoice)}`
+          ? `${refund ? 'Pay refund' : 'Collect payment'} · ${invoiceName(payment.invoice)}`
           : 'Collect payment'
       }
       preventCloseOnClickOutside
@@ -315,7 +321,10 @@ export function CashierPaymentModal({
         if (!busyRef.current) close();
       }}
     >
-      <section aria-label="Collect payment" aria-busy={busy}>
+      <section
+        aria-label={refund ? 'Pay refund' : 'Collect payment'}
+        aria-busy={busy}
+      >
         {expired ? (
           <div role="alert">
             <p>Your Billing session expired. Reconnect, then check the bill.</p>
@@ -330,13 +339,15 @@ export function CashierPaymentModal({
         ) : payment ? (
           <>
             <p>
-              {payment.invoice.customer || 'No patient'} · Due{' '}
+              {payment.invoice.customer || 'No patient'} ·{' '}
+              {refund ? 'To pay back' : 'Due'}{' '}
               <strong>{money(due, currency)}</strong>
             </p>
             {!payment.invoice.ledger_balanced ? (
               <p role="alert">
-                This bill does not balance in the accounts. Do not take payment.
-                Ask your Billing administrator.
+                This {refund ? 'credit note' : 'bill'} does not balance in the
+                accounts. Do not {refund ? 'pay it out' : 'take payment'}. Ask
+                your Billing administrator.
               </p>
             ) : !values ? (
               <p role="status">
@@ -348,7 +359,7 @@ export function CashierPaymentModal({
                   className={cashier.methods}
                   disabled={busy || uncertain}
                 >
-                  <legend>Paid by</legend>
+                  <legend>{refund ? 'Pay back by' : 'Paid by'}</legend>
                   {shownMethods.map(([id, name]) => (
                     <Button
                       key={id}
@@ -379,14 +390,18 @@ export function CashierPaymentModal({
                 ) : null}
                 <TextInput
                   id="cashier-payment-amount"
-                  labelText="Amount received"
+                  labelText={refund ? 'Amount paid back' : 'Amount received'}
                   type="number"
                   min="0.01"
                   step="any"
                   value={enteredAmount}
                   disabled={busy || uncertain}
                   invalid={!validAmount}
-                  invalidText="Enter an amount above zero."
+                  invalidText={
+                    refund
+                      ? `Enter an amount above zero and up to ${money(due, currency)}.`
+                      : 'Enter an amount above zero.'
+                  }
                   onChange={(event) => {
                     setAmount(event.target.value);
                     setReview(null);
@@ -409,7 +424,7 @@ export function CashierPaymentModal({
                       type="submit"
                       disabled={busy || uncertain || cheque || !validAmount}
                     >
-                      Review payment
+                      {refund ? 'Review refund' : 'Review payment'}
                     </Button>
                   </div>
                 ) : null}
@@ -422,21 +437,25 @@ export function CashierPaymentModal({
                 className={cashier.review}
               >
                 <p>
-                  Receive{' '}
+                  {refund ? 'Pay back' : 'Receive'}{' '}
                   <strong>{money(review.values.amount, currency)}</strong> by{' '}
                   {journalName(review.values.journal_id)} on{' '}
                   {review.values.payment_date}.
                 </p>
                 <p className={cashier.subtle}>
-                  {afterPayment > 0
-                    ? `${money(afterPayment, currency)} will still be due.`
-                    : afterPayment < 0
-                      ? `${money(-afterPayment, currency)} extra stays on the patient's account as credit.`
-                      : 'The bill will be fully paid.'}
+                  {refund
+                    ? afterPayment > 0
+                      ? `${money(afterPayment, currency)} will still be owed to the patient.`
+                      : 'The refund will be complete.'
+                    : afterPayment > 0
+                      ? `${money(afterPayment, currency)} will still be due.`
+                      : afterPayment < 0
+                        ? `${money(-afterPayment, currency)} extra stays on the patient's account as credit.`
+                        : 'The bill will be fully paid.'}
                 </p>
                 {review.can_record ? (
                   <Button disabled={busy || uncertain} onClick={record}>
-                    Record payment
+                    {refund ? 'Record refund' : 'Record payment'}
                   </Button>
                 ) : (
                   <p role="alert">

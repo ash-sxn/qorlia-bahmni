@@ -12710,7 +12710,8 @@ export const getInvoices = async (
   {
     unpaidOnly = false,
     draftOnly = false,
-  }: { unpaidOnly?: boolean; draftOnly?: boolean } = {},
+    paidOnly = false,
+  }: { unpaidOnly?: boolean; draftOnly?: boolean; paidOnly?: boolean } = {},
 ) => {
   const result = await rpc<Invoice[]>(
     '/web/dataset/call_kw/account.move/search_read',
@@ -12728,6 +12729,14 @@ export const getInvoices = async (
                 ['move_type', '=', 'out_invoice'],
                 ['state', '=', 'posted'],
                 ['payment_state', 'in', ['not_paid', 'partial']],
+              ]
+            : []),
+          // Cashier refunds: posted customer bills that already took money.
+          ...(paidOnly
+            ? [
+                ['move_type', '=', 'out_invoice'],
+                ['state', '=', 'posted'],
+                ['payment_state', 'in', ['paid', 'in_payment', 'partial']],
               ]
             : []),
           // Cashier queue: customer bills created but not yet finalised.
