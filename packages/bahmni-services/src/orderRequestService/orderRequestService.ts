@@ -20,6 +20,29 @@ export async function getServiceRequests<T extends Resource = ServiceRequest>(
   numberOfVisits?: number,
   revinclude?: string,
 ): Promise<Bundle<T>> {
+  const { bundle } = await getServiceRequestsWithCompatibility<T>(
+    category,
+    patientUuid,
+    encounterUuids,
+    numberOfVisits,
+    revinclude,
+  );
+  return bundle;
+}
+
+/**
+ * Same as getServiceRequests, but also reports whether the server rejected
+ * the category search and the patient-only fallback was used instead.
+ */
+export async function getServiceRequestsWithCompatibility<
+  T extends Resource = ServiceRequest,
+>(
+  category: string,
+  patientUuid: string,
+  encounterUuids?: string[],
+  numberOfVisits?: number,
+  revinclude?: string,
+): Promise<{ bundle: Bundle<T>; usedFallback: boolean }> {
   let encounterUuidsString: string | undefined;
 
   if (encounterUuids && encounterUuids.length > 0) {
@@ -85,8 +108,11 @@ export async function getServiceRequests<T extends Resource = ServiceRequest>(
           .pop(),
       ),
     );
-    return { ...bundle, entry: entries, total: entries?.length ?? 0 };
+    return {
+      bundle: { ...bundle, entry: entries, total: entries?.length ?? 0 },
+      usedFallback,
+    };
   }
 
-  return bundle;
+  return { bundle, usedFallback };
 }
