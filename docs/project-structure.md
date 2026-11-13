@@ -1,176 +1,77 @@
-# Bahmni Apps Frontend Project Structure
+# Repository map
 
-This document provides a high-level overview of the project structure, explaining the purpose of each main directory.
+[README](../README.md) · [Previous: architecture](architecture.md) · [Next: modules](module-guide.md)
 
-## Directory Structure Overview
+This is a monorepo: application modules and shared libraries kept in one Git repository. Several app folders do not imply independently deployed microfrontends.
 
 ```text
-bahmni-apps-frontend/
-├── apps/                    # Micro-frontend applications
-│   ├── clinical/            # Clinical consultation module
-│   │   ├── src/             # Source code
-│   │   │   ├── components/  # UI components
-│   │   │   ├── hooks/       # Custom hooks
-│   │   │   ├── pages/       # Page components
-│   │   │   ├── providers/   # Context providers
-│   │   │   ├── stores/      # Zustand stores
-│   │   │   └── ClinicalApp.tsx
-│   │   ├── public/          # Static assets
-│   │   │   └── locales/     # Translation files
-│   │   └── project.json     # Nx project configuration
-│   ├── registration/        # Patient registration module
-│   │   ├── src/             # Source code
-│   │   │   ├── components/  # UI components
-│   │   │   ├── hooks/       # Custom hooks
-│   │   │   ├── pages/       # Page components
-│   │   │   └── RegistrationApp.tsx
-│   │   ├── public/          # Static assets
-│   │   │   └── locales/     # Translation files
-│   │   └── project.json     # Nx project configuration
-│   └── sample-app-module/   # Example extensible app
-├── packages/                # Shared libraries
-│   ├── bahmni-design-system/ # Reusable UI components (Carbon-based)
-│   │   ├── src/
-│   │   │   ├── atoms/       # Basic UI components
-│   │   │   ├── molecules/   # Composite components
-│   │   │   └── organisms/   # Complex components
-│   │   └── project.json
-│   ├── bahmni-services/     # API integration & business logic
-│   │   ├── src/
-│   │   │   ├── api/         # HTTP client & interceptors
-│   │   │   ├── patientService/
-│   │   │   ├── medicationService/
-│   │   │   ├── allergyService/
-│   │   │   ├── observationService/
-│   │   │   ├── i18n/        # Translation utilities
-│   │   │   ├── date/        # Date utilities
-│   │   │   └── utils/       # Common utilities
-│   │   └── project.json
-│   └── bahmni-widgets/      # Domain-specific display controls
-│       ├── src/
-│       │   ├── AllergiesTable/
-│       │   ├── MedicationsTable/
-│       │   ├── PatientDetails/
-│       │   └── providers/   # Context providers
-│       └── project.json
-├── distro/                  # Shell application (entry point)
-│   ├── src/
-│   │   ├── app/             # Root routing
-│   │   ├── main.tsx         # Application entry
-│   │   └── index.html       # HTML template
-│   ├── webpack.config.js    # Webpack configuration
-│   └── project.json
-├── docs/                    # Project documentation
-├── public/                  # Static assets
-│   └── locales/             # Translation files
-├── src/                     # Source code
-│   ├── components/          # Reusable UI components
-│   ├── constants/           # Application constants
-│   ├── contexts/            # React contexts
-│   ├── displayControls/     # Clinical data display components
-│   ├── hooks/               # Custom React hooks
-│   ├── layouts/             # Layout components
-│   ├── pages/               # Page components
-│   ├── providers/           # Context providers
-│   ├── schemas/             # JSON schemas
-│   ├── services/            # API services
-│   ├── styles/              # Global styles
-│   ├── types/               # TypeScript type definitions
-│   ├── utils/               # Utility functions
-│   ├── __mocks__/           # Test mocks
-│   └── __tests__/           # Test files
-└── configuration files      # Various config files at root level
+qorlia-bahmni/
+  distro/                       shell, login, branding, routing and proxy
+    src/main.tsx                startup
+    src/app/                    root app and login
+    src/assets/                 branding.json and assets
+    src/preview/                development-only visual sample
+    dist/                       generated output, not hand-edited source
+  apps/
+    home/                       home and signed-in Billing
+    clinical/                   consultation, programmes, beds, inpatient,
+                                theatre and orders
+    registration/               patient search/register/edit
+    appointments/               list, calendar, booking and service settings
+    patient-documents/          patient document workflows
+    admin/                      CSV, audit and order sets
+    reports/                    report jobs and downloads
+    command-palette/            cross-application command UI
+    sample-app-module/          upstream example
+  packages/
+    bahmni-design-system/       shared controls, tokens and branding
+    bahmni-widgets/             domain widgets and configuration/context
+    bahmni-services/            clinical APIs, types and helpers
+  runtime/
+    billing/qorlia_billing_ui/  native Odoo addon and tests
+    reports/                   native report adapter
+    patient-documents/         selected document runtime source
+  scripts/review-host/         protected tester gateway and tests
+  docs/                        guides and dated acceptance evidence
+  .github/                     templates and existing workflows
+  package.json, yarn.lock     tools and dependency versions
+  nx.json                     task inference/dependencies
+  tsconfig.base.json          strict shared TypeScript settings
+  LICENSE, NOTICE             retained licences/credits
 ```
 
-## Main Directories
+## Where to begin a change
 
-### `/docs`
+| Task                  | Source entry                                                                                                 | Coordinate with                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------ |
+| Login/navigation      | [root app](../distro/src/app/app.tsx), [login](../distro/src/app/LoginPage.tsx)                              | auth/shared routing owner      |
+| Home menu             | [HomePage](../apps/home/src/components/HomePage/)                                                            | config/privilege mapping owner |
+| Billing               | [Billing components](../apps/home/src/components/Billing/)                                                   | Billing/native owner           |
+| Appointment list/edit | [pages](../apps/appointments/src/pages/), [routes](../apps/appointments/src/routes/index.tsx)                | shared-service owner           |
+| Patient registration  | [pages](../apps/registration/src/pages/)                                                                     | patient identity/visit owner   |
+| Clinical              | [pages](../apps/clinical/src/pages/), [hooks](../apps/clinical/src/hooks/)                                   | encounter/save owner           |
+| API function          | existing module service or [shared services](../packages/bahmni-services/src/)                               | schema/consumer owner          |
+| Colours/controls      | [design system](../packages/bahmni-design-system/src/)                                                       | shared UI owner                |
+| API proxy             | [webpack](../distro/webpack.config.js), [gateway](../scripts/review-host/server.cjs)                         | security/operator              |
+| Odoo action           | [models](../runtime/billing/qorlia_billing_ui/models/), [tests](../runtime/billing/qorlia_billing_ui/tests/) | native/accounting owner        |
 
-Contains project documentation, including setup guides and component usage documentation. These documents help developers understand how to use and contribute to the project.
+## Typical module layout
 
-### `/public`
+`routes/` maps URLs to screens. `pages/` or `components/` renders a feature. `hooks/` shares React behaviour. `services/` or a shared package performs API requests. `models/` and `constants/` describe data/contracts. `stores/` holds draft state where needed. `public/locales/` supplies translations. `__tests__/` is normally beside the code under test.
 
-Contains static assets that are copied to the build directory during the build process. This includes the HTML template, favicon, logos, and translation files.
+Not every module has all these folders. Follow existing code; do not add empty layers to match a diagram.
 
-### `/src`
+## Source versus generated output
 
-Contains the application source code, organized into several subdirectories:
+Edit reviewed source, not `dist`, `node_modules`, bundles, source maps or only a deployed container. Generated edits vanish during the next build and cannot be reviewed properly.
 
-#### `/components`
+Many projects use inferred Nx configuration and do not have `project.json`. Inspect `package.json` and `nx.json`; do not create configuration merely because an older guide mentioned it.
 
-Reusable UI components that are not specific to any particular feature or domain. These components form the building blocks of the application's user interface.
+Search callers, exports and tests before modifying a helper:
 
-#### `/constants`
+```bash
+rg 'getAllowedTransitions' apps packages
+rg --files apps/appointments/src
+```
 
-Application-wide constants, including error messages, date formats, and other configuration values. Centralizing constants makes them easier to maintain and update.
-
-#### `/contexts`
-
-React contexts for global state management. These contexts provide a way to share state between components without having to pass props down through multiple levels.
-
-#### `/displayControls`
-
-Components for displaying clinical data in a structured format. These specialized components are designed to present medical information in a user-friendly way.
-
-#### `/hooks`
-
-Custom React hooks that encapsulate business logic and data fetching. These hooks provide a clean way to reuse stateful logic across components.
-
-#### `/layouts`
-
-Components that define the overall layout of the application. These components provide the structure for pages and ensure consistent layout across the application.
-
-#### `/pages`
-
-Top-level page components that are rendered by the router. Each page component represents a distinct view in the application.
-
-#### `/providers`
-
-Context providers that wrap the application to provide global state. These providers make context values available to all components in the application.
-
-#### `/schemas`
-
-JSON schemas for validating data structures. These schemas ensure that data conforms to expected formats.
-
-#### `/services`
-
-Modules that handle API communication and other external services. These services abstract the details of interacting with external systems.
-
-#### `/styles`
-
-Global styles for the application. These styles define the overall look and feel of the application.
-
-#### `/types`
-
-TypeScript type definitions for the application. These types ensure type safety throughout the codebase.
-
-#### `/utils`
-
-Utility functions used throughout the application. These functions provide common functionality that can be reused across components.
-
-#### `/\_\_mocks\_\_`
-
-Mock data and functions for testing. These mocks allow tests to run without depending on external systems.
-
-#### `/\_\_tests\_\_`
-
-Test files for components and utilities. These tests ensure that the application works as expected.
-
-### Root Configuration Files
-
-The root directory contains various configuration files for tools used in the project:
-
-- Babel configuration
-- Docker configuration
-- Editor configuration
-- Git configuration
-- Prettier configuration
-- ESLint configuration
-- Jest configuration
-- TypeScript configuration
-- Webpack configuration
-- Package management files
-
-## Conclusion
-
-This high-level overview of the project structure provides a foundation for understanding how the application is organized. For more detailed information about specific aspects of the project, refer to the other documentation files in the `/docs` directory.
+Use editor search if `rg` is unavailable. Environment secrets, cookies, dumps, customer data and private deployment packs stay outside this repo. Do not copy another developer's whole local working folder.

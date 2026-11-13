@@ -29,7 +29,14 @@ export const Modal: React.FC<ModalProps> & {
     <div
       id="modal-root"
       data-testid="modal-root-test-id"
-      aria-label="modal-root-aria-label"
+      role={carbonProps.open ? 'region' : undefined}
+      aria-label={
+        carbonProps.open
+          ? typeof carbonProps.modalHeading === 'string'
+            ? `${carbonProps.modalHeading} dialog`
+            : 'Open dialog'
+          : undefined
+      }
     >
       <CarbonModal {...carbonProps} data-testid={testId}>
         {children}

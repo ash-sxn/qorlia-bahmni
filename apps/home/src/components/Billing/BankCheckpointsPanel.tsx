@@ -64,6 +64,7 @@ export function BankCheckpointsPanel({
           Back to checkpoint history
         </Button>
         <BankCheckpointAnalysis
+          key={uid}
           uid={uid}
           search={submitted}
           state={state}

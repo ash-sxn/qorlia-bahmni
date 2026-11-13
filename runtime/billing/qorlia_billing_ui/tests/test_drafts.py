@@ -24,6 +24,14 @@ class DraftAdapterTest(TransactionCase):
                 'company_id': cls.env.company.id, 'warehouse_id': warehouse.id,
                 'location_id': warehouse.lot_stock_id.id, 'payment_default_id': term.id,
                 'pricelist_id': pricelist.id})
+        cls.required_analytics = {}
+        for plan in cls.env['account.analytic.plan'].get_relevant_plans(
+                company_id=cls.env.company.id, product=cls.product.id, business_domain='sale_order'):
+            if plan['applicability'] == 'mandatory':
+                account = cls.env['account.analytic.account'].create({
+                    'name': 'QorliaQA Adapter allocation', 'plan_id': plan['id'],
+                    'company_id': cls.env.company.id})
+                cls.required_analytics[str(account.id)] = 100
 
     def payload(self, snapshot):
         return {key: snapshot[key] for key in ('id', 'version', 'values', 'lines')}
@@ -36,7 +44,34 @@ class DraftAdapterTest(TransactionCase):
         draft = self.orders.qorlia_draft_preview(self.payload(draft), {'field': 'shop_id'})
         draft['lines'].append({'id': False, 'values': {'product_id': self.product.id,
             'name': '', 'product_uom_qty': 1, 'discount': 0, 'display_type': False, 'sequence': 10}})
-        return self.orders.qorlia_draft_preview(self.payload(draft), {'field': 'product_id', 'line': 0})
+        draft = self.orders.qorlia_draft_preview(self.payload(draft), {'field': 'product_id', 'line': 0})
+        draft['lines'][0]['values']['analytic_distribution'] = dict(self.required_analytics)
+        return self.orders.qorlia_draft_preview(self.payload(draft), {'field': 'analytic_distribution', 'line': 0})
+
+    def test_confirmation_requires_all_mandatory_native_plans_without_disabling_them(self):
+        plan = self.env['account.analytic.plan'].create({'name': 'QorliaQA Adapter mandatory plan',
+            'company_id': self.env.company.id, 'default_applicability': 'mandatory'})
+        account = self.env['account.analytic.account'].create({'name': 'QorliaQA Adapter added allocation',
+            'plan_id': plan.id, 'company_id': self.env.company.id})
+        draft = self.draft()
+        saved = self.orders.qorlia_draft_save(self.payload(draft), str(uuid.uuid4()))
+        order = self.orders.browse(saved['id'])
+        ready = self.orders.qorlia_order_workflow_load(order.id)
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            self.orders.qorlia_order_workflow_run(order.id, ready['version'], 'confirm')
+        order.invalidate_recordset()
+        self.assertEqual(order.state, 'draft')
+        self.assertFalse(order.invoice_ids or order.picking_ids)
+        fresh = self.orders.qorlia_draft_load(order.id)
+        distribution = self.required_analytics | {str(account.id): 100}
+        fresh['lines'][0]['values']['analytic_distribution'] = distribution
+        updated = self.orders.qorlia_draft_save(self.payload(fresh), str(uuid.uuid4()))
+        self.assertEqual(order.order_line.analytic_distribution, distribution)
+        self.env['ir.config_parameter'].set_param('bahmni_sale.is_invoice_automated', False)
+        ready = self.orders.qorlia_order_workflow_load(updated['id'])
+        self.orders.qorlia_order_workflow_run(order.id, ready['version'], 'confirm')
+        self.assertIn(order.state, ('sale', 'done'))
+        self.assertEqual(plan.default_applicability, 'mandatory')
 
     def test_native_defaults_preview_save_and_retry(self):
         before = self.orders.search_count([])
@@ -205,6 +240,19 @@ class DraftAdapterTest(TransactionCase):
         draft = self.orders.qorlia_draft_preview(self.payload(draft), {'field': 'discount'})
         draft['values']['disc_acc_id'] = self.env['account.account'].search([
             ('account_type', '=', 'income_other'), ('company_id', '=', self.env.company.id)], limit=1).id
+        adjustment_account = self.env['account.account'].browse(draft['values']['disc_acc_id'])
+        adjustment_distribution = {}
+        for plan in self.env['account.analytic.plan'].get_relevant_plans(
+                company_id=self.env.company.id, account=adjustment_account.id, business_domain='invoice'):
+            if plan['applicability'] == 'mandatory':
+                account = self.env['account.analytic.account'].create({
+                    'name': 'QorliaQA Adapter discount allocation', 'plan_id': plan['id'],
+                    'company_id': self.env.company.id})
+                adjustment_distribution[str(account.id)] = 100
+        if adjustment_distribution:
+            self.env['account.analytic.distribution.model'].create({
+                'company_id': self.env.company.id, 'partner_id': self.customer.id,
+                'account_prefix': adjustment_account.code, 'analytic_distribution': adjustment_distribution})
         saved = self.orders.qorlia_draft_save(self.payload(draft), str(uuid.uuid4()))
         ready = self.orders.qorlia_order_workflow_load(saved['id'])
         result = self.orders.qorlia_order_workflow_run(saved['id'], ready['version'], 'confirm')
@@ -215,6 +263,8 @@ class DraftAdapterTest(TransactionCase):
         self.assertEqual(order.invoice_ids.state, 'posted')
         self.assertEqual(order.invoice_ids.invoice_total, 475)
         self.assertEqual(order.invoice_ids.amount_residual, 475)
+        self.assertEqual(order.invoice_ids.invoice_line_ids.filtered('qorlia_adjustment_kind').analytic_distribution,
+            adjustment_distribution or False)
         self.assertFalse(order.invoice_ids._get_unbalanced_moves({'records': order.invoice_ids}))
         self.assertFalse(order.invoice_ids._get_reconciled_payments())
 

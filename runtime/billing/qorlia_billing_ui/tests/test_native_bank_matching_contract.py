@@ -43,6 +43,31 @@ class NativeBankMatchingContractTest(TransactionCase):
         for currency, rate in ((cls.foreign, 2), (cls.third, 4)):
             cls.env['res.currency.rate'].create({'currency_id': currency.id,
                 'company_id': cls.env.company.id, 'name': fields.Date.today(), 'rate': rate})
+        cls.analytic_defaults = {}
+        analytic_accounts = {}
+        for account in (cls.bank, cls.suspense, cls.receivable, cls.payable, cls.income, cls.expense):
+            distribution = {}
+            for plan in cls.env['account.analytic.plan'].get_relevant_plans(
+                    company_id=cls.env.company.id, account=account.id, business_domain='general'):
+                if plan['applicability'] != 'mandatory':
+                    continue
+                if plan['id'] not in analytic_accounts:
+                    analytic_accounts[plan['id']] = cls.env['account.analytic.account'].create({
+                        'name': cls.prefix + ' required allocation', 'plan_id': plan['id'],
+                        'company_id': cls.env.company.id})
+                distribution[str(analytic_accounts[plan['id']].id)] = 100
+            cls.analytic_defaults[account.id] = distribution
+        cls.required_analytic_accounts = analytic_accounts
+
+    def required_distribution(self, account):
+        distribution = {}
+        for plan in self.env['account.analytic.plan'].get_relevant_plans(
+                company_id=self.env.company.id, account=account.id, business_domain='general'):
+            if plan['applicability'] == 'mandatory':
+                self.assertIn(plan['id'], self.required_analytic_accounts,
+                    'Declare a synthetic allocation for this mandatory plan before reviewing the request.')
+                distribution[str(self.required_analytic_accounts[plan['id']].id)] = 100
+        return distribution
 
     def entry(self, amount=100, **values):
         return self.env['account.bank.statement.line'].create({'journal_id': self.journal.id,
@@ -81,7 +106,8 @@ class NativeBankMatchingContractTest(TransactionCase):
                 source.currency_id, -company_amount, amount * sign)
             values.append({'name': self.prefix + ' match ' + str(source.id),
                 'account_id': source.account_id.id, 'partner_id': source.partner_id.id,
-                'currency_id': transaction_currency.id, **amounts})
+                'currency_id': transaction_currency.id,
+                'analytic_distribution': self.required_distribution(source.account_id), **amounts})
         remaining_balance = suspense.balance - sum(row['balance'] for row in values)
         remaining_amount = suspense.amount_currency - sum(row['amount_currency'] for row in values)
         if fee_model:
@@ -133,7 +159,8 @@ class NativeBankMatchingContractTest(TransactionCase):
         return self.env['account.reconcile.model'].create({'name': self.prefix + uuid.uuid4().hex[:5],
             'rule_type': 'writeoff_button', 'line_ids': [Command.create({
                 'label': self.prefix + ' fee', 'account_id': self.expense.id,
-                'amount_type': amount_type, 'amount_string': amount})]})
+                'amount_type': amount_type, 'amount_string': amount,
+                'analytic_distribution': dict(self.analytic_defaults[self.expense.id])})]})
 
     def test_full_inbound_matches_native_receivable(self):
         entry, source = self.entry(), self.candidate()

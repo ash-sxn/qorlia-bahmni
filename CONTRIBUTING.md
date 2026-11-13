@@ -38,3 +38,24 @@ the upstream licence and attribution intact (see [README](README.md)).
 - [Qorlia design system](docs/QORLIA_DESIGN_SYSTEM.md)
 - [i18n guide](docs/i18n-guide.md)
 - [Setup guide](docs/setup-guide.md)
+
+## Implementation rules
+
+- Reuse the existing house components, design tokens, services and dependencies.
+- Preserve native workflows, configuration, identifiers, units, permissions and financial/clinical semantics.
+- Search callers before changing shared types/helpers. Coordinate shared files and API contracts.
+- Add a failing regression for a reproduced bug, then make it pass without weakening the assertion.
+- Handle loading, empty, rejected, unknown and expired states. Do not automatically retry uncertain writes.
+- Preserve keyboard access, focus, readable narrow layouts and translations where the feature supports them.
+- Do not introduce a general framework, dependency upgrade or module rewrite without a demonstrated task need.
+- Keep public copy free of em dashes. Use sentences, commas, colons or parentheses.
+
+## Licensing and private information
+
+Retain [LICENSE](LICENSE), [NOTICE](NOTICE), upstream history and source-file copyright/licence headers. Covered frontend modifications follow its existing MPL terms. Runtime components have their own licences, including the [Billing addon](runtime/billing/LICENSE) and [Reports adapter](runtime/reports/LICENSE). Do not relabel all code under one new licence. Open-sourcing code does not permit removing attribution or using upstream trademarks without permission.
+
+Never commit passwords, `.env` secrets, cookies, tokens, keys, database dumps, real patient/customer records or screenshots containing private data. Check your staged diff before pushing. Hospital branding assets require permission; do not assume a downloaded image is licensed.
+
+If a secret is exposed, notify the owner immediately so it can be revoked/rotated. Deleting the current file does not erase Git history. Do not hide an exposure or rewrite shared history on your own.
+
+Public developer documentation explains architecture and safe contribution. Private server runbooks, credentials, customer operations and deployment packs remain private.

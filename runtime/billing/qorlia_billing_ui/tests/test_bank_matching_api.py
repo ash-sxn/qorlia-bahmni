@@ -89,7 +89,7 @@ class BankMatchingAPITest(native_tests.NativeBankMatchingContractTest):
             'plan_id': plan.id, 'company_id': self.env.company.id})
         payload = {'statement_line_id': entry.id, 'version': entry.qorlia_bank_match_load(entry.id)['version'],
             'action': 'match', 'allocations': [{'line_id': source.id, 'amount': 100,
-                'analytic_distribution': {str(account.id): 100}}], 'fee_model_id': False}
+                'analytic_distribution': self.analytic_defaults[source.account_id.id] | {str(account.id): 100}}], 'fee_model_id': False}
         self.env.cr.flush()
         return entry, source, plan, account, payload
 
@@ -99,13 +99,14 @@ class BankMatchingAPITest(native_tests.NativeBankMatchingContractTest):
         review = entry.qorlia_bank_match_preview(payload)
         self.assertEqual(self.unchanged(entry, source), before)
         new_lines = [row for row in review['after']['account.move.line']['rows'] if isinstance(row['id'], str)]
-        self.assertTrue(any(row['values']['analytic_distribution'] == {str(account.id): 100} for row in new_lines))
+        distribution = payload['allocations'][0]['analytic_distribution']
+        self.assertTrue(any(row['values']['analytic_distribution'] == distribution for row in new_lines))
         self.assertTrue(review['after']['account.analytic.line']['rows'])
         request = {'payload': payload, 'review_version': review['review_version'], 'request_key': str(uuid.uuid4())}
         saved = entry.qorlia_bank_match_save(**request)
         self.assertTrue(saved['accepted'] and source.reconciled)
         counterparts = entry._seek_for_lines()[2]
-        self.assertEqual(counterparts.analytic_distribution, {str(account.id): 100})
+        self.assertEqual(counterparts.analytic_distribution, distribution)
         source.invalidate_recordset()
         self.assertFalse(source.analytic_distribution)
         before = self.unchanged(entry, source)
@@ -185,7 +186,7 @@ class BankMatchingAPITest(native_tests.NativeBankMatchingContractTest):
         payload['version'] = entry.qorlia_bank_match_load(entry.id)['version']
         review = entry.qorlia_bank_match_preview(payload)
         changed = copy.deepcopy(payload)
-        changed['allocations'][0]['analytic_distribution'] = {str(other.id): 100}
+        changed['allocations'][0]['analytic_distribution'] = self.analytic_defaults[source.account_id.id] | {str(other.id): 100}
         before = self.unchanged(entry, source)
         with self.assertRaises(UserError):
             entry.qorlia_bank_match_save(changed, review['review_version'], str(uuid.uuid4()))

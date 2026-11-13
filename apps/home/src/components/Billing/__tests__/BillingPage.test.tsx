@@ -17,6 +17,8 @@ import {
   BillingSessionExpired,
   getChargeOrders,
   getChargeOrderLines,
+  getOrderWorkflow,
+  runOrderWorkflow,
   getInvoiceWorkflow,
   postInvoiceWorkflow,
   getPaymentWorkflow,
@@ -43,7 +45,12 @@ import {
   postInvoiceNote,
   getInvoiceJournal,
   getBankHistory,
+  getInventoryTransfers,
 } from '../billingService';
+import {
+  loadStockWriteRecovery,
+  loadAnyStockWriteRecovery,
+} from '../stockReservationRecovery';
 import { correctionWorkflowFixture } from './correctionWorkflowFixture';
 import { creditWorkflowFixture } from './creditWorkflowFixture';
 import { customerStatementFixture } from './customerStatementFixture';
@@ -56,6 +63,13 @@ import {
   reversalWorkflowFixture,
   reversalResultFixture,
 } from './reversalWorkflowFixture';
+import { returnRequest } from './stockReturnPagedFixture';
+
+jest.mock('../stockReservationRecovery', () => ({
+  ...jest.requireActual('../stockReservationRecovery'),
+  loadStockWriteRecovery: jest.fn(),
+  loadAnyStockWriteRecovery: jest.fn(),
+}));
 
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
@@ -65,6 +79,8 @@ jest.mock('../billingService', () => ({
   signInToBilling: jest.fn(),
   getChargeOrders: jest.fn(),
   getChargeOrderLines: jest.fn(),
+  getOrderWorkflow: jest.fn(),
+  runOrderWorkflow: jest.fn(),
   getInvoiceWorkflow: jest.fn(),
   postInvoiceWorkflow: jest.fn(),
   getPaymentWorkflow: jest.fn(),
@@ -91,22 +107,22 @@ jest.mock('../billingService', () => ({
   postInvoiceNote: jest.fn(),
   getInvoiceJournal: jest.fn(),
   getBankHistory: jest.fn(),
+  getInventoryTransfers: jest.fn(),
 }));
 jest.mock('@bahmni/widgets', () => ({
   useUserPrivilege: jest.fn(),
   useDebounce: (value: string) => value,
-}));
-jest.mock('../../HomePageHeader', () => ({
-  HomePageHeader: () => <header>Qorlia</header>,
+  UserGlobalAction: () => null,
 }));
 jest.mock('../JournalMoneyEditor', () => ({
   JournalMoneyEditor: ({ saved }: { saved: () => void }) => (
     <button onClick={saved}>Complete reviewed monetary save</button>
   ),
 }));
-const show = () =>
+// Existing workflow tests exercise the Accounting view; Cashier is the default.
+const show = (entry = '/?view=accounting') =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[entry]}>
       <QueryClientProvider
         client={
           new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -137,6 +153,34 @@ const invoice = {
   currency_id: [1, 'INR'],
 };
 describe('Billing workspace', () => {
+  it('does not expose inventory before Billing sign-in', async () => {
+    jest.mocked(getBillingSession).mockResolvedValue({ uid: false });
+    show();
+    await screen.findByRole('button', { name: 'Connect Billing' });
+    expect(
+      screen.queryByRole('tab', { name: 'Inventory transfers' }),
+    ).not.toBeInTheDocument();
+    expect(getInventoryTransfers).not.toHaveBeenCalled();
+  });
+  it('loads global inventory only after Billing sign-in and selecting its tab', async () => {
+    jest.mocked(getInventoryTransfers).mockResolvedValue({
+      read_only: true,
+      filters: { search: '', operation: 'all', state: 'all' },
+      offset: 0,
+      next_offset: false,
+      total_count: 0,
+      timezone: 'UTC',
+      rows: [],
+    });
+    show();
+    const tab = await screen.findByRole('tab', { name: 'Inventory transfers' });
+    expect(getInventoryTransfers).not.toHaveBeenCalled();
+    fireEvent.click(tab);
+    expect(
+      await screen.findByText(/No transfers match these filters/),
+    ).toBeInTheDocument();
+    expect(getInventoryTransfers).toHaveBeenCalledTimes(1);
+  });
   it('mounts the bank workspace only behind the signed-in Billing tab', async () => {
     (getBankHistory as jest.Mock).mockResolvedValue({
       rows: [],
@@ -152,6 +196,8 @@ describe('Billing workspace', () => {
   });
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(loadStockWriteRecovery).mockResolvedValue(null);
+    jest.mocked(loadAnyStockWriteRecovery).mockResolvedValue(null);
     (useUserPrivilege as jest.Mock).mockReturnValue({
       userPrivileges: [],
       error: null,
@@ -170,6 +216,26 @@ describe('Billing workspace', () => {
     (getInvoiceBatchReports as jest.Mock).mockResolvedValue([
       { key: 'invoice', name: 'Invoices' },
     ]);
+  });
+  it('shows saved stock recovery on the default invoice tab without requiring an order search', async () => {
+    jest.mocked(loadAnyStockWriteRecovery).mockResolvedValue(returnRequest());
+    show();
+    await screen.findByRole('region', { name: 'Saved stock request' });
+    expect(
+      screen.getByRole('tab', { name: 'Invoices and credit notes' }),
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(loadAnyStockWriteRecovery).toHaveBeenCalledWith(3);
+    expect(getChargeOrders).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: 'Open saved stock workflow' }),
+    ).toBeEnabled();
+  });
+  it('does not inspect stock recovery before Billing sign-in', async () => {
+    jest.mocked(getBillingSession).mockResolvedValue({ uid: false });
+    show();
+    await screen.findByLabelText(/Billing username/);
+    expect(loadStockWriteRecovery).not.toHaveBeenCalled();
+    expect(loadAnyStockWriteRecovery).not.toHaveBeenCalled();
   });
   it('selects only checked rows and opens batch reports without automatically generating a PDF', async () => {
     (getInvoices as jest.Mock).mockResolvedValue([
@@ -247,9 +313,7 @@ describe('Billing workspace', () => {
       await screen.findByRole('button', { name: 'View QorliaQA invoice' }),
     );
     expect(await screen.findByText('Final total')).toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Journal items', exact: true }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Journal items' }));
     fireEvent.click(
       await screen.findByRole('button', {
         name: 'Edit journal amounts and rows',
@@ -711,6 +775,205 @@ describe('Billing workspace', () => {
     expect(recordPaymentWorkflow).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => expect(getInvoices).toHaveBeenCalledTimes(2));
+  });
+  it('opens on the cashier queue and loads only the cashier queues', async () => {
+    (getInvoices as jest.Mock).mockImplementation(
+      async (_search, _offset, _ids, options) =>
+        options?.unpaidOnly
+          ? [{ ...invoice, state: 'posted', name: 'INV/QA/7' }]
+          : [],
+    );
+    show('/');
+    expect(
+      await screen.findByRole('heading', { name: 'Cashier', level: 1 }),
+    ).toBeVisible();
+    expect(
+      await screen.findByRole('button', { name: 'Take payment for INV/QA/7' }),
+    ).toBeEnabled();
+    expect(
+      await screen.findByRole('heading', { name: 'Visits to bill' }),
+    ).toBeVisible();
+    expect(getInvoices).toHaveBeenCalledWith('', 0, undefined, {
+      unpaidOnly: true,
+    });
+    expect(getInvoices).toHaveBeenCalledWith('', 0, undefined, {
+      draftOnly: true,
+    });
+    expect(getChargeOrders).toHaveBeenCalledWith('', 0, 'toBill');
+    // The full accounting invoice list is never loaded in the cashier view.
+    expect(getInvoices).toHaveBeenCalledTimes(2);
+    expect(
+      screen.queryByRole('tab', { name: 'Invoices and credit notes' }),
+    ).not.toBeInTheDocument();
+  });
+  it('records a cashier payment through the reviewed workflow and refreshes the queue', async () => {
+    (getInvoices as jest.Mock).mockImplementation(
+      async (_search, _offset, _ids, options) =>
+        options?.unpaidOnly
+          ? [{ ...invoice, state: 'posted', name: 'INV/QA/7' }]
+          : [],
+    );
+    const unpaidLoads = () =>
+      (getInvoices as jest.Mock).mock.calls.filter(
+        (call) => call[3]?.unpaidOnly,
+      ).length;
+    (getPaymentWorkflow as jest.Mock).mockResolvedValue(
+      paymentWorkflowFixture(),
+    );
+    (previewPaymentWorkflow as jest.Mock).mockResolvedValue(
+      paymentWorkflowFixture(),
+    );
+    (recordPaymentWorkflow as jest.Mock).mockResolvedValue(
+      paymentWorkflowFixture({
+        can_record: false,
+        values: false,
+        invoice: invoiceWorkflowFixture({
+          state: 'posted',
+          name: 'INV/QA/7',
+          can_post: false,
+          open_amount: 0,
+          payment_state: 'in_payment',
+        }),
+      }),
+    );
+    show('/');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Take payment for INV/QA/7' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Review payment' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Record payment' }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Done' }));
+    expect(
+      await screen.findByText('Payment recorded for INV/QA/7. Fully paid.'),
+    ).toBeVisible();
+    expect(getPaymentWorkflow).toHaveBeenCalledWith(7);
+    expect(recordPaymentWorkflow).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(unpaidLoads()).toBe(2));
+  });
+  it('bills a visit from the queue and goes straight to taking payment', async () => {
+    const visit = {
+      id: 9,
+      name: 'S00009',
+      client_order_ref: 'ORD-9',
+      partner_id: [8, 'QorliaQA Visit Patient'],
+      shop_id: [1, 'QA Shop'],
+      date_order: '2026-10-29 08:00:00',
+      state: 'draft',
+      invoice_status: 'no',
+      care_setting: 'opd',
+      provider_name: 'Dr QA',
+      amount_untaxed: 300,
+      amount_tax: 0,
+      amount_total: 300,
+      discount: 0,
+      discount_type: 'none',
+      discount_percentage: 0,
+      chargeable_amount: 0,
+      disc_acc_id: false,
+      round_off_amount: 0,
+      currency_id: [1, 'INR'],
+      invoice_ids: [],
+    };
+    const workflow = {
+      id: 9,
+      name: 'S00009',
+      state: 'draft',
+      version: 'c'.repeat(64),
+      customer: 'QorliaQA Visit Patient',
+      currency: [1, 'INR'],
+      amount_total: 300,
+      can_confirm: true,
+      can_invoice: false,
+      can_advance: false,
+      has_down_payments: false,
+      automation: { delivery: false, invoice: true, legacy_delivery: false },
+      invoices: [],
+      pickings: [],
+    };
+    (getChargeOrders as jest.Mock).mockImplementation(
+      async (_search, _offset, status) => (status === 'toBill' ? [visit] : []),
+    );
+    (getChargeOrderLines as jest.Mock).mockResolvedValue([
+      {
+        id: 1,
+        name: 'Complete blood count',
+        display_type: false,
+        product_id: [20, 'Complete blood count'],
+        product_uom: [1, 'Unit(s)'],
+        product_uom_qty: 1,
+        qty_delivered: 0,
+        qty_invoiced: 0,
+        price_unit: 300,
+        discount: 0,
+        price_subtotal: 300,
+        price_tax: 0,
+        price_total: 300,
+        dispensed: false,
+        lot_id: false,
+        expiry_date: false,
+      },
+    ]);
+    (getOrderWorkflow as jest.Mock).mockResolvedValue(workflow);
+    // Bahmni's invoice automation creates and posts the bill on confirm.
+    (runOrderWorkflow as jest.Mock).mockResolvedValue({
+      ...workflow,
+      state: 'sale',
+      can_confirm: false,
+      invoices: [
+        {
+          id: 7,
+          name: 'INV/QA/7',
+          state: 'posted',
+          total: 300,
+          currency: [1, 'INR'],
+        },
+      ],
+    });
+    (getInvoiceWorkflow as jest.Mock).mockResolvedValue(
+      invoiceWorkflowFixture({
+        state: 'posted',
+        name: 'INV/QA/7',
+        can_post: false,
+        total: 300,
+        open_amount: 300,
+      }),
+    );
+    (getPaymentWorkflow as jest.Mock).mockResolvedValue(
+      paymentWorkflowFixture(),
+    );
+    show('/');
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Bill S00009 for QorliaQA Visit Patient',
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create bill · ₹300.00' }),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Review payment' }),
+    ).toBeVisible();
+    expect(runOrderWorkflow).toHaveBeenCalledWith(workflow, 'confirm');
+    expect(postInvoiceWorkflow).not.toHaveBeenCalled();
+    expect(getPaymentWorkflow).toHaveBeenCalledWith(7);
+  });
+  it('switches between cashier and accounting from the side navigation', async () => {
+    show('/');
+    await screen.findByRole('heading', { name: 'Cashier', level: 1 });
+    fireEvent.click(screen.getByTestId('sidenav-item-accounting'));
+    expect(
+      await screen.findByRole('tab', { name: 'Invoices and credit notes' }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await waitFor(() => expect(getInvoices).toHaveBeenCalledWith('', 0));
+    fireEvent.click(screen.getByTestId('sidenav-item-cashier'));
+    expect(
+      await screen.findByRole('heading', { name: 'Bills to collect' }),
+    ).toBeVisible();
   });
   it('applies only the reviewed native credit and refreshes invoice balances', async () => {
     (getInvoices as jest.Mock).mockResolvedValue([

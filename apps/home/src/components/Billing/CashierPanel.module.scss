@@ -1,0 +1,206 @@
+@use "@carbon/react/scss/theme" as *;
+@use "@carbon/react/scss/breakpoint" as *;
+
+.panel {
+  background: $layer-01;
+  border: 1px solid $border-subtle-01;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+
+  h2 {
+    margin: 0 0 0.25rem;
+  }
+}
+
+.subtle {
+  color: $text-secondary;
+  font-size: 0.875rem;
+}
+
+.summary {
+  display: flex;
+  gap: 2rem;
+  margin: 0;
+
+  dt {
+    color: $text-secondary;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  dd {
+    margin: 0.25rem 0 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.notice {
+  background: $layer-02;
+  border-left: 3px solid $support-success;
+  padding: 0.75rem 1rem;
+}
+
+.search {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  max-width: 32rem;
+  margin: 1.5rem 0 1rem;
+
+  > :first-child {
+    flex: 1;
+  }
+}
+
+.empty {
+  color: $text-secondary;
+  padding: 2rem 0;
+  text-align: center;
+}
+
+.patient {
+  font-weight: 600;
+}
+
+.amount {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.due {
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  // Tables grow a cell to fit its content, so the buttons only wrap onto a
+  // second line when the cell has a limit.
+  max-width: 8.5rem;
+  margin-left: auto;
+
+  :global(.cds--btn) {
+    padding-inline-end: 0.75rem;
+  }
+}
+
+.feeRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+
+  p {
+    margin: 0;
+  }
+}
+
+.methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border: 0;
+  padding: 0;
+  margin: 0 0 1rem;
+
+  legend {
+    font-size: 0.75rem;
+    color: $text-secondary;
+    margin-bottom: 0.5rem;
+  }
+}
+
+.review {
+  background: $layer-02;
+  border-left: 3px solid $border-interactive;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+
+  p {
+    margin: 0 0 0.5rem;
+  }
+}
+
+.section {
+  margin-top: 2rem;
+
+  h3 {
+    margin: 0 0 0.25rem;
+  }
+}
+
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.dayEndReport {
+  h3 {
+    margin: 1rem 0 0.75rem;
+  }
+}
+
+.noPrint {
+  @media print {
+    display: none !important;
+  }
+}
+
+// While the day-end report prints, only that report is on the page.
+@media print {
+  :global(body.qorlia-print-day-end) * {
+    visibility: hidden;
+  }
+
+  :global(body.qorlia-print-day-end) .dayEnd,
+  :global(body.qorlia-print-day-end) .dayEnd * {
+    visibility: visible;
+  }
+
+  :global(body.qorlia-print-day-end) .dayEnd {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    border: 0;
+    margin: 0;
+  }
+
+  :global(body.qorlia-print-day-end) .dayEnd form {
+    display: none;
+  }
+}
+
+// Seven columns fit a narrow desk screen once the cell padding is tighter.
+.compact {
+  th,
+  td {
+    padding-inline: 0.625rem;
+  }
+}

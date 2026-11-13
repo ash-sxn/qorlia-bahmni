@@ -4,6 +4,7 @@ import {
   FHIR_ENCOUNTER_TYPE_CODE_SYSTEM,
 } from '../../constants/fhir';
 import { getActiveVisit, getEncounterByUuid } from '../../encounterService';
+import { getVisitLocationUUID } from '../../visitService';
 import { resolveEncounterMatchDecision } from '../encounterMatchDecisionMapper';
 import {
   searchEncounters,
@@ -11,6 +12,7 @@ import {
 } from '../encounterSessionService';
 
 jest.mock('../../encounterService');
+jest.mock('../../visitService');
 jest.mock('../encounterSessionService', () => ({
   ...jest.requireActual('../encounterSessionService'),
   searchEncounters: jest.fn(),
@@ -82,9 +84,38 @@ const mockSearches = (
 beforeEach(() => {
   jest.clearAllMocks();
   mockGetEncounterSessionDuration.mockResolvedValue(30);
+  jest
+    .mocked(getVisitLocationUUID)
+    .mockResolvedValue({ uuid: 'parent-location' });
 });
 
 describe('resolveEncounterMatchDecision', () => {
+  it('selects the active visit at the resolved parent facility', async () => {
+    const own = createEncounter('own-encounter', LOCATION_UUID);
+    const other = {
+      ...own,
+      id: 'other-encounter',
+      partOf: { reference: 'Encounter/other-visit' },
+    };
+    mockSearches([other, own], [other, own]);
+    mockGetActiveVisit.mockImplementation(async (_patient, location) => ({
+      ...createActiveVisit(),
+      id: location === 'parent-location' ? VISIT_UUID : 'other-visit',
+    }));
+    await expect(
+      resolveEncounterMatchDecision(
+        PATIENT_UUID,
+        PRACTITIONER_UUID,
+        LOCATION_UUID,
+        ENCOUNTER_TYPE_UUID,
+      ),
+    ).resolves.toMatchObject({ matched: true, encounter: own });
+    expect(getVisitLocationUUID).toHaveBeenCalledWith(LOCATION_UUID);
+    expect(mockGetActiveVisit).toHaveBeenCalledWith(
+      PATIENT_UUID,
+      'parent-location',
+    );
+  });
   it.each([0, -1, NaN, Infinity, -Infinity, Number.MAX_VALUE])(
     'blocks encounter searches when the supplied session policy is unusable: %s',
     async (duration) => {
@@ -153,7 +184,10 @@ describe('resolveEncounterMatchDecision', () => {
         reasons: ['MATCHED'],
       });
       expect(mockGetEncounterByUuid).toHaveBeenCalledWith(encounter.id);
-      expect(mockGetActiveVisit).toHaveBeenCalledWith(PATIENT_UUID);
+      expect(mockGetActiveVisit).toHaveBeenCalledWith(
+        PATIENT_UUID,
+        'parent-location',
+      );
       expect(mockSearchEncounters).toHaveBeenCalledTimes(2);
     });
 
