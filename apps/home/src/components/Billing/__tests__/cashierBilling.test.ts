@@ -17,6 +17,7 @@ import {
   billVisit,
   canAddCharges,
   finaliseInvoice,
+  finaliseRefund,
   MAX_PRICED_PRODUCTS,
   needsDepartment,
   priceProducts,
@@ -270,6 +271,64 @@ describe('finaliseInvoice', () => {
     await expect(finaliseInvoice(11, jest.fn())).resolves.toEqual({
       kind: 'blocked',
       message: expect.stringContaining('credit note'),
+    });
+    expect(postInvoiceWorkflow).not.toHaveBeenCalled();
+  });
+});
+
+describe('finaliseRefund', () => {
+  const credit = (overrides: Partial<InvoiceWorkflow> = {}) =>
+    invoice({ id: 21, move_type: 'out_refund', ...overrides });
+
+  it('posts a draft credit note and asks for the payout', async () => {
+    const onStage = jest.fn();
+    jest.mocked(getInvoiceWorkflow).mockResolvedValue(credit());
+    jest
+      .mocked(postInvoiceWorkflow)
+      .mockResolvedValue(credit({ state: 'posted', open_amount: 500 }));
+    await expect(finaliseRefund(21, onStage)).resolves.toEqual({
+      kind: 'pay',
+      invoiceId: 21,
+    });
+    expect(onStage).toHaveBeenCalledWith('post');
+  });
+
+  it('does not post a credit note that is already posted', async () => {
+    jest
+      .mocked(getInvoiceWorkflow)
+      .mockResolvedValue(credit({ state: 'posted', open_amount: 0 }));
+    await expect(finaliseRefund(21, jest.fn())).resolves.toEqual({
+      kind: 'done',
+    });
+    expect(postInvoiceWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('refuses a customer bill, an unbalanced or unpostable credit note', async () => {
+    jest.mocked(getInvoiceWorkflow).mockResolvedValueOnce(invoice());
+    await expect(finaliseRefund(11, jest.fn())).resolves.toEqual({
+      kind: 'blocked',
+      message: expect.stringContaining('not a credit note'),
+    });
+    jest
+      .mocked(getInvoiceWorkflow)
+      .mockResolvedValueOnce(credit({ ledger_balanced: false }));
+    await expect(finaliseRefund(21, jest.fn())).resolves.toEqual({
+      kind: 'blocked',
+      message: expect.stringContaining('does not balance'),
+    });
+    jest
+      .mocked(getInvoiceWorkflow)
+      .mockResolvedValueOnce(credit({ can_post: false }));
+    await expect(finaliseRefund(21, jest.fn())).resolves.toEqual({
+      kind: 'blocked',
+      message: expect.stringContaining('cannot be finalised'),
+    });
+    jest
+      .mocked(getInvoiceWorkflow)
+      .mockResolvedValueOnce(credit({ state: 'cancel' }));
+    await expect(finaliseRefund(21, jest.fn())).resolves.toEqual({
+      kind: 'blocked',
+      message: expect.stringContaining('cancelled'),
     });
     expect(postInvoiceWorkflow).not.toHaveBeenCalled();
   });

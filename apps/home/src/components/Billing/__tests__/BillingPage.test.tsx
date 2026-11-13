@@ -854,6 +854,70 @@ describe('Billing workspace', () => {
     expect(recordPaymentWorkflow).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(unpaidLoads()).toBe(2));
   });
+  it('refunds a paid bill: credit note, finalise, then pay back from the cashier desk', async () => {
+    (getInvoices as jest.Mock).mockImplementation(
+      async (_search, _offset, _ids, options) =>
+        options?.paidOnly
+          ? [
+              {
+                ...invoice,
+                state: 'posted',
+                name: 'INV/QA/7',
+                payment_state: 'paid',
+                amount_residual: 0,
+              },
+            ]
+          : [],
+    );
+    (getReversalWorkflow as jest.Mock).mockResolvedValue(
+      reversalWorkflowFixture(),
+    );
+    (previewReversalWorkflow as jest.Mock).mockResolvedValue(
+      reversalWorkflowFixture(),
+    );
+    (runReversalWorkflow as jest.Mock).mockResolvedValue(
+      reversalResultFixture(),
+    );
+    const postedCredit = invoiceWorkflowFixture({
+      id: 8,
+      name: 'RINV/QA/8',
+      move_type: 'out_refund',
+      state: 'posted',
+      can_post: false,
+    });
+    (getInvoiceWorkflow as jest.Mock).mockResolvedValue(
+      invoiceWorkflowFixture({ id: 8, move_type: 'out_refund' }),
+    );
+    (postInvoiceWorkflow as jest.Mock).mockResolvedValue(postedCredit);
+    (getPaymentWorkflow as jest.Mock).mockResolvedValue(
+      paymentWorkflowFixture({ invoice: postedCredit }),
+    );
+    show('/');
+    fireEvent.click(await screen.findByRole('button', { name: 'Paid' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Refund INV/QA/7' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Review credit note' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: /Confirm credit-note creation/,
+      }),
+    );
+    expect(await screen.findByText(/saved as a draft/)).toBeVisible();
+    expect(postInvoiceWorkflow).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Finalise and pay back' }),
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'Pay refund · RINV/QA/8' }),
+    ).toBeVisible();
+    expect(getReversalWorkflow).toHaveBeenCalledWith(7);
+    expect(postInvoiceWorkflow).toHaveBeenCalledTimes(1);
+    expect(getPaymentWorkflow).toHaveBeenCalledWith(8);
+    expect(recordPaymentWorkflow).not.toHaveBeenCalled();
+  });
   it('bills a visit from the queue and goes straight to taking payment', async () => {
     const visit = {
       id: 9,

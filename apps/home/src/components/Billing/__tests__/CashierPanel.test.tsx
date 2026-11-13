@@ -37,6 +37,7 @@ const bill = (overrides: Partial<Invoice> = {}): Invoice => ({
 const show = (props: Partial<Parameters<typeof CashierPanel>[0]> = {}) => {
   const handlers = {
     takePayment: jest.fn(),
+    refund: jest.fn(),
     print: jest.fn(),
     reconnect: jest.fn(),
   };
@@ -135,4 +136,44 @@ it('asks the cashier to reconnect when the Billing session expires', async () =>
     await screen.findByRole('button', { name: 'Reconnect Billing' }),
   );
   expect(reconnect).toHaveBeenCalledTimes(1);
+});
+
+it('lists paid bills with the amount paid and opens a refund', async () => {
+  jest.mocked(getInvoices).mockResolvedValue([
+    bill({ payment_state: 'paid', amount_residual: 0 }),
+    bill({
+      id: 9,
+      name: 'INV/QA/9',
+      partner_id: [10, 'Second Patient'],
+      payment_state: 'partial',
+      amount_residual: 200,
+    }),
+  ]);
+  const { refund, takePayment } = show();
+  await screen.findByText('Bills to collect');
+  fireEvent.click(screen.getByRole('button', { name: 'Paid' }));
+  expect(screen.getByRole('button', { name: 'Paid' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  expect(getInvoices).toHaveBeenLastCalledWith('', 0, undefined, {
+    paidOnly: true,
+  });
+  const row = await screen.findByRole('row', { name: /Second Patient/ });
+  expect(within(row).getByText('Part paid')).toBeVisible();
+  expect(within(row).getByText('₹300.00')).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Paid bills' })).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: /Take payment/ }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Refund INV/QA/7' }));
+  expect(refund).toHaveBeenCalledWith(7);
+  expect(takePayment).not.toHaveBeenCalled();
+});
+
+it('shows an empty paid list', async () => {
+  jest.mocked(getInvoices).mockResolvedValue([]);
+  show();
+  fireEvent.click(screen.getByRole('button', { name: 'Paid' }));
+  expect(await screen.findByText('No paid bills.')).toBeVisible();
 });

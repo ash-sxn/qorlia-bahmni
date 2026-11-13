@@ -17,31 +17,50 @@ const formatDate = (value: string | false) =>
       }).format(new Date(`${value}T00:00:00Z`))
     : 'No date';
 
+type Mode = 'collect' | 'refund';
+
+const paidLabel = (state: string) =>
+  state === 'partial'
+    ? 'Part paid'
+    : state === 'in_payment'
+      ? 'In payment'
+      : 'Paid';
+
 /**
- * The cashier's queue: posted bills that still have money to collect. Payment
- * and printing open the same reviewed native workflows as the Accounting view.
+ * The cashier's queue: posted bills that still have money to collect, or bills
+ * that already took money and may need a refund. Payment, refunds and printing
+ * open the same reviewed native workflows as the Accounting view.
  */
 export function CashierPanel({
   uid,
   notice,
   takePayment,
+  refund,
   print,
   reconnect,
 }: {
   uid: number;
   notice: string;
   takePayment: (invoiceId: number) => void;
+  refund: (invoiceId: number) => void;
   print: (invoiceId: number) => void;
   reconnect: () => void;
 }) {
   const [search, setSearch] = useState('');
   const [submittedSearch, setSubmittedSearch] = useState('');
   const [offset, setOffset] = useState(0);
+  const [mode, setMode] = useState<Mode>('collect');
   const [printFailure, setPrintFailure] = useState<number | null>(null);
+  const collecting = mode === 'collect';
   const bills = useQuery({
-    queryKey: ['billing', 'cashier', uid, submittedSearch, offset],
+    queryKey: ['billing', 'cashier', uid, mode, submittedSearch, offset],
     queryFn: () =>
-      getInvoices(submittedSearch, offset, undefined, { unpaidOnly: true }),
+      getInvoices(
+        submittedSearch,
+        offset,
+        undefined,
+        collecting ? { unpaidOnly: true } : { paidOnly: true },
+      ),
     retry: false,
     refetchOnMount: 'always',
   });
@@ -62,6 +81,13 @@ export function CashierPanel({
   const singleCurrency = currencies.size === 1 ? [...currencies][0] : null;
   const totalDue = rows.reduce((sum, bill) => sum + bill.amount_residual, 0);
 
+  const switchMode = (next: Mode) => {
+    if (next === mode) return;
+    setMode(next);
+    setOffset(0);
+    setPrintFailure(null);
+  };
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setOffset(0);
@@ -72,12 +98,16 @@ export function CashierPanel({
     <section className={cashier.panel} aria-labelledby="cashier-heading">
       <div className={cashier.header}>
         <div>
-          <h2 id="cashier-heading">Bills to collect</h2>
+          <h2 id="cashier-heading">
+            {collecting ? 'Bills to collect' : 'Paid bills'}
+          </h2>
           <p className={cashier.subtle}>
-            Finalised bills with an amount still due.
+            {collecting
+              ? 'Finalised bills with an amount still due.'
+              : 'Bills that took a payment. Refund one from here.'}
           </p>
         </div>
-        {bills.isSuccess ? (
+        {bills.isSuccess && collecting ? (
           <dl className={cashier.summary}>
             <div>
               <dt>Waiting</dt>
@@ -106,6 +136,25 @@ export function CashierPanel({
         </p>
       ) : null}
 
+      <div className={cashier.modes} role="group" aria-label="Show bills">
+        <Button
+          size="sm"
+          kind={collecting ? 'primary' : 'tertiary'}
+          aria-pressed={collecting}
+          onClick={() => switchMode('collect')}
+        >
+          To collect
+        </Button>
+        <Button
+          size="sm"
+          kind={collecting ? 'tertiary' : 'primary'}
+          aria-pressed={!collecting}
+          onClick={() => switchMode('refund')}
+        >
+          Paid
+        </Button>
+      </div>
+
       <form className={cashier.search} onSubmit={submit} role="search">
         <TextInput
           id="cashier-search"
@@ -129,9 +178,13 @@ export function CashierPanel({
       ) : null}
       {bills.isSuccess && rows.length === 0 ? (
         <p className={cashier.empty}>
-          {submittedSearch
-            ? 'No bills waiting for payment match this search.'
-            : 'No bills waiting for payment.'}
+          {collecting
+            ? submittedSearch
+              ? 'No bills waiting for payment match this search.'
+              : 'No bills waiting for payment.'
+            : submittedSearch
+              ? 'No paid bills match this search.'
+              : 'No paid bills.'}
         </p>
       ) : null}
 
@@ -139,7 +192,7 @@ export function CashierPanel({
         <div className={`${styles.tableScroll} ${cashier.compact}`}>
           <table>
             <caption className={cashier.visuallyHidden}>
-              Bills waiting for payment
+              {collecting ? 'Bills waiting for payment' : 'Paid bills'}
             </caption>
             <thead>
               <tr>
@@ -150,7 +203,7 @@ export function CashierPanel({
                   Total
                 </th>
                 <th scope="col" className={cashier.amount}>
-                  Due
+                  {collecting ? 'Due' : 'Paid'}
                 </th>
                 <th scope="col">Status</th>
                 <th scope="col">
@@ -172,10 +225,19 @@ export function CashierPanel({
                       {money(bill.amount_total, bill.currency_id[1])}
                     </td>
                     <td className={`${cashier.amount} ${cashier.due}`}>
-                      {money(bill.amount_residual, bill.currency_id[1])}
+                      {money(
+                        collecting
+                          ? bill.amount_residual
+                          : bill.amount_total - bill.amount_residual,
+                        bill.currency_id[1],
+                      )}
                     </td>
                     <td>
-                      {bill.payment_state === 'partial' ? (
+                      {!collecting ? (
+                        <Tag type="green" size="sm">
+                          {paidLabel(bill.payment_state)}
+                        </Tag>
+                      ) : bill.payment_state === 'partial' ? (
                         <Tag type="blue" size="sm">
                           Part paid
                         </Tag>
@@ -187,13 +249,24 @@ export function CashierPanel({
                     </td>
                     <td>
                       <div className={cashier.actions}>
-                        <Button
-                          size="sm"
-                          onClick={() => takePayment(bill.id)}
-                          aria-label={`Take payment for ${name}`}
-                        >
-                          Take payment
-                        </Button>
+                        {collecting ? (
+                          <Button
+                            size="sm"
+                            onClick={() => takePayment(bill.id)}
+                            aria-label={`Take payment for ${name}`}
+                          >
+                            Take payment
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            kind="tertiary"
+                            onClick={() => refund(bill.id)}
+                            aria-label={`Refund ${name}`}
+                          >
+                            Refund
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           kind="ghost"

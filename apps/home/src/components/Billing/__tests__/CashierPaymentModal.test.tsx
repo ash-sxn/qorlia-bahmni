@@ -253,6 +253,46 @@ it('does not offer payment on a bill that does not balance', async () => {
   ).not.toBeInTheDocument();
 });
 
+it('pays a credit note back to the patient, never more than is owed', async () => {
+  const credit = (openAmount: number) =>
+    invoiceWorkflowFixture({
+      move_type: 'out_refund',
+      state: 'posted',
+      name: 'RINV/QA/3',
+      can_post: false,
+      open_amount: openAmount,
+    });
+  jest
+    .mocked(getPaymentWorkflow)
+    .mockResolvedValue(workflow({ invoice: credit(500) }));
+  jest
+    .mocked(previewPaymentWorkflow)
+    .mockImplementation(async (_invoice, values) =>
+      workflow({ invoice: credit(500), values }),
+    );
+  jest
+    .mocked(recordPaymentWorkflow)
+    .mockResolvedValue(workflow({ invoice: credit(0) }));
+  show();
+
+  expect(
+    await screen.findByRole('heading', { name: 'Pay refund · RINV/QA/3' }),
+  ).toBeVisible();
+  expect(screen.getByText(/To pay back/)).toBeVisible();
+  const amount = screen.getByLabelText('Amount paid back');
+  fireEvent.change(amount, { target: { value: '600' } });
+  expect(screen.getByRole('button', { name: 'Review refund' })).toBeDisabled();
+  fireEvent.change(amount, { target: { value: '500' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Review refund' }));
+  expect(await screen.findByText('The refund will be complete.')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Record refund' }));
+  expect(
+    await screen.findByText(
+      /₹500.00 paid back for RINV\/QA\/3. Refund complete./,
+    ),
+  ).toBeVisible();
+});
+
 describe('orderMethods', () => {
   const journals: [number, string][] = [
     [1, 'Bank'],

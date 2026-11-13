@@ -72,6 +72,55 @@ async function settleInvoice(
     : { kind: 'done' };
 }
 
+export type RefundOutcome =
+  /** A posted credit note with money to pay back: open the refund payment. */
+  | { kind: 'pay'; invoiceId: number }
+  /** The credit note is settled; nothing is left to pay back. */
+  | { kind: 'done' }
+  /** The refund cannot continue here; the reason is shown to the cashier. */
+  | { kind: 'blocked'; message: string };
+
+/**
+ * Finalises one customer credit note and reports what is left to pay back.
+ * Posting uses the same reviewed native workflow as the Accounting view; a
+ * credit note that is already posted is only re-read.
+ */
+export async function finaliseRefund(
+  creditId: number,
+  onStage: (stage: BillingStage) => void,
+): Promise<RefundOutcome> {
+  let credit = await getInvoiceWorkflow(creditId);
+  if (credit.move_type !== 'out_refund')
+    return {
+      kind: 'blocked',
+      message: 'This is not a credit note. Check it in Accounting.',
+    };
+  if (!credit.ledger_balanced)
+    return {
+      kind: 'blocked',
+      message:
+        'This credit note does not balance in the accounts. Ask your Billing administrator to review it.',
+    };
+  if (credit.state === 'draft') {
+    if (!credit.can_post)
+      return {
+        kind: 'blocked',
+        message:
+          'This credit note cannot be finalised with your account. Ask your Billing administrator.',
+      };
+    onStage('post');
+    credit = await postInvoiceWorkflow(credit);
+  }
+  if (credit.state !== 'posted')
+    return {
+      kind: 'blocked',
+      message: 'This credit note is cancelled. Check it in Accounting.',
+    };
+  return credit.open_amount > 0
+    ? { kind: 'pay', invoiceId: credit.id }
+    : { kind: 'done' };
+}
+
 /**
  * Takes a visit's charge order from quotation to a collectable bill:
  * confirm, create the invoice, then finalise it. Every step re-reads the native

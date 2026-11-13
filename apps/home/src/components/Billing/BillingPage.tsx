@@ -26,6 +26,7 @@ import {
   getInvoiceLines,
   getInvoices,
   Invoice,
+  InvoiceWorkflow,
   signInToBilling,
 } from './billingService';
 import { BillTarget, BillVisitModal } from './BillVisitModal';
@@ -44,6 +45,7 @@ import { InvoiceJournalModal } from './InvoiceJournalModal';
 import { InvoiceReportsModal } from './InvoiceReportsModal';
 import { InvoiceWorkflowModal } from './InvoiceWorkflowModal';
 import { PaymentWorkflowModal } from './PaymentWorkflowModal';
+import { RefundModal } from './RefundModal';
 import { ReversalWorkflowModal } from './ReversalWorkflowModal';
 import { StockRecoveryNotice } from './StockRecoveryNotice';
 import { ToBillPanel } from './ToBillPanel';
@@ -92,6 +94,9 @@ export function BillingPage() {
   const [cashierPayment, setCashierPayment] = useState<number | null>(null);
   const [creditInvoice, setCreditInvoice] = useState<number | null>(null);
   const [reversalInvoice, setReversalInvoice] = useState<number | null>(null);
+  const [refundCredit, setRefundCredit] = useState<InvoiceWorkflow | null>(
+    null,
+  );
   const [correctionInvoice, setCorrectionInvoice] = useState<number | null>(
     null,
   );
@@ -323,6 +328,7 @@ export function BillingPage() {
                       setPaymentInvoice(null);
                       setBillTarget(null);
                       setCashierPayment(null);
+                      setRefundCredit(null);
                       setCreditInvoice(null);
                       setInvoiceNotice('');
                       await session.refetch();
@@ -366,6 +372,10 @@ export function BillingPage() {
                     takePayment={(invoiceId) => {
                       setInvoiceNotice('');
                       setCashierPayment(invoiceId);
+                    }}
+                    refund={(invoiceId) => {
+                      setInvoiceNotice('');
+                      setReversalInvoice(invoiceId);
                     }}
                     print={setReportInvoice}
                     reconnect={() => {
@@ -1026,7 +1036,9 @@ export function BillingPage() {
                   completed={(result) => {
                     setCashierPayment(null);
                     setInvoiceNotice(
-                      `Payment recorded for ${invoiceName(result.invoice)}. ${result.invoice.open_amount > 0 ? `Still due: ${money(result.invoice.open_amount, result.invoice.currency[1])}.` : 'Fully paid.'}`,
+                      result.invoice.move_type === 'out_refund'
+                        ? `Refund paid for ${invoiceName(result.invoice)}. ${result.invoice.open_amount > 0 ? `Still to pay back: ${money(result.invoice.open_amount, result.invoice.currency[1])}.` : 'Refund complete.'}`
+                        : `Payment recorded for ${invoiceName(result.invoice)}. ${result.invoice.open_amount > 0 ? `Still due: ${money(result.invoice.open_amount, result.invoice.currency[1])}.` : 'Fully paid.'}`,
                     );
                     void queryClient.invalidateQueries({
                       predicate: (query) =>
@@ -1082,6 +1094,31 @@ export function BillingPage() {
                   }}
                 />
               ) : null}
+              {refundCredit !== null ? (
+                <RefundModal
+                  credit={refundCredit}
+                  close={() => setRefundCredit(null)}
+                  pay={(creditId) => {
+                    setRefundCredit(null);
+                    setCashierPayment(creditId);
+                  }}
+                  finished={(message) => {
+                    setRefundCredit(null);
+                    setInvoiceNotice(message);
+                    void queryClient.invalidateQueries({
+                      predicate: (query) =>
+                        query.queryKey[0] === 'billing' &&
+                        query.queryKey[1] !== 'session',
+                    });
+                  }}
+                  reconnect={() => {
+                    setRefundCredit(null);
+                    setInvoiceNotice('');
+                    queryClient.removeQueries({ queryKey: ['billing'] });
+                    void session.refetch();
+                  }}
+                />
+              ) : null}
               {reversalInvoice !== null ? (
                 <ReversalWorkflowModal
                   uid={session.data!.uid as number}
@@ -1097,6 +1134,17 @@ export function BillingPage() {
                   completed={(result) => {
                     setReversalInvoice(null);
                     setSelected(null);
+                    // At the cashier desk a credit note is a refund: go on to
+                    // pay it back unless it only takes effect later.
+                    if (view === 'cashier' && !result.scheduled) {
+                      setRefundCredit(result.credits[0]);
+                      void queryClient.invalidateQueries({
+                        predicate: (query) =>
+                          query.queryKey[0] === 'billing' &&
+                          query.queryKey[1] !== 'session',
+                      });
+                      return;
+                    }
                     setInvoiceNotice(
                       `${invoiceName(result.credits[0])} created. Status: ${result.credits[0].state}.${result.scheduled ? ` Scheduled for ${result.effective_date}; the invoice balance is not reduced now.` : ''}${result.replacements.length ? ` Replacement ${invoiceName(result.replacements[0])} is available.` : ''} No money was transferred.`,
                     );
