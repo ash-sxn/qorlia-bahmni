@@ -28,11 +28,11 @@ import userEvent from '@testing-library/user-event';
 import { Condition } from 'fhir/r4';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { CERTAINITY_CONCEPTS } from '../../../../constants/diagnosis';
+import type { EncounterSessionStartContext } from '../../../../events/startConsultation';
 import { useConceptSearch } from '../../../../hooks/useConceptSearch';
 import { ConceptSearch } from '../../../../models/concepts';
 import { useConditionsAndDiagnosesStore } from '../../../../stores/conditionsAndDiagnosesStore';
 import ConditionsAndDiagnoses from '../ConditionsAndDiagnoses';
-import type { EncounterSessionStartContext } from '../../../../events/startConsultation';
 
 expect.extend(toHaveNoViolations);
 

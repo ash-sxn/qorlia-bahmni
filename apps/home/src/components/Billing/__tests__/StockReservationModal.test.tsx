@@ -7,7 +7,6 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { StockReservationModal } from '../StockReservationModal';
 import {
   BillingActionRejected,
   BillingSessionExpired,
@@ -17,6 +16,7 @@ import {
   saveStockReservation,
   StockReservationRequest,
 } from '../billingService';
+import { StockReservationModal } from '../StockReservationModal';
 import {
   clearStockReservationRecovery,
   loadStockReservationRecovery,

@@ -1080,6 +1080,8 @@ describe('ObservationFormsContainer', () => {
         expect(pin).toBeDisabled();
         await userEvent.click(pin);
         expect(updatePinnedForms).not.toHaveBeenCalled();
+        // The retry message only shows once loading has finished.
+        /* eslint-disable jest/no-conditional-expect */
         if (!isLoading) {
           expect(
             screen.getByText('translated_OBSERVATION_FORM_PIN_UNAVAILABLE'),
@@ -1091,6 +1093,7 @@ describe('ObservationFormsContainer', () => {
           );
           expect(refetch).toHaveBeenCalledTimes(1);
         }
+        /* eslint-enable jest/no-conditional-expect */
         expect(onFormObservationsChange).not.toHaveBeenCalled();
         expect(defaultProps.onViewingFormChange).not.toHaveBeenCalled();
         expect(defaultProps.onRemoveForm).not.toHaveBeenCalled();

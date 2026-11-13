@@ -263,8 +263,8 @@ it.each([
     };
     const draft = { ...makeFulfillmentObservation(field), value };
     const result = validateFulfillmentObservation(field, draft, {});
-    if (error) expect(result).toContain(error);
-    else expect(result).toBeUndefined();
+    // eslint-disable-next-line jest/no-conditional-expect -- one matcher per case
+    expect(result).toEqual(error ? expect.stringContaining(error) : undefined);
   },
 );
 
@@ -605,10 +605,14 @@ it('uses the legacy local minute-precision contract and rejects nonexistent loca
     { ...makeFulfillmentObservation(field), value: skipped },
     {},
   );
-  if (rollsForward) {
-    expect(result).toContain('valid date and time');
-    expect(fulfillmentDateForControl(skipped, true)).toBe('');
-  } else expect(result).toBeUndefined();
+  // Whether this local time exists depends on the machine's time zone.
+  expect({ result, control: fulfillmentDateForControl(skipped, true) }).toEqual(
+    rollsForward
+      ? // eslint-disable-next-line jest/no-conditional-expect -- depends on time zone
+        { result: expect.stringContaining('valid date and time'), control: '' }
+      : // eslint-disable-next-line jest/no-conditional-expect -- depends on time zone
+        { result: undefined, control: expect.anything() },
+  );
   const cleared = {
     ...makeFulfillmentObservation(field),
     uuid: 'saved-date',

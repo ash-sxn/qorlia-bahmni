@@ -65,19 +65,27 @@ describe('routes', () => {
 
   it('resolves /csv-export to concept export', async () => {
     renderAt('/csv-export');
-    expect(await screen.findByTestId('admin-csv-export-page-test-id')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('admin-csv-export-page-test-id'),
+    ).toBeInTheDocument();
   });
 
   it('resolves /audit-log to the audit viewer', async () => {
     renderAt('/audit-log');
-    expect(await screen.findByTestId('admin-audit-log-page-test-id')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('admin-audit-log-page-test-id'),
+    ).toBeInTheDocument();
   });
 
   it('resolves order set list and editor routes', async () => {
     renderAt('/order-sets');
-    expect(await screen.findByTestId('admin-order-sets-page-test-id')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('admin-order-sets-page-test-id'),
+    ).toBeInTheDocument();
     renderAt('/order-sets/new');
-    expect(await screen.findAllByTestId('admin-order-sets-page-test-id')).toHaveLength(2);
+    expect(
+      await screen.findAllByTestId('admin-order-sets-page-test-id'),
+    ).toHaveLength(2);
   });
 
   // NOTE: this asserts the catch-all resolves to `/` within this route table,

@@ -18,9 +18,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
+  canResetAppointmentStatus,
   getAllowedTransitions,
   type TransitionConfig,
 } from './appointmentActions';
+import { formatAppointmentEndTime } from './appointmentTime';
 import { EditAppointmentForm } from './EditAppointmentForm';
 import styles from './styles/index.module.scss';
 
@@ -80,6 +82,8 @@ export const AppointmentListPage = () => {
   const canManage =
     hasPrivilege(userPrivileges, 'app:appointments:manageAppointmentsTab') &&
     hasPrivilege(userPrivileges, 'Manage Appointments');
+  const canReset =
+    canManage && hasPrivilege(userPrivileges, 'Reset Appointment Status');
   const queryClient = useQueryClient();
   const [actionMessage, setActionMessage] = useState('');
   const [editMessage, setEditMessage] = useState('');
@@ -427,7 +431,16 @@ export const AppointmentListPage = () => {
                   <table>
                     <thead>
                       <tr>
-                        <th scope="col">{t('APPOINTMENTS_TIME')}</th>
+                        <th scope="col">
+                          {t(
+                            awaiting
+                              ? 'APPOINTMENTS_TIME'
+                              : 'APPOINTMENTS_START_TIME',
+                          )}
+                        </th>
+                        {!awaiting && (
+                          <th scope="col">{t('APPOINTMENTS_END_TIME')}</th>
+                        )}
                         <th scope="col">{t('APPOINTMENTS_PATIENT')}</th>
                         <th scope="col">{t('APPOINTMENTS_SERVICE')}</th>
                         <th scope="col">{t('APPOINTMENTS_PROVIDER')}</th>
@@ -447,6 +460,14 @@ export const AppointmentListPage = () => {
                               timeStyle: 'short',
                             }).format(new Date(appointment.startDateTime))}
                           </td>
+                          {!awaiting && (
+                            <td>
+                              {formatAppointmentEndTime(
+                                appointment.startDateTime,
+                                appointment.endDateTime,
+                              ) ?? t('APPOINTMENTS_NOT_SPECIFIED')}
+                            </td>
+                          )}
                           <td>
                             <a
                               href={`/bahmni-v2/clinical/${appointment.patient.uuid}`}
@@ -535,6 +556,33 @@ export const AppointmentListPage = () => {
                                     {action}
                                   </button>
                                 ))}
+                                {canReset &&
+                                  canResetAppointmentStatus(
+                                    transitionConfig.data,
+                                    appointment.status,
+                                  ) && (
+                                    <button
+                                      type="button"
+                                      className={styles.textButton}
+                                      disabled={statusChange.isPending}
+                                      onClick={() => {
+                                        if (
+                                          !window.confirm(
+                                            t('APPOINTMENTS_CONFIRM_RESET'),
+                                          )
+                                        )
+                                          return;
+                                        setActionMessage('');
+                                        statusChange.mutate({
+                                          uuid: appointment.uuid,
+                                          status: 'Scheduled',
+                                        });
+                                      }}
+                                      aria-label={`${t('APPOINTMENTS_RESET')}: ${appointment.patient.name}`}
+                                    >
+                                      {t('APPOINTMENTS_RESET')}
+                                    </button>
+                                  )}
                               </div>
                             </td>
                           )}

@@ -43,7 +43,7 @@ New to React or TypeScript? Keep the [beginner code-reading guide](docs/reading-
 
 For a team architecture briefing, practical debugging steps, Git basics and a feature review walkthrough, use the [development playbook](docs/development-playbook.md). Start with its short architecture explanation, then complete the appointment exercise before taking a write workflow.
 
-These updated guides are on `codex/billing-delivery-parity`. If GitHub opens the older default `main` README, select that development branch to read the current guides. A documentation branch and a task's approved code base are different: do not start from unfinished Billing code merely to obtain these guides.
+These guides are on `main`, the Qorlia product branch.
 
 No production credentials, paid AI account or new server is required to start learning the source. Real workflow testing requires approved synthetic backend access. Do not disable authentication to bypass that prerequisite.
 
@@ -370,7 +370,7 @@ installed upgrade or actual concurrent HTTP/browser acceptance.
 
 Clinical-to-ERP synchronization is not enabled in the current isolated tester setup. Do not assume a clinical order produces an invoice there. Full stock fulfillment, remaining clinical parity and separate laboratory/radiology/analytics/outreach interfaces still need work. Clinical AI and national digital-health integrations must not be described as released simply because they are on a roadmap.
 
-Branch selection matters. The current starter-task base is `codex/qorlia-fork-foundation`, not an assumed up-to-date `main`; see [starter issue 3](https://github.com/ash-sxn/qorlia-bahmni/issues/3). Billing increments are in [draft PR 4](https://github.com/ash-sxn/qorlia-bahmni/pull/4), based on [draft PR 2](https://github.com/ash-sxn/qorlia-bahmni/pull/2). Confirm the base in your task before starting. Do not merge these branches yourself or copy unfinished changes into another task.
+Every task starts from an up-to-date `main` and opens its pull request against `main`. Billing, including the Cashier view, is on `main` too.
 
 ## Quick setup overview
 
@@ -380,7 +380,7 @@ Use Node.js 22, Yarn Classic 1.22 and the committed lockfile. Full instructions 
 git clone https://github.com/ash-sxn/qorlia-bahmni.git
 cd qorlia-bahmni
 git fetch origin
-git switch --create codex/your-task origin/codex/qorlia-fork-foundation
+git switch --create yourname/your-task origin/main
 yarn install --frozen-lockfile
 ```
 

@@ -399,8 +399,8 @@ Do not reopen expired access or change your assigned task base to try these APIs
 | Purpose                                         | Where to look                                                                                                   | Important distinction                                               |
 | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | First entry from GitHub                         | [Default README](https://github.com/ash-sxn/qorlia-bahmni)                                                      | Its Qorlia introduction links to the current development handbook   |
-| Current handbook and Billing integration source | `codex/billing-delivery-parity`                                                                                 | Reading this branch does not make it your task's approved code base |
-| Proposed first Appointments task                | [Issue 3](https://github.com/ash-sxn/qorlia-bahmni/issues/3), currently based on `codex/qorlia-fork-foundation` | Confirm the base in the task before creating your branch            |
+| Current handbook and Billing source | `main` | Branch from `main` and open pull requests against it |
+| Proposed first Appointments task | [Issue 3](https://github.com/ash-sxn/qorlia-bahmni/issues/3), based on `main` | Confirm the scope in the task before creating your branch |
 | Unfinished Billing integration                  | [Draft PR 4](https://github.com/ash-sxn/qorlia-bahmni/pull/4)                                                   | Not a completed-product release or permission to merge              |
 | Running review environment                      | Operator's private environment pack                                                                             | Record source, build, backend and configuration versions separately |
 

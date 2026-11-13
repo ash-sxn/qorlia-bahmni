@@ -24,7 +24,7 @@ Do not install Yarn 2/3/4 or replace the lockfile as an onboarding workaround. D
 git clone https://github.com/ash-sxn/qorlia-bahmni.git
 cd qorlia-bahmni
 git fetch origin
-git switch --create codex/your-task origin/codex/qorlia-fork-foundation
+git switch --create yourname/your-task origin/main
 git rev-parse HEAD
 yarn install --frozen-lockfile
 ```

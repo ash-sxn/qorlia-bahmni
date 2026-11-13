@@ -1,41 +1,18 @@
-## Task and scope
+Closes #
 
-- Issue:
-- Approved base branch / starting SHA:
-- Workflow and user problem:
-- Native expected behaviour:
-- What changed, and what is out of scope:
+## What and why
 
-## Architecture and API
+<!-- One or two sentences: what changes for the user, and why. -->
 
-- Pages/services/native models changed:
-- Endpoint, method, payload keys, identities and units:
-- Configuration and privileges:
-- Accepted, rejected and unknown-save handling:
-- Shared-file coordination:
+## How I checked it
 
-## Evidence
+- [ ] `npx nx affected -t lint typecheck test --base=origin/main` passes
+- [ ] Checked in a browser: keyboard, 390 px width, loading, empty and error states
+- [ ] Screenshots or a short screen recording below (synthetic data only)
 
-List exact commands/results. Do not claim a check ran if it was skipped.
+## Notes for the reviewer
 
-- Focused and adjacent tests:
-- Source and test-source types:
-- Lint, formatting and diff check:
-- Build:
-- Native runtime version/tests, if applicable:
-- Approved synthetic browser/API save and native read-back:
-- Denied role, expiry, double-click and recovery:
-- Keyboard, narrow layout, focus and translations:
-- Remaining/unverified cases:
-
-## Review and release
-
-- Maintainer reviewer:
-- Designated tester and replay steps:
-- Clinical/accounting reviewer, if needed:
-- Rollback:
-- Parity/readiness documentation updated:
-- Source accepted or actually released? State which.
+<!-- Anything unfinished, risky or worth a closer look. -->
 
 ## Safety checklist
 

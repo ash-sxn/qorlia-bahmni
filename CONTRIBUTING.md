@@ -1,39 +1,43 @@
 # Contributing to Qorlia
 
-[README](README.md) · [API integration](docs/api-integration-guide.md) · [Testing guide](docs/testing-guide.md) · [Team workflow](docs/team-workflow.md)
+Qorlia's new hospital UI, built on the open-source Bahmni Apps Frontend. Keep
+the upstream licence and attribution intact (see [README](README.md)).
 
-## Before starting
+## Where code goes
 
-Use your own GitHub account. Confirm the issue, owner, approved base branch, scope, synthetic environment and acceptance conditions. The public product repo is separate from the private website. Do not count an invitation or a local install as a completed feature.
+- **`main` is the Qorlia product branch.** Branch from `main` and open every pull
+  request against `main`.
+- Name branches `<your-name>/<short-topic>`, for example `aniket/hospital-overview`.
+- Merged code is not live anywhere until it is deployed. Hospitals currently run
+  the stock Bahmni UI; new screens move over one module at a time.
 
-Read [beginner orientation](docs/developer-start-here.md), [architecture](docs/architecture.md), [repository map](docs/project-structure.md) and the relevant [module guide](docs/module-guide.md). For a new feature, first write the user problem and compare native behaviour.
+## Before you open a pull request
 
-If Git, debugging or a feature review is new to you, follow [the development playbook](docs/development-playbook.md). Module/package READMEs link back to the same setup and testing instructions, so do not follow an older tutorial's commands over this handbook.
+1. Link the GitHub issue and follow its agreed scope.
+2. Run the checks for what you changed:
+   ```bash
+   yarn install
+   npx nx affected -t lint typecheck test --base=origin/main
+   ```
+3. Check the screen in a browser against a local or test backend: keyboard use,
+   a narrow window (390 px), and the loading, empty and error states.
+4. Use synthetic data only. Never put real patient details, passwords, hosts or
+   access links in code, screenshots, issues or pull requests.
 
-## Branch and commit workflow
+## What happens on GitHub
 
-From a fresh clone, replace the task name and use the issue's approved base:
+- **Qorlia CI** runs lint, type checks, unit tests and the build on every pull
+  request. A pull request merges only when it is green and reviewed.
+- Keep pull requests small: one task, ideally under about 600 changed lines.
+  Split bigger work into slices that each work on their own.
+- Ashutosh reviews and merges. Reply to review comments in the pull request.
 
-```bash
-git fetch origin
-git switch --create codex/your-task origin/codex/qorlia-fork-foundation
-git status --short --branch
-```
+## Useful docs
 
-Make a small change for one workflow. Add/update tests, then inspect the diff:
-
-```bash
-git diff
-git diff --check
-git add path/to/your-changed-file
-git diff --cached
-git commit -m "Fix the specific workflow problem"
-git push -u origin codex/your-task
-```
-
-The paths are placeholders. Stage only your intended files, not another person's changes or a whole dirty folder. Configure Git with your own identity. Do not reset, delete or overwrite someone else's uncommitted work. Do not force-push a shared branch without agreement.
-
-Open a draft PR for unfinished work. Request review when evidence is ready. Do not push directly to `main`, merge your own clinical/financial change, deploy, change access policy or buy services as a contribution step. These are owner/operator decisions.
+- [Project structure](docs/project-structure.md) and [architecture](docs/architecture.md)
+- [Qorlia design system](docs/QORLIA_DESIGN_SYSTEM.md)
+- [i18n guide](docs/i18n-guide.md)
+- [Setup guide](docs/setup-guide.md)
 
 ## Implementation rules
 
@@ -45,18 +49,6 @@ Open a draft PR for unfinished work. Request review when evidence is ready. Do n
 - Preserve keyboard access, focus, readable narrow layouts and translations where the feature supports them.
 - Do not introduce a general framework, dependency upgrade or module rewrite without a demonstrated task need.
 - Keep public copy free of em dashes. Use sentences, commas, colons or parentheses.
-
-## What a PR must explain
-
-Link the issue and starting SHA. State the user problem, native behaviour, API mapping, files changed and reason. Include actual commands/results, sanitized screenshots and approved synthetic save/read-back evidence. Distinguish mocked tests, native tests, private API checks and browser acceptance. Record limits and rollback.
-
-Use [the PR template](.github/pull_request_template.md). Existing upstream JIRA fields are not a requirement to invent a JIRA ticket for this fork. The GitHub issue is the Qorlia task reference. A green build is not clinical/accounting sign-off or proof that a feature is released.
-
-## Review and completion
-
-A maintainer reviews the change. The designated tester independently replays the workflow. Clinical/accounting behaviour requires the appropriate domain review. Update the [parity ledger](docs/FEATURE_PARITY.md) and [readiness notes](docs/BACKEND_READINESS.md) with scoped evidence, not a guessed completion percentage.
-
-PR-only collaboration is an expected working rule. Do not assume GitHub branch protection or CI enforces it unless the current repository settings/checks confirm that. Report missing enforcement to the owner; do not configure it independently.
 
 ## Licensing and private information
 

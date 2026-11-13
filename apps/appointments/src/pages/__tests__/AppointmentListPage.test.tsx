@@ -1,9 +1,14 @@
 import type { Appointment } from '@bahmni/services';
 import { useUserPrivilege } from '@bahmni/widgets';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { getAllowedTransitions } from '../appointmentActions';
+import {
+  canResetAppointmentStatus,
+  getAllowedTransitions,
+  type TransitionConfig,
+} from '../appointmentActions';
+
 import {
   AppointmentListPage,
   filterAppointments,
@@ -199,4 +204,218 @@ it('refreshes all appointment views after a status change', async () => {
   expect(mockInvalidateQueries).toHaveBeenCalledWith({
     queryKey: ['appointment-calendar'],
   });
+});
+
+it('offers the configured reset for checked-in appointments only with the reset privilege', () => {
+  const mutate = jest.fn();
+  (useMutation as jest.Mock).mockReturnValue({
+    mutate,
+    isPending: false,
+    isError: false,
+  });
+  (useQuery as jest.Mock).mockImplementation(({ queryKey }) => ({
+    data:
+      queryKey[0] === 'legacy-appointment-actions'
+        ? {
+            config: {
+              allowedActions: ['CheckedIn', 'Completed', 'Missed', 'Cancelled'],
+              allowedActionsByStatus: {
+                CheckedIn: ['Completed', 'Missed', 'Cancelled'],
+              },
+              enableResetAppointmentStatuses: ['CheckedIn'],
+            },
+          }
+        : queryKey[0] === 'appointment-list-day'
+          ? [
+              {
+                uuid: 'appointment-1',
+                patient: { uuid: 'patient-1', name: 'Demo Patient' },
+                status: 'CheckedIn',
+                startDateTime: Date.parse('2099-01-01T09:00:00Z'),
+              },
+            ]
+          : [],
+    isLoading: false,
+    isError: false,
+  }));
+  const managePrivileges = [
+    { name: 'app:appointments' },
+    { name: 'app:appointments:manageAppointmentsTab' },
+    { name: 'Manage Appointments' },
+  ];
+  const privileges = useUserPrivilege as jest.Mock;
+  privileges.mockReturnValue({
+    userPrivileges: managePrivileges,
+    isLoading: false,
+  });
+  const { rerender } = render(
+    <MemoryRouter initialEntries={['/bahmni-v2/appointments/list']}>
+      <AppointmentListPage />
+    </MemoryRouter>,
+  );
+  expect(
+    screen.queryByRole('button', { name: 'Reset: Demo Patient' }),
+  ).not.toBeInTheDocument();
+
+  privileges.mockReturnValue({
+    userPrivileges: [...managePrivileges, { name: 'Reset Appointment Status' }],
+    isLoading: false,
+  });
+  rerender(
+    <MemoryRouter initialEntries={['/bahmni-v2/appointments/list']}>
+      <AppointmentListPage />
+    </MemoryRouter>,
+  );
+  const confirmation = jest.spyOn(window, 'confirm').mockReturnValue(false);
+  fireEvent.click(screen.getByRole('button', { name: 'Reset: Demo Patient' }));
+  expect(mutate).not.toHaveBeenCalled();
+
+  confirmation.mockReturnValue(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Reset: Demo Patient' }));
+
+  expect(mutate).toHaveBeenCalledWith({
+    uuid: 'appointment-1',
+    status: 'Scheduled',
+  });
+  confirmation.mockRestore();
+});
+
+const resetConfigCases: Array<{
+  name: string;
+  statuses: unknown;
+  status: string;
+  expected: boolean;
+}> = [
+  {
+    name: 'configured status',
+    statuses: ['CheckedIn'],
+    status: 'CheckedIn',
+    expected: true,
+  },
+  {
+    name: 'unconfigured status',
+    statuses: ['CheckedIn'],
+    status: 'Missed',
+    expected: false,
+  },
+  {
+    name: 'Scheduled even if configured',
+    statuses: ['Scheduled', 'CheckedIn'],
+    status: 'Scheduled',
+    expected: false,
+  },
+  {
+    name: 'missing configuration',
+    statuses: undefined,
+    status: 'CheckedIn',
+    expected: false,
+  },
+  {
+    name: 'empty configuration',
+    statuses: [],
+    status: 'CheckedIn',
+    expected: false,
+  },
+  {
+    name: 'string configuration',
+    statuses: 'CheckedIn',
+    status: 'CheckedIn',
+    expected: false,
+  },
+  {
+    name: 'number configuration',
+    statuses: 42,
+    status: 'CheckedIn',
+    expected: false,
+  },
+  {
+    name: 'object configuration',
+    statuses: {},
+    status: 'CheckedIn',
+    expected: false,
+  },
+];
+
+it.each(resetConfigCases)(
+  'decides reset availability for $name without throwing',
+  ({ statuses, status, expected }) => {
+    const config = {
+      config: {
+        allowedActions: [],
+        allowedActionsByStatus: {},
+        enableResetAppointmentStatuses: statuses,
+      },
+    } as unknown as TransitionConfig;
+    expect(() => canResetAppointmentStatus(config, status)).not.toThrow();
+    expect(canResetAppointmentStatus(config, status)).toBe(expected);
+  },
+);
+
+it('does not offer reset when the appointment configuration is unavailable', () => {
+  expect(canResetAppointmentStatus(undefined, 'CheckedIn')).toBe(false);
+});
+
+it('shows start and end time columns with a fallback for a missing end', () => {
+  const start = Date.parse('2099-01-01T09:00:00Z');
+  const end = Date.parse('2099-01-01T09:30:00Z');
+  const details = {
+    service: { name: 'ENT OPD Consultation' },
+    provider: { name: 'Demo Provider' },
+    location: { name: 'OPD-1' },
+    status: 'Scheduled',
+  };
+  (useMutation as jest.Mock).mockReturnValue({
+    mutate: jest.fn(),
+    isPending: false,
+    isError: false,
+  });
+  (useQuery as jest.Mock).mockImplementation(({ queryKey }) => ({
+    data:
+      queryKey[0] === 'appointment-list-day'
+        ? [
+            {
+              ...details,
+              uuid: 'appointment-1',
+              patient: { uuid: 'patient-1', name: 'Ends Patient' },
+              startDateTime: start,
+              endDateTime: end,
+            },
+            {
+              ...details,
+              uuid: 'appointment-2',
+              patient: { uuid: 'patient-2', name: 'Open Patient' },
+              startDateTime: start + 60_000,
+            },
+          ]
+        : [],
+    isLoading: false,
+    isError: false,
+  }));
+  (useUserPrivilege as jest.Mock).mockReturnValue({
+    userPrivileges: [{ name: 'app:appointments' }],
+    isLoading: false,
+  });
+  render(
+    <MemoryRouter initialEntries={['/bahmni-v2/appointments/list']}>
+      <AppointmentListPage />
+    </MemoryRouter>,
+  );
+
+  expect(
+    screen.getByRole('columnheader', { name: 'Start time' }),
+  ).toBeVisible();
+  expect(screen.getByRole('columnheader', { name: 'End time' })).toBeVisible();
+  const endText = new Intl.DateTimeFormat(undefined, {
+    timeStyle: 'short',
+  }).format(new Date(end));
+  expect(
+    within(screen.getByRole('row', { name: /Ends Patient/ })).getByText(
+      endText,
+    ),
+  ).toBeVisible();
+  expect(
+    within(screen.getByRole('row', { name: /Open Patient/ })).getByText(
+      'Not specified',
+    ),
+  ).toBeVisible();
 });

@@ -168,3 +168,76 @@ class InvoiceAdjustmentTest(TransactionCase):
         invoice.invalidate_recordset()
         self.assertEqual(invoice.state, 'draft')
         self.assertFalse(invoice.line_ids.filtered('qorlia_adjustment_kind'))
+
+
+@tagged('post_install', '-at_install')
+class InvoiceAdjustmentAnalyticsTest(TransactionCase):
+    # Not a subclass of InvoiceAdjustmentTest: a required plan would make its
+    # undistributed invoices fail for an unrelated reason.
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.customer = cls.env['res.partner'].create({'name': 'QorliaQA Department customer'})
+        cls.income = cls.env['account.account'].search([
+            ('company_id', '=', cls.env.company.id), ('account_type', '=', 'income')], limit=1)
+        cls.adjustment = cls.env['account.account'].search([
+            ('company_id', '=', cls.env.company.id), ('account_type', '=', 'income_other')], limit=1)
+        cls.tax = cls.env['account.tax'].create({'name': 'QorliaQA Department arithmetic tax',
+            'amount': 5, 'type_tax_use': 'sale', 'company_id': cls.env.company.id})
+        # Only this test's plan may be required, whatever the database holds.
+        cls.env['account.analytic.plan'].search([]).write({'default_applicability': 'optional'})
+        cls.env['account.analytic.applicability'].search([]).unlink()
+        cls.env['account.analytic.distribution.model'].search([]).unlink()
+        cls.plan = cls.env['account.analytic.plan'].create({
+            'name': 'QorliaQA Required departments', 'default_applicability': 'mandatory'})
+        cls.outpatient = cls.env['account.analytic.account'].create({
+            'name': 'QorliaQA Outpatient', 'plan_id': cls.plan.id})
+        cls.laboratory = cls.env['account.analytic.account'].create({
+            'name': 'QorliaQA Laboratory', 'plan_id': cls.plan.id})
+
+    def distributed(self, *departments, **values):
+        lines = [Command.create({'name': 'QorliaQA Service %s' % index,
+            'account_id': self.income.id, 'quantity': 1, 'price_unit': 500,
+            'tax_ids': [Command.set(self.tax.ids)],
+            'analytic_distribution': {str(department.id): 100} if department else False})
+            for index, department in enumerate(departments)]
+        return self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': self.customer.id,
+            'invoice_date': fields.Date.today(), 'discount_type': 'fixed', 'discount': 25,
+            'disc_acc_id': self.adjustment.id, 'invoice_line_ids': lines, **values})
+
+    def test_adjustments_follow_the_single_department_of_the_items(self):
+        self.env.company.qorlia_rounding_account_id = self.adjustment
+        invoice = self.distributed(self.outpatient, self.outpatient, round_off_amount=0.25)
+        invoice.with_context(validate_analytic=True).action_post()
+        self.assertEqual(invoice.state, 'posted')
+        adjustments = invoice.line_ids.filtered('qorlia_adjustment_kind')
+        self.assertEqual(len(adjustments), 2)
+        for line in adjustments:
+            self.assertEqual(line.analytic_distribution, {str(self.outpatient.id): 100})
+        self.assertAlmostEqual(sum(invoice.line_ids.mapped('balance')), 0, places=2)
+
+    def test_mixed_departments_are_not_guessed_and_cannot_post(self):
+        invoice = self.distributed(self.outpatient, self.laboratory)
+        with self.assertRaisesRegex(ValidationError, 'analytic distribution'), self.env.cr.savepoint():
+            invoice.with_context(validate_analytic=True).action_post()
+        invoice.invalidate_recordset()
+        self.assertEqual(invoice.state, 'draft')
+
+    def test_items_without_a_department_leave_adjustments_without_one(self):
+        self.plan.default_applicability = 'optional'
+        invoice = self.distributed(False)
+        invoice.with_context(validate_analytic=True).action_post()
+        self.assertEqual(invoice.state, 'posted')
+        self.assertFalse(invoice.line_ids.filtered('qorlia_adjustment_kind').analytic_distribution)
+
+    def test_configured_distribution_models_still_win(self):
+        model_account = self.env['account.analytic.account'].create({
+            'name': 'QorliaQA Discount cost centre', 'plan_id': self.plan.id})
+        self.env['account.analytic.distribution.model'].create({
+            'company_id': self.env.company.id, 'account_prefix': self.adjustment.code,
+            'analytic_distribution': {str(model_account.id): 100}})
+        invoice = self.distributed(self.outpatient)
+        invoice.with_context(validate_analytic=True).action_post()
+        adjustment = invoice.line_ids.filtered('qorlia_adjustment_kind')
+        self.assertEqual(adjustment.analytic_distribution, {str(model_account.id): 100})

@@ -1,5 +1,22 @@
 import { render, screen } from '@testing-library/react';
+import { syntheticCases } from '../../InsuranceDesk/__fixtures__/syntheticCases';
+import { loadCases } from '../../InsuranceDesk/caseCatalogue';
+import { syntheticPolicies } from '../../PolicyLibrary/__fixtures__/syntheticPolicies';
+import { loadPolicyCatalogue } from '../../PolicyLibrary/policyCatalogue';
 import { HomePageGrid } from '../HomePageGrid';
+
+// Only the loader is replaced, so each test can choose an empty or filled catalogue.
+jest.mock('../../PolicyLibrary/policyCatalogue', () => ({
+  ...jest.requireActual('../../PolicyLibrary/policyCatalogue'),
+  loadPolicyCatalogue: jest.fn(),
+}));
+const mockLoadPolicyCatalogue = loadPolicyCatalogue as jest.Mock;
+
+jest.mock('../../InsuranceDesk/caseCatalogue', () => ({
+  ...jest.requireActual('../../InsuranceDesk/caseCatalogue'),
+  loadCases: jest.fn(),
+}));
+const mockLoadCases = loadCases as jest.Mock;
 
 // The grid's behaviour (loading / error / empty / tile rendering) is owned by
 // ModuleTileGrid in @bahmni/widgets and tested there. What home is responsible
@@ -14,6 +31,14 @@ jest.mock('@bahmni/widgets', () => ({
 }));
 
 describe('HomePageGrid', () => {
+  beforeEach(() => {
+    mockLoadPolicyCatalogue.mockReturnValue({
+      ok: true,
+      entries: syntheticPolicies,
+    });
+    mockLoadCases.mockReturnValue({ ok: true, cases: syntheticCases });
+  });
+
   it('delegates to ModuleTileGrid with the home extension point and home i18n keys', () => {
     render(<HomePageGrid />);
 
@@ -31,6 +56,90 @@ describe('HomePageGrid', () => {
         label: 'Billing',
         url: '/bahmni-v2/home/billing',
       }),
+      expect.objectContaining({
+        id: 'qorlia.policy-library',
+        label: 'Policy library',
+        url: '/bahmni-v2/home/policies',
+      }),
+      expect.objectContaining({
+        id: 'qorlia.insurance-desk',
+        label: 'Insurance desk',
+        url: '/bahmni-v2/home/insurance',
+      }),
+    ]);
+  });
+
+  it('gives the Qorlia tiles translation keys', () => {
+    render(<HomePageGrid />);
+
+    const props = JSON.parse(
+      screen.getByTestId('module-tile-grid-mock').dataset.props!,
+    );
+
+    expect(props.additionalModules).toEqual([
+      expect.objectContaining({
+        id: 'qorlia.billing',
+        translationKey: 'HOME_TILE_BILLING',
+      }),
+      expect.objectContaining({
+        id: 'qorlia.policy-library',
+        translationKey: 'HOME_TILE_POLICY_LIBRARY',
+      }),
+      expect.objectContaining({
+        id: 'qorlia.insurance-desk',
+        translationKey: 'HOME_TILE_INSURANCE_DESK',
+      }),
+    ]);
+  });
+
+  it('hides the Policy library tile while the catalogue has no entries', () => {
+    mockLoadPolicyCatalogue.mockReturnValue({ ok: true, entries: [] });
+
+    render(<HomePageGrid />);
+
+    const props = JSON.parse(
+      screen.getByTestId('module-tile-grid-mock').dataset.props!,
+    );
+
+    expect(props.additionalModules).toEqual([
+      expect.objectContaining({ id: 'qorlia.billing' }),
+      expect.objectContaining({ id: 'qorlia.insurance-desk' }),
+    ]);
+  });
+
+  it.each([
+    ['has no cases', { ok: true, cases: [] }],
+    ['fails validation', { ok: false, errors: ['bad case'] }],
+  ])('hides the Insurance desk tile when the list %s', (_case, result) => {
+    mockLoadCases.mockReturnValue(result);
+
+    render(<HomePageGrid />);
+
+    const props = JSON.parse(
+      screen.getByTestId('module-tile-grid-mock').dataset.props!,
+    );
+
+    expect(props.additionalModules).toEqual([
+      expect.objectContaining({ id: 'qorlia.billing' }),
+      expect.objectContaining({ id: 'qorlia.policy-library' }),
+    ]);
+  });
+
+  it('hides the Policy library tile when the catalogue fails validation', () => {
+    mockLoadPolicyCatalogue.mockReturnValue({
+      ok: false,
+      errors: ['bad entry'],
+    });
+
+    render(<HomePageGrid />);
+
+    const props = JSON.parse(
+      screen.getByTestId('module-tile-grid-mock').dataset.props!,
+    );
+
+    expect(props.additionalModules).toEqual([
+      expect.objectContaining({ id: 'qorlia.billing' }),
+      expect.objectContaining({ id: 'qorlia.insurance-desk' }),
     ]);
   });
 
@@ -42,6 +151,12 @@ describe('HomePageGrid', () => {
     );
 
     expect(props.reviewUrls['bahmni.clinical']).toBe('/bahmni-v2/clinical/');
+    expect(props.reviewUrls['qorlia.policy-library']).toBe(
+      '/bahmni-v2/home/policies',
+    );
+    expect(props.reviewUrls['qorlia.insurance-desk']).toBe(
+      '/bahmni-v2/home/insurance',
+    );
     expect(props.reviewUrls['bahmni.orders']).toBe(
       '/bahmni-v2/clinical/orders',
     );

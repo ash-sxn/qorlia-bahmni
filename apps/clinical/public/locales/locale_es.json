@@ -756,5 +756,14 @@
   "PROGRAMS_STATE_SAVE_ERROR": "No se pudo actualizar el estado. Inténtelo de nuevo.",
   "PROGRAMS_TO": "a",
   "PROGRAMS_TITLE": "Programas",
-  "PROGRAMS_UNSUPPORTED_ATTRIBUTE": "Este programa utiliza un atributo que este formulario no puede editar. Use el gestor de Bahmni."
+  "PROGRAMS_UNSUPPORTED_ATTRIBUTE": "Este programa utiliza un atributo que este formulario no puede editar. Use el gestor de Bahmni.",
+  "CLINICAL_WORKSPACE_TODAYS_PATIENTS": "Pacientes de hoy",
+  "CLINICAL_WORKSPACE_TODAYS_PATIENTS_HINT": "Pacientes con una visita abierta iniciada hoy en esta ubicación, incluidos los que llegan sin cita.",
+  "CLINICAL_WORKSPACE_LOADING_VISITS": "Cargando los pacientes de hoy",
+  "CLINICAL_WORKSPACE_VISITS_ERROR": "No se pudieron cargar los pacientes de hoy. Use la búsqueda de pacientes.",
+  "CLINICAL_WORKSPACE_NO_VISITS": "Ningún paciente tiene una visita abierta iniciada hoy en esta ubicación.",
+  "CLINICAL_WORKSPACE_ARRIVED": "Llegada",
+  "CLINICAL_WORKSPACE_VISIT_TYPE": "Tipo de visita",
+  "CLINICAL_WORKSPACE_VISITS_LIMITED": "Se muestran las primeras {{count}} visitas. Use la búsqueda para encontrar otras.",
+  "CLINICAL_WORKSPACE_VISITS": "Visitas"
 }

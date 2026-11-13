@@ -479,6 +479,9 @@ const legacyMedicationStatus = (order: LegacyDrugOrder): MedicationStatus => {
   return MedicationStatus.Active;
 };
 
+// Legacy Bahmni orders can hold empty strings, which must fall through to the
+// next value, so `||` is intended here rather than `??`.
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 const toReadOnlyMedication = (order: LegacyDrugOrder): MedicationRequest => {
   const dosing = order.dosingInstructions;
   const name =
@@ -539,6 +542,7 @@ const toReadOnlyMedication = (order: LegacyDrugOrder): MedicationRequest => {
     },
   };
 };
+/* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
 
 /**
  * Fetches and formats medications for a given patient UUID

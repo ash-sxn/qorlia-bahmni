@@ -50,6 +50,18 @@ class AccountMove(models.Model):
                 invoice.discount = invoice.currency_id.round(
                     (invoice.qorlia_item_subtotal + invoice.amount_tax) * invoice.discount_percentage / 100)
 
+    def _qorlia_adjustment_distribution(self):
+        # Discount and rounding follow the items when they all share one
+        # department, so a hospital that requires departments can still post.
+        # Native distribution models win; mixed or missing departments are left
+        # for an accountant to split.
+        items = self.invoice_line_ids.filtered(
+            lambda line: line.display_type == 'product' and not line.qorlia_adjustment_kind)
+        distributions = {json.dumps(line.analytic_distribution or {}, sort_keys=True) for line in items}
+        if len(distributions) != 1:
+            return False
+        return json.loads(distributions.pop()) or False
+
     def _qorlia_adjustment_values(self):
         self.ensure_one()
         gross = self.qorlia_item_subtotal + self.amount_tax
@@ -81,6 +93,11 @@ class AccountMove(models.Model):
         commands.extend(Command.create(values) for values in self._qorlia_adjustment_values())
         if commands:
             self.write({'invoice_line_ids': commands})
+        undistributed = self.invoice_line_ids.filtered(
+            lambda line: line.qorlia_adjustment_kind and not line.analytic_distribution)
+        distribution = undistributed and self._qorlia_adjustment_distribution()
+        if distribution:
+            undistributed.write({'analytic_distribution': distribution})
 
     def _post(self, soft=True):
         for invoice in self.filtered(lambda move: move.state == 'draft' and move.move_type in ('out_invoice', 'out_refund')):
