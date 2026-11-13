@@ -1,4 +1,3 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
   getAvailableLocations,
   getCurrentProvider,
@@ -7,6 +6,7 @@ import {
   setCookie,
   updateSessionLocation,
 } from '@bahmni/services';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { LoginPage } from '../LoginPage';
 

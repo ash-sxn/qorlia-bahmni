@@ -9,7 +9,11 @@ jest.mock('@bahmni/services', () => ({
 it('uses the legacy inpatient search endpoint and session context', async () => {
   jest.mocked(get).mockResolvedValueOnce([]);
 
-  await fetchIpdPatients('emrapi.sqlSearch.admittedPatients', 'loc', 'provider');
+  await fetchIpdPatients(
+    'emrapi.sqlSearch.admittedPatients',
+    'loc',
+    'provider',
+  );
 
   expect(get).toHaveBeenCalledWith('/openmrs/ws/rest/v1/bahmnicore/sql', {
     params: {

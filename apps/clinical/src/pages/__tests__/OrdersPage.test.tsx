@@ -179,16 +179,14 @@ it.each([1791067650000, '2026-10-04T04:07:30.000Z'])(
     jest
       .mocked(findFulfillmentEncounter)
       .mockResolvedValue({ observations: [] });
-    jest
-      .mocked(getFulfillmentOrders)
-      .mockResolvedValue([
-        {
-          orderUuid: 'order',
-          orderNumber: 'ORD-5',
-          orderDate: date,
-          concept: { name: 'Chest X-ray' },
-        },
-      ]);
+    jest.mocked(getFulfillmentOrders).mockResolvedValue([
+      {
+        orderUuid: 'order',
+        orderNumber: 'ORD-5',
+        orderDate: date,
+        concept: { name: 'Chest X-ray' },
+      },
+    ]);
     renderPage('/clinical/orders/patient/Radiology%20Order');
     expect(
       await screen.findByText(
