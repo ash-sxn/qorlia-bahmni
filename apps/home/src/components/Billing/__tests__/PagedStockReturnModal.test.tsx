@@ -38,6 +38,9 @@ import {
   returnSelection,
 } from './stockReturnPagedFixture';
 
+// These tests page through 501 records; shared CI runners need more than 5 s.
+const HEAVY_TEST_TIMEOUT = 30_000;
+
 jest.mock('../billingService', () => ({
   ...jest.requireActual('../billingService'),
   getPagedStockReturn: jest.fn(),
@@ -213,55 +216,63 @@ it.each([9, false] as const)(
   },
 );
 
-it('requires every original page and every line/effect review page, without the old 500-item cap', async () => {
-  count = 501;
-  effects = 51;
-  show();
-  await screen.findByLabelText('Return quantity for move 12');
-  expect(
-    screen.getByRole('button', { name: 'Review complete return' }),
-  ).toBeDisabled();
-  for (let i = 0; i < 10; i++) await click('Load next native return items');
-  expect(lines.mock.calls.map((call) => call[1] ?? 0)).toEqual([
-    0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500,
-  ]);
-  await begin();
-  expect(
-    screen.getByRole('button', { name: 'Create reviewed return' }),
-  ).toBeDisabled();
-  await finishReview();
-  await click('Create reviewed return');
-  expect(save.mock.calls[0][0].lines).toHaveLength(501);
-  expect(review.mock.calls.map((call) => call[1])).toEqual([
-    0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550,
-  ]);
-  expect(review.mock.calls[1].slice(2)).toEqual([
-    'b'.repeat(64),
-    'd'.repeat(64),
-    50,
-  ]);
-});
+it(
+  'requires every original page and every line/effect review page, without the old 500-item cap',
+  async () => {
+    count = 501;
+    effects = 51;
+    show();
+    await screen.findByLabelText('Return quantity for move 12');
+    expect(
+      screen.getByRole('button', { name: 'Review complete return' }),
+    ).toBeDisabled();
+    for (let i = 0; i < 10; i++) await click('Load next native return items');
+    expect(lines.mock.calls.map((call) => call[1] ?? 0)).toEqual([
+      0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500,
+    ]);
+    await begin();
+    expect(
+      screen.getByRole('button', { name: 'Create reviewed return' }),
+    ).toBeDisabled();
+    await finishReview();
+    await click('Create reviewed return');
+    expect(save.mock.calls[0][0].lines).toHaveLength(501);
+    expect(review.mock.calls.map((call) => call[1])).toEqual([
+      0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550,
+    ]);
+    expect(review.mock.calls[1].slice(2)).toEqual([
+      'b'.repeat(64),
+      'd'.repeat(64),
+      50,
+    ]);
+  },
+  HEAVY_TEST_TIMEOUT,
+);
 
-it('allows native over-return quantities and zero, and removes rows without sending hidden flags', async () => {
-  count = 3;
-  show();
-  await screen.findByLabelText('Return quantity for move 12');
-  fireEvent.change(screen.getByLabelText('Return quantity for move 12'), {
-    target: { value: '30.5' },
-  });
-  fireEvent.change(screen.getByLabelText('Return quantity for move 13'), {
-    target: { value: '0' },
-  });
-  fireEvent.click(screen.getByLabelText('Include move 14'));
-  await create();
-  expect(save.mock.calls[0][0].lines).toEqual([
-    { move_id: 12, quantity: 30.5 },
-    { move_id: 13, quantity: 0 },
-  ]);
-  expect(
-    screen.queryByRole('checkbox', { name: /quantity rule/i }),
-  ).not.toBeInTheDocument();
-});
+it(
+  'allows native over-return quantities and zero, and removes rows without sending hidden flags',
+  async () => {
+    count = 3;
+    show();
+    await screen.findByLabelText('Return quantity for move 12');
+    fireEvent.change(screen.getByLabelText('Return quantity for move 12'), {
+      target: { value: '30.5' },
+    });
+    fireEvent.change(screen.getByLabelText('Return quantity for move 13'), {
+      target: { value: '0' },
+    });
+    fireEvent.click(screen.getByLabelText('Include move 14'));
+    await create();
+    expect(save.mock.calls[0][0].lines).toEqual([
+      { move_id: 12, quantity: 30.5 },
+      { move_id: 13, quantity: 0 },
+    ]);
+    expect(
+      screen.queryByRole('checkbox', { name: /quantity rule/i }),
+    ).not.toBeInTheDocument();
+  },
+  HEAVY_TEST_TIMEOUT,
+);
 
 it('does not silently coerce an empty quantity to zero', async () => {
   show();
