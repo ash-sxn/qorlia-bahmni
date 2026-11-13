@@ -4,7 +4,7 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with empty
 <div>
   <div
     aria-label="action-area-layout-aria-label"
-    class="_layout_95ahm_85"
+    class="_layout_1cccr_85"
     data-testid="action-area-layout-test-id"
     id="action-area-layout"
   >
@@ -14,26 +14,26 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with empty
       data-testid="header"
     >
       <a
-        class="cds--header__name _qorliaBrand_17mnn_14"
+        class="cds--header__name _qorliaBrand_tu7l3_14"
         data-testid="header-name"
         href="/bahmni-v2/home"
       >
         <span
           aria-hidden="true"
-          class="_qorliaMark_17mnn_20"
+          class="_qorliaMark_tu7l3_20"
         />
         <span>
           Qorlia
         </span>
         <span
-          class="_brandCredit_17mnn_36"
+          class="_brandCredit_tu7l3_36"
         >
           Built on Bahmni
         </span>
       </a>
       <nav
         aria-label="Breadcrumb"
-        class="_breadcrumb_17mnn_71"
+        class="_breadcrumb_tu7l3_71"
         data-testid="breadcrumb"
       >
         <ol
@@ -82,7 +82,7 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with empty
       </div>
     </header>
     <div
-      class="_panelGroup_95ahm_161"
+      class="_panelGroup_1cccr_161"
       data-group="true"
       data-testid="_r_4v_"
       id="_r_4v_"
@@ -100,7 +100,7 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with empty
           <div
             aria-hidden="false"
             aria-label="main-display-area-aria-label"
-            class="_mainDisplay_95ahm_108"
+            class="_mainDisplay_1cccr_108"
             data-testid="main-display-area-test-id"
             id="main-display-area"
           >
@@ -179,7 +179,7 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with unava
 <div>
   <div
     aria-label="action-area-layout-aria-label"
-    class="_layout_95ahm_85"
+    class="_layout_1cccr_85"
     data-testid="action-area-layout-test-id"
     id="action-area-layout"
   >
@@ -189,26 +189,26 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with unava
       data-testid="header"
     >
       <a
-        class="cds--header__name _qorliaBrand_17mnn_14"
+        class="cds--header__name _qorliaBrand_tu7l3_14"
         data-testid="header-name"
         href="/bahmni-v2/home"
       >
         <span
           aria-hidden="true"
-          class="_qorliaMark_17mnn_20"
+          class="_qorliaMark_tu7l3_20"
         />
         <span>
           Qorlia
         </span>
         <span
-          class="_brandCredit_17mnn_36"
+          class="_brandCredit_tu7l3_36"
         >
           Built on Bahmni
         </span>
       </a>
       <nav
         aria-label="Breadcrumb"
-        class="_breadcrumb_17mnn_71"
+        class="_breadcrumb_tu7l3_71"
         data-testid="breadcrumb"
       >
         <ol
@@ -257,7 +257,7 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with unava
       </div>
     </header>
     <div
-      class="_panelGroup_95ahm_161"
+      class="_panelGroup_1cccr_161"
       data-group="true"
       data-testid="_r_4m_"
       id="_r_4m_"
@@ -275,7 +275,7 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with unava
           <div
             aria-hidden="false"
             aria-label="main-display-area-aria-label"
-            class="_mainDisplay_95ahm_108"
+            class="_mainDisplay_1cccr_108"
             data-testid="main-display-area-test-id"
             id="main-display-area"
           >

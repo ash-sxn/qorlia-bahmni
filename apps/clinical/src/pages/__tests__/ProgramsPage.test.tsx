@@ -914,7 +914,9 @@ describe('ProgramsPage', () => {
         expect(await screen.findByLabelText('PROGRAMS_NAME')).toHaveValue(
           unavailableProgram ? '' : 'program-default',
         );
+        // The state field only exists when the program is available.
         if (!unavailableProgram)
+          // eslint-disable-next-line jest/no-conditional-expect
           expect(screen.getByLabelText('PROGRAMS_STATE')).toHaveValue('');
         expect(createEnrollment).not.toHaveBeenCalled();
       },

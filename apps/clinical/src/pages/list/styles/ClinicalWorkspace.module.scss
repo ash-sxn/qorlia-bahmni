@@ -110,6 +110,14 @@
   font-size: 21px;
   line-height: 1.2;
 }
+.panelHint {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.tableScroll > .panelHint {
+  padding: 12px 24px;
+}
 .count {
   min-width: 32px;
   padding: 5px 10px;

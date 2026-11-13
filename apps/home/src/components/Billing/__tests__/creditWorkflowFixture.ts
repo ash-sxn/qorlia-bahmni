@@ -1,5 +1,6 @@
 import { CreditWorkflow } from '../billingService';
 import { invoiceWorkflowFixture } from './invoiceWorkflowFixture';
+
 export const creditWorkflowFixture = (
   changes: Partial<CreditWorkflow> = {},
 ): CreditWorkflow => ({

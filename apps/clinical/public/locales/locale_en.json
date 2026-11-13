@@ -781,5 +781,14 @@
   "PROGRAMS_STATE_SAVE_ERROR": "The state could not be updated. Please try again.",
   "PROGRAMS_TO": "to",
   "PROGRAMS_TITLE": "Programs",
-  "PROGRAMS_UNSUPPORTED_ATTRIBUTE": "This program uses an attribute this form cannot edit. Use the Bahmni manager instead."
+  "PROGRAMS_UNSUPPORTED_ATTRIBUTE": "This program uses an attribute this form cannot edit. Use the Bahmni manager instead.",
+  "CLINICAL_WORKSPACE_TODAYS_PATIENTS": "Today's patients",
+  "CLINICAL_WORKSPACE_TODAYS_PATIENTS_HINT": "Patients with an open visit started today at this location, including walk-ins without an appointment.",
+  "CLINICAL_WORKSPACE_LOADING_VISITS": "Loading today's patients",
+  "CLINICAL_WORKSPACE_VISITS_ERROR": "Today's patients could not be loaded. Use patient search below.",
+  "CLINICAL_WORKSPACE_NO_VISITS": "No patient has an open visit started today at this location.",
+  "CLINICAL_WORKSPACE_ARRIVED": "Arrived",
+  "CLINICAL_WORKSPACE_VISIT_TYPE": "Visit type",
+  "CLINICAL_WORKSPACE_VISITS_LIMITED": "Showing the first {{count}} visits. Use patient search to find others.",
+  "CLINICAL_WORKSPACE_VISITS": "Visits"
 }

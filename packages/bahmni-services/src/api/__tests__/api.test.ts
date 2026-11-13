@@ -95,7 +95,11 @@ describe('Public API Methods', () => {
         await expect(post('/api/patients', {})).rejects.toThrow(
           'Validation error',
         );
-        expect(mockAxiosPost).toHaveBeenCalledWith('/api/patients', {}, undefined);
+        expect(mockAxiosPost).toHaveBeenCalledWith(
+          '/api/patients',
+          {},
+          undefined,
+        );
       });
 
       it('forwards request options for multipart uploads', async () => {
@@ -104,7 +108,11 @@ describe('Public API Methods', () => {
         mockAxiosPost.mockResolvedValue({ data: true });
 
         expect(await post('/api/upload', body, options)).toBe(true);
-        expect(mockAxiosPost).toHaveBeenCalledWith('/api/upload', body, options);
+        expect(mockAxiosPost).toHaveBeenCalledWith(
+          '/api/upload',
+          body,
+          options,
+        );
       });
     });
 
@@ -203,9 +211,13 @@ describe('Public API Methods', () => {
 
       const result = await post('/api/patients', { name: 'Test Patient' });
 
-      expect(mockAxiosPost).toHaveBeenCalledWith('/api/patients', {
-        name: 'Test Patient',
-      }, undefined);
+      expect(mockAxiosPost).toHaveBeenCalledWith(
+        '/api/patients',
+        {
+          name: 'Test Patient',
+        },
+        undefined,
+      );
       expect(result).toEqual(responseData);
     });
   });

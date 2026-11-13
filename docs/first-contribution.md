@@ -2,7 +2,7 @@
 
 [README](../README.md) · [Architecture](architecture.md) · [Task brief](task-brief-template.md) · [Testing](testing-guide.md)
 
-This exercise teaches how to navigate the actual project before changing it. It is a read-only audit, not permission to book, cancel or alter appointments. Use the approved synthetic backend and your own account. Source examples describe `codex/billing-delivery-parity`; compare them with your task's approved base rather than copying the whole integration branch.
+This exercise teaches how to navigate the actual project before changing it. It is a read-only audit, not permission to book, cancel or alter appointments. Use the approved synthetic backend and your own account. Source examples describe `main`.
 
 For explanations of React components, hooks, asynchronous requests and test mocks, use the [beginner code-reading guide](reading-and-changing-code.md) alongside this exercise.
 

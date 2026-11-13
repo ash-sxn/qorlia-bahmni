@@ -134,6 +134,8 @@
   "APPOINTMENTS_CONFIRM_CHECK_IN": "Confirm check-in",
   "APPOINTMENTS_DATE": "Date",
   "APPOINTMENTS_EDIT": "Edit appointment",
+  "APPOINTMENTS_RESET": "Reset",
+  "APPOINTMENTS_CONFIRM_RESET": "Reset this appointment to Scheduled?",
   "APPOINTMENTS_EDITED": "Appointment updated. The schedule has been refreshed.",
   "APPOINTMENTS_EDIT_ERROR": "Could not update the appointment. Please try again.",
   "APPOINTMENTS_EDIT_LOAD_ERROR": "Could not load the appointment. Please try again.",
