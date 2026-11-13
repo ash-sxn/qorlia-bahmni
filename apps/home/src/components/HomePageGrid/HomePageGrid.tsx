@@ -13,6 +13,7 @@ const reviewUrls = {
   'qorlia.billing': '/bahmni-v2/home/billing',
   'qorlia.policy-library': '/bahmni-v2/home/policies',
   'qorlia.insurance-desk': '/bahmni-v2/home/insurance',
+  'qorlia.hospital-overview': '/bahmni-v2/home/overview',
   'bahmni.registration.new': '/bahmni-v2/registration/search',
   'bahmni.programs': '/bahmni-v2/clinical/programs',
   'bahmni.clinical': '/bahmni-v2/clinical/',
@@ -64,6 +65,20 @@ const insuranceDeskModule: Module = {
   exclusiveOnlineModule: true,
 };
 
+// The grid hides the tile without Get Visits. Each section on the page checks its own privilege.
+const hospitalOverviewModule: Module = {
+  id: 'qorlia.hospital-overview',
+  extensionPointId: HOME_EXTENSION_POINT,
+  type: 'link',
+  label: 'Hospital overview',
+  translationKey: 'HOME_TILE_HOSPITAL_OVERVIEW',
+  url: '/bahmni-v2/home/overview',
+  order: 17,
+  icon: 'fa-hospital',
+  requiredPrivilege: 'Get Visits',
+  exclusiveOnlineModule: true,
+};
+
 export const HomePageGrid: React.FC = () => {
   // Production has no approved policies or cases yet, so these tiles would open empty pages.
   const qorliaModules = useMemo(
@@ -71,6 +86,7 @@ export const HomePageGrid: React.FC = () => {
       billingModule,
       ...(hasPolicyEntries(loadPolicyCatalogue()) ? [policyLibraryModule] : []),
       ...(hasCases(loadCases()) ? [insuranceDeskModule] : []),
+      hospitalOverviewModule,
     ],
     [],
   );
