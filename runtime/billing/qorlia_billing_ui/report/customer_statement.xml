@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later. Copyright 2026 Qorlia contributors. -->
+<odoo>
+    <record id="statement_paperformat" model="report.paperformat">
+        <field name="name">Qorlia customer statement</field>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">35</field>
+        <field name="margin_bottom">22</field>
+        <field name="margin_left">12</field>
+        <field name="margin_right">12</field>
+        <field name="header_spacing">8</field>
+        <field name="dpi">90</field>
+    </record>
+    <record id="action_customer_statement" model="ir.actions.report">
+        <field name="name">Customer account statement</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">qorlia_billing_ui.customer_statement_document</field>
+        <field name="report_file">qorlia_billing_ui.customer_statement_document</field>
+        <field name="paperformat_id" ref="statement_paperformat"/>
+        <field name="groups_id" eval="[(6, 0, [ref('account.group_account_readonly')])]"/>
+        <field name="attachment_use" eval="False"/>
+    </record>
+    <template id="customer_statement_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page qorlia-statement">
+                        <style>
+                            .qorlia-statement { font-size: 12px; color: #24332B; }
+                            .qorlia-statement h2 { color: #20513C; margin-top: 16px; margin-bottom: 10px; }
+                            .qorlia-statement table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+                            .qorlia-statement th { background: #20513C; color: white; padding: 8px 6px; text-align: left; }
+                            .qorlia-statement td { padding: 8px 6px; vertical-align: top; border-bottom: 1px solid #DCE5DF; }
+                            .qorlia-statement .amount { text-align: right; white-space: nowrap; }
+                            .qorlia-statement .balance-row { background: #F2F6F3; font-weight: bold; }
+                            .qorlia-statement .notes { color: #55655C; margin-top: 14px; }
+                            .qorlia-statement thead { display: table-header-group; }
+                            .qorlia-statement tr { page-break-inside: avoid; }
+                        </style>
+                        <h2>Customer account statement</h2>
+                        <p><strong t-out="statement['customer']"/><br/>
+                            <span t-out="statement['company']"/> | Accounting period:
+                            <span t-out="statement['date_from']"/> to <span t-out="statement['date_to']"/>
+                        </p>
+                        <table aria-label="Statement balances">
+                            <thead><tr><th>Opening balance</th><th>Period debits</th><th>Period credits</th><th>Closing balance</th></tr></thead>
+                            <tbody><tr>
+                                <td><span t-out="statement['opening']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                                <td><span t-out="statement['debit']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                                <td><span t-out="statement['credit']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                                <td><strong t-out="statement['closing']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                            </tr></tbody>
+                        </table>
+                        <p t-out="'Ledger totals and running balances use %s. Original document amounts retain their own currency.' % currency.name"/>
+                        <table aria-label="Posted customer receivable entries">
+                            <thead><tr><th>Accounting date</th><th>Document / reference</th><th>Journal / account</th><th class="amount">Debit</th><th class="amount">Credit</th><th class="amount">Running balance</th><th class="amount">Document amount</th></tr></thead>
+                            <tbody>
+                                <tr class="balance-row"><td colspan="5">Opening balance before <span t-out="statement['date_from']"/></td><td class="amount"><span t-out="statement['opening']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td><td/></tr>
+                                <tr t-foreach="statement['rows']" t-as="row">
+                                    <td t-out="row['date']"/>
+                                    <td><span t-out="row['document']"/><br/><span t-out="row['reference'] or row['label'] or ''"/></td>
+                                    <td><span t-out="row['journal']"/><br/><span t-out="row['account']"/></td>
+                                    <td class="amount"><span t-out="row['debit']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                                    <td class="amount"><span t-out="row['credit']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                                    <td class="amount"><span t-out="row['balance']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                                    <td class="amount"><span t-out="row['amount_currency']" t-options="{'widget': 'monetary', 'display_currency': document_currencies[row['currency'][0]]}"/>&#160;<span t-out="row['currency'][1]"/></td>
+                                </tr>
+                                <tr t-if="not statement['rows']"><td colspan="7">No posted receivable entries in this period. The opening balance is still included.</td></tr>
+                                <tr class="balance-row"><td colspan="3">Period totals / closing balance</td><td class="amount"><span t-out="statement['debit']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td><td class="amount"><span t-out="statement['credit']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td><td class="amount"><span t-out="statement['closing']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td><td/></tr>
+                            </tbody>
+                        </table>
+                        <p class="notes">Posted receivables visible to the generating Billing account, for this commercial customer and company. Drafts are excluded. A negative balance is customer credit. This dated ledger is not today's unpaid-invoice list or confirmation of bank clearance. Entries reflect the ledger at generation.</p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

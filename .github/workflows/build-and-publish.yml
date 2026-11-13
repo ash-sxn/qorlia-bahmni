@@ -68,6 +68,7 @@ jobs:
   sonar:
     name: SonarCloud Analysis
     needs: lint-and-test
+    if: github.repository == 'Bahmni/bahmni-apps-frontend'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -90,7 +91,7 @@ jobs:
 
   deploy-coverage:
     needs: lint-and-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.repository == 'Bahmni/bahmni-apps-frontend' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -123,7 +124,7 @@ jobs:
 
   build-and-publish:
     needs: lint-and-test
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.repository == 'Bahmni/bahmni-apps-frontend' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later. Copyright 2026 Qorlia contributors. -->
+<odoo>
+    <!-- Retain the native item/tax/terms layout, with Bahmni's saved document adjustments. -->
+    <template id="order_tax_totals" inherit_id="account.document_tax_totals" primary="True">
+        <xpath expr="//t[@t-if=&quot;'formatted_rounding_amount' in tax_totals and tax_totals['rounding_amount'] != 0&quot;]" position="replace"/>
+        <xpath expr="//tr[hasclass('o_total')]" position="before">
+            <t t-set="document_discount" t-value="doc.amount_untaxed + doc.amount_tax + doc.round_off_amount - doc.amount_total"/>
+            <tr t-if="not doc.currency_id.is_zero(document_discount)">
+                <td>Document discount</td>
+                <td class="text-end"><span t-out="document_discount" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+            </tr>
+            <tr t-if="not doc.currency_id.is_zero(doc.round_off_amount)">
+                <td>Rounding</td>
+                <td class="text-end"><span t-field="doc.round_off_amount" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+            </tr>
+        </xpath>
+        <xpath expr="//tr[hasclass('o_total')]/td[2]" position="replace">
+            <td class="text-end"><span t-field="doc.amount_total" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+        </xpath>
+    </template>
+    <template id="order_saved_totals" inherit_id="sale.report_saleorder_document">
+        <xpath expr="//t[@t-call='account.document_tax_totals']" position="attributes">
+            <attribute name="t-call">qorlia_billing_ui.order_tax_totals</attribute>
+        </xpath>
+    </template>
+
+    <!-- Preserve native report actions, company branding, archiving and both receipt variants. -->
+    <template id="receipt_document">
+        <t t-set="rows" t-value="o._qorlia_receipt_rows()"/>
+        <t t-call="web.external_layout">
+            <div class="page">
+                <h2><t t-if="o.payment_type == 'outbound'">Refund receipt</t><t t-else="">Payment receipt</t><t t-if="summary"> summary</t></h2>
+                <p><strong t-field="o.name"/></p>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <strong>Customer:</strong> <span t-field="o.partner_id.name"/><br/>
+                        <t t-if="o.partner_id.ref"><strong>Patient/customer ID:</strong> <span t-field="o.partner_id.ref"/><br/></t>
+                        <strong>Payment date:</strong> <span t-field="o.date"/><br/>
+                        <strong>Payment method:</strong> <span t-field="o.payment_method_line_id.name"/>
+                    </div>
+                    <div class="col-6">
+                        <strong>Payment amount:</strong> <span t-field="o.amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/><br/>
+                        <t t-if="o.ref"><strong>Reference:</strong> <span t-field="o.ref"/><br/></t>
+                        <strong>Created:</strong> <span t-field="o.create_date"/>
+                    </div>
+                </div>
+                <p t-if="not rows">This posted payment has no current invoice allocation. It does not establish that the customer's outstanding balance is zero.</p>
+                <t t-foreach="rows" t-as="row">
+                    <t t-set="invoice" t-value="row['invoice']"/>
+                    <h4><t t-if="invoice.move_type == 'out_refund'">Credit note</t><t t-else="">Invoice</t>: <span t-field="invoice.name"/></h4>
+                    <p><span t-field="invoice.invoice_date"/><t t-if="invoice.ref"> | <span t-field="invoice.ref"/></t></p>
+                    <p t-foreach="row['orders']" t-as="order">
+                        <strong>Order:</strong> <span t-field="order.name"/>
+                        <t t-if="order.care_setting"> | <span t-field="order.care_setting"/> care</t>
+                    </p>
+                    <table t-if="not summary" class="table table-sm">
+                        <thead><tr><th>Item</th><th>Batch / expiry</th><th class="text-end">Quantity</th><th class="text-end">Unit price</th><th class="text-end">Discount %</th><th>Taxes</th><th class="text-end">Subtotal</th></tr></thead>
+                        <tbody>
+                            <t t-foreach="row['items']" t-as="line">
+                                <tr t-if="line.display_type in ('line_section', 'line_note')"><td colspan="7"><span t-field="line.name"/></td></tr>
+                                <tr t-else="">
+                                    <td><span t-field="line.name"/></td>
+                                    <td><t t-foreach="line.sale_line_ids" t-as="sale_line"><span t-field="sale_line.lot_id.name"/><t t-if="sale_line.expiry_date"> / <span t-field="sale_line.expiry_date"/></t><br/></t></td>
+                                    <td class="text-end"><span t-field="line.quantity"/> <span t-field="line.product_uom_id"/></td>
+                                    <td class="text-end"><span t-field="line.price_unit" t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}"/></td>
+                                    <td class="text-end"><span t-field="line.discount"/></td>
+                                    <td><t t-foreach="line.tax_ids" t-as="tax"><span t-field="tax.name"/><br/></t></td>
+                                    <td class="text-end"><span t-field="line.price_subtotal" t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                    <p t-if="summary"><strong>Recorded services/items:</strong> <t t-foreach="row['items'].filtered(lambda line: line.display_type == 'product')" t-as="line"><span t-field="line.name"/><t t-if="not line_last">; </t></t></p>
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr><td>Items after line discounts, before tax</td><td class="text-end"><span t-field="invoice.qorlia_item_subtotal" t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}"/></td></tr>
+                            <tr><td>Tax</td><td class="text-end"><span t-field="invoice.amount_tax" t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}"/></td></tr>
+                            <tr t-if="invoice.discount"><td>Document discount</td><td class="text-end"><span t-field="invoice.discount" t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}"/></td></tr>
+                            <tr t-if="invoice.round_off_amount"><td>Rounding</td><td class="text-end"><span t-field="invoice.round_off_amount" t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}"/></td></tr>
+                            <tr><td><strong>Document total</strong></td><td class="text-end"><strong t-field="invoice.amount_total" t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}"/></td></tr>
+                            <tr><td>Allocated from this payment, in document currency</td><td class="text-end"><span t-out="row['allocated']" t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}"/></td></tr>
+                            <tr><td><strong>Remaining on this document at generation</strong></td><td class="text-end"><strong t-field="invoice.amount_residual" t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}"/></td></tr>
+                        </tbody>
+                    </table>
+                </t>
+                <p class="small">Only documents currently reconciled to this payment are shown. Amounts use each document's currency. Remaining amounts include all reconciliations, not just this payment. This is not a complete customer statement or confirmation of bank clearance.</p>
+            </div>
+        </t>
+    </template>
+    <template id="receipt_reconciled_documents" inherit_id="bahmni_auto_payment_reconciliation.report_payment_invoice">
+        <xpath expr="//t[@t-call='web.html_container']" position="replace">
+            <t t-call="web.html_container"><t t-foreach="docs" t-as="o"><t t-set="summary" t-value="False"/><t t-call="qorlia_billing_ui.receipt_document"/></t></t>
+        </xpath>
+    </template>
+    <template id="receipt_summary_reconciled_documents" inherit_id="bahmni_auto_payment_reconciliation.report_payment_summary">
+        <xpath expr="//t[@t-call='web.html_container']" position="replace">
+            <t t-call="web.html_container"><t t-foreach="docs" t-as="o"><t t-set="summary" t-value="True"/><t t-call="qorlia_billing_ui.receipt_document"/></t></t>
+        </xpath>
+    </template>
+    <record id="bahmni_auto_payment_reconciliation.account_payment_invoices_receipt" model="ir.actions.report">
+        <field name="attachment">object._qorlia_receipt_archive_name('receipt')</field>
+    </record>
+    <record id="bahmni_auto_payment_reconciliation.account_payment_summary_receipt" model="ir.actions.report">
+        <field name="attachment">object._qorlia_receipt_archive_name('summary')</field>
+    </record>
+</odoo>

@@ -33,14 +33,28 @@ export async function submitConsultation(
     practitioner,
   } = useEncounterDetailsStore.getState();
 
+  if (
+    !patientUUID ||
+    !selectedEncounterType?.uuid ||
+    !activeVisit?.id ||
+    !selectedLocation?.uuid ||
+    !practitioner?.uuid ||
+    !encounterParticipants.length ||
+    encounterParticipants.some((participant) => !participant.uuid)
+  ) {
+    throw new Error(
+      'Patient, visit, encounter type, location and provider are required before saving.',
+    );
+  }
+
   const encounterResource = createEncounterResource(
-    selectedEncounterType!.uuid,
-    selectedEncounterType!.name,
+    selectedEncounterType.uuid,
+    selectedEncounterType.name,
     patientUUID,
     encounterParticipants.map((p) => p.uuid),
-    activeVisit!.id,
+    activeVisit.id,
     deps.episodeOfCareUuids,
-    selectedLocation!.uuid,
+    selectedLocation.uuid,
     deps.activeEncounter?.period?.start ?? null,
   );
 
@@ -50,6 +64,11 @@ export async function submitConsultation(
   );
 
   const placeholderReference = encounterBundleEntry.fullUrl;
+  if (!placeholderReference) {
+    throw new Error(
+      'The encounter reference is missing. Your consultation has not been saved.',
+    );
+  }
 
   const encounterReference = getEncounterReference(
     deps.activeEncounter,
@@ -59,7 +78,7 @@ export async function submitConsultation(
   const ctx: EncounterContext = {
     encounterSubject: encounterResource.subject!,
     encounterReference,
-    practitionerUUID: practitioner!.uuid,
+    practitionerUUID: practitioner.uuid,
     consultationDate: new Date(),
     statDurationInMilliseconds: deps.statDurationInMilliseconds,
   };
@@ -77,7 +96,7 @@ export async function submitConsultation(
 
   return {
     updatedConcepts: extractConceptsFromResponseBundle(responseBundle),
-    patientUUID: patientUUID!,
-    encounterTypeName: selectedEncounterType!.name,
+    patientUUID,
+    encounterTypeName: selectedEncounterType.name,
   };
 }

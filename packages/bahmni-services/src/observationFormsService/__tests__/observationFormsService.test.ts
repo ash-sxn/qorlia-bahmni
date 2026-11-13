@@ -1,3 +1,4 @@
+import { TextEncoder } from 'node:util';
 import * as api from '../../api/api';
 import { getUserPreferredLocale } from '../../i18n/translationService';
 import { OBSERVATION_FORMS_URL, FORM_DATA_URL } from '../constants';
@@ -11,6 +12,7 @@ import {
 // Mock fetch globally
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
+global.TextEncoder = TextEncoder;
 
 // Mock translation service
 jest.mock('../../i18n/translationService', () => ({
@@ -453,6 +455,64 @@ describe('observationFormsService', () => {
       expect(result.name).toBe('Vitals');
       expect(result.version).toBe('18');
       expect(result.published).toBe(true);
+    });
+
+    it('normalizes legacy form and nested control events without changing encoded scripts or other fields', async () => {
+      const init = 'function(form) { form.set("नमस्ते"); }';
+      const save = 'function(form) { throw {message: "Required"}; }';
+      const change = 'function(form) { form.hideAndClear(); }';
+      const encoded = btoa('function(form) { return form; }');
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () =>
+          makeResponse({
+            resources: [
+              {
+                value: JSON.stringify({
+                  name: 'History and Examination',
+                  events: {
+                    onFormInit: init,
+                    onFormSave: save,
+                    empty: '',
+                    absent: null,
+                  },
+                  controls: [
+                    {
+                      controls: [
+                        {
+                          label: { value: init },
+                          events: { onValueChange: change, onFocus: encoded },
+                        },
+                      ],
+                    },
+                  ],
+                }),
+              },
+            ],
+          }),
+      });
+
+      const { schema } = await fetchFormMetadata(formUuid);
+      const normalized = schema as {
+        events: Record<string, string | null>;
+        controls: {
+          controls: {
+            label: { value: string };
+            events: Record<string, string>;
+          }[];
+        }[];
+      };
+      const decode = (script: string) =>
+        Buffer.from(script, 'base64').toString('utf8');
+      expect(decode(normalized.events.onFormInit!)).toBe(init);
+      expect(decode(normalized.events.onFormSave!)).toBe(save);
+      expect(normalized.events.empty).toBe('');
+      expect(normalized.events.absent).toBeNull();
+      expect(
+        decode(normalized.controls[0].controls[0].events.onValueChange),
+      ).toBe(change);
+      expect(normalized.controls[0].controls[0].events.onFocus).toBe(encoded);
+      expect(normalized.controls[0].controls[0].label.value).toBe(init);
     });
 
     it('falls back to schema JSON fields when OpenMRS record fields are absent', async () => {

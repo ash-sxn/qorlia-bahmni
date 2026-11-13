@@ -74,7 +74,10 @@ describe('encounterService', () => {
     });
 
     it('should return empty array if no encounters are found', async () => {
-      mockedGet.mockResolvedValueOnce({ entry: undefined });
+      mockedGet.mockResolvedValueOnce({
+        resourceType: 'Bundle',
+        entry: undefined,
+      });
 
       const encounters = await getVisits(patientUUID);
 
@@ -131,6 +134,67 @@ describe('encounterService', () => {
 
       expect(mockedGet).toHaveBeenCalledWith(
         expect.not.stringContaining('&location='),
+      );
+    });
+  });
+
+  describe('complete visit search', () => {
+    const nextPath = `/openmrs/ws/fhir2/R4/Encounter?_tag=visit&subject%3APatient=${patientUUID}&_getpagesoffset=1`;
+    const firstPage = {
+      ...mockVisitBundle,
+      total: 2,
+      entry: [mockVisitBundle.entry[1]],
+      link: [{ relation: 'next', url: `https://upstream.invalid${nextPath}` }],
+    };
+
+    beforeEach(() => mockedGet.mockReset());
+
+    it('finds an active visit on a later page through the local API', async () => {
+      mockedGet.mockResolvedValueOnce(firstPage).mockResolvedValueOnce({
+        ...mockVisitBundle,
+        entry: [mockVisitBundle.entry[0]],
+        link: [],
+      });
+
+      await expect(getActiveVisit(patientUUID)).resolves.toEqual(
+        mockActiveVisit,
+      );
+      expect(mockedGet).toHaveBeenCalledTimes(2);
+      expect(mockedGet).toHaveBeenNthCalledWith(
+        1,
+        PATIENT_VISITS_URL(patientUUID),
+      );
+      expect(mockedGet).toHaveBeenNthCalledWith(2, nextPath);
+    });
+
+    it('propagates a later-page failure rather than reporting no active visit', async () => {
+      mockedGet
+        .mockResolvedValueOnce(firstPage)
+        .mockRejectedValueOnce(new Error('Visit page unavailable'));
+
+      await expect(getActiveVisit(patientUUID)).rejects.toThrow(
+        'Visit page unavailable',
+      );
+    });
+
+    it('rejects an incomplete visit result instead of treating it as empty', async () => {
+      mockedGet.mockResolvedValueOnce({ ...firstPage, link: [] });
+
+      await expect(getActiveVisit(patientUUID)).rejects.toThrow(
+        'FHIR search returned an incomplete result',
+      );
+    });
+
+    it('does not interpret a non-Encounter resource as an active visit', async () => {
+      mockedGet.mockResolvedValueOnce({
+        resourceType: 'Bundle',
+        type: 'searchset',
+        total: 1,
+        entry: [{ resource: { resourceType: 'Patient', id: patientUUID } }],
+      });
+
+      await expect(getActiveVisit(patientUUID)).rejects.toThrow(
+        'Invalid visit search resource',
       );
     });
   });
@@ -371,7 +435,7 @@ describe('encounterService', () => {
     beforeEach(() => {
       mockGetUserLoginLocation.mockReturnValue({ uuid: LOGIN_LOCATION_UUID });
       mockGetVisitLocationUUID.mockResolvedValue({ uuid: VISIT_LOCATION_UUID });
-      mockedGet.mockResolvedValue({ entry: [] } as any);
+      mockedGet.mockResolvedValue({ resourceType: 'Bundle', entry: [] } as any);
     });
 
     it('returns null when no active visit exists at login location', async () => {
@@ -383,6 +447,7 @@ describe('encounterService', () => {
     it('returns the active visit at the login location', async () => {
       const activeVisit = makeVisit(`Location/${VISIT_LOCATION_UUID}`);
       mockedGet.mockResolvedValue({
+        resourceType: 'Bundle',
         entry: [{ resource: activeVisit }],
       } as any);
 

@@ -8,6 +8,7 @@ const mockHeaderProps = jest.fn();
 jest.mock('@bahmni/widgets', () => ({
   ...jest.requireActual('@bahmni/widgets'),
   PatientDetails: () => <div data-testid="patient-details-mock" />,
+  UserGlobalAction: () => null,
   usePatientUUID: jest.fn(() => 'patient-uuid'),
 }));
 
@@ -81,5 +82,9 @@ describe('IndexPage', () => {
       'topLevelConcept=Patient%20Document',
     );
     expect(searchBreadcrumb?.href).toContain('defaultOption=Patient%20File');
+    expect(searchBreadcrumb?.href).toMatch(
+      /^\/bahmni-v2\/patient-documents\/search\?/,
+    );
+    expect(searchBreadcrumb?.href).not.toContain('#/search');
   });
 });

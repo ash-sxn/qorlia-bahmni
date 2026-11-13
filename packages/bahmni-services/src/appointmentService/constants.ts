@@ -16,6 +16,12 @@ export const APPOINTMENT_STATUSES = {
 
 export const APPOINTMENTS_SEARCH_URL = OPENMRS_REST_V1 + '/appointments/search';
 export const APPOINTMENTS_URL = OPENMRS_REST_V1 + '/appointments';
+export const APPOINTMENT_SAVE_URL = OPENMRS_REST_V1 + '/appointment';
+export const APPOINTMENT_DAY_URL = APPOINTMENT_SAVE_URL + '/all';
+export const APPOINTMENT_LEGACY_SEARCH_URL = APPOINTMENT_SAVE_URL + '/search';
+export const APPOINTMENT_CONFLICTS_URL = APPOINTMENTS_URL + '/conflicts';
+export const APPOINTMENT_SUMMARY_URL =
+  OPENMRS_REST_V1 + '/appointment/appointmentSummary';
 
 // FHIR Appointment identifier system
 export const APPOINTMENT_IDENTIFIER_SYSTEM =
@@ -64,6 +70,10 @@ export const updateAppointmentStatusUrl = (appointmentUuid: string): string =>
 
 export const ALL_APPOINTMENT_SERVICES_URL =
   OPENMRS_REST_V1 + '/appointmentService/all/full';
+
+export const APPOINTMENT_SERVICE_URL = OPENMRS_REST_V1 + '/appointmentService';
+export const APPOINTMENT_SERVICE_TYPE_FUTURE_URL =
+  OPENMRS_REST_V1 + '/appointment/futureAppointmentsForServiceType/';
 
 export const getDeleteAppointmentServiceUrl = (uuid: string): string =>
   `${OPENMRS_REST_V1}/appointmentService?uuid=${uuid}`;

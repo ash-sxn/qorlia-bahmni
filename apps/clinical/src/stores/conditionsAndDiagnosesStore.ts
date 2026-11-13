@@ -5,6 +5,8 @@ import {
 } from '@bahmni/services';
 import { Coding } from 'fhir/r4';
 import { create } from 'zustand';
+import { DURATION_UNITS } from '../constants/conditions';
+import { CERTAINITY_CONCEPTS } from '../constants/diagnosis';
 
 /**
  * Interface defining the state and actions for managing conditions and diagnoses
@@ -18,6 +20,9 @@ export interface ConditionsAndDiagnosesState {
    * @param diagnosis - The concept search result to add as diagnosis
    */
   addDiagnosis: (diagnosis: ConceptSearch) => void;
+
+  /** Adds a condition draft without creating a diagnosis draft. */
+  addCondition: (condition: ConceptSearch) => void;
 
   /**
    * Removes a diagnosis from the selected diagnoses list
@@ -39,7 +44,7 @@ export interface ConditionsAndDiagnosesState {
   validate: () => boolean;
 
   /**
-   * Moves a diagnosis from diagnoses list to conditions list
+   * Adds a condition from a confirmed diagnosis, retaining the diagnosis
    * @param diagnosisId - The ID of the diagnosis to mark as condition
    * @returns True if successfully marked as condition, false otherwise
    */
@@ -95,6 +100,33 @@ export const useConditionsAndDiagnosesStore =
   create<ConditionsAndDiagnosesState>((set, get) => ({
     selectedDiagnoses: [],
     selectedConditions: [],
+
+    addCondition: (condition: ConceptSearch) => {
+      if (!validateConcept(condition)) return;
+      set((state) => {
+        if (
+          state.selectedConditions.some(
+            (item) => item.id === condition.conceptUuid,
+          )
+        ) {
+          return state;
+        }
+        return {
+          selectedConditions: [
+            {
+              id: condition.conceptUuid,
+              display: condition.conceptName,
+              conceptSystem: condition.conceptSystem,
+              durationValue: null,
+              durationUnit: null,
+              errors: {},
+              hasBeenValidated: false,
+            },
+            ...state.selectedConditions,
+          ],
+        };
+      });
+    },
 
     addDiagnosis: (diagnosis: ConceptSearch) => {
       // Input validation
@@ -152,7 +184,10 @@ export const useConditionsAndDiagnosesStore =
             selectedCertainty: certainty,
           };
 
-          if (diagnosis.hasBeenValidated && certainty) {
+          if (
+            diagnosis.hasBeenValidated &&
+            CERTAINITY_CONCEPTS.some((item) => item.code === certainty?.code)
+          ) {
             updatedDiagnosis.errors = { ...diagnosis.errors };
             delete updatedDiagnosis.errors.certainty;
           }
@@ -170,7 +205,11 @@ export const useConditionsAndDiagnosesStore =
         selectedDiagnoses: state.selectedDiagnoses.map((diagnosis) => {
           const errors = { ...diagnosis.errors };
 
-          if (!diagnosis.selectedCertainty) {
+          if (
+            !CERTAINITY_CONCEPTS.some(
+              (item) => item.code === diagnosis.selectedCertainty?.code,
+            )
+          ) {
             errors.certainty = 'DROPDOWN_VALUE_REQUIRED';
             diagnosesValid = false;
           } else {
@@ -189,14 +228,20 @@ export const useConditionsAndDiagnosesStore =
         selectedConditions: state.selectedConditions.map((condition) => {
           const errors = { ...condition.errors };
 
-          if (!condition.durationValue) {
+          if (
+            !Number.isSafeInteger(condition.durationValue) ||
+            condition.durationValue === null ||
+            condition.durationValue <= 0
+          ) {
             errors.durationValue = 'CONDITIONS_DURATION_VALUE_REQUIRED';
             conditionsValid = false;
           } else {
             delete errors.durationValue;
           }
 
-          if (!condition.durationUnit) {
+          if (
+            !DURATION_UNITS.some((unit) => unit.id === condition.durationUnit)
+          ) {
             errors.durationUnit = 'CONDITIONS_DURATION_UNIT_REQUIRED';
             conditionsValid = false;
           } else {
@@ -232,7 +277,7 @@ export const useConditionsAndDiagnosesStore =
       const diagnosis = state.selectedDiagnoses.find(
         (d) => d.id === diagnosisId,
       );
-      if (!diagnosis) {
+      if (diagnosis?.selectedCertainty?.code !== 'confirmed') {
         return false;
       }
 
@@ -247,9 +292,6 @@ export const useConditionsAndDiagnosesStore =
       };
 
       set((state) => ({
-        selectedDiagnoses: state.selectedDiagnoses.filter(
-          (d) => d.id !== diagnosisId,
-        ),
         selectedConditions: [newCondition, ...state.selectedConditions],
       }));
 
@@ -279,13 +321,14 @@ export const useConditionsAndDiagnosesStore =
 
       if (
         value !== null &&
-        (typeof value !== 'number' || value <= 0 || !Number.isInteger(value))
+        (typeof value !== 'number' ||
+          value <= 0 ||
+          !Number.isSafeInteger(value))
       ) {
         return;
       }
 
-      const validUnits = ['days', 'months', 'years'];
-      if (unit !== null && !validUnits.includes(unit)) {
+      if (unit !== null && !DURATION_UNITS.some((item) => item.id === unit)) {
         return;
       }
 

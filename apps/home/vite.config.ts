@@ -4,10 +4,15 @@ import react from '@vitejs/plugin-react';
 import dts from 'vite-plugin-dts';
 import * as path from 'node:path';
 
-export default defineConfig(() => ({
+export default defineConfig(({ mode }) => ({
   root: __dirname,
   cacheDir: '../../node_modules/.vite/apps/home',
   publicDir: 'public',
+  // Library mode leaves this unreplaced, so development-only branches, such as
+  // the one that requires the synthetic fixtures, would survive into the bundle.
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(mode),
+  },
   css: {
     modules: process.env['VITEST'] ? {} : {
       generateScopedName: '[name]_[local]__[hash:base64:5]',

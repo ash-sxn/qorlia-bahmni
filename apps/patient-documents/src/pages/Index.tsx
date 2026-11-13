@@ -1,10 +1,14 @@
-import { Header, Icon, ICON_SIZE } from '@bahmni/design-system';
+import { Header } from '@bahmni/design-system';
 import {
   BAHMNI_HOME_PATH,
   getEncounterTypeByName,
   getFormattedPatientById,
 } from '@bahmni/services';
-import { PatientDetails, usePatientUUID } from '@bahmni/widgets';
+import {
+  PatientDetails,
+  UserGlobalAction,
+  usePatientUUID,
+} from '@bahmni/widgets';
 import { useQuery } from '@tanstack/react-query';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -41,7 +45,7 @@ export const IndexPage: React.FC = () => {
       params.push(`topLevelConcept=${encodeURIComponent(topLevelConcept)}`);
     if (defaultOption)
       params.push(`defaultOption=${encodeURIComponent(defaultOption)}`);
-    return `${BAHMNI_DOCUMENT_UPLOAD_SEARCH_BASE}?${params.join('&')}#/search`;
+    return `${BAHMNI_DOCUMENT_UPLOAD_SEARCH_BASE}${params.length ? `?${params.join('&')}` : ''}`;
   }, [encounterType, topLevelConcept, defaultOption]);
 
   const breadcrumbItems = useMemo(
@@ -65,21 +69,12 @@ export const IndexPage: React.FC = () => {
     [patient?.fullName, t, searchHref],
   );
 
-  const globalActions = useMemo(
-    () => [
-      {
-        id: 'user',
-        label: t('PATIENT_DOCUMENTS_GLOBAL_ACTION_USER'),
-        renderIcon: <Icon id="user-icon" name="fa-user" size={ICON_SIZE.LG} />,
-        onClick: () => {},
-      },
-    ],
-    [t],
-  );
-
   return (
     <>
-      <Header breadcrumbItems={breadcrumbItems} globalActions={globalActions} />
+      <Header
+        breadcrumbItems={breadcrumbItems}
+        userMenu={<UserGlobalAction />}
+      />
       <main className={styles.page}>
         <section
           aria-label={t('PATIENT_DOCUMENTS_PATIENT_HEADER_LABEL')}
@@ -87,6 +82,13 @@ export const IndexPage: React.FC = () => {
         >
           <PatientDetails />
         </section>
+        {!encounterType ? (
+          <p role="alert">{t('PATIENT_DOCUMENTS_MISSING_TYPE')}</p>
+        ) : encounter.isLoading ? (
+          <p role="status">{t('PATIENT_DOCUMENTS_ACCESS_LOADING')}</p>
+        ) : encounter.isError || !encounter.data ? (
+          <p role="alert">{t('PATIENT_DOCUMENTS_TYPE_ERROR')}</p>
+        ) : null}
         {patientUUID && encounter.data && (
           <DocumentsSection
             patientUuid={patientUUID}

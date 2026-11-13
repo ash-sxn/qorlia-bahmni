@@ -49,6 +49,20 @@ describe('SelectedInvestigationItem', () => {
       );
     });
 
+    test('reflects the stored priority on first render and after it changes', () => {
+      const { rerender } = render(
+        <SelectedInvestigationItem
+          {...defaultProps}
+          investigation={{ ...mockInvestigation, selectedPriority: 'stat' }}
+        />,
+      );
+      expect(screen.getByRole('checkbox', { name: /urgent/i })).toBeChecked();
+      rerender(<SelectedInvestigationItem {...defaultProps} />);
+      expect(
+        screen.getByRole('checkbox', { name: /urgent/i }),
+      ).not.toBeChecked();
+    });
+
     test('calls onPriorityChange with "stat" when checkbox is checked', async () => {
       const user = userEvent.setup();
       const mockOnPriorityChange = jest.fn();
@@ -71,7 +85,7 @@ describe('SelectedInvestigationItem', () => {
       const user = userEvent.setup();
       const mockOnPriorityChange = jest.fn();
 
-      render(
+      const { rerender } = render(
         <SelectedInvestigationItem
           {...defaultProps}
           onPriorityChange={mockOnPriorityChange}
@@ -83,6 +97,13 @@ describe('SelectedInvestigationItem', () => {
       // First click - should call with 'stat'
       await user.click(checkbox);
       expect(mockOnPriorityChange).toHaveBeenNthCalledWith(1, 'stat');
+      rerender(
+        <SelectedInvestigationItem
+          {...defaultProps}
+          investigation={{ ...mockInvestigation, selectedPriority: 'stat' }}
+          onPriorityChange={mockOnPriorityChange}
+        />,
+      );
 
       // Second click - should call with 'routine'
       await user.click(checkbox);
@@ -283,7 +304,7 @@ describe('SelectedInvestigationItem', () => {
       const user = userEvent.setup();
       const mockOnPriorityChange = jest.fn();
 
-      render(
+      const { rerender } = render(
         <SelectedInvestigationItem
           {...defaultProps}
           onPriorityChange={mockOnPriorityChange}
@@ -294,7 +315,20 @@ describe('SelectedInvestigationItem', () => {
 
       // Rapid clicks
       await user.click(checkbox);
+      rerender(
+        <SelectedInvestigationItem
+          {...defaultProps}
+          investigation={{ ...mockInvestigation, selectedPriority: 'stat' }}
+          onPriorityChange={mockOnPriorityChange}
+        />,
+      );
       await user.click(checkbox);
+      rerender(
+        <SelectedInvestigationItem
+          {...defaultProps}
+          onPriorityChange={mockOnPriorityChange}
+        />,
+      );
       await user.click(checkbox);
 
       expect(mockOnPriorityChange).toHaveBeenCalledTimes(3);

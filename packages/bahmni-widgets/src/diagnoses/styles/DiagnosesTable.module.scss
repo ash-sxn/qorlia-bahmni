@@ -29,17 +29,55 @@
 }
 
 .diagnosesTableBody {
-  td {
-    width: 25%;
+  :global(.cds--data-table-content) {
+    overflow: visible;
   }
-  td:nth-child(1) {
-    width: 50%;
+  table {
+    table-layout: auto;
+    min-width: 40rem;
+  }
+  td {
+    overflow-wrap: normal;
+  }
+}
+
+.viewport {
+  max-width: 100%;
+  overflow-x: auto;
+  &:focus-visible {
+    outline: 3px solid $focus;
+    outline-offset: -3px;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.editor {
+  display: grid;
+  gap: $spacing-05;
+  fieldset {
+    border: 0;
+    padding: 0;
+    display: grid;
+    gap: $spacing-03;
+  }
+  select {
+    width: 100%;
+    min-height: 2.75rem;
+    background: $field;
+    color: $text-primary;
+    border: 1px solid $border-subtle;
+    border-radius: 8px;
+    padding: $spacing-03;
   }
 }
 
 .confirmedCell {
-  background-color: $red-20 !important;
-  color: $red-70 !important;
+  background-color: var(--qorlia-sage, #edf3ee) !important;
+  color: var(--qorlia-ink, #202321) !important;
 }
 
 .provisionalCell {

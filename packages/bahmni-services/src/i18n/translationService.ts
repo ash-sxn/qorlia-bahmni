@@ -21,10 +21,12 @@ export const getUserPreferredLocale = (): string => {
  * Returns an empty object if the request fails for any reason.
  *
  * @param url - URL to fetch translations from
+ * @param optional - A missing hospital override may use bundled labels without an error
  * @returns A promise that resolves to a translations object or empty object on failure
  */
 export const getTranslationFile = async (
   url: string,
+  optional = false,
 ): Promise<Record<string, string>> => {
   try {
     const response = await get<Record<string, string>>(url);
@@ -35,6 +37,14 @@ export const getTranslationFile = async (
     }
     return response;
   } catch (error) {
+    if (
+      optional &&
+      error instanceof Error &&
+      'status' in error &&
+      error.status === 404
+    ) {
+      return {};
+    }
     // eslint-disable-next-line no-console
     console.error(`Failed to load translations from ${url}:`, error);
     return {};
@@ -64,6 +74,7 @@ const getMergedTranslations = async (
 
   configTranslations = await getTranslationFile(
     CONFIG_TRANSLATIONS_URL_TEMPLATE(namespace, lang),
+    true,
   );
 
   return {

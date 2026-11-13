@@ -1,0 +1,110 @@
+@use "@carbon/react/scss/theme" as *;
+
+.page {
+  min-height: 100vh;
+  padding: 6rem clamp(1rem, 6vw, 6rem) 3rem;
+  background: $background;
+  color: $text-primary;
+
+  h1 {
+    margin: 0.5rem 0;
+  }
+}
+
+.notice {
+  margin: 1rem 0 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid $border-strong-01;
+  background: $layer-02;
+}
+
+.warning {
+  margin: 1rem 0 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid $support-warning;
+  background: $layer-02;
+}
+
+.dates {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+
+  dt {
+    color: $text-secondary;
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+// Only the detail page's section headings; card titles are h2s nested inside the list.
+.page > h2 {
+  margin: 2rem 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.search {
+  max-width: 40rem;
+  margin: 1.5rem 0 0;
+}
+
+.filterBar {
+  margin: 1rem 0 0;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  max-width: 60rem;
+}
+
+.resultBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+
+  p {
+    margin: 0;
+    font-weight: 600;
+  }
+}
+
+.list {
+  display: grid;
+  gap: 1rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  padding: 1rem 1.25rem;
+  border: 1px solid $border-subtle-01;
+  background: $layer-01;
+  overflow-wrap: anywhere;
+}
+
+.cardTitle {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  margin: 0 0 0.25rem;
+  color: $text-secondary;
+}
+
+.summary {
+  margin: 0.5rem 0 0;
+}

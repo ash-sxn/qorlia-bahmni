@@ -24,6 +24,7 @@ export interface FormControlData {
     | string
     | number
     | boolean
+    | Date
     | ConceptValue
     | ConceptValue[]
     | ComplexValue

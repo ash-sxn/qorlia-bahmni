@@ -79,6 +79,8 @@ export interface PatientName {
 }
 
 export interface PatientAddress {
+  uuid?: string;
+  preferred?: boolean;
   address1?: string;
   address2?: string;
   cityVillage?: string;
@@ -86,9 +88,14 @@ export interface PatientAddress {
   stateProvince?: string;
   postalCode?: string;
   country?: string;
+  address3?: string;
+  address4?: string;
+  address5?: string;
+  address6?: string;
 }
 
 export interface PatientIdentifier {
+  uuid?: string;
   identifierSourceUuid?: string;
   identifierPrefix?: string;
   identifierType: string;
@@ -99,14 +106,17 @@ export interface PatientIdentifier {
 }
 
 export interface PatientAttribute {
+  uuid?: string;
   attributeType: {
     uuid: string;
   };
   voided?: boolean;
   value?: string;
+  hydratedObject?: string;
 }
 
 export interface CreatePatientRequest {
+  image?: string;
   patient: {
     person: {
       names: PatientName[];
@@ -161,6 +171,7 @@ export interface OrderedAddressHierarchyLevel {
 export type OrderedAddressHierarchyLevels = OrderedAddressHierarchyLevel[];
 
 export interface AppointmentSearchResult extends PatientSearchResult {
+  appointmentUuid?: string;
   appointmentNumber?: string;
   appointmentDate?: string;
   appointmentReason?: string;
@@ -173,7 +184,6 @@ export interface CheckInAppointmentResponse {
   status: string;
 }
 export interface Appointment {
-  length: number;
   uuid: string;
   appointmentNumber: string;
   dateCreated: number;
@@ -209,7 +219,7 @@ export interface AppointmentService {
   appointmentServiceId: number;
   name: string;
   description: string | null;
-  speciality: null;
+  speciality: { uuid: string; name: string } | null;
   startTime: string;
   endTime: string;
   maxAppointmentsLimit: number;
@@ -230,6 +240,8 @@ export interface Provider {
   id?: number;
   name?: string;
   uuid?: string;
+  response?: string;
+  comments?: string | null;
 }
 
 export interface Extensions {
@@ -275,6 +287,7 @@ export interface PatientProfileResponse {
       birthtime?: string;
       dead?: boolean;
       deathDate?: string;
+      auditInfo?: { dateCreated?: string };
       names: Array<{
         uuid?: string;
         givenName: string;
@@ -303,7 +316,7 @@ export interface PatientProfileResponse {
       attributes?: Array<{
         display?: string;
         uuid?: string;
-        value: string | number | boolean;
+        value: string | number | boolean | { uuid: string; display?: string };
         attributeType: {
           uuid?: string;
           display?: string;

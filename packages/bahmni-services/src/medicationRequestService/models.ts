@@ -50,6 +50,7 @@ export interface MedicationRequest {
   readonly statusReason?: string;
   readonly dateStopped?: string;
   readonly fhirResource: FhirMedicationRequest;
+  readonly readOnly?: boolean;
 }
 
 /**

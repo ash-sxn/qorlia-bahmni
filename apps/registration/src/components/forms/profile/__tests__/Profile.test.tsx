@@ -123,6 +123,19 @@ describe('Profile', () => {
   });
 
   describe('Rendering', () => {
+    it('does not submit a loaded photo unless the user replaces it', async () => {
+      await act(async () => {
+        render(
+          <Profile
+            ref={ref}
+            initialData={createBasicInfoData()}
+            initialPhoto="data:image/png;base64,cGxhY2Vob2xkZXI="
+          />,
+        );
+      });
+      expect(ref.current?.getData()).not.toHaveProperty('image');
+    });
+
     it('should render basic info fields', async () => {
       await act(async () => {
         render(<Profile ref={ref} />);

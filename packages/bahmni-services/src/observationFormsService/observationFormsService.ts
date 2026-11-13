@@ -112,7 +112,25 @@ export const fetchFormMetadata = async (
     throw new Error(`No resources found for form ${formUuid}`);
   }
 
-  const formSchema = JSON.parse(data.resources[0].value);
+  const formSchema = JSON.parse(data.resources[0].value, (key, value) => {
+    if (key !== 'events' || !value || typeof value !== 'object') {
+      return value;
+    }
+    // Older published forms contain plain scripts; form2-controls expects UTF-8 base64.
+    for (const [event, script] of Object.entries(value)) {
+      if (typeof script !== 'string' || !script.trim()) continue;
+      try {
+        atob(script);
+      } catch {
+        value[event] = btoa(
+          Array.from(new TextEncoder().encode(script), (byte) =>
+            String.fromCharCode(byte),
+          ).join(''),
+        );
+      }
+    }
+    return value;
+  });
   const currentLocale = getUserPreferredLocale();
 
   const formName = data.name ?? formSchema.name;

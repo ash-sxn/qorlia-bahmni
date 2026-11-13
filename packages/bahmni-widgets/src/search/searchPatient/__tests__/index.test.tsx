@@ -46,7 +46,10 @@ describe('SearchPatient', () => {
   ) => {
     (getConfig as jest.Mock).mockResolvedValue(config);
     return render(
-      <MemoryRouter>
+      <MemoryRouter
+        basename="/bahmni-v2"
+        initialEntries={['/bahmni-v2/registration/search']}
+      >
         <QueryClientProvider client={queryClient}>
           <SearchPatient extensionParams={mockExtensionParams} />
         </QueryClientProvider>
@@ -285,6 +288,32 @@ describe('SearchPatient', () => {
 
     await waitFor(() => {
       expect(container.querySelectorAll('a').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('keeps patient links inside the React app base path', async () => {
+    renderSearchPatient({
+      ...mockSearchPatientConfig,
+      patientDetailUrl: '/registration/patient/{{patientUuid}}',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('search-patient-tile')).toBeInTheDocument();
+    });
+    (searchPatientByNameOrId as jest.Mock).mockResolvedValue({
+      pageOfResults: mockSearchPatientData,
+      totalCount: mockSearchPatientData.length,
+    });
+    fireEvent.input(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), {
+      target: { value: 'Steffi' },
+    });
+    fireEvent.click(screen.getByTestId('search-patient-search-button'));
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole('link', { name: 'ABC200000' })[0],
+      ).toHaveAttribute(
+        'href',
+        `/bahmni-v2/registration/patient/${mockSearchPatientData[0].uuid}`,
+      );
     });
   });
 

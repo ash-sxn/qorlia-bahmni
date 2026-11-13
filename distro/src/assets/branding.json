@@ -1,0 +1,7 @@
+{
+  "name": "Qorlia",
+  "logoPath": "/bahmni-v2/assets/qorlia-mark.svg",
+  "primary": "#1F5238",
+  "primaryHover": "#173E2B",
+  "canvas": "#F5F7F5"
+}

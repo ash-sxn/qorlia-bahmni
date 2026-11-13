@@ -1,3 +1,63 @@
 @use "@bahmni/clinical-app/styles" as clinical;
 @use "@bahmni/registration-app/styles" as registration;
 @use "@bahmni/appointments-app/styles" as appointments;
+
+:root {
+  --qorlia-sage: #edf3ee;
+}
+
+body {
+  background: var(--qorlia-canvas, #f5f7f5);
+  color: var(--qorlia-ink, #202321);
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+#base-layout,
+#main-display-area {
+  background: var(--qorlia-canvas, #f5f7f5);
+}
+
+#main-display-area {
+  min-width: 0;
+}
+
+.cds--btn,
+.cds--text-input,
+.cds--search-input,
+.cds--dropdown,
+.cds--select-input {
+  border-radius: 8px;
+}
+
+.cds--tile,
+.cds--data-table-container,
+.cds--modal-container {
+  border: 1px solid var(--qorlia-border, #dce3de);
+  border-radius: 12px;
+  background: var(--qorlia-surface, #fff);
+}
+
+.cds--data-table thead,
+.cds--data-table tr:hover td {
+  background: var(--qorlia-sage);
+}
+
+.cds--data-table td,
+.cds--data-table th {
+  border-bottom-color: var(--qorlia-border, #dce3de);
+}
+
+.cds--tabs .cds--tabs__nav-link[aria-selected="true"] {
+  color: var(--qorlia-primary, #1f5238);
+  border-bottom-color: var(--qorlia-primary, #1f5238);
+}
+
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid #7ab49a;
+  outline-offset: 2px;
+}

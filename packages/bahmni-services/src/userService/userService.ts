@@ -1,5 +1,6 @@
 import i18next from 'i18next';
 import { get, post } from '../api';
+import { getAppSetting } from '../applicationConfigService/ApplicationConfigService';
 import {
   BAHMNI_USER_COOKIE_NAME,
   BAHMNI_USER_LOCATION_COOKIE,
@@ -7,19 +8,12 @@ import {
 import { getCookieByName, decodeCookieValue } from '../utils';
 import {
   USER_RESOURCE_URL,
-  APP_SETTINGS_URL,
   DEFAULT_DATE_FORMAT_PROPERTY,
   AVAILABLE_LOCATIONS_URL,
   SAVE_USER_LOCATION_URL,
   UPDATE_SESSION_LOCATION_URL,
 } from './constants';
-import {
-  UserResponse,
-  User,
-  UserLocation,
-  AppSettingsResponse,
-  LocationsResponse,
-} from './models';
+import { UserResponse, User, UserLocation, LocationsResponse } from './models';
 
 export async function getCurrentUser(): Promise<User | null> {
   // Get username from cookie
@@ -67,11 +61,7 @@ export const getUserLoginLocation = (): UserLocation => {
  * @returns Promise<string | null> - The default date format string (e.g., 'dd/MM/yyyy') or null if not found
  */
 export const getDefaultDateFormat = async (): Promise<string | null> => {
-  const settings = await get<AppSettingsResponse>(APP_SETTINGS_URL('commons'));
-  const dateFormatSetting = settings.find(
-    (setting) => setting.property === DEFAULT_DATE_FORMAT_PROPERTY,
-  );
-  return dateFormatSetting?.value ?? null;
+  return getAppSetting('commons', DEFAULT_DATE_FORMAT_PROPERTY);
 };
 
 /**

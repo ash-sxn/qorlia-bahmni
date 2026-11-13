@@ -1,14 +1,114 @@
 import { Encounter } from 'fhir/r4';
-import { getActiveVisit } from '../../encounterService';
-import { filterByActiveVisit } from '../encounterSessionService';
+import { get } from '../../api';
+import {
+  FHIR_ENCOUNTER_TAG_SYSTEM,
+  FHIR_ENCOUNTER_TYPE_CODE_SYSTEM,
+} from '../../constants/fhir';
+import { getActiveVisit, getEncounterByUuid } from '../../encounterService';
+import {
+  ENCOUNTER_SEARCH_URL,
+  ENCOUNTER_SESSION_DURATION_GP_URL,
+} from '../constants';
+import {
+  filterByActiveVisit,
+  findActiveEncounterInSession,
+  getEncounterSessionDuration,
+  searchEncounters,
+} from '../encounterSessionService';
 
 // Mock the encounterService
 jest.mock('../../encounterService');
+jest.mock('../../api');
 const mockGetActiveVisit = getActiveVisit as jest.MockedFunction<
   typeof getActiveVisit
 >;
 
 describe('encounterSessionService', () => {
+  describe('session duration boundaries', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      jest.mocked(get).mockReset();
+      jest
+        .spyOn(Date, 'now')
+        .mockReturnValue(Date.parse('2026-10-05T10:00:00Z'));
+    });
+    afterEach(() => jest.restoreAllMocks());
+
+    it.each([
+      { value: '60', expected: 60 },
+      { value: ' 30 ', expected: 30 },
+      { value: '45.5', expected: 45.5 },
+      { value: 15, expected: 15 },
+    ])(
+      'preserves usable configured minutes %j',
+      async ({ value, expected }) => {
+        jest.mocked(get).mockResolvedValue({ value });
+        await expect(getEncounterSessionDuration()).resolves.toBe(expected);
+        expect(get).toHaveBeenCalledWith(ENCOUNTER_SESSION_DURATION_GP_URL);
+      },
+    );
+
+    it.each([
+      '',
+      'invalid',
+      'NaN',
+      'Infinity',
+      '-Infinity',
+      '1e300',
+      '0',
+      '-1',
+      undefined,
+      null,
+      true,
+      [15],
+      {},
+    ])(
+      'uses the documented invalid-property fallback for %j',
+      async (value) => {
+        jest.mocked(get).mockResolvedValue({ value });
+        await expect(getEncounterSessionDuration()).resolves.toBe(60);
+      },
+    );
+
+    it.each([undefined, null, {}])(
+      'treats a missing property response as invalid, not a failed lookup: %j',
+      async (response) => {
+        jest.mocked(get).mockResolvedValue(response);
+        await expect(getEncounterSessionDuration()).resolves.toBe(60);
+      },
+    );
+
+    it('retains the documented lookup-failure fallback', async () => {
+      jest.mocked(get).mockRejectedValue(new Error('Lookup unavailable'));
+      await expect(getEncounterSessionDuration()).resolves.toBe(30);
+    });
+
+    it.each([0, -1, NaN, Infinity, -Infinity, Number.MAX_VALUE])(
+      'rejects an unusable explicit duration before any encounter query: %s',
+      async (duration) => {
+        await expect(
+          findActiveEncounterInSession('patient-123', 'provider-123', duration),
+        ).rejects.toThrow('Invalid encounter session duration');
+        expect(get).not.toHaveBeenCalled();
+        expect(mockGetActiveVisit).not.toHaveBeenCalled();
+      },
+    );
+
+    it('uses fractional minutes consistently in the query window', async () => {
+      jest.mocked(get).mockResolvedValue({ resourceType: 'Bundle', entry: [] });
+      await expect(
+        findActiveEncounterInSession('patient-123', 'provider-123', 0.5),
+      ).resolves.toBeNull();
+      const url = new URL(
+        jest.mocked(get).mock.calls[0][0],
+        'http://localhost',
+      );
+      expect(url.searchParams.get('_lastUpdated')).toBe(
+        'ge2026-10-05T09:59:30.000Z',
+      );
+    });
+  });
+
   describe('filterByActiveVisit', () => {
     const mockPatientUUID = 'patient-123';
 
@@ -119,6 +219,58 @@ describe('encounterSessionService', () => {
       expect(result).toBeNull();
     });
 
+    it('selects the newest matching encounter without changing the input order', async () => {
+      const older = createMockEncounter('older', 'visit-123');
+      const newer = {
+        ...older,
+        id: 'newer',
+        period: { start: '2025-07-22T03:00:00Z' },
+      };
+      const missingDate = { ...older, id: 'undated', period: undefined };
+      const invalidDate = {
+        ...older,
+        id: 'invalid',
+        period: { start: 'invalid' },
+      };
+      const encounters = [missingDate, older, invalidDate, newer];
+      mockGetActiveVisit.mockResolvedValue(createMockVisit('visit-123', false));
+      await expect(
+        filterByActiveVisit(encounters, mockPatientUUID),
+      ).resolves.toEqual(newer);
+      expect(encounters.map((encounter) => encounter.id)).toEqual([
+        'undated',
+        'older',
+        'invalid',
+        'newer',
+      ]);
+    });
+
+    it.each([
+      'https://staging.example/openmrs/ws/fhir2/R4/Encounter/visit-123',
+      'Encounter/visit-123/_history/2',
+      'https://staging.example/openmrs/ws/fhir2/R4/Encounter/visit-123/_history/2',
+    ])('recognizes the active visit reference %s', async (reference) => {
+      const encounter = {
+        ...createMockEncounter('encounter-1', 'visit-123'),
+        partOf: { reference },
+      };
+      mockGetActiveVisit.mockResolvedValue(createMockVisit('visit-123', false));
+      await expect(
+        filterByActiveVisit([encounter], mockPatientUUID),
+      ).resolves.toEqual(encounter);
+    });
+
+    it('does not match a different resource type with the same identifier', async () => {
+      const encounter = {
+        ...createMockEncounter('encounter-1', 'visit-123'),
+        partOf: { reference: 'Patient/visit-123' },
+      };
+      mockGetActiveVisit.mockResolvedValue(createMockVisit('visit-123', false));
+      await expect(
+        filterByActiveVisit([encounter], mockPatientUUID),
+      ).resolves.toBeNull();
+    });
+
     it('should return null when no visits found', async () => {
       mockGetActiveVisit.mockResolvedValue(null);
       const encounters = [createMockEncounter('encounter-1', 'visit-1')];
@@ -198,12 +350,13 @@ describe('encounterSessionService', () => {
       expect(result).toBeNull();
     });
 
-    it('should handle API errors gracefully and return null', async () => {
+    it('propagates an unavailable visit rather than inventing a new encounter', async () => {
       mockGetActiveVisit.mockRejectedValue(new Error('API Error'));
       const encounters = [createMockEncounter('encounter-1', 'visit-1')];
 
-      const result = await filterByActiveVisit(encounters, mockPatientUUID);
-      expect(result).toBeNull();
+      await expect(
+        filterByActiveVisit(encounters, mockPatientUUID),
+      ).rejects.toThrow('API Error');
     });
 
     describe('episode of care scoping', () => {
@@ -256,6 +409,255 @@ describe('encounterSessionService', () => {
         const result = await filterByActiveVisit([encounter], mockPatientUUID);
         expect(result).toEqual(encounter);
       });
+    });
+  });
+
+  describe('findActiveEncounterInSession', () => {
+    beforeEach(() => jest.clearAllMocks());
+
+    describe('saved encounter handoff', () => {
+      const now = new Date('2026-10-05T10:00:00Z');
+      const saved = (): Encounter => ({
+        resourceType: 'Encounter',
+        id: 'saved-123',
+        status: 'unknown',
+        class: { code: 'AMB' },
+        subject: { reference: 'Patient/patient-123' },
+        participant: [
+          { individual: { reference: 'Practitioner/provider-123' } },
+        ],
+        partOf: { reference: 'Encounter/visit-123' },
+        type: [
+          {
+            coding: [
+              { system: FHIR_ENCOUNTER_TYPE_CODE_SYSTEM, code: 'type-123' },
+            ],
+          },
+        ],
+        meta: {
+          lastUpdated: '2026-10-05T09:59:00Z',
+          tag: [{ system: FHIR_ENCOUNTER_TAG_SYSTEM, code: 'encounter' }],
+        },
+        period: { start: '2026-10-05T09:58:00Z' },
+      });
+      const find = (episode?: string[]) =>
+        findActiveEncounterInSession(
+          'patient-123',
+          'provider-123',
+          30,
+          'type-123',
+          episode,
+          'saved-123',
+        );
+      beforeEach(() => {
+        jest.spyOn(Date, 'now').mockReturnValue(now.getTime());
+        jest
+          .mocked(get)
+          .mockReset()
+          .mockResolvedValue({ resourceType: 'Bundle', entry: [] });
+        mockGetActiveVisit.mockReset().mockResolvedValue({
+          resourceType: 'Encounter',
+          id: 'visit-123',
+          status: 'unknown',
+          class: { code: 'AMB' },
+        });
+        jest.mocked(getEncounterByUuid).mockReset().mockResolvedValue(saved());
+      });
+      afterEach(() => jest.restoreAllMocks());
+
+      it('re-reads the saved encounter when its search index is empty', async () => {
+        await expect(find()).resolves.toEqual(saved());
+        expect(getEncounterByUuid).toHaveBeenCalledWith('saved-123');
+        expect(mockGetActiveVisit).toHaveBeenCalledTimes(1);
+      });
+      it.each([{ episode: [] }, { episode: ['other-123'] }])(
+        'does not bypass episode membership %j',
+        async ({ episode }) => {
+          await expect(find(episode)).resolves.toBeNull();
+        },
+      );
+      it('accepts a saved encounter in the selected episode', async () => {
+        await expect(find(['saved-123'])).resolves.toEqual(saved());
+      });
+      it.each([
+        { subject: { reference: 'Patient/other-patient-123' } },
+        {
+          participant: [
+            { individual: { reference: 'Practitioner/other-provider' } },
+          ],
+        },
+        { partOf: { reference: 'Encounter/other-visit' } },
+        {
+          type: [
+            {
+              coding: [
+                { system: FHIR_ENCOUNTER_TYPE_CODE_SYSTEM, code: 'other-type' },
+              ],
+            },
+          ],
+        },
+        { meta: { ...saved().meta, lastUpdated: '2026-10-05T09:29:59Z' } },
+        { status: 'entered-in-error' },
+      ])('rejects an ineligible direct read %j', async (change) => {
+        jest
+          .mocked(getEncounterByUuid)
+          .mockResolvedValue({ ...saved(), ...change } as Encounter);
+        // An older indexed representation of the same ID must not revive it.
+        jest.mocked(get).mockResolvedValue({
+          resourceType: 'Bundle',
+          entry: [{ resource: saved() }],
+        });
+        await expect(find()).resolves.toBeNull();
+      });
+      it('retains the newest selection and does not mutate search entries', async () => {
+        const newer = {
+          ...saved(),
+          id: 'newer-123',
+          period: { start: '2026-10-05T09:59:00Z' },
+        };
+        const indexed = [newer, saved()];
+        jest.mocked(get).mockResolvedValue({
+          resourceType: 'Bundle',
+          entry: indexed.map((resource) => ({ resource })),
+        });
+        await expect(find()).resolves.toEqual(newer);
+        expect(indexed.map((item) => item.id)).toEqual([
+          'newer-123',
+          'saved-123',
+        ]);
+      });
+      it('keeps a direct-read failure unavailable rather than starting a new encounter', async () => {
+        jest
+          .mocked(getEncounterByUuid)
+          .mockRejectedValue(
+            Object.assign(new Error('Denied'), { status: 403 }),
+          );
+        await expect(find()).rejects.toThrow('Denied');
+      });
+      it('does not read a saved encounter without an active visit', async () => {
+        mockGetActiveVisit.mockResolvedValue(null);
+        await expect(find()).resolves.toBeNull();
+        expect(getEncounterByUuid).not.toHaveBeenCalled();
+      });
+    });
+
+    it('propagates encounter-search failure', async () => {
+      jest.mocked(get).mockRejectedValue(new Error('Search unavailable'));
+      await expect(
+        findActiveEncounterInSession(
+          'patient-123',
+          'provider-123',
+          30,
+          'type-123',
+        ),
+      ).rejects.toThrow('Search unavailable');
+    });
+
+    it('propagates active-visit failure after a successful search', async () => {
+      jest.mocked(get).mockResolvedValue({
+        resourceType: 'Bundle',
+        entry: [
+          {
+            resource: {
+              resourceType: 'Encounter',
+              id: 'encounter-123',
+              partOf: { reference: 'Encounter/visit-123' },
+            },
+          },
+        ],
+      });
+      mockGetActiveVisit.mockRejectedValue(new Error('Visit unavailable'));
+      await expect(
+        findActiveEncounterInSession(
+          'patient-123',
+          'provider-123',
+          30,
+          'type-123',
+        ),
+      ).rejects.toThrow('Visit unavailable');
+    });
+
+    it('returns null only for a successful empty search', async () => {
+      jest.mocked(get).mockResolvedValue({ resourceType: 'Bundle', entry: [] });
+      await expect(
+        findActiveEncounterInSession(
+          'patient-123',
+          'provider-123',
+          30,
+          'type-123',
+        ),
+      ).resolves.toBeNull();
+      expect(mockGetActiveVisit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('searchEncounters pagination', () => {
+    const params = {
+      patient: 'patient-123',
+      _tag: 'encounter',
+      type: 'type-123',
+      participant: 'provider-123',
+    };
+    const initial = `${ENCOUNTER_SEARCH_URL}?${new URLSearchParams(params)}`;
+    const next = `${initial}&_getpagesoffset=1`;
+    const encounter = { resourceType: 'Encounter', id: 'encounter-2' };
+    beforeEach(() => jest.resetAllMocks());
+
+    it('reads the later encounter page through the same local API boundary', async () => {
+      jest
+        .mocked(get)
+        .mockResolvedValueOnce({
+          resourceType: 'Bundle',
+          total: 1,
+          entry: [],
+          link: [{ relation: 'next', url: `https://staging.example${next}` }],
+        })
+        .mockResolvedValueOnce({
+          resourceType: 'Bundle',
+          entry: [{ resource: encounter }],
+        });
+      await expect(searchEncounters(params)).resolves.toEqual([encounter]);
+      expect(get).toHaveBeenNthCalledWith(1, initial);
+      expect(get).toHaveBeenNthCalledWith(2, next);
+    });
+
+    it.each([
+      ['cyclic', initial],
+      ['different resource', next.replace('/Encounter?', '/Patient?')],
+    ])('rejects a %s pagination link', async (_, url) => {
+      jest.mocked(get).mockResolvedValueOnce({
+        resourceType: 'Bundle',
+        link: [{ relation: 'next', url }],
+      });
+      await expect(searchEncounters(params)).rejects.toThrow(
+        'Invalid FHIR pagination link',
+      );
+      expect(get).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects an incomplete history', async () => {
+      jest.mocked(get).mockResolvedValueOnce({
+        resourceType: 'Bundle',
+        total: 2,
+        entry: [{ resource: encounter }],
+      });
+      await expect(searchEncounters(params)).rejects.toThrow(
+        'incomplete result',
+      );
+    });
+
+    it('propagates a later-page failure instead of returning the partial history', async () => {
+      jest
+        .mocked(get)
+        .mockResolvedValueOnce({
+          resourceType: 'Bundle',
+          entry: [{ resource: encounter }],
+          link: [{ relation: 'next', url: next }],
+        })
+        .mockRejectedValueOnce(new Error('Later page unavailable'));
+      await expect(searchEncounters(params)).rejects.toThrow(
+        'Later page unavailable',
+      );
     });
   });
 });

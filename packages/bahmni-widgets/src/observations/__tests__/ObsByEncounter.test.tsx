@@ -113,7 +113,7 @@ describe('ObsByEncounter', () => {
 
   describe('Image and Video rendering', () => {
     it('should render ImageTile when observation value is an image', () => {
-      const imagePath = '/documents/patient-scan.jpg';
+      const imagePath = 'patient-scan.jpg';
       mockGetValueType.mockReturnValue('Image');
       mockTransformObservationToRowCell.mockReturnValueOnce({
         index: 0,
@@ -137,7 +137,7 @@ describe('ObsByEncounter', () => {
     });
 
     it('should render VideoTile when observation value is a video', () => {
-      const videoPath = '/documents/procedure-recording.mp4';
+      const videoPath = 'procedure-recording.mp4';
       mockGetValueType.mockReturnValue('Video');
       mockTransformObservationToRowCell.mockReturnValueOnce({
         index: 0,
@@ -162,7 +162,7 @@ describe('ObsByEncounter', () => {
     });
 
     it('should render icon instead of image when hideThumbnail is true', () => {
-      const imagePath = '/documents/patient-scan.jpg';
+      const imagePath = 'patient-scan.jpg';
       mockGetValueType.mockReturnValue('Image');
       mockTransformObservationToRowCell.mockReturnValueOnce({
         index: 0,

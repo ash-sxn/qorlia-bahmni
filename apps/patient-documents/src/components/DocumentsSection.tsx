@@ -5,10 +5,12 @@ import {
   SkeletonPlaceholder,
 } from '@bahmni/design-system';
 import {
+  BAHMNI_APP_BASE_PATH,
   DocumentViewModel,
   formatDateTime,
   getDocumentTypes,
   getFormattedError,
+  getUserLoginLocation,
 } from '@bahmni/services';
 import {
   ConfirmationModal,
@@ -17,6 +19,7 @@ import {
   DocumentUploadRef,
   renderDocumentTile,
   useNotification,
+  useActivePractitioner,
 } from '@bahmni/widgets';
 import { InlineLoading, TextArea } from '@carbon/react';
 import { useQuery } from '@tanstack/react-query';
@@ -56,9 +59,14 @@ export const DocumentsSection: React.FC<DocumentsSectionProps> = ({
 }) => {
   const { t } = useTranslation(BAHMNI_PATIENT_DOCUMENTS_NAMESPACE);
   const { addNotification } = useNotification();
+  const { practitioner } = useActivePractitioner();
   const { visitGroups, isLoading, error, refetch } = useVisitDocuments(
     patientUuid,
     [documentEncounterType.uuid],
+    {
+      providerUuid: practitioner?.uuid,
+      locationUuid: getUserLoginLocation().uuid,
+    },
   );
 
   const uploadHandles = useRef(new Map<string, DocumentUploadRef>());
@@ -226,7 +234,7 @@ export const DocumentsSection: React.FC<DocumentsSectionProps> = ({
     enabled: !!topLevelConcept,
   });
 
-  // Document types populate an optional dropdown, so a failure must not block upload — but the
+  // Document types populate an optional dropdown, so a failure must not block upload, but the
   // user should still be told the list could not be loaded rather than seeing an empty dropdown.
   useEffect(() => {
     if (documentTypesError) {
@@ -253,9 +261,18 @@ export const DocumentsSection: React.FC<DocumentsSectionProps> = ({
     );
   }
 
-  // Documents are attached to visits; with no visits there is nothing to show or upload into.
   if (visitGroups.length === 0) {
-    return null;
+    return (
+      <section className={styles.documents} aria-label={t('DOCUMENTS_TITLE')}>
+        <h2 className={styles.heading}>{t('DOCUMENTS_TITLE')}</h2>
+        <p>{t('DOCUMENTS_NO_VISITS')}</p>
+        <Button
+          href={`${BAHMNI_APP_BASE_PATH}/registration/patient/${encodeURIComponent(patientUuid)}`}
+        >
+          {t('DOCUMENTS_OPEN_REGISTRATION')}
+        </Button>
+      </section>
+    );
   }
 
   return (
@@ -312,9 +329,6 @@ export const DocumentsSection: React.FC<DocumentsSectionProps> = ({
                     <span className={styles.typeCol}>
                       {t('DOCUMENTS_COL_TYPE')}
                     </span>
-                    <span className={styles.actionsCol}>
-                      {t('DOCUMENTS_COL_ACTIONS')}
-                    </span>
                   </div>
                   {group.documents.map((document) => (
                     <div key={document.id} className={styles.docItem}>
@@ -325,7 +339,6 @@ export const DocumentsSection: React.FC<DocumentsSectionProps> = ({
                         <div className={styles.typeCell}>
                           {document.documentType}
                         </div>
-                        <div className={styles.actionsCell} />
                       </div>
                       {document.description && (
                         <TextArea

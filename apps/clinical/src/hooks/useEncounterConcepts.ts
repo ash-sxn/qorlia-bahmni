@@ -23,6 +23,7 @@ export const useEncounterConcepts = (): UseEncounterConceptsResult => {
   const fetchEncounterConcepts = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const concepts = await getEncounterConcepts();
       setEncounterConcepts(concepts);
     } catch (err) {

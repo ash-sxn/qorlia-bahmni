@@ -4,8 +4,10 @@
 
 // Shares the page gutter so it lines up with the patient banner above it.
 .documents {
-  background: $layer-02;
-  box-shadow: 0 2px 6px $shadow;
+  background: var(--qorlia-surface);
+  border: 1px solid var(--qorlia-border);
+  border-radius: 12px;
+  overflow: hidden;
 
   // Heading and accordion headers are grey; the body is white.
   :global(.cds--accordion__heading) {
@@ -43,7 +45,7 @@
 .headerRow,
 .docRow {
   display: grid;
-  grid-template-columns: 175px minmax(0, 1fr) 173px;
+  grid-template-columns: minmax(96px, 0.7fr) minmax(0, 1fr);
   align-items: center;
   gap: $spacing-05;
   padding-inline: $spacing-05;
@@ -87,20 +89,21 @@
   position: fixed;
   inset-block-end: 0;
 
-  inset-inline: calc($spacing-12 + $spacing-05);
+  inset-inline: clamp(18px, 4vw, 56px);
   z-index: 1;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: $spacing-05;
 
-  padding: $spacing-05 $spacing-06;
+  padding: $spacing-04;
 
   background: $layer-02;
   border-block-start: 1px solid $border-subtle-01;
 }
 
 .skeleton {
-  block-size: calc($spacing-12*3);
+  block-size: calc($spacing-12 * 3);
   inline-size: 100%;
 }

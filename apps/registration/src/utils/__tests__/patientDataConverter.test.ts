@@ -125,6 +125,29 @@ describe('patientDataConverter', () => {
       expect(result?.address1).toBe('123 Main St');
       expect(result?.cityVillage).toBe('Springfield');
     });
+
+    it('leaves out the address validity dates, which the form never edits', () => {
+      const result = convertToAddressData({
+        ...mockPatientData,
+        patient: {
+          ...mockPatientData.patient,
+          person: {
+            ...mockPatientData.patient.person,
+            addresses: [
+              {
+                ...mockPatientData.patient.person.addresses[0],
+                startDate: '2026-10-28T13:29:58.000+0530',
+                endDate: null,
+              },
+            ],
+          },
+        },
+      } as unknown as PatientProfileResponse);
+
+      expect(result?.address1).toBe('123 Main St');
+      expect(result).not.toHaveProperty('startDate');
+      expect(result).not.toHaveProperty('endDate');
+    });
   });
 
   describe('Person Attributes Edge Cases', () => {

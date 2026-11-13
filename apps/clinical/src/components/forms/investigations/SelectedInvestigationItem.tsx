@@ -68,6 +68,7 @@ const SelectedInvestigationItem: React.FC<SelectedInvestigationItemProps> =
               id={`investigation-priority-checkbox-${id}`}
               data-testid={`investigation-priority-checkbox-${id}`}
               labelText={t('INVESTIGATION_PRIORITY_URGENT')}
+              checked={investigation.selectedPriority === 'stat'}
               onChange={(_, { checked }) => handleUrgentChange(checked)}
             />
           </Column>

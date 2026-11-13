@@ -51,8 +51,9 @@ const ConditionsTable: React.FC<WidgetProps> = ({
   // Lazy-load: only enable inactive query once user has visited the inactive tab
   const [inactiveTabEverOpened, setInactiveTabEverOpened] = useState(false);
 
-  const [conditionToMarkInactive, setConditionToMarkInactive] =
-    useState<ConditionViewModel | null>(null);
+  const [conditionToMarkInactive, setConditionToMarkInactive] = useState<
+    (ConditionViewModel & { patientUUID: string }) | null
+  >(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const configActions = useMemo(
@@ -69,6 +70,13 @@ const ConditionsTable: React.FC<WidgetProps> = ({
   const showActions =
     configActions.length > 0 &&
     (actionPrivileges.length === 0 || hasActionPrivilege);
+  const canConfirm =
+    showActions &&
+    !disableActions &&
+    !!patientUUID &&
+    conditionToMarkInactive?.patientUUID === patientUUID &&
+    conditionToMarkInactive.status === ConditionStatus.Active &&
+    !!conditionToMarkInactive.rawFhirResource?.id;
 
   const handleTabChange = useCallback(
     ({ selectedIndex: idx }: { selectedIndex: number }) => {
@@ -94,7 +102,12 @@ const ConditionsTable: React.FC<WidgetProps> = ({
   );
 
   const handleConfirmMarkInactive = async () => {
-    if (!conditionToMarkInactive?.rawFhirResource) return;
+    if (
+      !canConfirm ||
+      isSubmitting ||
+      !conditionToMarkInactive?.rawFhirResource
+    )
+      return;
     setIsSubmitting(true);
     try {
       const encounter = await markConditionAsInactive(
@@ -210,7 +223,9 @@ const ConditionsTable: React.FC<WidgetProps> = ({
               disabled={isDisabled}
               data-testid={`condition-mark-inactive-${condition.code}`}
               onClick={() =>
-                !isDisabled && setConditionToMarkInactive(condition)
+                !isDisabled &&
+                patientUUID &&
+                setConditionToMarkInactive({ ...condition, patientUUID })
               }
             >
               {t('CONDITION_MARK_AS_INACTIVE')}
@@ -221,7 +236,7 @@ const ConditionsTable: React.FC<WidgetProps> = ({
           return undefined;
       }
     },
-    [t, disableActions, setConditionToMarkInactive],
+    [t, disableActions, patientUUID, setConditionToMarkInactive],
   );
 
   return (
@@ -271,10 +286,17 @@ const ConditionsTable: React.FC<WidgetProps> = ({
       <ConfirmationModal
         open={!!conditionToMarkInactive}
         heading={t('CONDITION_MARK_INACTIVE_CONFIRM_TITLE')}
-        body={t('CONDITION_MARK_INACTIVE_CONFIRM_BODY')}
+        body={
+          conditionToMarkInactive && !canConfirm
+            ? t('CONDITION_MARK_INACTIVE_UNAVAILABLE')
+            : t('CONDITION_MARK_INACTIVE_CONFIRM_BODY', {
+                condition: conditionToMarkInactive?.display ?? '',
+              })
+        }
         confirmLabel={t('YES')}
         cancelLabel={t('NO')}
         isSubmitting={isSubmitting}
+        isConfirmDisabled={!canConfirm}
         testId="mark-inactive-confirm-modal"
         onConfirm={handleConfirmMarkInactive}
         onCancel={() => setConditionToMarkInactive(null)}

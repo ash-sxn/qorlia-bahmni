@@ -47,6 +47,21 @@
 
 .criterionInput {
   flex: 1 1 0;
+  min-width: 0;
+}
+
+@include breakpoint-down(md) {
+  .criterionRow,
+  .rangeContainer {
+    flex-wrap: wrap;
+  }
+
+  .criterionSelector,
+  .criterionInput,
+  .rangeInputCol {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
 }
 
 .criterionClose {
@@ -132,8 +147,8 @@
 
 .searchCriteriaAccordionItem {
   > div > div {
-  padding-inline: $spacing-06;
-  margin-inline-start: 0 !important;
+    padding-inline: $spacing-06;
+    margin-inline-start: 0 !important;
   }
   > button:first-of-type {
     background-color: $layer-01;

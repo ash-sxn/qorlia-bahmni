@@ -27,6 +27,7 @@ import { DocumentsSection } from '../DocumentsSection';
 
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
+  getUserLoginLocation: () => ({ uuid: 'location' }),
   getPatientEncounters: jest.fn(),
   getFormattedDocumentReferences: jest.fn(),
   getDocumentTypes: jest.fn().mockResolvedValue([{ id: 't1', label: 'Rx' }]),
@@ -38,6 +39,10 @@ const saveResults: Record<string, 'ok' | 'fail'> = {};
 
 jest.mock('@bahmni/widgets', () => ({
   ...jest.requireActual('@bahmni/widgets'),
+  useActivePractitioner: () => ({
+    practitioner: { uuid: 'provider' },
+    loading: false,
+  }),
   useNotification: () => ({ addNotification: mockAddNotification }),
   DocumentUpload: ({
     saveTarget,
@@ -120,6 +125,8 @@ const docEncounter = (id: string, visitId: string): Encounter => ({
   subject: { reference: `Patient/${PATIENT}` },
   partOf: { reference: `Encounter/${visitId}` },
   type: [{ coding: [{ code: DOC_TYPE_UUID }] }],
+  participant: [{ individual: { reference: 'Practitioner/provider' } }],
+  location: [{ location: { reference: 'Location/location' } }],
 });
 
 const renderSection = () =>

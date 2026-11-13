@@ -167,6 +167,13 @@ describe('Utils', () => {
       expect(result.allowedStates).toEqual([]);
     });
 
+    it('handles older program resources without allowed-state metadata', () => {
+      const enrollment = mockEnrollment({ allowedStates: undefined });
+      expect(
+        createProgramDetailsViewModel(enrollment, []).allowedStates,
+      ).toEqual([]);
+    });
+
     it('should extract careManagerDisplay from episodeOfCare when it has a careManager', () => {
       const enrollment = mockEnrollment();
       const episodeOfCare = {

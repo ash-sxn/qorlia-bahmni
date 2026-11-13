@@ -4,10 +4,12 @@ import { WidgetConfig } from './model';
 export const builtInWidgets: WidgetConfig[] = [
   {
     type: 'allergies',
+    readPrivileges: ['Get Allergies'],
     component: lazy(() => import('../allergies/AllergiesTable')),
   },
   {
     type: 'appointments',
+    readPrivileges: ['Get Appointments'],
     component: lazy(() => import('../appointments/AppointmentsTable')),
   },
   {
@@ -16,6 +18,7 @@ export const builtInWidgets: WidgetConfig[] = [
   },
   {
     type: 'diagnoses',
+    readPrivileges: ['Get Diagnoses'],
     component: lazy(() => import('../diagnoses/DiagnosesTable')),
   },
   {
@@ -32,6 +35,7 @@ export const builtInWidgets: WidgetConfig[] = [
   },
   {
     type: 'labOrders',
+    readPrivileges: ['Get Orders'],
     component: lazy(() => import('../labinvestigation/LabInvestigation')),
   },
   {
@@ -40,12 +44,14 @@ export const builtInWidgets: WidgetConfig[] = [
   },
   {
     type: 'ordersControl',
+    readPrivileges: ['Get Orders'],
     component: lazy(
       () => import('../genericServiceRequest/GenericServiceRequestTable'),
     ),
   },
   {
     type: 'pacsOrders',
+    readPrivileges: ['Get Orders'],
     component: lazy(
       () => import('../radiologyInvestigation/RadiologyInvestigationTable'),
     ),
@@ -56,10 +62,12 @@ export const builtInWidgets: WidgetConfig[] = [
   },
   {
     type: 'treatment',
+    readPrivileges: ['Get Orders'],
     component: lazy(() => import('../medications/MedicationsTable')),
   },
   {
     type: 'immunizationHistory',
+    readPrivileges: ['Get Immunizations'],
     component: lazy(() => import('../immunizationHistory/ImmunizationHistory')),
   },
   {

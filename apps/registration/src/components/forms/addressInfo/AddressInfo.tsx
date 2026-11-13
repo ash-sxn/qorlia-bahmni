@@ -277,13 +277,9 @@ export const AddressInfo = ({ initialData, ref }: AddressInfoProps) => {
   }, [levelsWithStrictEntry, address, selectedMetadata, t, getTranslationKey]);
 
   const getData = useCallback((): PatientAddress => {
-    const result: PatientAddress = {};
-
-    Object.keys(address).forEach((key) => {
-      result[key as keyof PatientAddress] = address[key] ?? '';
-    });
-
-    return result;
+    return Object.fromEntries(
+      Object.entries(address).map(([key, value]) => [key, value ?? '']),
+    );
   }, [address]);
 
   useImperativeHandle(ref, () => ({
@@ -346,7 +342,7 @@ export const AddressInfo = ({ initialData, ref }: AddressInfoProps) => {
           selectedItem={selectedItems[fieldName] ?? null}
           onSelectionChange={handleSelectionChange}
           onInputChange={handleAddressInputChange}
-          translationKey={getTranslationKey(level.addressField)}
+          translationKey={getTranslationKey(level.addressField) ?? undefined}
         />
       );
     },

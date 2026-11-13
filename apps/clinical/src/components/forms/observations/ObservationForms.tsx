@@ -29,6 +29,7 @@ interface ObservationFormsProps {
   pinnedForms: ObservationForm[];
   updatePinnedForms: (newPinnedForms: ObservationForm[]) => Promise<void>;
   isPinnedFormsLoading: boolean;
+  isPinningUnavailable?: boolean;
   // Forms data passed from parent to avoid redundant API calls
   allForms: ObservationForm[];
   isAllFormsLoading: boolean;
@@ -58,6 +59,7 @@ const ObservationForms: React.FC<ObservationFormsProps> = React.memo(
     pinnedForms,
     updatePinnedForms,
     isPinnedFormsLoading,
+    isPinningUnavailable = false,
     allForms,
     isAllFormsLoading,
     observationFormsError,
@@ -333,6 +335,7 @@ const ObservationForms: React.FC<ObservationFormsProps> = React.memo(
                   title={form.name}
                   icon="fa-file-lines"
                   actionIcon={
+                    !isPinningUnavailable &&
                     !DEFAULT_FORM_API_NAMES.includes(form.name)
                       ? 'fa-thumbtack'
                       : undefined

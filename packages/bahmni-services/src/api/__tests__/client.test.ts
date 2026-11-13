@@ -86,8 +86,13 @@ describe('Axios Client', () => {
       >;
 
       delete (globalThis as unknown as { location: unknown }).location;
-      (globalThis as unknown as { location: { href: string } }).location = {
+      (
+        globalThis as unknown as {
+          location: { href: string; pathname: string };
+        }
+      ).location = {
         href: '',
+        pathname: '/bahmni-v2/home/',
       };
     });
 
@@ -201,8 +206,37 @@ describe('Axios Client', () => {
         await expect(() =>
           responseInterceptor.rejected(mockError),
         ).rejects.toBe(mockError);
-        expect(globalThis.location.href).toBe('/bahmni/home/index.html#/login');
+        expect(globalThis.location.href).toBe('/bahmni-v2/login');
       });
+
+      it.each(['/bahmni-v2/login', '/bahmni-v2/login/'])(
+        'keeps the sign-in form available after a 401 at %s',
+        async (pathname) => {
+          const previousPath = globalThis.location.pathname;
+          const previousHref = globalThis.location.href;
+          Object.defineProperty(globalThis.location, 'pathname', {
+            configurable: true,
+            writable: true,
+            value: pathname,
+          });
+          globalThis.location.href = 'login form remains open';
+          const mockError = { response: { status: 401 }, isAxiosError: true };
+          (axios.isAxiosError as unknown as jest.Mock) = jest
+            .fn()
+            .mockReturnValue(true);
+          try {
+            const interceptor = (client.interceptors.response as any)
+              .handlers[0];
+            await expect(interceptor.rejected(mockError)).rejects.toBe(
+              mockError,
+            );
+            expect(globalThis.location.href).toBe('login form remains open');
+          } finally {
+            globalThis.location.pathname = previousPath;
+            globalThis.location.href = previousHref;
+          }
+        },
+      );
 
       it('should parse blob error response body and pass parsed data to getFormattedError', async () => {
         const errorBody = {
@@ -264,7 +298,10 @@ describe('Axios Client', () => {
 
         await expect(() =>
           responseInterceptor.rejected(mockError),
-        ).rejects.toThrow('Test error message');
+        ).rejects.toMatchObject({
+          message: 'Test error message',
+          status: 500,
+        });
         expect(getFormattedError).toHaveBeenCalledWith(mockError);
       });
 

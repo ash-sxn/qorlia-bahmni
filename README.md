@@ -1,12 +1,10 @@
-# Qorlia contributor guide
+# Qorlia Bahmni Frontend
 
-New to Qorlia? Start with the [current Qorlia README and learning path](https://github.com/ash-sxn/qorlia-bahmni/blob/codex/billing-delivery-parity/README.md). It links to beginner setup, architecture, repository/module maps, API integration, design rules, testing, contribution workflow and team task templates.
+This is Qorlia's public development fork of the [Bahmni Apps Frontend](https://github.com/Bahmni/bahmni-apps-frontend). Bahmni and its contributors built the upstream software. Qorlia is working on configuration, presentation, and hospital-specific implementation, not claiming authorship of Bahmni or endorsement by its maintainers. This fork is not the code currently running at demo-bahmni.qorlia.com.
 
-The application redesign is on development branches, not this older default `main` baseline. Read the [first contribution walkthrough](https://github.com/ash-sxn/qorlia-bahmni/blob/codex/billing-delivery-parity/docs/first-contribution.md), then confirm your task's approved base and synthetic access before coding. Reading the development documentation does not authorize merging or deploying unfinished application code.
+The upstream git history, copyright notices, [LICENSE](LICENSE), and [NOTICE](NOTICE) are retained. Changes to covered source files remain under that repository's Mozilla Public License 2.0 with Healthcare Disclaimer. Other integrated components can have different licenses; check each component before distributing a combined build. Qorlia's brand does not replace Bahmni's copyright attribution.
 
-The upstream README below is retained for reference. Use the linked Qorlia guide for current setup, feature status and contribution instructions. Upstream copyright and licences remain unchanged.
-
-# Bahmni Apps Frontend
+Qorlia's visual direction and clinical UI rules are in [the design system](docs/QORLIA_DESIGN_SYSTEM.md). The current changes are development work only; no live Bahmni deployment uses this fork yet.
 
 A React TypeScript monorepo application for Bahmni applications, built with Nx, Webpack, and Carbon Design System. This application includes PWA support for offline capabilities.
 
@@ -105,4 +103,4 @@ For a more detailed explanation of the project structure and architecture, see [
 
 ## License
 
-[Add license information here]
+See [LICENSE](LICENSE) and [NOTICE](NOTICE). The license applies to this frontend repository; it does not grant rights to upstream trademarks or logos.

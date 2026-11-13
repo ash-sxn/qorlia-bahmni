@@ -34,7 +34,7 @@ const LookupCriterionInput = ({
     staleTime: 30 * 60 * 1000,
   });
 
-  const options = data ?? [];
+  const options = useMemo(() => data ?? [], [data]);
 
   const items = useMemo(() => {
     if (!loader) {
@@ -51,7 +51,7 @@ const LookupCriterionInput = ({
       error: t('COMMON_SEARCH_LOOKUP_ERROR'),
       empty: t('COMMON_SEARCH_LOOKUP_EMPTY'),
     });
-  }, [loader, inputValue, options, isLoading, isError]);
+  }, [loader, inputValue, options, isLoading, isError, t]);
 
   const selectedItem =
     options.find((option) => option.uuid === value?.value) ?? null;
@@ -69,7 +69,7 @@ const LookupCriterionInput = ({
         items={items}
         selectedItem={selectedItem}
         itemToString={(item: LookupOption | null) => item?.label ?? ''}
-        onChange={({ selectedItem }: { selectedItem: LookupOption | null }) =>
+        onChange={({ selectedItem }) =>
           onChange(
             selectedItem?.uuid
               ? { value: selectedItem.uuid, label: selectedItem.label }

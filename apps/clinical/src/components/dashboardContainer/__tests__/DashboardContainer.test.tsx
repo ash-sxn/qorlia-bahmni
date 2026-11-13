@@ -143,6 +143,17 @@ describe('DashboardContainer Component', () => {
     ).toBeInTheDocument();
   });
 
+  it('uses the section name when older configuration has no section ID', async () => {
+    renderDashboardContainerWithProvider(
+      [{ name: 'Vitals', controls: [] }],
+      'Vitals',
+    );
+    expect(
+      await screen.findByTestId('mocked-section-Vitals'),
+    ).toBeInTheDocument();
+    expect(mockScrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' });
+  });
+
   it('scrolls to the active section when activeItemId matches section id', async () => {
     // Create a spy div element with scrollIntoView method
     const spyElement = document.createElement('div');

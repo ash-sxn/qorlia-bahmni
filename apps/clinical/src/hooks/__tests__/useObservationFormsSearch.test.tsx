@@ -4,7 +4,7 @@ import {
 } from '@bahmni/services';
 import { UserPrivilegeProvider } from '@bahmni/widgets';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { I18nextProvider } from 'react-i18next';
 
@@ -131,6 +131,48 @@ describe('useObservationFormsSearch', () => {
   });
 
   describe('basic functionality', () => {
+    it('retries a failed catalogue through the existing query', async () => {
+      jest
+        .mocked(fetchObservationForms)
+        .mockRejectedValueOnce(new Error('catalogue unavailable'))
+        .mockResolvedValue(mockFormsData);
+      const { result } = renderHook(() => useObservationFormsSearch(), {
+        wrapper: createWrapper(),
+      });
+      await waitFor(() => expect(result.current.error).not.toBeNull());
+      expect(result.current.forms).toEqual([]);
+      await act(async () => {
+        await result.current.refetch();
+      });
+      await waitFor(() => expect(result.current.forms).toEqual(mockFormsData));
+      expect(result.current.error).toBeNull();
+      expect(fetchObservationForms).toHaveBeenCalledTimes(2);
+    });
+
+    it('marks cached forms pending while their catalogue is being revalidated', async () => {
+      const { result } = renderHook(() => useObservationFormsSearch(), {
+        wrapper: createWrapper(),
+      });
+      await waitFor(() => expect(result.current.forms).toEqual(mockFormsData));
+      let resolve!: (forms: typeof mockFormsData) => void;
+      jest.mocked(fetchObservationForms).mockReturnValueOnce(
+        new Promise((r) => {
+          resolve = r;
+        }),
+      );
+      let refresh!: Promise<unknown>;
+      act(() => {
+        refresh = result.current.refetch();
+      });
+      await waitFor(() => expect(result.current.isLoading).toBe(true));
+      expect(result.current.forms).toEqual(mockFormsData);
+      await act(async () => {
+        resolve(mockFormsData);
+        await refresh;
+      });
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+    });
+
     it('should call fetchObservationForms service when hook is used', async () => {
       const wrapper = createWrapper();
       const { result } = renderHook(() => useObservationFormsSearch(), {
@@ -167,11 +209,10 @@ describe('useObservationFormsSearch', () => {
         wrapper,
       });
 
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
+      await waitFor(() => expect(fetchObservationForms).toHaveBeenCalled());
+      expect(result.current.isLoading).toBe(true);
 
-      // Should return empty array when privileges are null
+      // Unresolved privileges are still pending, not a known empty catalogue.
       expect(result.current.forms).toEqual([]);
     });
 

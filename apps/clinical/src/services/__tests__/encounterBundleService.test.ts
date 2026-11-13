@@ -219,6 +219,50 @@ describe('encounterBundleService', () => {
       ).toThrow(CONSULTATION_ERROR_MESSAGES.INVALID_DIAGNOSIS_PARAMS);
     });
 
+    it.each(['unknown', 'refuted', 'CONFIRMED'])(
+      'rejects unsupported diagnosis certainty %s without changing it to provisional',
+      (code) => {
+        expect(() =>
+          createDiagnosisBundleEntries({
+            selectedDiagnoses: [
+              { ...mockDiagnosis, selectedCertainty: { code } },
+            ],
+            encounterSubject: mockEncounterSubject,
+            encounterReference: mockDiagnosisEncounterReference,
+            practitionerUUID: mockDiagnosisPractitionerUUID,
+            consultationDate: new Date(),
+          }),
+        ).toThrow(CONSULTATION_ERROR_MESSAGES.INVALID_DIAGNOSIS_PARAMS);
+      },
+    );
+
+    it.each(['', '   ', undefined])(
+      'rejects a missing diagnosis concept %s',
+      (id) => {
+        expect(() =>
+          createDiagnosisBundleEntries({
+            selectedDiagnoses: [{ ...mockDiagnosis, id: id as string }],
+            encounterSubject: mockEncounterSubject,
+            encounterReference: mockDiagnosisEncounterReference,
+            practitionerUUID: mockDiagnosisPractitionerUUID,
+            consultationDate: new Date(),
+          }),
+        ).toThrow(CONSULTATION_ERROR_MESSAGES.INVALID_DIAGNOSIS_PARAMS);
+      },
+    );
+
+    it('reports an invalid diagnosis date before resource serialization', () => {
+      expect(() =>
+        createDiagnosisBundleEntries({
+          selectedDiagnoses: [mockDiagnosis],
+          encounterSubject: mockEncounterSubject,
+          encounterReference: mockDiagnosisEncounterReference,
+          practitionerUUID: mockDiagnosisPractitionerUUID,
+          consultationDate: new Date('invalid'),
+        }),
+      ).toThrow(CONSULTATION_ERROR_MESSAGES.INVALID_DIAGNOSIS_PARAMS);
+    });
+
     it('should handle provisional certainty', () => {
       const provisionalDiagnosis: DiagnosisInputEntry = {
         ...mockDiagnosis,
@@ -1929,7 +1973,7 @@ describe('encounterBundleService', () => {
           durationUnit: 'months',
         };
 
-        const mockDate = new Date('2025-01-15T10:30:00Z');
+        const mockDate = new Date(2025, 0, 15, 10, 30);
         const result = createConditionsBundleEntries({
           selectedConditions: [conditionWithMonths],
           encounterSubject: mockEncounterSubject,
@@ -1939,12 +1983,87 @@ describe('encounterBundleService', () => {
         });
 
         const condition = result[0].resource as Condition;
-        // 3 months ago from 2025-01-15 should be 2024-10-15
-        expect(condition.onsetDateTime).toBe('2024-10-15T10:30:00.000Z');
+        // Calendar subtraction preserves local time across offset changes.
+        expect(condition.onsetDateTime).toBe(
+          new Date(2024, 9, 15, 10, 30).toISOString(),
+        );
       });
     });
 
     describe('Validation Tests (Sad Paths)', () => {
+      it.each([-1, 0.5, 2.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+        'rejects invalid condition duration %s',
+        (durationValue) => {
+          expect(() =>
+            createConditionsBundleEntries({
+              selectedConditions: [{ ...mockValidCondition, durationValue }],
+              encounterSubject: mockEncounterSubject,
+              encounterReference: mockEncounterReference,
+              practitionerUUID: mockPractitionerUUID,
+              consultationDate: new Date(),
+            }),
+          ).toThrow(CONSULTATION_ERROR_MESSAGES.INVALID_CONDITION_PARAMS);
+        },
+      );
+
+      it.each(['weeks', '', 'DAYS'])(
+        'rejects unsupported condition unit %s',
+        (durationUnit) => {
+          expect(() =>
+            createConditionsBundleEntries({
+              selectedConditions: [
+                { ...mockValidCondition, durationUnit: durationUnit as any },
+              ],
+              encounterSubject: mockEncounterSubject,
+              encounterReference: mockEncounterReference,
+              practitionerUUID: mockPractitionerUUID,
+              consultationDate: new Date(),
+            }),
+          ).toThrow(CONSULTATION_ERROR_MESSAGES.INVALID_CONDITION_PARAMS);
+        },
+      );
+
+      it.each(['', '   ', undefined])(
+        'rejects a missing condition concept %s',
+        (id) => {
+          expect(() =>
+            createConditionsBundleEntries({
+              selectedConditions: [{ ...mockValidCondition, id: id as string }],
+              encounterSubject: mockEncounterSubject,
+              encounterReference: mockEncounterReference,
+              practitionerUUID: mockPractitionerUUID,
+              consultationDate: new Date(),
+            }),
+          ).toThrow(CONSULTATION_ERROR_MESSAGES.INVALID_CONDITION_PARAMS);
+        },
+      );
+
+      it('reports an invalid condition date before calculating onset', () => {
+        expect(() =>
+          createConditionsBundleEntries({
+            selectedConditions: [mockValidCondition],
+            encounterSubject: mockEncounterSubject,
+            encounterReference: mockEncounterReference,
+            practitionerUUID: mockPractitionerUUID,
+            consultationDate: new Date('invalid'),
+          }),
+        ).toThrow(CONSULTATION_ERROR_MESSAGES.INVALID_CONDITION_PARAMS);
+      });
+
+      it('rejects a duration that produces an unrepresentable onset date', () => {
+        expect(() =>
+          createConditionsBundleEntries({
+            selectedConditions: [
+              { ...mockValidCondition, durationValue: Number.MAX_SAFE_INTEGER },
+            ],
+            encounterSubject: mockEncounterSubject,
+            encounterReference: mockEncounterReference,
+            practitionerUUID: mockPractitionerUUID,
+            consultationDate: new Date(),
+          }),
+        ).toThrow(CONSULTATION_ERROR_MESSAGES.INVALID_CONDITION_PARAMS);
+      });
+
       it('should throw error for null/undefined selectedConditions', () => {
         expect(() =>
           createConditionsBundleEntries({

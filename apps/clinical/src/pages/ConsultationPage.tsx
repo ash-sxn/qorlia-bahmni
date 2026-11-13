@@ -206,7 +206,7 @@ const ConsultationPage: React.FC = () => {
     queryKey: ['dashboardConfig', dashboardURL],
     queryFn: () =>
       getConfig<DashboardConfig>(
-        DASHBOARD_CONFIG_URL(dashboardURL),
+        DASHBOARD_CONFIG_URL(dashboardURL!),
         dashboardConfigSchema,
       ),
     select: addSectionIds,
@@ -236,7 +236,10 @@ const ConsultationPage: React.FC = () => {
     if (!dashboardConfig || !userPrivileges) return null;
     return {
       ...dashboardConfig,
-      sections: filterSectionsByPrivileges(dashboardConfig.sections),
+      sections: filterSectionsByPrivileges(
+        dashboardConfig.sections,
+        userPrivileges,
+      ),
     };
   }, [dashboardConfig, userPrivileges]);
 
@@ -319,7 +322,7 @@ const ConsultationPage: React.FC = () => {
 
   const renderContextInformation = () => {
     const programUUID = searchParams.get(PROGRAM_UUID_SEARCH_PARAMS_KEY);
-    if (programUUID && clinicalConfig.contextInformation?.program)
+    if (programUUID && clinicalConfig?.contextInformation?.program)
       return (
         <ProgramDetails
           programUUID={programUUID}
@@ -407,6 +410,7 @@ const ConsultationPage: React.FC = () => {
         actionArea={
           encounterSessionStartContext && (
             <ConsultationPadContainer
+              key={patientUUID}
               encounterSessionStartContext={encounterSessionStartContext}
               onClose={() => {
                 setIsActionAreaVisible((prev) => !prev);

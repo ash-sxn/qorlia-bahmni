@@ -7,8 +7,46 @@ const HomePage = lazy(() =>
     default: module.HomePage,
   })),
 );
+const BillingPage = lazy(() =>
+  import('../components/Billing/BillingPage').then((module) => ({
+    default: module.BillingPage,
+  })),
+);
+const PolicyLibraryPage = lazy(() =>
+  import('../components/PolicyLibrary/PolicyLibraryPage').then((module) => ({
+    default: module.PolicyLibraryPage,
+  })),
+);
+const PolicyDetailPage = lazy(() =>
+  import('../components/PolicyLibrary/PolicyDetailPage').then((module) => ({
+    default: module.PolicyDetailPage,
+  })),
+);
+const InsuranceDeskPage = lazy(() =>
+  import('../components/InsuranceDesk/InsuranceDeskPage').then((module) => ({
+    default: module.InsuranceDeskPage,
+  })),
+);
+const CaseDetailPage = lazy(() =>
+  import('../components/InsuranceDesk/CaseDetailPage').then((module) => ({
+    default: module.CaseDetailPage,
+  })),
+);
 
 export const routes: Routes = [
+  { path: '/billing', component: BillingPage, name: 'Billing' },
+  { path: '/policies', component: PolicyLibraryPage, name: 'PolicyLibrary' },
+  {
+    path: '/policies/:policyId',
+    component: PolicyDetailPage,
+    name: 'PolicyDetail',
+  },
+  { path: '/insurance', component: InsuranceDeskPage, name: 'InsuranceDesk' },
+  {
+    path: '/insurance/:caseId',
+    component: CaseDetailPage,
+    name: 'InsuranceCaseDetail',
+  },
   {
     path: '/',
     component: HomePage,

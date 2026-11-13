@@ -53,6 +53,47 @@ beforeEach(() => {
 });
 
 describe('submitConsultation', () => {
+  it.each([
+    'patientUUID',
+    'activeVisit',
+    'selectedEncounterType',
+    'selectedLocation',
+    'practitioner',
+  ])(
+    'rejects missing %s before constructing or posting a consultation',
+    async (field) => {
+      jest.mocked(useEncounterDetailsStore.getState).mockReturnValue({
+        ...mockStoreState,
+        [field]: null,
+      } as ReturnType<typeof useEncounterDetailsStore.getState>);
+
+      await expect(
+        submitConsultation({
+          activeEncounter: null,
+          episodeOfCareUuids: [],
+          activeEntries: [],
+        }),
+      ).rejects.toThrow('required before saving');
+      expect(mockCreateEncounterResource).not.toHaveBeenCalled();
+      expect(mockPostEncounterBundle).not.toHaveBeenCalled();
+    },
+  );
+
+  it('does not post without a bundle encounter reference', async () => {
+    mockCreateEncounterBundleEntry.mockReturnValue({
+      ...mockEncounterBundleEntry,
+      fullUrl: undefined,
+    });
+    await expect(
+      submitConsultation({
+        activeEncounter: null,
+        episodeOfCareUuids: [],
+        activeEntries: [],
+      }),
+    ).rejects.toThrow('encounter reference is missing');
+    expect(mockPostEncounterBundle).not.toHaveBeenCalled();
+  });
+
   it('returns updatedConcepts, patientUUID, and encounterTypeName from store state', async () => {
     const result = await submitConsultation({
       activeEncounter: null,

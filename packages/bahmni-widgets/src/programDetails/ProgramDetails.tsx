@@ -145,7 +145,7 @@ const ProgramDetails: React.FC<ProgramDetailsProps> = ({
       },
       {} as Record<string, string>,
     );
-  }, [config?.fields]);
+  }, [config?.fields, t]);
 
   if (isLoading) {
     return (
@@ -256,6 +256,8 @@ const ProgramDetails: React.FC<ProgramDetailsProps> = ({
         return data.currentStateName ?? '-';
       case 'careManager':
         return data?.careManagerDisplay ?? '-';
+      default:
+        return '-';
     }
   };
 

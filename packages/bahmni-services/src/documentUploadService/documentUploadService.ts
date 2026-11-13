@@ -5,7 +5,7 @@ import { processFileForUpload } from './utils';
 
 export async function uploadDocument(
   file: File,
-  encounterTypeName: string,
+  encounterTypeName: string | undefined,
   patientUuid: string,
 ): Promise<DocumentUploadResponse> {
   const processedFile = await processFileForUpload(file);

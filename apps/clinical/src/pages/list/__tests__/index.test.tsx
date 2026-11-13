@@ -32,6 +32,13 @@ jest.mock('@bahmni/widgets', () => ({
 }));
 
 jest.mock('../../../providers/clinicalConfig');
+jest.mock(
+  '../ClinicalWorkspace',
+  () =>
+    function MockClinicalWorkspace() {
+      return <div data-testid="clinical-workspace-test-id" />;
+    },
+);
 
 const mockUseClinicalConfig = useClinicalConfig as jest.MockedFunction<
   typeof useClinicalConfig
@@ -103,9 +110,10 @@ describe('ClinicalList', () => {
       userPrivileges: [{ uuid: 'priv-1', name: 'app:clinical' }],
     },
     {
-      description: 'clinicalConfig has no extensions property',
+      description:
+        'clinical configuration omits extensions but user lacks clinical access',
       clinicalConfig: {},
-      userPrivileges: [{ uuid: 'priv-1', name: 'app:clinical' }],
+      userPrivileges: [{ uuid: 'priv-2', name: 'app:admin' }],
     },
     {
       description: 'user lacks required privilege',
@@ -139,6 +147,18 @@ describe('ClinicalList', () => {
       ).toBeInTheDocument();
     },
   );
+
+  it('shows the workspace when clinical extensions are absent', () => {
+    mockUseClinicalConfig.mockReturnValue({
+      clinicalConfig: {} as any,
+      isLoading: false,
+      error: null,
+    });
+    renderPage();
+    expect(
+      screen.getByTestId('clinical-workspace-test-id'),
+    ).toBeInTheDocument();
+  });
 
   describe('Accessibility', () => {
     it('has no accessibility violations', async () => {

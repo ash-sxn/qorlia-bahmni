@@ -203,7 +203,7 @@ describe('InvestigationsForm', () => {
       );
       expect(combobox).toHaveAttribute(
         'aria-label',
-        'Search for investigations/prcedures',
+        'Search for investigations/procedures',
       );
     });
   });

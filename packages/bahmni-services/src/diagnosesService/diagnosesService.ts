@@ -1,5 +1,7 @@
 import { Coding, Condition as Diagnoses, Bundle } from 'fhir/r4';
-import { get } from '../api';
+import { OPENMRS_FHIR_R4 } from '../constants/app';
+import { HL7_CONDITION_CATEGORY_DIAGNOSIS_CODE } from '../constants/fhir';
+import { getCompatiblePatientBundle } from '../fhirSearchCompatibility';
 import {
   CERTAINITY_CONCEPTS,
   PATIENT_DIAGNOSIS_RESOURCE_URL,
@@ -11,19 +13,47 @@ import { Diagnosis } from './models';
 const CONFIRMED_STATUS = 'confirmed';
 const PROVISIONAL_STATUS = 'provisional';
 
-// Fetches all diagnoses (for consultation forms — no pagination)
-async function getPatientDiagnosesBundle(patientUUID: string): Promise<Bundle> {
-  return await get<Bundle>(PATIENT_DIAGNOSIS_RESOURCE_URL(patientUUID));
+// Fetches all diagnoses (for consultation forms, no pagination).
+async function getPatientDiagnosesBundle(
+  patientUUID: string,
+  encounterUUID?: string,
+): Promise<Bundle> {
+  const scope = encounterUUID
+    ? `&encounter=${encodeURIComponent(encounterUUID)}`
+    : '';
+  const { bundle } = await getCompatiblePatientBundle<Diagnoses>(
+    PATIENT_DIAGNOSIS_RESOURCE_URL(patientUUID) + scope,
+    // Bahmni's patient-only Condition search omits encounter diagnoses.
+    encounterUUID
+      ? PATIENT_DIAGNOSIS_RESOURCE_URL(patientUUID)
+      : `${OPENMRS_FHIR_R4}/Condition?patient=${patientUUID}&_count=100`,
+    (condition) =>
+      isEncounterDiagnosis(condition) &&
+      (!encounterUUID ||
+        condition.encounter?.reference?.split('/').slice(-2).join('/') ===
+          `Encounter/${encounterUUID}`),
+    !!encounterUUID,
+  );
+  return bundle;
 }
+
+const isEncounterDiagnosis = (condition: Diagnoses) =>
+  condition.category?.some((category) =>
+    category.coding?.some(
+      (coding) => coding.code === HL7_CONDITION_CATEGORY_DIAGNOSIS_CODE,
+    ),
+  ) ?? false;
 
 // Fetches a single page of diagnoses (for the paginated widget)
 async function getPatientDiagnosesBundlePage(
   patientUUID: string,
   count: number,
   offset: number,
-): Promise<Bundle> {
-  return await get<Bundle>(
+): Promise<{ bundle: Bundle; usedFallback: boolean }> {
+  return getCompatiblePatientBundle<Diagnoses>(
     PATIENT_DIAGNOSIS_PAGE_URL(patientUUID, count, offset),
+    `${OPENMRS_FHIR_R4}/Condition?patient=${patientUUID}&_count=100`,
+    isEncounterDiagnosis,
   );
 }
 
@@ -50,9 +80,15 @@ const mapDiagnosisCertainty = (diagnosis: Diagnoses): Coding => {
  * @param diagnosis - The FHIR Condition resource to validate
  * @returns true if valid, false otherwise
  */
-const isValidDiagnosis = (diagnosis: Diagnoses): boolean => {
-  return !!(diagnosis.id && diagnosis.code && diagnosis.recordedDate);
-};
+const diagnosisLabel = (diagnosis: Diagnoses): string | undefined =>
+  [
+    diagnosis.code?.text,
+    ...(diagnosis.code?.coding?.map((coding) => coding.display) ?? []),
+    diagnosis.extension?.find(
+      (extension) =>
+        extension.url === 'http://fhir.openmrs.org/ext/non-coded-condition',
+    )?.valueString,
+  ].find((label) => label?.trim());
 
 /**
  * Formats FHIR diagnoses into a more user-friendly format
@@ -67,7 +103,8 @@ function formatDiagnoses(bundle: Bundle): Diagnosis[] {
       .map((entry) => entry.resource as Diagnoses) ?? [];
 
   return diagnoses.map((diagnosis) => {
-    if (!isValidDiagnosis(diagnosis)) {
+    const display = diagnosisLabel(diagnosis);
+    if (!diagnosis.id || !display || !diagnosis.recordedDate) {
       throw new Error('Incomplete diagnosis data');
     }
 
@@ -76,7 +113,7 @@ function formatDiagnoses(bundle: Bundle): Diagnosis[] {
 
     return {
       id: diagnosis.id as string,
-      display: diagnosis.code?.text ?? '',
+      display,
       certainty,
       recordedDate,
       recorder: diagnosis.recorder?.display ?? '',
@@ -120,12 +157,14 @@ function deduplicateDiagnoses(diagnoses: Diagnosis[]): Diagnosis[] {
 /**
  * Fetches and formats diagnoses for a given patient UUID
  * @param patientUUID - The UUID of the patient
+ * @param encounterUUID - Optional encounter scope for consultation duplicate checks
  * @returns Promise resolving to an array of deduplicated diagnoses
  */
 export async function getPatientDiagnoses(
   patientUUID: string,
+  encounterUUID?: string,
 ): Promise<Diagnosis[]> {
-  const bundle = await getPatientDiagnosesBundle(patientUUID);
+  const bundle = await getPatientDiagnosesBundle(patientUUID, encounterUUID);
   const formattedDiagnoses = formatDiagnoses(bundle);
   return deduplicateDiagnoses(formattedDiagnoses);
 }
@@ -150,14 +189,22 @@ export async function getDiagnosesPage(
   page: number = 1,
 ): Promise<DiagnosisPage> {
   const offset = (page - 1) * count;
-  const bundle = await getPatientDiagnosesBundlePage(
+  const { bundle, usedFallback } = await getPatientDiagnosesBundlePage(
     patientUUID,
     count,
     offset,
   );
   // No per-page deduplication — with server-side pagination each page only has
   // a subset of records, so cross-page deduplication is not possible.
-  const diagnoses = formatDiagnoses(bundle);
+  const diagnoses = usedFallback
+    ? formatDiagnoses(bundle)
+        .sort(
+          (a, b) =>
+            new Date(b.recordedDate).getTime() -
+            new Date(a.recordedDate).getTime(),
+        )
+        .slice(offset, offset + count)
+    : formatDiagnoses(bundle);
   return {
     diagnoses,
     total: bundle.total,

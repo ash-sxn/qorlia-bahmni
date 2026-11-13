@@ -1,5 +1,3 @@
-import { CodeableConcept, Coding } from 'fhir/r4';
-
 /**
  * Represents a FHIR code from CodeableConcept
  */
@@ -14,19 +12,31 @@ export interface FHIRCode {
  * @param concept - FHIR CodeableConcept (or object containing CodeableConcept)
  * @returns Array of FHIRCode objects with system and code
  */
-export const extractCodesFromConcept = (
-  concept: CodeableConcept | undefined,
-): FHIRCode[] => {
+export const extractCodesFromConcept = (concept: unknown): FHIRCode[] => {
   const codes: FHIRCode[] = [];
 
-  if (!concept?.coding || !Array.isArray(concept.coding)) {
+  if (
+    !concept ||
+    typeof concept !== 'object' ||
+    !('coding' in concept) ||
+    !Array.isArray(concept.coding)
+  ) {
     return codes;
   }
 
-  concept.coding.forEach((coding: Coding) => {
-    if (coding.code) {
+  concept.coding.forEach((coding: unknown) => {
+    if (
+      coding &&
+      typeof coding === 'object' &&
+      'code' in coding &&
+      typeof coding.code === 'string' &&
+      coding.code
+    ) {
       codes.push({
-        system: coding.system,
+        system:
+          'system' in coding && typeof coding.system === 'string'
+            ? coding.system
+            : undefined,
         code: coding.code,
       });
     }
@@ -43,14 +53,16 @@ export const extractCodesFromConcept = (
  * @returns Array of FHIRCode objects
  */
 export const extractCodesFromResource = (
-  resource: Record<string, unknown>,
+  resource: unknown,
   conceptField: string = 'code',
 ): FHIRCode[] => {
   const codes: FHIRCode[] = [];
 
   // Extract from specified field
-  if (resource?.[conceptField]) {
-    const fieldCodes = extractCodesFromConcept(resource[conceptField]);
+  if (resource && typeof resource === 'object') {
+    const fieldCodes = extractCodesFromConcept(
+      Reflect.get(resource, conceptField),
+    );
     codes.push(...fieldCodes);
   }
 
@@ -65,8 +77,8 @@ export const extractCodesFromResource = (
  * @returns True if concepts match by code
  */
 export const conceptsMatchByCode = (
-  concept1: CodeableConcept | undefined,
-  concept2: CodeableConcept | undefined,
+  concept1: unknown,
+  concept2: unknown,
 ): boolean => {
   const codes1 = extractCodesFromConcept(concept1);
   const codes2 = extractCodesFromConcept(concept2);
@@ -107,12 +119,17 @@ export const conceptsMatchByCode = (
  * @returns True if any of the specified code fields match
  */
 export const resourcesMatchByCode = (
-  resource1: Record<string, unknown>,
-  resource2: Record<string, unknown>,
+  resource1: object | undefined,
+  resource2: object | undefined,
   conceptFields: string[] = ['code'],
 ): boolean => {
   for (const field of conceptFields) {
-    if (conceptsMatchByCode(resource1?.[field], resource2?.[field])) {
+    if (
+      conceptsMatchByCode(
+        resource1 && Reflect.get(resource1, field),
+        resource2 && Reflect.get(resource2, field),
+      )
+    ) {
       return true;
     }
   }

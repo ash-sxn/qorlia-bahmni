@@ -9,6 +9,7 @@ interface UseObservationFormsSearchResult {
   forms: ObservationForm[];
   isLoading: boolean;
   error: Error | null;
+  refetch: () => Promise<unknown>;
 }
 
 /**
@@ -28,7 +29,9 @@ const useObservationFormsSearch = (
   const {
     data: allForms = [],
     isLoading,
+    isFetching,
     error,
+    refetch,
   } = useQuery<ObservationForm[], Error>({
     queryKey: ['observationForms', episodeUuids],
     queryFn: () => fetchObservationForms(episodeUuids),
@@ -66,8 +69,9 @@ const useObservationFormsSearch = (
 
   return {
     forms: filteredForms,
-    isLoading,
+    isLoading: isLoading || isFetching || userPrivileges === null,
     error,
+    refetch,
   };
 };
 

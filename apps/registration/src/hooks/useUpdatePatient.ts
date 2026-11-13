@@ -1,27 +1,22 @@
 import {
-  updateFhirPatient,
-  createRelatedPerson,
-  deleteRelatedPerson,
+  updatePatient,
+  getPatientProfile,
   PatientIdentifier,
   PatientAddress,
   AUDIT_LOG_EVENT_DETAILS,
   AuditEventType,
   dispatchAuditEvent,
-  getUserLoginLocation,
   useTranslation,
 } from '@bahmni/services';
 import { useNotification } from '@bahmni/widgets';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Patient } from 'fhir/r4';
 import type { RelationshipData } from '../components/forms/patientRelationships/PatientRelationships';
 import {
   BasicInfoData,
   PersonAttributesData,
   AdditionalIdentifiersData,
 } from '../models/patient';
-import { buildFhirPatient } from '../utils/fhirPatientMapper';
-import { buildRelatedPersonPayload } from '../utils/patientDataConverter';
-import { useIdentifierTypes } from './useAdditionalIdentifiers';
+import { buildPatientProfile } from '../utils/patientProfileMapper';
 import { usePersonAttributes } from './usePersonAttributes';
 
 const TRAILING_BRACKETED_SUFFIX = /\s\[.*\]$/;
@@ -41,69 +36,27 @@ interface UpdatePatientFormData {
   relationships?: RelationshipData[];
 }
 
-function buildIdentifierTypeNames(
-  types?: { uuid: string; name: string }[],
-): Record<string, string> {
-  const map: Record<string, string> = {};
-  types?.forEach((t) => {
-    map[t.uuid] = t.name;
-  });
-  return map;
-}
-
 export const useUpdatePatient = () => {
   const { t } = useTranslation();
   const { addNotification } = useNotification();
   const { personAttributes } = usePersonAttributes();
-  const { data: identifierTypes } = useIdentifierTypes();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: async (formData: UpdatePatientFormData) => {
-      const payload = buildFhirPatient({
-        profile: formData.profile,
-        address: formData.address,
-        contact: formData.contact,
-        additional: formData.additional,
-        additionalIdentifiers: formData.additionalIdentifiers,
-        additionalIdentifiersInitialData:
-          formData.additionalIdentifiersInitialData,
-        identifierTypeNames: buildIdentifierTypeNames(identifierTypes),
-        loginLocationUuid: getUserLoginLocation()?.uuid,
-        personAttributes,
-        patientUuid: formData.patientUuid,
-      });
-      const patient = await updateFhirPatient<Patient>(
-        formData.patientUuid,
-        payload,
-      );
-
-      if (formData.relationships?.length) {
-        const newRels = formData.relationships.filter(
-          (rel) =>
-            !rel.isExisting &&
-            !rel.isDeleted &&
-            rel.patientUuid &&
-            rel.relationshipType,
+      const existing = await getPatientProfile(formData.patientUuid);
+      if (
+        existing.patient.uuid !== formData.patientUuid ||
+        existing.patient.voided
+      ) {
+        throw new Error(
+          'This patient record is no longer available. Reload before saving.',
         );
-        const deletedRels = formData.relationships.filter(
-          (rel) => rel.isExisting && rel.isDeleted,
-        );
-
-        const results = await Promise.allSettled([
-          ...newRels.map((rel) =>
-            createRelatedPerson(
-              buildRelatedPersonPayload(formData.patientUuid, rel),
-            ),
-          ),
-          ...deletedRels.map((rel) => deleteRelatedPerson(rel.id)),
-        ]);
-        if (results.some((r) => r.status === 'rejected')) {
-          throw new Error(t('ERROR_SAVING_RELATIONSHIPS'));
-        }
       }
-
-      return patient;
+      return updatePatient(
+        formData.patientUuid,
+        buildPatientProfile(formData, personAttributes, existing),
+      );
     },
     onSuccess: (response, variables) => {
       addNotification({
@@ -113,8 +66,11 @@ export const useUpdatePatient = () => {
         timeout: 5000,
       });
 
-      const patientUuid = response?.id;
+      const patientUuid = response?.patient?.uuid;
       if (patientUuid) {
+        queryClient.invalidateQueries({
+          queryKey: ['registrationPatientProfile', variables.patientUuid],
+        });
         queryClient.invalidateQueries({
           queryKey: ['formattedPatient', variables.patientUuid],
         });
@@ -149,7 +105,6 @@ export const useUpdatePatient = () => {
         type: 'error',
         title: t('ERROR_UPDATING_PATIENT'),
         message,
-        timeout: 5000,
       });
     },
   });

@@ -137,6 +137,20 @@ describe('DocumentUpload', () => {
     expect(screen.getByText('DOCUMENT_UPLOAD_BUTTON')).toBeInTheDocument();
   });
 
+  it('uses a keyboard-accessible button to toggle the note', () => {
+    renderWidget();
+    selectFile();
+    const toggle = screen.getByRole('button', {
+      name: 'DOCUMENT_UPLOAD_ADD_NOTE',
+    });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.getByRole('textbox', { name: 'DOCUMENT_UPLOAD_ADD_NOTE' }),
+    ).toBeInTheDocument();
+  });
+
   it('creates pending blob on file select and uploads on save', async () => {
     renderWidget();
     selectFile();
@@ -190,14 +204,20 @@ describe('DocumentUpload', () => {
     expect(saveDocuments).not.toHaveBeenCalled();
   });
 
-  it('rejects unsupported file types without uploading', () => {
-    renderWidget();
-    selectFile('text/plain');
-    expect(uploadDocument).not.toHaveBeenCalled();
-    expect(mockAddNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error' }),
-    );
-  });
+  it.each(['text/plain', 'image/webp'])(
+    'rejects %s without uploading',
+    (mimeType) => {
+      renderWidget();
+      selectFile(mimeType);
+      expect(uploadDocument).not.toHaveBeenCalled();
+      expect(
+        screen.queryByTestId('pending-document-row'),
+      ).not.toBeInTheDocument();
+      expect(mockAddNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' }),
+      );
+    },
+  );
 
   it('saves the document with the upload url and calls onSaved', async () => {
     const onSaved = jest.fn();

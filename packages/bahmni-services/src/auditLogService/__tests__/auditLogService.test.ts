@@ -17,6 +17,7 @@ const TRANSLATIONS: Record<string, string> = {
   VIEWED_CLINICAL_DASHBOARD_MESSAGE: 'Viewed clinical dashboard',
   EDIT_ENCOUNTER_MESSAGE: 'Edited encounter',
   VIEWED_RADIOLOGY_RESULTS_MESSAGE: 'Viewed radiology results',
+  RUN_REPORT_MESSAGE: 'Ran report',
 };
 
 jest.mock('i18next', () => ({
@@ -29,6 +30,25 @@ describe('auditLogService', () => {
   });
 
   describe('logAuditEvent', () => {
+    it('records report actions without a patient using the legacy report module', async () => {
+      mockIsAuditLogEnabled.mockResolvedValue(true);
+      mockPost.mockResolvedValue({});
+
+      expect(
+        await logAuditEvent(
+          undefined,
+          'RUN_REPORT',
+          { reportName: 'OPD report' },
+          MODULE_LABELS.REPORTS,
+        ),
+      ).toEqual({ logged: true });
+      expect(mockPost).toHaveBeenCalledWith(AUDIT_LOG_URL, {
+        patientUuid: undefined,
+        eventType: 'RUN_REPORT',
+        message: 'RUN_REPORT_MESSAGE~{"reportName":"OPD report"}',
+        module: 'MODULE_LABEL_REPORTS_KEY',
+      });
+    });
     it('should return logged false without logging when audit logging is disabled', async () => {
       mockIsAuditLogEnabled.mockResolvedValue(false);
 
@@ -54,7 +74,7 @@ describe('auditLogService', () => {
       expect(mockPost).toHaveBeenCalledWith(AUDIT_LOG_URL, {
         patientUuid: 'patient-456',
         eventType: 'VIEWED_CLINICAL_DASHBOARD',
-        message: 'Viewed clinical dashboard',
+        message: 'VIEWED_CLINICAL_DASHBOARD_MESSAGE',
         module: MODULE_LABELS.CLINICAL,
       });
     });
@@ -77,12 +97,12 @@ describe('auditLogService', () => {
       expect(mockPost).toHaveBeenCalledWith(AUDIT_LOG_URL, {
         patientUuid: 'patient-789',
         eventType: 'EDIT_ENCOUNTER',
-        message: `Edited encounter~${JSON.stringify(messageParams)}`,
+        message: `EDIT_ENCOUNTER_MESSAGE~${JSON.stringify(messageParams)}`,
         module: MODULE_LABELS.CLINICAL,
       });
     });
 
-    it('should send the translated message instead of the raw i18n key', async () => {
+    it('stores the native message key even when the writer has a translation', async () => {
       mockIsAuditLogEnabled.mockResolvedValue(true);
       mockPost.mockResolvedValue({});
 
@@ -90,10 +110,30 @@ describe('auditLogService', () => {
 
       expect(mockPost).toHaveBeenCalledWith(
         AUDIT_LOG_URL,
-        expect.objectContaining({ message: 'Viewed radiology results' }),
+        expect.objectContaining({
+          message: 'VIEWED_RADIOLOGY_RESULTS_MESSAGE',
+        }),
       );
-      const postedMessage = mockPost.mock.calls[0][1].message;
-      expect(postedMessage).not.toContain('_MESSAGE');
+    });
+
+    it('records native OPEN_VISIT with its parameters intact', async () => {
+      mockIsAuditLogEnabled.mockResolvedValue(true);
+      mockPost.mockResolvedValue({});
+
+      await logAuditEvent(
+        'patient-visit',
+        'OPEN_VISIT',
+        { visitType: 'OPD ~ follow-up' },
+        MODULE_LABELS.CLINICAL,
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(mockPost).toHaveBeenCalledWith(AUDIT_LOG_URL, {
+        patientUuid: 'patient-visit',
+        eventType: 'OPEN_VISIT',
+        message: 'OPEN_VISIT_MESSAGE~{"visitType":"OPD ~ follow-up"}',
+        module: MODULE_LABELS.CLINICAL,
+      });
     });
 
     it('should handle unknown event types', async () => {
@@ -126,7 +166,7 @@ describe('auditLogService', () => {
       expect(mockPost).toHaveBeenCalledWith(AUDIT_LOG_URL, {
         patientUuid: 'patient-custom',
         eventType: 'VIEWED_CLINICAL_DASHBOARD',
-        message: 'Viewed clinical dashboard',
+        message: 'VIEWED_CLINICAL_DASHBOARD_MESSAGE',
         module: 'CUSTOM_MODULE',
       });
     });
@@ -145,7 +185,7 @@ describe('auditLogService', () => {
       expect(mockPost).toHaveBeenCalledWith(AUDIT_LOG_URL, {
         patientUuid: 'patient-undefined-params',
         eventType: 'VIEWED_CLINICAL_DASHBOARD',
-        message: 'Viewed clinical dashboard',
+        message: 'VIEWED_CLINICAL_DASHBOARD_MESSAGE',
         module: MODULE_LABELS.CLINICAL,
       });
     });

@@ -461,6 +461,20 @@ describe('getActiveEncounter', () => {
   const encounter = (id: string): Encounter =>
     ({ resourceType: 'Encounter', id, status: 'in-progress' }) as Encounter;
 
+  it.each(['pending', 'error'] as const)(
+    'does not treat an unresolved %s lookup as a new encounter',
+    (sessionEncounterStatus) => {
+      expect(
+        getActiveEncounter({
+          sourceEncounterUuid: undefined,
+          sourceEncounter: null,
+          sessionEncounter: undefined,
+          sessionEncounterStatus,
+        }),
+      ).toBeUndefined();
+    },
+  );
+
   it('returns the session encounter when no sourceEncounterUuid is provided (active encounter)', () => {
     const session = encounter(OTHER_UUID);
     const result = getActiveEncounter({
@@ -524,13 +538,13 @@ describe('getActiveEncounter', () => {
     expect(result).toBeNull();
   });
 
-  it('returns null on session query error (safe copyover default; does not fall back to source)', () => {
+  it('does not permit copyover on session query error or fall back to the source', () => {
     const result = getActiveEncounter({
       sourceEncounterUuid: SOURCE_UUID,
       sourceEncounter: encounter(SOURCE_UUID),
       sessionEncounter: null,
       sessionEncounterStatus: 'error',
     });
-    expect(result).toBeNull();
+    expect(result).toBeUndefined();
   });
 });

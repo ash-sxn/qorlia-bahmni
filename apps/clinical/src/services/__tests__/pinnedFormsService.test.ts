@@ -29,6 +29,20 @@ describe('pinnedFormsService', () => {
   });
 
   describe('loadPinnedForms', () => {
+    it.each([
+      null,
+      [],
+      'invalid',
+      { userProperties: { pinnedObsTemplates: 42 } },
+    ])(
+      'rejects malformed preferences instead of treating them as no pins (%j)',
+      async (payload) => {
+        (get as jest.Mock).mockResolvedValue(payload);
+        await expect(loadPinnedForms(mockUserUuid)).rejects.toThrow(
+          PINNED_FORMS_ERROR_MESSAGES.INVALID_DATA,
+        );
+      },
+    );
     it('should load and parse pinned forms successfully', async () => {
       (get as jest.Mock).mockResolvedValue(mockUserData);
 

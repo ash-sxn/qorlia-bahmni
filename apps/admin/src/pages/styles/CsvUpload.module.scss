@@ -1,5 +1,102 @@
-@use '@carbon/react/scss/spacing' as *;
-
 .page {
-  padding-block: $spacing-05;
+  min-height: calc(100vh - 48px);
+  padding: 36px clamp(18px, 4vw, 56px);
+  background: var(--qorlia-canvas, #f8faf9);
+  color: var(--qorlia-ink, #202b29);
+}
+.eyebrow {
+  color: var(--qorlia-primary, #1f5238);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.page h1 {
+  margin: 8px 0;
+  font-size: clamp(28px, 2.4vw, 38px);
+  letter-spacing: -.04em;
+}
+.description {
+  color: var(--qorlia-muted, #5a6865);
+}
+.warning {
+  padding: 12px 16px;
+  border-left: 3px solid #a66328;
+  background: #fff7eb;
+}
+.card {
+  margin-top: 22px;
+  padding: 22px;
+  border: 1px solid var(--qorlia-border, #dbe5e1);
+  border-radius: 10px;
+  background: var(--qorlia-surface, #fff);
+}
+.card h2 {
+  margin: 0 0 16px;
+  font-size: 19px;
+}
+.selector,
+.heading,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.selector label {
+  display: grid;
+  flex: 1 1 260px;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.selector select,
+.selector input {
+  min-height: 42px;
+  padding: 8px 11px;
+  border: 1px solid #cddbd4;
+  border-radius: 7px;
+  background: #fff;
+  font: inherit;
+  font-weight: 400;
+}
+.heading {
+  justify-content: space-between;
+}
+.card button {
+  min-height: 36px;
+  padding: 6px 11px;
+  border: 1px solid var(--qorlia-primary, #1f5238);
+  border-radius: 7px;
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+.card button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.actions button:last-child {
+  background: #fff;
+  color: var(--qorlia-primary, #1f5238);
+}
+.tableScroll {
+  overflow-x: auto;
+}
+.tableScroll table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+.tableScroll th,
+.tableScroll td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--qorlia-border, #dbe5e1);
+  vertical-align: top;
+}
+.tableScroll th {
+  background: #f1f6f3;
+  white-space: nowrap;
 }

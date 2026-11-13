@@ -84,6 +84,11 @@
 }
 
 .actionIcon {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  min-width: 44px;
+  min-height: 44px;
   cursor: pointer;
   padding: $spacing-02;
   border-radius: 4px;

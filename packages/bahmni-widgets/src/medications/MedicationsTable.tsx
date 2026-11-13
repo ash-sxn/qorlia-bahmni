@@ -306,9 +306,7 @@ const MedicationsTable: React.FC<WidgetProps> = ({
               )}
             </div>
             <p className={styles.medicineDetails}>
-              {row.doseForm
-                ? `${row.doseForm} | ${row.quantity}`
-                : row.quantity}
+              {[row.doseForm, row.quantity].filter(Boolean).join(' | ')}
             </p>
             {row.priority === MEDICATION_REQUEST_PRIORITY.STAT && (
               <Tag className={styles.STAT}>STAT</Tag>
@@ -319,7 +317,11 @@ const MedicationsTable: React.FC<WidgetProps> = ({
       case 'dosage': {
         const dosageClassName = styles.columnDataBold;
         if (typeof row.dosage === 'string') {
-          return <p className={dosageClassName}>{row.dosage}</p>;
+          return (
+            <p className={dosageClassName}>
+              {row.dosage || t('MEDICATIONS_TABLE_NOT_AVAILABLE')}
+            </p>
+          );
         }
         if (
           row.dosage &&
@@ -374,6 +376,7 @@ const MedicationsTable: React.FC<WidgetProps> = ({
           </>
         );
       case 'actions':
+        if (row.readOnly) return null;
         return (
           <Actions
             actions={actions}

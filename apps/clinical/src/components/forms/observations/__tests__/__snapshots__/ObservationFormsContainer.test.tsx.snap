@@ -20,18 +20,43 @@ exports[`ObservationFormsContainer Rendering and Structure should match the snap
     <div
       data-testid="action-area-header-actions"
     >
-      <div
-        class="pinIconContainer unpinned"
-        title="translated_OBSERVATION_FORMS_PIN_TOOLTIP"
+      <span
+        class="cds--popover-container cds--popover--caret cds--popover--high-contrast cds--popover--top cds--tooltip cds--icon-tooltip"
       >
         <div
-          data-icon-name="fa-thumbtack"
-          data-size="SM"
-          data-testid="icon-pin-icon"
+          class="cds--tooltip-trigger__wrapper"
         >
-          Icon
+          <button
+            aria-labelledby="tooltip-_r_5_"
+            aria-pressed="false"
+            class="pinIconContainer unpinned cds--btn cds--btn--sm cds--layout--size-sm cds--btn--ghost cds--btn--icon-only"
+            type="button"
+          >
+            <div
+              data-icon-name="fa-thumbtack"
+              data-size="SM"
+              data-testid="icon-pin-icon"
+            >
+              Icon
+            </div>
+          </button>
         </div>
-      </div>
+        <span
+          aria-hidden="true"
+          class="cds--popover"
+          id="tooltip-_r_5_"
+          role="tooltip"
+        >
+          <span
+            class="cds--popover-content cds--tooltip-content"
+          >
+            translated_OBSERVATION_FORMS_PIN_TOOLTIP
+          </span>
+          <span
+            class="cds--popover-caret"
+          />
+        </span>
+      </span>
     </div>
     <div
       data-testid="action-area-content"
@@ -44,8 +69,15 @@ exports[`ObservationFormsContainer Rendering and Structure should match the snap
           class="formContent"
           data-testid="observation-form-content"
         >
-          <div>
-            translated_OBSERVATION_FORM_LOADING_METADATA_ERROR
+          <div
+            role="alert"
+          >
+            <p>
+              translated_OBSERVATION_FORM_READ_UNAVAILABLE
+            </p>
+            <button>
+              translated_OBSERVATION_FORM_TRY_AGAIN
+            </button>
           </div>
         </div>
       </div>
@@ -55,6 +87,7 @@ exports[`ObservationFormsContainer Rendering and Structure should match the snap
     >
       <button
         data-testid="primary-button"
+        disabled=""
       >
         translated_OBSERVATION_FORM_SAVE_BUTTON
       </button>

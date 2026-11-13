@@ -1,10 +1,7 @@
+import { getAuthenticatedDocumentUrl } from '@bahmni/services';
 import React from 'react';
 import { Attachment } from './models';
 import styles from './styles/LabInvestigation.module.scss';
-
-// Base URL for lab attachments
-const ATTACHMENTS_BASE_URL =
-  '/openmrs/auth?requested_document=/uploaded_results/';
 
 interface AttachmentViewerProps {
   attachment: Attachment;
@@ -19,9 +16,9 @@ const AttachmentViewer: React.FC<AttachmentViewerProps> = ({
 }) => {
   const isPDF = attachment.contentType?.toLowerCase().includes('pdf');
   const isImage = attachment.contentType?.toLowerCase().includes('image');
-  const iframeSrc = isPDF
-    ? `${ATTACHMENTS_BASE_URL}${attachment.url}#toolbar=0`
-    : `${ATTACHMENTS_BASE_URL}${attachment.url}`;
+  const url = getAuthenticatedDocumentUrl(attachment.url, 'uploaded_results');
+  if (!url) return <p role="alert">Attachment path is invalid.</p>;
+  const iframeSrc = isPDF ? `${url}#toolbar=0` : url;
 
   return (
     <div className={styles.attachmentViewer}>
@@ -32,7 +29,7 @@ const AttachmentViewer: React.FC<AttachmentViewerProps> = ({
       )}
       {isImage ? (
         <img
-          src={ATTACHMENTS_BASE_URL + attachment.url}
+          src={url}
           alt={attachment.id || `Attachment ${index}`}
           className={styles.attachmentImage}
         />

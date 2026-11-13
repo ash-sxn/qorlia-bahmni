@@ -157,7 +157,10 @@ export function formatAllergies(
     return {
       id: conceptCode,
       resourceId: allergy.id,
-      display: allergy.code?.text ?? '',
+      display:
+        allergy.code?.text ??
+        allergy.code?.coding?.find((coding) => coding.display)?.display ??
+        '',
       category: allergy.category,
       criticality: allergy.criticality,
       status: statusDisplay,
@@ -168,13 +171,19 @@ export function formatAllergies(
         // duplicates from showing multiple times in the AllergiesTable display.
         const seenTexts = new Set<string>();
         const unique = reaction.manifestation.filter((m) => {
-          const key = m.text ?? m.coding?.[0]?.display ?? '';
+          const key =
+            m.text ?? m.coding?.find((coding) => coding.display)?.display ?? '';
           if (!key || seenTexts.has(key)) return false;
           seenTexts.add(key);
           return true;
         });
         return {
-          manifestation: unique.map((m) => m.text ?? ''),
+          manifestation: unique.map(
+            (m) =>
+              m.text ??
+              m.coding?.find((coding) => coding.display)?.display ??
+              '',
+          ),
           manifestationCodings: unique.flatMap((m) => m.coding ?? []),
           severity: reaction.severity,
         };

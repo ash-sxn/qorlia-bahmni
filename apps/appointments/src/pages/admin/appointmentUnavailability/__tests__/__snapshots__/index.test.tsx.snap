@@ -4,7 +4,7 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with empty
 <div>
   <div
     aria-label="action-area-layout-aria-label"
-    class="_layout_95ahm_85"
+    class="_layout_1cccr_85"
     data-testid="action-area-layout-test-id"
     id="action-area-layout"
   >
@@ -13,9 +13,27 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with empty
       class="cds--header"
       data-testid="header"
     >
+      <a
+        class="cds--header__name _qorliaBrand_tu7l3_14"
+        data-testid="header-name"
+        href="/bahmni-v2/home"
+      >
+        <span
+          aria-hidden="true"
+          class="_qorliaMark_tu7l3_20"
+        />
+        <span>
+          Qorlia
+        </span>
+        <span
+          class="_brandCredit_tu7l3_36"
+        >
+          Built on Bahmni
+        </span>
+      </a>
       <nav
         aria-label="Breadcrumb"
-        class="_breadcrumb_hjxxm_74"
+        class="_breadcrumb_tu7l3_71"
         data-testid="breadcrumb"
       >
         <ol
@@ -36,7 +54,7 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with empty
           >
             <a
               class="cds--link"
-              href="/appointments"
+              href="/bahmni-v2/appointments/"
             >
               Appointments
             </a>
@@ -64,7 +82,7 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with empty
       </div>
     </header>
     <div
-      class="_panelGroup_95ahm_161"
+      class="_panelGroup_1cccr_161"
       data-group="true"
       data-testid="_r_4v_"
       id="_r_4v_"
@@ -82,7 +100,7 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with empty
           <div
             aria-hidden="false"
             aria-label="main-display-area-aria-label"
-            class="_mainDisplay_95ahm_108"
+            class="_mainDisplay_1cccr_108"
             data-testid="main-display-area-test-id"
             id="main-display-area"
           >
@@ -92,9 +110,24 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with empty
               data-testid="appointment-unavailability-page-test-id"
               id="appointment-unavailability-page"
             >
+              <div
+                class="intro"
+              >
+                <span
+                  class="eyebrow"
+                >
+                  Appointments
+                </span>
+                <h1>
+                  Availability controls
+                </h1>
+                <p>
+                  Manage appointment unavailability periods for providers and services.
+                </p>
+              </div>
               <section
                 aria-label="appointment-unavailability-actions-table-action-data-table-aria-label"
-                class="_actionDataTableBody_mn1ph_1 cds--data-table-container"
+                class="adminTable _actionDataTableBody_mn1ph_1 cds--data-table-container"
                 data-testid="appointment-unavailability-actions-table-action-data-table-test-id"
                 id="appointment-unavailability-actions-table-action-data-table"
               >
@@ -146,7 +179,7 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with unava
 <div>
   <div
     aria-label="action-area-layout-aria-label"
-    class="_layout_95ahm_85"
+    class="_layout_1cccr_85"
     data-testid="action-area-layout-test-id"
     id="action-area-layout"
   >
@@ -155,9 +188,27 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with unava
       class="cds--header"
       data-testid="header"
     >
+      <a
+        class="cds--header__name _qorliaBrand_tu7l3_14"
+        data-testid="header-name"
+        href="/bahmni-v2/home"
+      >
+        <span
+          aria-hidden="true"
+          class="_qorliaMark_tu7l3_20"
+        />
+        <span>
+          Qorlia
+        </span>
+        <span
+          class="_brandCredit_tu7l3_36"
+        >
+          Built on Bahmni
+        </span>
+      </a>
       <nav
         aria-label="Breadcrumb"
-        class="_breadcrumb_hjxxm_74"
+        class="_breadcrumb_tu7l3_71"
         data-testid="breadcrumb"
       >
         <ol
@@ -178,7 +229,7 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with unava
           >
             <a
               class="cds--link"
-              href="/appointments"
+              href="/bahmni-v2/appointments/"
             >
               Appointments
             </a>
@@ -206,7 +257,7 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with unava
       </div>
     </header>
     <div
-      class="_panelGroup_95ahm_161"
+      class="_panelGroup_1cccr_161"
       data-group="true"
       data-testid="_r_4m_"
       id="_r_4m_"
@@ -224,7 +275,7 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with unava
           <div
             aria-hidden="false"
             aria-label="main-display-area-aria-label"
-            class="_mainDisplay_95ahm_108"
+            class="_mainDisplay_1cccr_108"
             data-testid="main-display-area-test-id"
             id="main-display-area"
           >
@@ -234,9 +285,24 @@ exports[`AppointmentUnavailabilityPage Snapshot should match snapshot with unava
               data-testid="appointment-unavailability-page-test-id"
               id="appointment-unavailability-page"
             >
+              <div
+                class="intro"
+              >
+                <span
+                  class="eyebrow"
+                >
+                  Appointments
+                </span>
+                <h1>
+                  Availability controls
+                </h1>
+                <p>
+                  Manage appointment unavailability periods for providers and services.
+                </p>
+              </div>
               <section
                 aria-label="appointment-unavailability-actions-table-action-data-table-aria-label"
-                class="_actionDataTableBody_mn1ph_1 cds--data-table-container"
+                class="adminTable _actionDataTableBody_mn1ph_1 cds--data-table-container"
                 data-testid="appointment-unavailability-actions-table-action-data-table-test-id"
                 id="appointment-unavailability-actions-table-action-data-table"
               >
