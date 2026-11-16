@@ -27,6 +27,16 @@ const InsuranceDeskPage = lazy(() =>
     default: module.InsuranceDeskPage,
   })),
 );
+const PatientRecordSearchPage = lazy(() =>
+  import('../components/PatientRecord/PatientRecordSearchPage').then(
+    (module) => ({ default: module.PatientRecordSearchPage }),
+  ),
+);
+const PatientRecordPage = lazy(() =>
+  import('../components/PatientRecord/PatientRecordPage').then((module) => ({
+    default: module.PatientRecordPage,
+  })),
+);
 const CaseDetailPage = lazy(() =>
   import('../components/InsuranceDesk/CaseDetailPage').then((module) => ({
     default: module.CaseDetailPage,
@@ -46,6 +56,16 @@ export const routes: Routes = [
     path: '/insurance/:caseId',
     component: CaseDetailPage,
     name: 'InsuranceCaseDetail',
+  },
+  {
+    path: '/records',
+    component: PatientRecordSearchPage,
+    name: 'PatientRecordSearch',
+  },
+  {
+    path: '/records/:patientUuid',
+    component: PatientRecordPage,
+    name: 'PatientRecord',
   },
   {
     path: '/',

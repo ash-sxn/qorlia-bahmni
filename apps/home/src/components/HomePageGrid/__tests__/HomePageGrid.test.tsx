@@ -57,6 +57,12 @@ describe('HomePageGrid', () => {
         url: '/bahmni-v2/home/billing',
       }),
       expect.objectContaining({
+        id: 'qorlia.patient-record',
+        label: 'Patient records',
+        url: '/bahmni-v2/home/records',
+        requiredPrivilege: 'app:clinical',
+      }),
+      expect.objectContaining({
         id: 'qorlia.policy-library',
         label: 'Policy library',
         url: '/bahmni-v2/home/policies',
@@ -82,6 +88,10 @@ describe('HomePageGrid', () => {
         translationKey: 'HOME_TILE_BILLING',
       }),
       expect.objectContaining({
+        id: 'qorlia.patient-record',
+        translationKey: 'HOME_TILE_PATIENT_RECORD',
+      }),
+      expect.objectContaining({
         id: 'qorlia.policy-library',
         translationKey: 'HOME_TILE_POLICY_LIBRARY',
       }),
@@ -103,6 +113,7 @@ describe('HomePageGrid', () => {
 
     expect(props.additionalModules).toEqual([
       expect.objectContaining({ id: 'qorlia.billing' }),
+      expect.objectContaining({ id: 'qorlia.patient-record' }),
       expect.objectContaining({ id: 'qorlia.insurance-desk' }),
     ]);
   });
@@ -121,6 +132,7 @@ describe('HomePageGrid', () => {
 
     expect(props.additionalModules).toEqual([
       expect.objectContaining({ id: 'qorlia.billing' }),
+      expect.objectContaining({ id: 'qorlia.patient-record' }),
       expect.objectContaining({ id: 'qorlia.policy-library' }),
     ]);
   });
@@ -139,6 +151,7 @@ describe('HomePageGrid', () => {
 
     expect(props.additionalModules).toEqual([
       expect.objectContaining({ id: 'qorlia.billing' }),
+      expect.objectContaining({ id: 'qorlia.patient-record' }),
       expect.objectContaining({ id: 'qorlia.insurance-desk' }),
     ]);
   });

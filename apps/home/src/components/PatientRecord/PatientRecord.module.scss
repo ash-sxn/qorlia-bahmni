@@ -1,0 +1,129 @@
+@use "@carbon/react/scss/theme" as *;
+
+.page {
+  min-height: 100vh;
+  padding: 6rem clamp(1rem, 6vw, 6rem) 3rem;
+  background: $background;
+  color: $text-primary;
+
+  h1 {
+    margin: 0.5rem 0;
+  }
+}
+
+.muted {
+  margin: 0.5rem 0;
+  color: $text-secondary;
+}
+
+.error {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid $support-error;
+  background: $layer-02;
+}
+
+.search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: 40rem;
+  margin: 1rem 0;
+
+  > :first-child {
+    flex: 1 1 16rem;
+  }
+}
+
+.results {
+  max-width: 40rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    align-items: baseline;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid $border-subtle-01;
+  }
+
+  span {
+    margin: 0;
+  }
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.visit {
+  max-width: 56rem;
+  margin: 1.5rem 0 0;
+  padding: 1rem;
+  border-left: 3px solid $border-strong-01;
+  background: $layer-01;
+
+  h2 {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0 0 0.5rem;
+    font-size: 1.125rem;
+  }
+}
+
+// Each entry: kind, what was recorded, and its date. On a narrow window the parts wrap.
+.entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: 6rem 1fr max-content;
+    gap: 0.25rem 1rem;
+    padding: 0.5rem 0;
+    border-top: 1px solid $border-subtle-01;
+
+    @media (width <= 30rem) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  time {
+    color: $text-secondary;
+  }
+}
+
+.kind {
+  color: $text-secondary;
+}
+
+.detail {
+  display: block;
+  color: $text-secondary;
+  overflow-wrap: anywhere;
+}
+
+// The printed record is the patient's history only: no navigation or buttons.
+@media print {
+  .screenOnly {
+    display: none;
+  }
+
+  .page {
+    min-height: 0;
+    padding: 0;
+  }
+
+  .visit {
+    break-inside: avoid;
+  }
+}

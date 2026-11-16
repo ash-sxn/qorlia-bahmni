@@ -16,6 +16,21 @@ describe('home routes', () => {
     );
   });
 
+  it('opens the patient record search and a record by patient', () => {
+    expect(routes).toContainEqual(
+      expect.objectContaining({
+        path: '/records',
+        name: 'PatientRecordSearch',
+      }),
+    );
+    expect(routes).toContainEqual(
+      expect.objectContaining({
+        path: '/records/:patientUuid',
+        name: 'PatientRecord',
+      }),
+    );
+  });
+
   it('opens the insurance desk list', () => {
     expect(routes).toContainEqual(
       expect.objectContaining({ path: '/insurance', name: 'InsuranceDesk' }),

@@ -1,0 +1,110 @@
+import { searchPatientByNameOrId } from '@bahmni/services';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import { PatientRecordSearchPage } from '../PatientRecordSearchPage';
+
+jest.mock('../../HomePageHeader', () => ({
+  HomePageHeader: () => <div data-testid="home-page-header" />,
+}));
+
+jest.mock('@bahmni/services', () => ({
+  ...jest.requireActual('@bahmni/services'),
+  searchPatientByNameOrId: jest.fn(),
+}));
+
+const mockSearch = searchPatientByNameOrId as jest.Mock;
+
+const renderPage = () =>
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <PatientRecordSearchPage />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+
+const search = async (text: string) => {
+  const user = userEvent.setup();
+  await user.type(
+    screen.getByRole('searchbox', { name: 'Find a patient' }),
+    text,
+  );
+  await user.click(screen.getByRole('button', { name: 'Search' }));
+};
+
+describe('PatientRecordSearchPage', () => {
+  beforeEach(() => {
+    mockSearch.mockReset();
+    mockSearch.mockResolvedValue({
+      totalCount: 1,
+      pageOfResults: [
+        {
+          uuid: 'patient-1',
+          givenName: 'Brijesh',
+          middleName: '',
+          familyName: 'Mishra',
+          identifier: 'ABC200042',
+          gender: 'M',
+          age: '46',
+        },
+      ],
+    });
+  });
+
+  it('explains how to search and does not search before the user asks', () => {
+    renderPage();
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Patient records' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Type at least 2 letters of the name, or the patient ID, then choose Search.',
+      ),
+    ).toBeInTheDocument();
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it('lists the matching patients with a link to each record', async () => {
+    renderPage();
+    await search(' Brijesh ');
+
+    const results = within(
+      await screen.findByRole('list', { name: 'Patients found' }),
+    );
+    expect(mockSearch).toHaveBeenCalledWith('Brijesh');
+    expect(
+      results.getByRole('link', { name: 'Brijesh Mishra' }),
+    ).toHaveAttribute('href', '/records/patient-1');
+    expect(results.getByText('ABC200042 · M · 46')).toBeInTheDocument();
+  });
+
+  it('does not search for a single letter', async () => {
+    renderPage();
+    await search('B');
+
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it('says when no patient matches', async () => {
+    mockSearch.mockResolvedValue({ totalCount: 0, pageOfResults: [] });
+    renderPage();
+    await search('Nobody');
+
+    expect(
+      await screen.findByText('No patient matches this search.'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows an error when the search fails', async () => {
+    mockSearch.mockRejectedValue(new Error('500'));
+    renderPage();
+    await search('Brijesh');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The search could not be completed. Try again.',
+    );
+  });
+});
