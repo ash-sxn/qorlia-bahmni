@@ -252,6 +252,11 @@ export const PatientRecordPage = () => {
               >
                 {t('PATIENT_RECORD_PREAUTH')}
               </Link>
+              <Link
+                to={`/home/estimate?patient=${encodeURIComponent(patientUuid)}`}
+              >
+                {t('PATIENT_RECORD_ESTIMATE')}
+              </Link>
             </div>
             {shown.length === 0 ? (
               <p className={styles.muted}>{t('PATIENT_RECORD_EMPTY')}</p>

@@ -52,6 +52,11 @@ const PreauthWorksheetPage = lazy(() =>
     default: module.PreauthWorksheetPage,
   })),
 );
+const TreatmentEstimatePage = lazy(() =>
+  import('../components/TreatmentEstimate/TreatmentEstimatePage').then(
+    (module) => ({ default: module.TreatmentEstimatePage }),
+  ),
+);
 const CaseDetailPage = lazy(() =>
   import('../components/InsuranceDesk/CaseDetailPage').then((module) => ({
     default: module.CaseDetailPage,
@@ -96,6 +101,11 @@ export const routes: Routes = [
     path: '/preauthorisation',
     component: PreauthWorksheetPage,
     name: 'PreauthWorksheet',
+  },
+  {
+    path: '/estimate',
+    component: TreatmentEstimatePage,
+    name: 'TreatmentEstimate',
   },
   {
     path: '/',

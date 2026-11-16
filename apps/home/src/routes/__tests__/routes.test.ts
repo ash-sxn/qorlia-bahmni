@@ -55,6 +55,12 @@ describe('home routes', () => {
     );
   });
 
+  it('opens the treatment estimate', () => {
+    expect(routes).toContainEqual(
+      expect.objectContaining({ path: '/estimate', name: 'TreatmentEstimate' }),
+    );
+  });
+
   it('opens the insurance desk list', () => {
     expect(routes).toContainEqual(
       expect.objectContaining({ path: '/insurance', name: 'InsuranceDesk' }),
