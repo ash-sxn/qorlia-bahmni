@@ -47,6 +47,11 @@ export interface RecordEntry {
   detail: string;
   /** True for a lab result that Bahmni marked as outside the normal range. */
   abnormal?: boolean;
+  /**
+   * ISO start of the visit the source says this entry belongs to. Lab results carry it,
+   * because the lab often finishes them after the visit has been closed.
+   */
+  visitStart?: string;
 }
 
 /** A visit with the entries recorded during it. `visit` is null for entries outside any visit. */
