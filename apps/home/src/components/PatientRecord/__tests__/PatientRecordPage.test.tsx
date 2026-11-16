@@ -215,6 +215,6 @@ describe('PatientRecordPage', () => {
     );
     expect(
       screen.getByRole('link', { name: 'Find another patient' }),
-    ).toHaveAttribute('href', '/records');
+    ).toHaveAttribute('href', '/home/records');
   });
 });

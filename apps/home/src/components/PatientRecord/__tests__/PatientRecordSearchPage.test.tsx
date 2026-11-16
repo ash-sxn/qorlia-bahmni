@@ -77,7 +77,7 @@ describe('PatientRecordSearchPage', () => {
     expect(mockSearch).toHaveBeenCalledWith('Brijesh');
     expect(
       results.getByRole('link', { name: 'Brijesh Mishra' }),
-    ).toHaveAttribute('href', '/records/patient-1');
+    ).toHaveAttribute('href', '/home/records/patient-1');
     expect(results.getByText('ABC200042 · M · 46')).toBeInTheDocument();
   });
 
