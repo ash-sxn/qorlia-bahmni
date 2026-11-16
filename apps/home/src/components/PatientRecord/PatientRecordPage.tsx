@@ -243,7 +243,7 @@ export const PatientRecordPage = () => {
                 {t('PATIENT_RECORD_PRINT')}
               </Button>
               <Link
-                to={`/referrals?patient=${encodeURIComponent(patientUuid)}`}
+                to={`/home/referrals?patient=${encodeURIComponent(patientUuid)}`}
               >
                 {t('PATIENT_RECORD_REFER')}
               </Link>

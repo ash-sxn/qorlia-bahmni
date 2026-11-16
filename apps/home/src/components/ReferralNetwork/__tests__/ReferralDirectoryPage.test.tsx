@@ -92,7 +92,10 @@ describe('ReferralDirectoryPage', () => {
     ).toBeInTheDocument();
     expect(
       first.getByRole('link', { name: 'Write referral letter' }),
-    ).toHaveAttribute('href', '/referrals/example-cardiologist-gwalior/letter');
+    ).toHaveAttribute(
+      'href',
+      '/home/referrals/example-cardiologist-gwalior/letter',
+    );
   });
 
   it('narrows the list as the user types', async () => {
@@ -134,7 +137,7 @@ describe('ReferralDirectoryPage', () => {
       within(entries()[0]).getByRole('link', { name: 'Write referral letter' }),
     ).toHaveAttribute(
       'href',
-      '/referrals/example-cardiologist-gwalior/letter?patient=patient-1',
+      '/home/referrals/example-cardiologist-gwalior/letter?patient=patient-1',
     );
   });
 

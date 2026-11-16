@@ -165,7 +165,7 @@ describe('ReferralLetterPage', () => {
     );
     expect(
       screen.getByRole('link', { name: 'Find a patient' }),
-    ).toHaveAttribute('href', '/records');
+    ).toHaveAttribute('href', '/home/records');
     expect(mockPatient).not.toHaveBeenCalled();
   });
 
@@ -177,6 +177,6 @@ describe('ReferralLetterPage', () => {
     );
     expect(
       screen.getByRole('link', { name: 'Back to the referral directory' }),
-    ).toHaveAttribute('href', '/referrals?patient=patient-1');
+    ).toHaveAttribute('href', '/home/referrals?patient=patient-1');
   });
 });

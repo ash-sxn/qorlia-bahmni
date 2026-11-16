@@ -67,7 +67,7 @@ export const ReferralLetterPage = () => {
     query('allergies', () => getFormattedAllergies(patientUuid)),
   );
 
-  const backLink = `/referrals${patientUuid ? `?patient=${encodeURIComponent(patientUuid)}` : ''}`;
+  const backLink = `/home/referrals${patientUuid ? `?patient=${encodeURIComponent(patientUuid)}` : ''}`;
   const problem = (message: string, link: string, linkText: string) => (
     <>
       <HomePageHeader />
@@ -90,14 +90,14 @@ export const ReferralLetterPage = () => {
   if (patientUuid === '') {
     return problem(
       t('REFERRAL_LETTER_NO_PATIENT'),
-      '/records',
+      '/home/records',
       t('REFERRAL_LETTER_FIND_PATIENT'),
     );
   }
   if (patient.isError) {
     return problem(
       t('REFERRAL_LETTER_PATIENT_ERROR'),
-      '/records',
+      '/home/records',
       t('REFERRAL_LETTER_FIND_PATIENT'),
     );
   }

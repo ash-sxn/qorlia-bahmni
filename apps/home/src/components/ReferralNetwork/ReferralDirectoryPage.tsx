@@ -41,7 +41,7 @@ export const ReferralDirectoryPage = () => {
   });
 
   const letterLink = (entry: ReferralEntry) =>
-    `/referrals/${entry.id}/letter${patientUuid ? `?patient=${encodeURIComponent(patientUuid)}` : ''}`;
+    `/home/referrals/${entry.id}/letter${patientUuid ? `?patient=${encodeURIComponent(patientUuid)}` : ''}`;
 
   const renderDropdown = (
     id: string,
