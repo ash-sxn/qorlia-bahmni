@@ -49,7 +49,8 @@ export const countOutpatientVisits = (
   const seen = new Set<string>();
 
   for (const { uuid, visitType } of visits) {
-    if (seen.has(uuid) || !(visitType.display in byType)) {
+    // Own keys only: `in` would also accept inherited names such as `constructor`.
+    if (seen.has(uuid) || !Object.hasOwn(byType, visitType.display)) {
       continue;
     }
     seen.add(uuid);

@@ -97,6 +97,20 @@ describe('overviewFigures', () => {
 
       expect(result.total).toBe(1);
     });
+
+    it('ignores visit types named like built-in object properties', () => {
+      const result = countOutpatientVisits([
+        visit('v1', 'constructor'),
+        visit('v2', 'toString'),
+        visit('v3', '__proto__'),
+        visit('v4', 'OPD'),
+      ]);
+
+      expect(result).toEqual({
+        total: 1,
+        byType: { OPD: 1, 'Special OPD': 0, 'Follow Up': 0 },
+      });
+    });
   });
 
   describe('countByStatus', () => {
