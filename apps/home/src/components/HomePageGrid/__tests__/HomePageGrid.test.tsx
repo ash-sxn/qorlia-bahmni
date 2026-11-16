@@ -3,6 +3,8 @@ import { syntheticCases } from '../../InsuranceDesk/__fixtures__/syntheticCases'
 import { loadCases } from '../../InsuranceDesk/caseCatalogue';
 import { syntheticPolicies } from '../../PolicyLibrary/__fixtures__/syntheticPolicies';
 import { loadPolicyCatalogue } from '../../PolicyLibrary/policyCatalogue';
+import { syntheticReferrals } from '../../ReferralNetwork/__fixtures__/syntheticReferrals';
+import { loadDirectory } from '../../ReferralNetwork/referralDirectory';
 import { HomePageGrid } from '../HomePageGrid';
 
 // Only the loader is replaced, so each test can choose an empty or filled catalogue.
@@ -17,6 +19,12 @@ jest.mock('../../InsuranceDesk/caseCatalogue', () => ({
   loadCases: jest.fn(),
 }));
 const mockLoadCases = loadCases as jest.Mock;
+
+jest.mock('../../ReferralNetwork/referralDirectory', () => ({
+  ...jest.requireActual('../../ReferralNetwork/referralDirectory'),
+  loadDirectory: jest.fn(),
+}));
+const mockLoadDirectory = loadDirectory as jest.Mock;
 
 // The grid's behaviour (loading / error / empty / tile rendering) is owned by
 // ModuleTileGrid in @bahmni/widgets and tested there. What home is responsible
@@ -37,6 +45,42 @@ describe('HomePageGrid', () => {
       entries: syntheticPolicies,
     });
     mockLoadCases.mockReturnValue({ ok: true, cases: syntheticCases });
+    // Empty, as in production, unless a test fills it.
+    mockLoadDirectory.mockReturnValue({ ok: true, entries: [] });
+  });
+
+  it('shows the Referral directory tile only when the directory has verified entries', () => {
+    mockLoadDirectory.mockReturnValue({
+      ok: true,
+      entries: syntheticReferrals,
+    });
+
+    render(<HomePageGrid />);
+
+    const props = JSON.parse(
+      screen.getByTestId('module-tile-grid-mock').dataset.props!,
+    );
+    expect(props.additionalModules).toContainEqual(
+      expect.objectContaining({
+        id: 'qorlia.referral-network',
+        translationKey: 'HOME_TILE_REFERRAL_NETWORK',
+        url: '/bahmni-v2/home/referrals',
+        requiredPrivilege: 'app:clinical',
+      }),
+    );
+  });
+
+  it('hides the Referral directory tile when the directory fails its checks', () => {
+    mockLoadDirectory.mockReturnValue({ ok: false, errors: ['bad entry'] });
+
+    render(<HomePageGrid />);
+
+    const props = JSON.parse(
+      screen.getByTestId('module-tile-grid-mock').dataset.props!,
+    );
+    expect(props.additionalModules).not.toContainEqual(
+      expect.objectContaining({ id: 'qorlia.referral-network' }),
+    );
   });
 
   it('delegates to ModuleTileGrid with the home extension point and home i18n keys', () => {

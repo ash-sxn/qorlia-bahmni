@@ -1,0 +1,140 @@
+@use "@carbon/react/scss/theme" as *;
+
+.page {
+  min-height: 100vh;
+  padding: 6rem clamp(1rem, 6vw, 6rem) 3rem;
+  background: $background;
+  color: $text-primary;
+
+  h1 {
+    margin: 0.5rem 0;
+  }
+}
+
+.muted {
+  margin: 0.5rem 0;
+  color: $text-secondary;
+}
+
+.notice {
+  margin: 1rem 0 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid $border-strong-01;
+  background: $layer-02;
+}
+
+.error {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid $support-error;
+  background: $layer-02;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  align-items: end;
+  max-width: 56rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.entries {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  padding: 1rem;
+  border-left: 3px solid $border-strong-01;
+  background: $layer-01;
+
+  h2 {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0 0 0.25rem;
+    font-size: 1.125rem;
+  }
+
+  p {
+    margin: 0.25rem 0;
+  }
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0;
+  overflow-wrap: anywhere;
+
+  dt {
+    color: $text-secondary;
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.letter {
+  max-width: 44rem;
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  background: $layer-01;
+
+  h2 {
+    margin: 1.25rem 0 0.25rem;
+    font-size: 1rem;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    list-style: disc;
+  }
+}
+
+.signature {
+  margin-top: 3rem;
+  color: $text-secondary;
+}
+
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.printOnly {
+  display: none;
+  white-space: pre-wrap;
+}
+
+// The printed letter is the letter only: no navigation, notices, inputs or buttons.
+@media print {
+  .screenOnly {
+    display: none;
+  }
+
+  .printOnly {
+    display: block;
+  }
+
+  .page {
+    min-height: 0;
+    padding: 0;
+  }
+
+  .letter {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: none;
+  }
+}
