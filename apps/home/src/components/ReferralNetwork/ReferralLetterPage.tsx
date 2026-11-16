@@ -195,9 +195,14 @@ export const ReferralLetterPage = () => {
           <section>
             <h2>{t('REFERRAL_LETTER_REASON')}</h2>
             <div className={styles.screenOnly}>
+              {/* The shared TextArea puts its label under the box, so show one above. */}
+              <label htmlFor="referral-reason" className={styles.fieldLabel}>
+                {t('REFERRAL_LETTER_REASON_LABEL')}
+              </label>
               <TextArea
                 id="referral-reason"
                 labelText={t('REFERRAL_LETTER_REASON_LABEL')}
+                hideLabel
                 rows={4}
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
