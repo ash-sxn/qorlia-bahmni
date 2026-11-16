@@ -202,6 +202,35 @@ describe('groupByVisit', () => {
     ]);
   });
 
+  it('puts a lab result under the visit Bahmni names, even when it came after the visit closed', () => {
+    const [late] = labEntries([
+      {
+        testName: 'Haemoglobin',
+        result: '13.6',
+        // Reported two hours after the October visit was closed.
+        resultDateTime: '2026-10-01T12:00:00.000Z',
+        visitStartTime: Date.parse('2026-10-01T04:00:00.000Z'),
+      },
+    ]);
+
+    const groups = groupByVisit(visits, [late]);
+
+    expect(groups).toHaveLength(2);
+    expect(groups[1].key).toBe('old');
+    expect(groups[1].entries).toEqual([late]);
+  });
+
+  it('falls back to the time when the named visit is not in the list', () => {
+    const groups = groupByVisit(visits, [
+      {
+        ...entry('lab', '2026-11-13T06:00:00.000Z'),
+        visitStart: '2020-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    expect(groups[0].entries.map(({ id }) => id)).toEqual(['lab']);
+  });
+
   it('keeps a visit that has no entries, and adds no empty outside group', () => {
     const groups = groupByVisit(visits, []);
 

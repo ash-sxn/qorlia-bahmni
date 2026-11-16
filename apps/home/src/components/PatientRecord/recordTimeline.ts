@@ -103,6 +103,7 @@ export const labEntries = (results: readonly LabResult[]): RecordEntry[] =>
           [value, lab.testUnitOfMeasurement].filter(Boolean).join(' ') +
           (range ? ` (${range})` : ''),
         abnormal: lab.abnormal === true,
+        visitStart: toIso(lab.visitStartTime) ?? undefined,
       },
     ];
   });
@@ -112,8 +113,9 @@ const newestFirst = (a: { date: string }, b: { date: string }) =>
 
 /**
  * Puts every entry under the visit it was recorded in, newest visit first.
- * An entry belongs to the latest visit that had started when it was recorded and had not
- * yet ended. Entries that fit no visit come last, in a group whose visit is null.
+ * An entry belongs to the visit its source names, or else to the latest visit that had
+ * started when it was recorded and had not yet ended. Entries that fit no visit come last,
+ * in a group whose visit is null.
  * Visits with no entries are kept: the visit itself is part of the history.
  */
 export const groupByVisit = (
@@ -135,10 +137,19 @@ export const groupByVisit = (
   const outside: RecordEntry[] = [];
 
   for (const entry of entries) {
-    const index = ordered.findIndex(
-      ({ start, stop }) =>
-        start !== '' && entry.date >= start && (!stop || entry.date <= stop),
-    );
+    // The visit named by the source wins; otherwise the visit open at the time.
+    const named = entry.visitStart
+      ? ordered.findIndex(({ start }) => start === entry.visitStart)
+      : -1;
+    const index =
+      named !== -1
+        ? named
+        : ordered.findIndex(
+            ({ start, stop }) =>
+              start !== '' &&
+              entry.date >= start &&
+              (!stop || entry.date <= stop),
+          );
     (index === -1 ? outside : groups[index].entries).push(entry);
   }
 
