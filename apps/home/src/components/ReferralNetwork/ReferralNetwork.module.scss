@@ -101,6 +101,13 @@
   }
 }
 
+.fieldLabel {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: $text-secondary;
+  font-size: 0.75rem;
+}
+
 .signature {
   margin-top: 3rem;
   color: $text-secondary;
