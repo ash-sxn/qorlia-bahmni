@@ -47,6 +47,11 @@ const ReferralLetterPage = lazy(() =>
     default: module.ReferralLetterPage,
   })),
 );
+const PreauthWorksheetPage = lazy(() =>
+  import('../components/InsuranceDesk/PreauthWorksheetPage').then((module) => ({
+    default: module.PreauthWorksheetPage,
+  })),
+);
 const CaseDetailPage = lazy(() =>
   import('../components/InsuranceDesk/CaseDetailPage').then((module) => ({
     default: module.CaseDetailPage,
@@ -86,6 +91,11 @@ export const routes: Routes = [
     path: '/referrals/:entryId/letter',
     component: ReferralLetterPage,
     name: 'ReferralLetter',
+  },
+  {
+    path: '/preauthorisation',
+    component: PreauthWorksheetPage,
+    name: 'PreauthWorksheet',
   },
   {
     path: '/',
