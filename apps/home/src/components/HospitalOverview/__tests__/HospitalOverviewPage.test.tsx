@@ -148,6 +148,25 @@ describe('HospitalOverviewPage', () => {
     ]);
   });
 
+  it('shows readable status labels, and the raw value for an unknown status', async () => {
+    mockAppointments.mockResolvedValue([
+      { uuid: 'a1', status: 'CheckedIn' },
+      { uuid: 'a2', status: 'CheckedIn' },
+      { uuid: 'a3', status: 'WaitList' },
+      { uuid: 'a4', status: 'SomethingNew' },
+    ]);
+    renderPage();
+    const appointments = section('Appointments by status');
+
+    const rows = await within(appointments).findAllByRole('row');
+    expect(rows.map((row) => row.textContent)).toEqual([
+      'StatusAppointments',
+      'Checked in2',
+      'SomethingNew1',
+      'Waitlist1',
+    ]);
+  });
+
   it('shows total, occupied and free beds per ward', async () => {
     renderPage();
     const beds = section('Beds per ward');

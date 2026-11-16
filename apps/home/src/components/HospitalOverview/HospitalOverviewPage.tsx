@@ -26,6 +26,18 @@ export const OVERVIEW_PRIVILEGES = {
   beds: 'Get Admission Locations',
 };
 
+/** Locale keys for the appointment statuses Bahmni sends. An unknown status is shown as sent. */
+const APPOINTMENT_STATUS_LABELS: Record<string, string> = {
+  Requested: 'HOSPITAL_OVERVIEW_STATUS_REQUESTED',
+  WaitList: 'HOSPITAL_OVERVIEW_STATUS_WAITLIST',
+  Scheduled: 'HOSPITAL_OVERVIEW_STATUS_SCHEDULED',
+  Arrived: 'HOSPITAL_OVERVIEW_STATUS_ARRIVED',
+  CheckedIn: 'HOSPITAL_OVERVIEW_STATUS_CHECKED_IN',
+  Completed: 'HOSPITAL_OVERVIEW_STATUS_COMPLETED',
+  Missed: 'HOSPITAL_OVERVIEW_STATUS_MISSED',
+  Cancelled: 'HOSPITAL_OVERVIEW_STATUS_CANCELLED',
+};
+
 /** Read-only figures: no automatic retry and no reload when the window regains focus. */
 const QUERY_OPTIONS = { retry: false, refetchOnWindowFocus: false } as const;
 
@@ -99,6 +111,10 @@ export const HospitalOverviewPage = () => {
   const canEncounters = can(OVERVIEW_PRIVILEGES.encounters);
   const canAppointments = can(OVERVIEW_PRIVILEGES.appointments);
   const canBeds = can(OVERVIEW_PRIVILEGES.beds);
+  const statusLabel = (status: string) =>
+    Object.hasOwn(APPOINTMENT_STATUS_LABELS, status)
+      ? t(APPOINTMENT_STATUS_LABELS[status])
+      : status;
 
   const visits = useQuery({
     queryKey: ['hospital-overview', 'visits', dayKey],
@@ -245,7 +261,7 @@ export const HospitalOverviewPage = () => {
                   <tbody>
                     {rows.map(({ status, count }) => (
                       <tr key={status}>
-                        <th scope="row">{status}</th>
+                        <th scope="row">{statusLabel(status)}</th>
                         <td>{count}</td>
                       </tr>
                     ))}

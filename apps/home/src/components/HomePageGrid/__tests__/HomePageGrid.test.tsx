@@ -120,7 +120,7 @@ describe('HomePageGrid', () => {
         id: 'qorlia.hospital-overview',
         label: 'Hospital overview',
         url: '/bahmni-v2/home/overview',
-        requiredPrivilege: 'Get Visits',
+        requiredPrivilege: 'app:reports',
       }),
     ]);
   });

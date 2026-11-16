@@ -98,7 +98,8 @@ const referralNetworkModule: Module = {
   exclusiveOnlineModule: true,
 };
 
-// The grid hides the tile without Get Visits. Each section on the page checks its own privilege.
+// Hospital-wide figures are for management, so the tile needs the same privilege as Reports.
+// Get Visits is held by most clinical roles. Each section on the page checks its own privilege.
 const hospitalOverviewModule: Module = {
   id: 'qorlia.hospital-overview',
   extensionPointId: HOME_EXTENSION_POINT,
@@ -108,7 +109,7 @@ const hospitalOverviewModule: Module = {
   url: '/bahmni-v2/home/overview',
   order: 17,
   icon: 'fa-hospital',
-  requiredPrivilege: 'Get Visits',
+  requiredPrivilege: 'app:reports',
   exclusiveOnlineModule: true,
 };
 
