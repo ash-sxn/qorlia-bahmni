@@ -133,6 +133,21 @@ describe('labEntries', () => {
     ).toEqual([]);
   });
 
+  it('shows no range when Bahmni sends 0 and 0 for a test without one', () => {
+    const [result] = labEntries([
+      {
+        testName: 'Neutrophils',
+        result: '60.0',
+        testUnitOfMeasurement: '%',
+        minNormal: 0,
+        maxNormal: 0,
+        resultDateTime: 1794536454000,
+      },
+    ]);
+
+    expect(result.detail).toBe('60.0 %');
+  });
+
   it('falls back to the sample date and handles a one-sided range', () => {
     const [result] = labEntries([
       {

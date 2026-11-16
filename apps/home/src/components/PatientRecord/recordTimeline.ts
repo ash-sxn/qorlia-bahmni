@@ -68,6 +68,8 @@ export const medicineEntries = (
   });
 
 const normalRange = ({ minNormal, maxNormal }: LabResult): string | null => {
+  // Bahmni sends 0 and 0 when a test has no range configured.
+  if (!minNormal && !maxNormal) return null;
   const hasMin = typeof minNormal === 'number';
   const hasMax = typeof maxNormal === 'number';
   if (hasMin && hasMax) return `normal ${minNormal} to ${maxNormal}`;
