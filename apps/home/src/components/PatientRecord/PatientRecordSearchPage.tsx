@@ -52,7 +52,7 @@ export const PatientRecordSearchPage = () => {
       <ul className={styles.results} aria-label={t('PATIENT_RECORD_RESULTS')}>
         {patients.map((patient) => (
           <li key={patient.uuid}>
-            <Link to={`/records/${patient.uuid}`}>
+            <Link to={`/home/records/${patient.uuid}`}>
               {[patient.givenName, patient.middleName, patient.familyName]
                 .filter(Boolean)
                 .join(' ')}

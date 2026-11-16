@@ -91,7 +91,7 @@ export const PatientRecordPage = () => {
       <>
         <HomePageHeader />
         <main className={styles.page}>
-          <Link to="/records">{t('PATIENT_RECORD_BACK')}</Link>
+          <Link to="/home/records">{t('PATIENT_RECORD_BACK')}</Link>
           <p role="alert" className={styles.error}>
             {t('PATIENT_RECORD_PATIENT_ERROR')}
           </p>
@@ -182,7 +182,7 @@ export const PatientRecordPage = () => {
         <HomePageHeader />
       </div>
       <main className={styles.page}>
-        <Link className={styles.screenOnly} to="/records">
+        <Link className={styles.screenOnly} to="/home/records">
           {t('PATIENT_RECORD_BACK')}
         </Link>
         <h1>{patient.data.fullName}</h1>
