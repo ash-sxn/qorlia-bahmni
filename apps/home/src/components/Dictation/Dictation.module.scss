@@ -1,0 +1,168 @@
+@use "@carbon/react/scss/theme" as *;
+
+.page {
+  min-height: 100vh;
+  max-width: 60rem;
+  padding: 6rem clamp(1rem, 6vw, 6rem) 3rem;
+  background: $background;
+  color: $text-primary;
+
+  h1 {
+    margin: 0.5rem 0;
+  }
+}
+
+.notice {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid $border-strong-01;
+  background: $layer-02;
+}
+
+.error {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid $support-error;
+  background: $layer-02;
+
+  ul {
+    margin: 0.25rem 0 0;
+    padding-left: 1.25rem;
+    list-style: disc;
+  }
+}
+
+.fieldLabel {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: $text-secondary;
+  font-size: 0.75rem;
+}
+
+.hint {
+  margin: 0.25rem 0 0;
+  color: $text-secondary;
+  font-size: 0.875rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.note {
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  background: $layer-01;
+
+  h2 {
+    margin: 0 0 0.25rem;
+  }
+
+  h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+  }
+
+  p {
+    margin: 0.25rem 0;
+  }
+}
+
+.allergies {
+  font-weight: 600;
+}
+
+.part {
+  margin: 1.25rem 0 0;
+}
+
+.medicines {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 0.5rem 0.75rem 0.5rem 0;
+    border-bottom: 1px solid $border-subtle-01;
+    font-weight: 400;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  thead th {
+    color: $text-secondary;
+  }
+
+  // On a phone each medicine becomes a block instead of a wide row.
+  @media (width <= 40rem) {
+    thead {
+      display: none;
+    }
+
+    tr,
+    th,
+    td {
+      display: block;
+    }
+
+    td {
+      padding-top: 0;
+      border-bottom: 0;
+    }
+
+    tr {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid $border-subtle-01;
+    }
+  }
+}
+
+.flag {
+  display: block;
+}
+
+.raw {
+  display: block;
+  color: $text-secondary;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.signature {
+  margin-top: 3rem !important;
+  color: $text-secondary;
+}
+
+.printOnly {
+  display: none;
+  white-space: pre-wrap;
+}
+
+// The printed page is the note and prescription only.
+@media print {
+  .screenOnly {
+    display: none;
+  }
+
+  .printOnly {
+    display: block;
+  }
+
+  .page {
+    min-height: 0;
+    padding: 0;
+  }
+
+  .note {
+    margin: 0;
+    padding: 0;
+    background: none;
+  }
+
+  .medicines tr {
+    break-inside: avoid;
+  }
+}
