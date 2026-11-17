@@ -15,12 +15,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HomePageHeader } from '../HomePageHeader';
+import { CostEstimateTable } from './CostEstimateTable';
 import styles from './InsuranceDesk.module.scss';
 import {
   COST_HEADS,
-  CostHead,
-  formatRupees,
-  parseRupees,
   PREAUTH_DOCUMENTS,
   PreauthDocument,
   totalEstimate,
@@ -205,56 +203,7 @@ export const PreauthWorksheetPage = () => {
 
           <section>
             <h2>{t('PREAUTH_ESTIMATE')}</h2>
-            <table className={styles.estimate}>
-              <tbody>
-                {COST_HEADS.map((head: CostHead) => {
-                  const invalid = parseRupees(amounts[head]) === null;
-                  return (
-                    <tr key={head}>
-                      <th scope="row">
-                        <label htmlFor={`preauth-cost-${head}`}>
-                          {t(`PREAUTH_COST_${upper(head)}`)}
-                        </label>
-                      </th>
-                      <td>
-                        <span className={styles.screenOnly}>
-                          <TextInput
-                            id={`preauth-cost-${head}`}
-                            labelText=""
-                            hideLabel
-                            inputMode="numeric"
-                            value={amounts[head]}
-                            invalid={invalid}
-                            invalidText={t('PREAUTH_AMOUNT_INVALID')}
-                            onChange={(event) =>
-                              setAmounts({
-                                ...amounts,
-                                [head]: event.target.value,
-                              })
-                            }
-                          />
-                        </span>
-                        <span className={styles.printOnly}>
-                          {formatRupees(parseRupees(amounts[head]) ?? 0)}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <th scope="row">{t('PREAUTH_TOTAL')}</th>
-                  <td>
-                    <output aria-label={t('PREAUTH_TOTAL')}>
-                      {total === null
-                        ? t('PREAUTH_TOTAL_INVALID')
-                        : formatRupees(total)}
-                    </output>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+            <CostEstimateTable amounts={amounts} onChange={setAmounts} />
           </section>
 
           <section>
