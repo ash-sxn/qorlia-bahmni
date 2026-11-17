@@ -46,6 +46,15 @@ describe('home routes', () => {
     );
   });
 
+  it('opens the pre-authorisation worksheet', () => {
+    expect(routes).toContainEqual(
+      expect.objectContaining({
+        path: '/preauthorisation',
+        name: 'PreauthWorksheet',
+      }),
+    );
+  });
+
   it('opens the insurance desk list', () => {
     expect(routes).toContainEqual(
       expect.objectContaining({ path: '/insurance', name: 'InsuranceDesk' }),
