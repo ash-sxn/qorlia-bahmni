@@ -78,6 +78,37 @@ describe('appendSpoken', () => {
     expect(appendSpoken('C/o fever', '')).toBe('C/o fever');
   });
 
+  it('lays out a real Sarvam transcript of a spoken note', () => {
+    // Sarvam saaras:v4 output for a generated English recording, 17 Nov 2026.
+    const text = formatSpokenText(
+      'Chief complaints: fever and body ache for 3 days. Diagnosis: viral fever. Medicines: tablet paracetamol 650 milligram twice a day for 5 days after food. Next medicine: tablet cetirizine 10 milligram at bedtime for 3 days. Advice: plenty of fluids.',
+    );
+
+    expect(text).toBe(
+      [
+        'Chief complaints: fever and body ache for 3 days',
+        'Diagnosis: viral fever',
+        'Medicines: tablet paracetamol 650 mg twice a day for 5 days after food',
+        'tablet cetirizine 10 mg at bedtime for 3 days',
+        'Advice: plenty of fluids',
+      ].join('\n'),
+    );
+    const draft = parseDictation(text);
+    expect(draft.medicines).toHaveLength(2);
+    expect(draft.medicines[0]).toMatchObject({
+      name: 'paracetamol',
+      strength: '650 mg',
+      frequency: 'BD',
+      duration: { count: 5, unit: 'day' },
+      timing: 'after_food',
+    });
+    expect(draft.medicines[1]).toMatchObject({
+      frequency: 'HS',
+      duration: { count: 3, unit: 'day' },
+    });
+    expect(draft.unread).toEqual([]);
+  });
+
   it('gives the prescription reader a note it can read', () => {
     const spoken = [
       'Chief complaints of cough and cold for 4 days.',

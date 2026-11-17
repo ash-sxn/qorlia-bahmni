@@ -49,7 +49,7 @@ const OTHER_HEADING = new RegExp(
 );
 
 const LINE_BREAK =
-  /\s*\b(?:new line|next line|next medicine)\b[.,]?\s*|\s*नई लाइन\s*/giu;
+  /\s*\b(?:new line|next line|next medicine)\b[.,:;-]?\s*|\s*नई लाइन[.,:;।-]?\s*/giu;
 
 // Sentence ends, but not decimal points such as 0.5 mg.
 const SENTENCE_END = /([.!?।])\s+(?=\S)/gu;
