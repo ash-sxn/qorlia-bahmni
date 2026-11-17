@@ -242,6 +242,11 @@ export const PatientRecordPage = () => {
               <Button size="sm" kind="ghost" onClick={() => window.print()}>
                 {t('PATIENT_RECORD_PRINT')}
               </Button>
+              <Link
+                to={`/home/referrals?patient=${encodeURIComponent(patientUuid)}`}
+              >
+                {t('PATIENT_RECORD_REFER')}
+              </Link>
             </div>
             {shown.length === 0 ? (
               <p className={styles.muted}>{t('PATIENT_RECORD_EMPTY')}</p>

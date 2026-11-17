@@ -31,6 +31,21 @@ describe('home routes', () => {
     );
   });
 
+  it('opens the referral directory and a referral letter by entry', () => {
+    expect(routes).toContainEqual(
+      expect.objectContaining({
+        path: '/referrals',
+        name: 'ReferralDirectory',
+      }),
+    );
+    expect(routes).toContainEqual(
+      expect.objectContaining({
+        path: '/referrals/:entryId/letter',
+        name: 'ReferralLetter',
+      }),
+    );
+  });
+
   it('opens the insurance desk list', () => {
     expect(routes).toContainEqual(
       expect.objectContaining({ path: '/insurance', name: 'InsuranceDesk' }),

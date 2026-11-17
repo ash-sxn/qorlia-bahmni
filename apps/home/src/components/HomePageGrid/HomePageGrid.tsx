@@ -7,6 +7,10 @@ import {
   hasPolicyEntries,
   loadPolicyCatalogue,
 } from '../PolicyLibrary/policyCatalogue';
+import {
+  hasReferralEntries,
+  loadDirectory,
+} from '../ReferralNetwork/referralDirectory';
 import styles from './styles/HomePageGrid.module.scss';
 
 const reviewUrls = {
@@ -14,6 +18,7 @@ const reviewUrls = {
   'qorlia.policy-library': '/bahmni-v2/home/policies',
   'qorlia.insurance-desk': '/bahmni-v2/home/insurance',
   'qorlia.patient-record': '/bahmni-v2/home/records',
+  'qorlia.referral-network': '/bahmni-v2/home/referrals',
   'bahmni.registration.new': '/bahmni-v2/registration/search',
   'bahmni.programs': '/bahmni-v2/clinical/programs',
   'bahmni.clinical': '/bahmni-v2/clinical/',
@@ -79,12 +84,27 @@ const patientRecordModule: Module = {
   exclusiveOnlineModule: true,
 };
 
+const referralNetworkModule: Module = {
+  id: 'qorlia.referral-network',
+  extensionPointId: HOME_EXTENSION_POINT,
+  type: 'link',
+  label: 'Referral directory',
+  translationKey: 'HOME_TILE_REFERRAL_NETWORK',
+  url: '/bahmni-v2/home/referrals',
+  order: 13.5,
+  icon: 'fa-user-md',
+  requiredPrivilege: 'app:clinical',
+  exclusiveOnlineModule: true,
+};
+
 export const HomePageGrid: React.FC = () => {
-  // Production has no approved policies or cases yet, so these tiles would open empty pages.
+  // Production has no approved policies, cases or verified referral entries yet, so these
+  // tiles would open empty pages.
   const qorliaModules = useMemo(
     () => [
       billingModule,
       patientRecordModule,
+      ...(hasReferralEntries(loadDirectory()) ? [referralNetworkModule] : []),
       ...(hasPolicyEntries(loadPolicyCatalogue()) ? [policyLibraryModule] : []),
       ...(hasCases(loadCases()) ? [insuranceDeskModule] : []),
     ],

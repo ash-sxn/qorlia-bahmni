@@ -37,6 +37,16 @@ const PatientRecordPage = lazy(() =>
     default: module.PatientRecordPage,
   })),
 );
+const ReferralDirectoryPage = lazy(() =>
+  import('../components/ReferralNetwork/ReferralDirectoryPage').then(
+    (module) => ({ default: module.ReferralDirectoryPage }),
+  ),
+);
+const ReferralLetterPage = lazy(() =>
+  import('../components/ReferralNetwork/ReferralLetterPage').then((module) => ({
+    default: module.ReferralLetterPage,
+  })),
+);
 const CaseDetailPage = lazy(() =>
   import('../components/InsuranceDesk/CaseDetailPage').then((module) => ({
     default: module.CaseDetailPage,
@@ -66,6 +76,16 @@ export const routes: Routes = [
     path: '/records/:patientUuid',
     component: PatientRecordPage,
     name: 'PatientRecord',
+  },
+  {
+    path: '/referrals',
+    component: ReferralDirectoryPage,
+    name: 'ReferralDirectory',
+  },
+  {
+    path: '/referrals/:entryId/letter',
+    component: ReferralLetterPage,
+    name: 'ReferralLetter',
   },
   {
     path: '/',
