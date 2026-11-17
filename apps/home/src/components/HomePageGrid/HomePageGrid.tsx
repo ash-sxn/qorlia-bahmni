@@ -13,6 +13,7 @@ const reviewUrls = {
   'qorlia.billing': '/bahmni-v2/home/billing',
   'qorlia.policy-library': '/bahmni-v2/home/policies',
   'qorlia.insurance-desk': '/bahmni-v2/home/insurance',
+  'qorlia.patient-record': '/bahmni-v2/home/records',
   'bahmni.registration.new': '/bahmni-v2/registration/search',
   'bahmni.programs': '/bahmni-v2/clinical/programs',
   'bahmni.clinical': '/bahmni-v2/clinical/',
@@ -64,11 +65,26 @@ const insuranceDeskModule: Module = {
   exclusiveOnlineModule: true,
 };
 
+// For staff who already open patients in Clinical. The record itself is read-only.
+const patientRecordModule: Module = {
+  id: 'qorlia.patient-record',
+  extensionPointId: HOME_EXTENSION_POINT,
+  type: 'link',
+  label: 'Patient records',
+  translationKey: 'HOME_TILE_PATIENT_RECORD',
+  url: '/bahmni-v2/home/records',
+  order: 13,
+  icon: 'fa-notes-medical',
+  requiredPrivilege: 'app:clinical',
+  exclusiveOnlineModule: true,
+};
+
 export const HomePageGrid: React.FC = () => {
   // Production has no approved policies or cases yet, so these tiles would open empty pages.
   const qorliaModules = useMemo(
     () => [
       billingModule,
+      patientRecordModule,
       ...(hasPolicyEntries(loadPolicyCatalogue()) ? [policyLibraryModule] : []),
       ...(hasCases(loadCases()) ? [insuranceDeskModule] : []),
     ],
