@@ -13,7 +13,8 @@
   window.__qorliaVoice = true;
   if (!/\/bahmni\/clinical\//.test(window.location.pathname)) return;
 
-  var API = '/qorlia-voice';
+  // Under /openmrs so the browser sends the Bahmni session cookie, which is scoped to that path.
+  var API = '/openmrs/qorlia-voice';
   var MAX_SEGMENT_MS = 25000;
   var MIN_SEGMENT_MS = 6000;
   var PAUSE_MS = 700;

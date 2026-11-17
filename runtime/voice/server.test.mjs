@@ -22,6 +22,7 @@ const doctor = {
 let dir;
 let server;
 let base;
+let scriptBase;
 let calls;
 let sessionReply;
 let sttReply;
@@ -52,7 +53,8 @@ const start = async (overrides = {}) => {
     }),
   );
   await new Promise((resolve) => server.listen(0, resolve));
-  base = `http://127.0.0.1:${server.address().port}/qorlia-voice`;
+  base = `http://127.0.0.1:${server.address().port}/openmrs/qorlia-voice`;
+  scriptBase = `http://127.0.0.1:${server.address().port}/qorlia-voice`;
 };
 
 const call = (
@@ -291,7 +293,7 @@ describe("voice relay", () => {
   });
 
   it("serves the classic-screen script", async () => {
-    const response = await call("/voice.js", { cookie: false });
+    const response = await fetch(`${scriptBase}/voice.js`);
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-type"), /javascript/);
     assert.match(await response.text(), /qorliaVoice/);

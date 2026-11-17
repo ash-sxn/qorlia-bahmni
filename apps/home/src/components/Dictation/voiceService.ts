@@ -3,7 +3,8 @@
  * (runtime/voice). The relay checks the Bahmni session, records the doctor's
  * acceptance of the notice, and holds the speech service key.
  */
-export const VOICE_API = '/qorlia-voice';
+// Under /openmrs so the browser sends the Bahmni session cookie, which is scoped to that path.
+export const VOICE_API = '/openmrs/qorlia-voice';
 
 export interface VoiceConfig {
   enabled: boolean;

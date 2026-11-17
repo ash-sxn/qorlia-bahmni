@@ -150,7 +150,7 @@ module.exports = (env, argv) => {
         ...(process.env.QORLIA_VOICE_ORIGIN
           ? [
               {
-                context: ['/qorlia-voice'],
+                context: ['/openmrs/qorlia-voice', '/qorlia-voice'],
                 target: process.env.QORLIA_VOICE_ORIGIN,
                 changeOrigin: false,
               },

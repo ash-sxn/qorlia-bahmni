@@ -57,12 +57,12 @@ beforeEach(() => {
   transcriptReplies = [];
   stopRecording = jest.fn();
   fetchMock = jest.fn((url: string, init?: RequestInit) => {
-    if (url === '/qorlia-voice/config') return reply(200, configBody);
-    if (url === '/qorlia-voice/consent') {
+    if (url === '/openmrs/qorlia-voice/config') return reply(200, configBody);
+    if (url === '/openmrs/qorlia-voice/consent') {
       configBody = settings(true);
       return reply(204);
     }
-    if (url.startsWith('/qorlia-voice/transcribe')) {
+    if (url.startsWith('/openmrs/qorlia-voice/transcribe')) {
       return transcriptReplies.shift() ?? reply(200, { text: '' });
     }
     return reply(404, { error: 'not_found', init });
@@ -132,7 +132,7 @@ describe('VoiceDictation', () => {
 
     await waitFor(() => expect(mockStart).toHaveBeenCalled());
     const consent = fetchMock.mock.calls.find(
-      ([url]) => url === '/qorlia-voice/consent',
+      ([url]) => url === '/openmrs/qorlia-voice/consent',
     );
     expect(JSON.parse(consent[1].body)).toEqual({
       version: 'v1',
@@ -175,9 +175,9 @@ describe('VoiceDictation', () => {
       'second phrase',
     ]);
     const sent = fetchMock.mock.calls.find(([url]) =>
-      url.startsWith('/qorlia-voice/transcribe'),
+      url.startsWith('/openmrs/qorlia-voice/transcribe'),
     );
-    expect(sent[0]).toBe('/qorlia-voice/transcribe?lang=en-IN');
+    expect(sent[0]).toBe('/openmrs/qorlia-voice/transcribe?lang=en-IN');
     expect(sent[1].headers).toEqual({ 'Content-Type': 'audio/webm' });
   });
 

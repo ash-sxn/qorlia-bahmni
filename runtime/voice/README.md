@@ -57,13 +57,18 @@ volumes:
 Proxy (Apache, in the Bahmni proxy configuration):
 
 ```apache
+# Before "ProxyPass /openmrs": the screens call /openmrs/qorlia-voice, because the
+# Bahmni session cookie is scoped to /openmrs.
+ProxyPass /openmrs/qorlia-voice http://qorlia-voice:8090/openmrs/qorlia-voice
+ProxyPassReverse /openmrs/qorlia-voice http://qorlia-voice:8090/openmrs/qorlia-voice
+# The classic-screen script and the health check.
 ProxyPass /qorlia-voice http://qorlia-voice:8090/qorlia-voice
 ProxyPassReverse /qorlia-voice http://qorlia-voice:8090/qorlia-voice
 ```
 
 Classic clinical app: append `legacy/customControl-loader.js` to `openmrs/apps/customDisplayControl/js/customControl.js` in the Bahmni config. The microphone appears only inside `/bahmni/clinical/`, and only for signed-in users with the clinical privilege.
 
-The new interface needs nothing extra: the dictation page asks `/qorlia-voice/config` and shows the control only when the relay answers.
+The new interface needs nothing extra: the dictation page asks `/openmrs/qorlia-voice/config` and shows the control only when the relay answers.
 
 ## Tests
 

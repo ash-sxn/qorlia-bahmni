@@ -15,7 +15,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const BASE = "/qorlia-voice";
+// The screens call the relay under /openmrs, because Bahmni's session cookie is scoped
+// to that path; /qorlia-voice serves the classic-screen script and the health check.
+const BASES = ["/openmrs/qorlia-voice", "/qorlia-voice"];
 
 /** Terms that bias recognition towards prescription words (Sarvam allows 50). */
 export const DEFAULT_KEYTERMS = [
@@ -366,9 +368,8 @@ export const createVoiceHandler = (config, deps = {}) => {
 
   return async (req, res) => {
     const url = new URL(req.url ?? "/", "http://relay");
-    const path = url.pathname.startsWith(BASE)
-      ? url.pathname.slice(BASE.length)
-      : null;
+    const base = BASES.find((prefix) => url.pathname.startsWith(`${prefix}/`));
+    const path = base ? url.pathname.slice(base.length) : null;
     const route = path === null ? undefined : routes[`${req.method} ${path}`];
     const requestId = randomUUID();
     if (!route) return json(res, 404, { error: "not_found" });
