@@ -1,0 +1,321 @@
+import {
+  Button,
+  InlineLoading,
+  Tag,
+  TextArea,
+  TextInput,
+} from '@bahmni/design-system';
+import {
+  AllergyStatus,
+  calculateAge,
+  getFormattedAllergies,
+  getFormattedPatientById,
+  useTranslation,
+} from '@bahmni/services';
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { HomePageHeader } from '../HomePageHeader';
+import styles from './Dictation.module.scss';
+import {
+  allergyMatches,
+  DictationDraft,
+  EXAMPLE_DICTATION,
+  MedicineLine,
+  NOTE_SECTIONS,
+  NoteSection,
+  parseDictation,
+} from './parseDictation';
+
+const QUERY_OPTIONS = { retry: false, refetchOnWindowFocus: false } as const;
+const PATTERN_TIMES = ['MORNING', 'AFTERNOON', 'NIGHT'] as const;
+const today = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' });
+
+/**
+ * The doctor types the consultation in shorthand; the page drafts the note and the
+ * prescription for the doctor to check, correct and print. Nothing is saved or sent.
+ */
+export const DictationPage = () => {
+  const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const patientUuid = searchParams.get('patient') ?? '';
+  const [dictation, setDictation] = useState('');
+  const [draft, setDraft] = useState<DictationDraft | null>(null);
+  const [sections, setSections] = useState<Record<NoteSection, string>>();
+  const [doctor, setDoctor] = useState('');
+
+  const patient = useQuery({
+    queryKey: ['dictation', 'patient', patientUuid],
+    queryFn: () => getFormattedPatientById(patientUuid),
+    enabled: patientUuid !== '',
+    ...QUERY_OPTIONS,
+  });
+  const allergies = useQuery({
+    queryKey: ['dictation', 'allergies', patientUuid],
+    queryFn: () => getFormattedAllergies(patientUuid),
+    enabled: patientUuid !== '',
+    ...QUERY_OPTIONS,
+  });
+
+  const problem = (message: string) => (
+    <>
+      <HomePageHeader />
+      <main className={styles.page}>
+        <p role="alert" className={styles.error}>
+          {message}
+        </p>
+        <Link to="/home/records">{t('DICTATION_FIND_PATIENT')}</Link>
+      </main>
+    </>
+  );
+  if (patientUuid === '') {
+    return problem(t('DICTATION_NO_PATIENT'));
+  }
+  if (patient.isError) {
+    return problem(t('DICTATION_PATIENT_ERROR'));
+  }
+  if (patient.isPending) {
+    return <InlineLoading description={t('DICTATION_LOADING')} />;
+  }
+
+  const age = patient.data.birthDate
+    ? calculateAge(patient.data.birthDate)
+    : null;
+  const activeAllergies = (allergies.data ?? [])
+    .filter(({ status }) => status === AllergyStatus.Active)
+    .map(({ display }) => display);
+
+  const makeDraft = () => {
+    const next = parseDictation(dictation);
+    setDraft(next);
+    setSections(next.sections);
+  };
+
+  const howOften = (medicine: MedicineLine) => {
+    const parts: string[] = [];
+    if (medicine.pattern) {
+      const times = PATTERN_TIMES.filter(
+        (_, index) => !/^0+$/.test(medicine.pattern![index]),
+      ).map((time) => t(`DICTATION_TIME_${time}`));
+      parts.push(`${medicine.pattern.join('-')} (${times.join(', ')})`);
+    }
+    if (medicine.frequency) {
+      parts.push(t(`DICTATION_FREQUENCY_${medicine.frequency}`));
+    }
+    return parts.join(', ');
+  };
+
+  const renderMedicines = (medicines: MedicineLine[]) => (
+    <table className={styles.medicines}>
+      <thead>
+        <tr>
+          <th scope="col">{t('DICTATION_COLUMN_MEDICINE')}</th>
+          <th scope="col">{t('DICTATION_COLUMN_HOW_OFTEN')}</th>
+          <th scope="col">{t('DICTATION_COLUMN_HOW_LONG')}</th>
+          <th scope="col">{t('DICTATION_COLUMN_WHEN')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {medicines.map((medicine, index) => {
+          const allergic = allergyMatches(medicine, activeAllergies);
+          return (
+            // eslint-disable-next-line react/no-array-index-key
+            <tr key={`${index}-${medicine.raw}`}>
+              <th scope="row">
+                <strong>
+                  {[medicine.form, medicine.name, medicine.strength]
+                    .filter(Boolean)
+                    .join(' ')}
+                </strong>
+                {allergic.length > 0 && (
+                  <span className={styles.flag}>
+                    <Tag type="red">
+                      {t('DICTATION_ALLERGY_MATCH', {
+                        allergy: allergic.join(', '),
+                      })}
+                    </Tag>
+                  </span>
+                )}
+                {medicine.missing.length > 0 && (
+                  <span className={`${styles.flag} ${styles.screenOnly}`}>
+                    <Tag type="warm-gray">
+                      {t('DICTATION_CHECK_LINE', {
+                        missing: medicine.missing
+                          .map((part) =>
+                            t(`DICTATION_MISSING_${part.toUpperCase()}`),
+                          )
+                          .join(', '),
+                      })}
+                    </Tag>
+                  </span>
+                )}
+                <span className={`${styles.raw} ${styles.screenOnly}`}>
+                  {t('DICTATION_AS_TYPED', { line: medicine.raw })}
+                </span>
+              </th>
+              <td>{howOften(medicine)}</td>
+              <td>
+                {medicine.duration
+                  ? t(
+                      `DICTATION_DURATION_${medicine.duration.unit.toUpperCase()}`,
+                      {
+                        count: medicine.duration.count,
+                      },
+                    )
+                  : ''}
+              </td>
+              <td>
+                {medicine.timing
+                  ? t(`DICTATION_TIMING_${medicine.timing.toUpperCase()}`)
+                  : ''}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+
+  const renderDraft = (current: DictationDraft) => (
+    <article className={styles.note} aria-labelledby="dictation-note">
+      <h2 id="dictation-note">{t('DICTATION_NOTE_TITLE')}</h2>
+      <p>{today.format(new Date())}</p>
+      <p>
+        <strong>{patient.data.fullName}</strong>
+        {' · '}
+        {[
+          patient.data.identifier,
+          patient.data.gender,
+          age && t('PATIENT_RECORD_AGE_YEARS', { count: age.years }),
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+      </p>
+      {activeAllergies.length > 0 && (
+        <p className={styles.allergies}>
+          {t('DICTATION_ALLERGIES', { list: activeAllergies.join(', ') })}
+        </p>
+      )}
+
+      {NOTE_SECTIONS.map((section) => {
+        const id = `dictation-section-${section}`;
+        const text = sections?.[section] ?? '';
+        return (
+          <section key={section} className={styles.part}>
+            <h3>
+              <label htmlFor={id}>
+                {t(`DICTATION_SECTION_${section.toUpperCase()}`)}
+              </label>
+            </h3>
+            <div className={styles.screenOnly}>
+              <TextArea
+                id={id}
+                labelText={t(`DICTATION_SECTION_${section.toUpperCase()}`)}
+                hideLabel
+                rows={2}
+                value={text}
+                onChange={(event) =>
+                  setSections({
+                    ...(sections as Record<NoteSection, string>),
+                    [section]: event.target.value,
+                  })
+                }
+              />
+              {!text.trim() && (
+                <p className={styles.hint}>{t('DICTATION_NOT_DICTATED')}</p>
+              )}
+            </div>
+            <p className={styles.printOnly}>{text}</p>
+          </section>
+        );
+      })}
+
+      <section className={styles.part}>
+        <h3>{t('DICTATION_SECTION_MEDICINES')}</h3>
+        {current.medicines.length > 0 ? (
+          renderMedicines(current.medicines)
+        ) : (
+          <p>{t('DICTATION_NO_MEDICINES')}</p>
+        )}
+        {current.unread.length > 0 && (
+          <div role="alert" className={`${styles.error} ${styles.screenOnly}`}>
+            <p>{t('DICTATION_UNREAD')}</p>
+            <ul>
+              {current.unread.map((line, index) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <li key={`${index}-${line}`}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+
+      <section className={styles.part}>
+        <div className={styles.screenOnly}>
+          <TextInput
+            id="dictation-doctor"
+            labelText={t('DICTATION_DOCTOR_LABEL')}
+            value={doctor}
+            onChange={(event) => setDoctor(event.target.value)}
+          />
+        </div>
+        <p className={styles.printOnly}>{doctor}</p>
+        <p className={styles.signature}>{t('DICTATION_SIGNATURE')}</p>
+      </section>
+    </article>
+  );
+
+  return (
+    <>
+      <div className={styles.screenOnly}>
+        <HomePageHeader />
+      </div>
+      <main className={styles.page}>
+        <div className={styles.screenOnly}>
+          <Link to={`/home/records/${encodeURIComponent(patientUuid)}`}>
+            {t('DICTATION_BACK')}
+          </Link>
+          <h1>{t('DICTATION_TITLE')}</h1>
+          <p className={styles.notice}>{t('DICTATION_NOT_SAVED')}</p>
+
+          <label htmlFor="dictation-text" className={styles.fieldLabel}>
+            {t('DICTATION_INPUT_LABEL')}
+          </label>
+          <TextArea
+            id="dictation-text"
+            labelText={t('DICTATION_INPUT_LABEL')}
+            hideLabel
+            rows={10}
+            value={dictation}
+            onChange={(event) => setDictation(event.target.value)}
+          />
+          <p className={styles.hint}>{t('DICTATION_INPUT_HINT')}</p>
+          <div className={styles.toolbar}>
+            <Button disabled={!dictation.trim()} onClick={makeDraft}>
+              {draft ? t('DICTATION_REDRAFT') : t('DICTATION_MAKE_DRAFT')}
+            </Button>
+            <Button
+              kind="ghost"
+              onClick={() => setDictation(EXAMPLE_DICTATION)}
+            >
+              {t('DICTATION_EXAMPLE')}
+            </Button>
+          </div>
+          {draft && (
+            <p className={styles.hint}>{t('DICTATION_REDRAFT_HINT')}</p>
+          )}
+        </div>
+
+        {draft && renderDraft(draft)}
+
+        {draft && (
+          <div className={`${styles.toolbar} ${styles.screenOnly}`}>
+            <Button onClick={() => window.print()}>
+              {t('DICTATION_PRINT')}
+            </Button>
+          </div>
+        )}
+      </main>
+    </>
+  );
+};
