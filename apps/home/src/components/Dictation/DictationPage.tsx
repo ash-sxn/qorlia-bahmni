@@ -26,6 +26,8 @@ import {
   NoteSection,
   parseDictation,
 } from './parseDictation';
+import { appendSpoken } from './spokenDictation';
+import { VoiceDictation } from './VoiceDictation';
 
 const QUERY_OPTIONS = { retry: false, refetchOnWindowFocus: false } as const;
 const PATTERN_TIMES = ['MORNING', 'AFTERNOON', 'NIGHT'] as const;
@@ -277,6 +279,12 @@ export const DictationPage = () => {
           </Link>
           <h1>{t('DICTATION_TITLE')}</h1>
           <p className={styles.notice}>{t('DICTATION_NOT_SAVED')}</p>
+
+          <VoiceDictation
+            onText={(spoken) =>
+              setDictation((current) => appendSpoken(current, spoken))
+            }
+          />
 
           <label htmlFor="dictation-text" className={styles.fieldLabel}>
             {t('DICTATION_INPUT_LABEL')}

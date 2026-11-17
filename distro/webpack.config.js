@@ -146,6 +146,16 @@ module.exports = (env, argv) => {
             response.headers['cache-control'] = 'no-store';
           },
         },
+        // Voice relay (runtime/voice), only when one runs locally for development.
+        ...(process.env.QORLIA_VOICE_ORIGIN
+          ? [
+              {
+                context: ['/qorlia-voice'],
+                target: process.env.QORLIA_VOICE_ORIGIN,
+                changeOrigin: false,
+              },
+            ]
+          : []),
         ...(standardConfigRef
           ? [
               {

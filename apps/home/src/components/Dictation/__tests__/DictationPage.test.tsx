@@ -66,7 +66,9 @@ describe('DictationPage', () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Nothing is saved in Bahmni or sent anywhere\./),
+      screen.getByText(
+        /Nothing is saved in Bahmni\. Typed text is not sent anywhere/,
+      ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Make draft' })).toBeDisabled();
   });
