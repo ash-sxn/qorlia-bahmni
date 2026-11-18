@@ -1,5 +1,5 @@
 import {
-  Button,
+  Checkbox,
   InlineLoading,
   TextArea,
   TextInput,
@@ -15,7 +15,9 @@ import {
 } from '@bahmni/services';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { ButtonLink } from '../common/ButtonLink';
+import { DocumentWorkspace } from '../common/DocumentWorkspace';
 import { loadDirectory } from './referralDirectory';
 import styles from './ReferralNetwork.module.scss';
 
@@ -39,6 +41,11 @@ export const ReferralLetterPage = () => {
   const patientUuid = searchParams.get('patient') ?? '';
   const [reason, setReason] = useState('');
   const [referredBy, setReferredBy] = useState('');
+  const [include, setInclude] = useState({
+    diagnoses: true,
+    medicines: true,
+    allergies: true,
+  });
 
   const entry = useMemo(() => {
     const directory = loadDirectory();
@@ -72,7 +79,9 @@ export const ReferralLetterPage = () => {
       <p role="alert" className={styles.error}>
         {message}
       </p>
-      <Link to={link}>{linkText}</Link>
+      <ButtonLink kind="tertiary" to={link}>
+        {linkText}
+      </ButtonLink>
     </main>
   );
 
@@ -139,108 +148,148 @@ export const ReferralLetterPage = () => {
     }
     return (
       <section>
-        <h2>{title}</h2>
+        <h3>{title}</h3>
         {body}
       </section>
     );
   };
 
-  return (
-    <main className={styles.page}>
-      <div className={styles.screenOnly}>
-        <Link to={backLink}>{t('REFERRAL_LETTER_BACK')}</Link>
-        <p className={styles.notice}>{t('REFERRAL_LETTER_NOT_SAVED')}</p>
-      </div>
+  const lists = {
+    diagnoses: recentDiagnoses.map(({ display }) => display),
+    medicines: recentMedicines.map(({ name, frequency }) =>
+      [name, frequency].filter(Boolean).join(', '),
+    ),
+    allergies: activeAllergies.map(({ display }) => display),
+  };
+  const toggle = (part: keyof typeof include, checked: boolean) =>
+    setInclude({ ...include, [part]: checked });
 
-      <article className={styles.letter} aria-labelledby="referral-letter">
-        <h1 id="referral-letter">{t('REFERRAL_LETTER_TITLE')}</h1>
-        <p>{today.format(new Date())}</p>
-
-        <section>
-          <h2>{t('REFERRAL_LETTER_TO')}</h2>
-          <p>
-            <strong>{entry.name}</strong>
-            <br />
+  const form = (
+    <>
+      <div>
+        <p className={styles.fieldLabel}>{t('REFERRAL_LETTER_TO')}</p>
+        <p className={styles.chosen}>
+          <strong>{entry.name}</strong>
+          <span>
             {[entry.speciality, entry.organisation, entry.city]
               .filter(Boolean)
               .join(', ')}
-            <br />
-            {entry.phone}
-          </p>
-        </section>
-
-        <section>
-          <h2>{t('REFERRAL_LETTER_PATIENT')}</h2>
-          <p>
-            <strong>{patient.data.fullName}</strong>
-            <br />
-            {[
-              patient.data.identifier,
-              patient.data.gender,
-              age && t('PATIENT_RECORD_AGE_YEARS', { count: age.years }),
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-        </section>
-
-        <section>
-          <h2>{t('REFERRAL_LETTER_REASON')}</h2>
-          <div className={styles.screenOnly}>
-            {/* The shared TextArea puts its label under the box, so show one above. */}
-            <label htmlFor="referral-reason" className={styles.fieldLabel}>
-              {t('REFERRAL_LETTER_REASON_LABEL')}
-            </label>
-            <TextArea
-              id="referral-reason"
-              labelText={t('REFERRAL_LETTER_REASON_LABEL')}
-              hideLabel
-              rows={4}
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </div>
-          <p className={styles.printOnly}>{reason}</p>
-        </section>
-
-        {renderList(
-          t('REFERRAL_LETTER_DIAGNOSES'),
-          diagnoses,
-          recentDiagnoses.map(({ display }) => display),
-        )}
-        {renderList(
-          t('REFERRAL_LETTER_MEDICINES'),
-          medicines,
-          recentMedicines.map(({ name, frequency }) =>
-            [name, frequency].filter(Boolean).join(', '),
-          ),
-        )}
-        {renderList(
-          t('REFERRAL_LETTER_ALLERGIES'),
-          allergies,
-          activeAllergies.map(({ display }) => display),
-        )}
-
-        <section>
-          <h2>{t('REFERRAL_LETTER_FROM')}</h2>
-          <div className={styles.screenOnly}>
-            <TextInput
-              id="referral-referred-by"
-              labelText={t('REFERRAL_LETTER_FROM_LABEL')}
-              value={referredBy}
-              onChange={(event) => setReferredBy(event.target.value)}
-            />
-          </div>
-          <p className={styles.printOnly}>{referredBy}</p>
-          <p className={styles.signature}>{t('REFERRAL_LETTER_SIGNATURE')}</p>
-        </section>
-      </article>
-
-      <div className={`${styles.toolbar} ${styles.screenOnly}`}>
-        <Button onClick={() => window.print()}>
-          {t('REFERRAL_LETTER_PRINT')}
-        </Button>
+          </span>
+        </p>
+        <ButtonLink kind="ghost" size="sm" to={backLink}>
+          {t('REFERRAL_LETTER_CHANGE')}
+        </ButtonLink>
       </div>
-    </main>
+      <div>
+        {/* The shared TextArea puts its label under the box, so show one above. */}
+        <label htmlFor="referral-reason" className={styles.fieldLabel}>
+          {t('REFERRAL_LETTER_REASON_LABEL')}
+        </label>
+        <TextArea
+          id="referral-reason"
+          labelText={t('REFERRAL_LETTER_REASON_LABEL')}
+          hideLabel
+          rows={4}
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+        />
+      </div>
+      <fieldset className={styles.includes}>
+        <legend className={styles.fieldLabel}>
+          {t('REFERRAL_LETTER_INCLUDE')}
+        </legend>
+        <Checkbox
+          id="referral-include-diagnoses"
+          labelText={t('REFERRAL_LETTER_DIAGNOSES')}
+          checked={include.diagnoses}
+          onChange={(_, { checked }) => toggle('diagnoses', checked)}
+        />
+        <Checkbox
+          id="referral-include-medicines"
+          labelText={t('REFERRAL_LETTER_MEDICINES')}
+          checked={include.medicines}
+          onChange={(_, { checked }) => toggle('medicines', checked)}
+        />
+        <Checkbox
+          id="referral-include-allergies"
+          labelText={t('REFERRAL_LETTER_ALLERGIES')}
+          checked={include.allergies}
+          onChange={(_, { checked }) => toggle('allergies', checked)}
+        />
+      </fieldset>
+      <TextInput
+        id="referral-referred-by"
+        labelText={t('REFERRAL_LETTER_FROM_LABEL')}
+        value={referredBy}
+        onChange={(event) => setReferredBy(event.target.value)}
+      />
+    </>
+  );
+
+  const preview = (
+    <article className={styles.letter} aria-labelledby="referral-letter">
+      <h2 id="referral-letter">{t('REFERRAL_LETTER_TITLE')}</h2>
+      <p>{today.format(new Date())}</p>
+
+      <section>
+        <h3>{t('REFERRAL_LETTER_TO')}</h3>
+        <p>
+          <strong>{entry.name}</strong>
+          <br />
+          {[entry.speciality, entry.organisation, entry.city]
+            .filter(Boolean)
+            .join(', ')}
+          <br />
+          {entry.phone}
+        </p>
+      </section>
+
+      <section>
+        <h3>{t('REFERRAL_LETTER_PATIENT')}</h3>
+        <p>
+          <strong>{patient.data.fullName}</strong>
+          <br />
+          {[
+            patient.data.identifier,
+            patient.data.gender,
+            age && t('PATIENT_RECORD_AGE_YEARS', { count: age.years }),
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      </section>
+
+      <section>
+        <h3>{t('REFERRAL_LETTER_REASON')}</h3>
+        <p className={styles.preLine}>
+          {reason || t('REFERRAL_LETTER_REASON_EMPTY')}
+        </p>
+      </section>
+
+      {include.diagnoses &&
+        renderList(t('REFERRAL_LETTER_DIAGNOSES'), diagnoses, lists.diagnoses)}
+      {include.medicines &&
+        renderList(t('REFERRAL_LETTER_MEDICINES'), medicines, lists.medicines)}
+      {include.allergies &&
+        renderList(t('REFERRAL_LETTER_ALLERGIES'), allergies, lists.allergies)}
+
+      <section>
+        <h3>{t('REFERRAL_LETTER_FROM')}</h3>
+        <p>{referredBy}</p>
+        <p className={styles.signature}>{t('REFERRAL_LETTER_SIGNATURE')}</p>
+      </section>
+    </article>
+  );
+
+  return (
+    <DocumentWorkspace
+      patientUuid={patientUuid}
+      title={t('REFERRAL_LETTER_TITLE')}
+      lead={t('REFERRAL_LETTER_LEAD')}
+      status={t('REFERRAL_LETTER_NOT_SAVED')}
+      form={form}
+      preview={preview}
+      printLabel={t('REFERRAL_LETTER_PRINT')}
+    />
   );
 };

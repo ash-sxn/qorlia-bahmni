@@ -1,5 +1,4 @@
 import {
-  Button,
   Checkbox,
   InlineLoading,
   TextArea,
@@ -13,7 +12,9 @@ import {
 } from '@bahmni/services';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { ButtonLink } from '../common/ButtonLink';
+import { DocumentWorkspace } from '../common/DocumentWorkspace';
 import { CostEstimateTable } from './CostEstimateTable';
 import styles from './InsuranceDesk.module.scss';
 import {
@@ -79,7 +80,9 @@ export const PreauthWorksheetPage = () => {
       <p role="alert" className={styles.warning}>
         {message}
       </p>
-      <Link to="/home/records">{t('PREAUTH_FIND_PATIENT')}</Link>
+      <ButtonLink kind="tertiary" to="/home/records">
+        {t('PREAUTH_FIND_PATIENT')}
+      </ButtonLink>
     </main>
   );
   if (patientUuid === '') {
@@ -116,124 +119,131 @@ export const PreauthWorksheetPage = () => {
     setDocuments(next);
   };
 
-  return (
-    <main className={styles.page}>
-      <div className={styles.screenOnly}>
-        <Link to={`/home/records/${encodeURIComponent(patientUuid)}`}>
-          {t('PREAUTH_BACK')}
-        </Link>
-        <p className={styles.notice}>{t('PREAUTH_NOT_SENT')}</p>
+  const form = (
+    <>
+      <div className={styles.formGrid}>
+        {FIELDS.map(({ key, long }) => {
+          const props = {
+            id: `preauth-${key}`,
+            labelText: t(`PREAUTH_FIELD_${upper(key)}`),
+            value: fields[key],
+          };
+          return long ? (
+            <div key={key} className={styles.wide}>
+              {/* The shared TextArea puts its label under the box, so show one above. */}
+              <label htmlFor={props.id} className={styles.fieldLabel}>
+                {props.labelText}
+              </label>
+              <TextArea
+                {...props}
+                hideLabel
+                rows={3}
+                onChange={(event) => setField(key, event.target.value)}
+              />
+              {key === 'diagnosis' && onRecord.length > 0 && (
+                <p className={styles.hint}>
+                  {t('PREAUTH_DIAGNOSES_ON_RECORD', {
+                    list: onRecord.join(', '),
+                  })}
+                </p>
+              )}
+            </div>
+          ) : (
+            <TextInput
+              key={key}
+              {...props}
+              type={key === 'admission_date' ? 'date' : 'text'}
+              onChange={(event) => setField(key, event.target.value)}
+            />
+          );
+        })}
       </div>
+      <div>
+        <p className={styles.fieldLabel}>{t('PREAUTH_ESTIMATE')}</p>
+        <CostEstimateTable amounts={amounts} onChange={setAmounts} />
+      </div>
+      <fieldset className={styles.checkGroup}>
+        <legend className={styles.fieldLabel}>{t('PREAUTH_DOCUMENTS')}</legend>
+        {PREAUTH_DOCUMENTS.map((document) => (
+          <Checkbox
+            key={document}
+            id={`preauth-document-${document}`}
+            labelText={t(`PREAUTH_DOCUMENT_${upper(document)}`)}
+            checked={documents.has(document)}
+            onChange={(_, { checked }) => toggleDocument(document, checked)}
+          />
+        ))}
+      </fieldset>
+    </>
+  );
 
-      <article className={styles.worksheet} aria-labelledby="preauth-title">
-        <h1 id="preauth-title">{t('PREAUTH_TITLE')}</h1>
-        <p>{today.format(new Date())}</p>
+  const preview = (
+    <article className={styles.worksheet} aria-labelledby="preauth-title">
+      <h2 id="preauth-title">{t('PREAUTH_TITLE')}</h2>
+      <p>{today.format(new Date())}</p>
 
-        <section>
-          <h2>{t('PREAUTH_PATIENT')}</h2>
-          <p>
-            <strong>{patient.data.fullName}</strong>
-            <br />
-            {[
-              patient.data.identifier,
-              patient.data.gender,
-              age && t('PATIENT_RECORD_AGE_YEARS', { count: age.years }),
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-        </section>
-
-        <section>
-          <h2>{t('PREAUTH_DETAILS')}</h2>
-          <div className={`${styles.formGrid} ${styles.screenOnly}`}>
-            {FIELDS.map(({ key, long }) => {
-              const props = {
-                id: `preauth-${key}`,
-                labelText: t(`PREAUTH_FIELD_${upper(key)}`),
-                value: fields[key],
-              };
-              return long ? (
-                <div key={key} className={styles.wide}>
-                  {/* The shared TextArea puts its label under the box, so show one above. */}
-                  <label htmlFor={props.id} className={styles.fieldLabel}>
-                    {props.labelText}
-                  </label>
-                  <TextArea
-                    {...props}
-                    hideLabel
-                    rows={3}
-                    onChange={(event) => setField(key, event.target.value)}
-                  />
-                  {key === 'diagnosis' && onRecord.length > 0 && (
-                    <p className={styles.hint}>
-                      {t('PREAUTH_DIAGNOSES_ON_RECORD', {
-                        list: onRecord.join(', '),
-                      })}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <TextInput
-                  key={key}
-                  {...props}
-                  type={key === 'admission_date' ? 'date' : 'text'}
-                  onChange={(event) => setField(key, event.target.value)}
-                />
-              );
-            })}
-          </div>
-          <dl className={`${styles.facts} ${styles.printOnly}`}>
-            {FIELDS.map(({ key }) => (
-              <div key={key} className={styles.printRow}>
-                <dt>{t(`PREAUTH_FIELD_${upper(key)}`)}</dt>
-                <dd>{printValue(key)}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-
-        <section>
-          <h2>{t('PREAUTH_ESTIMATE')}</h2>
-          <CostEstimateTable amounts={amounts} onChange={setAmounts} />
-        </section>
-
-        <section>
-          <h2>{t('PREAUTH_DOCUMENTS')}</h2>
-          <ul className={styles.checklist}>
-            {PREAUTH_DOCUMENTS.map((document) => (
-              <li key={document}>
-                <span className={styles.screenOnly}>
-                  <Checkbox
-                    id={`preauth-document-${document}`}
-                    labelText={t(`PREAUTH_DOCUMENT_${upper(document)}`)}
-                    checked={documents.has(document)}
-                    onChange={(_, { checked }) =>
-                      toggleDocument(document, checked)
-                    }
-                  />
-                </span>
-                <span className={styles.printOnly}>
-                  {documents.has(document) ? '[x]' : '[  ]'}{' '}
-                  {t(`PREAUTH_DOCUMENT_${upper(document)}`)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <p className={styles.signatures}>
-          <span>{t('PREAUTH_SIGN_DOCTOR')}</span>
-          <span>{t('PREAUTH_SIGN_PATIENT')}</span>
+      <section>
+        <h3>{t('PREAUTH_PATIENT')}</h3>
+        <p>
+          <strong>{patient.data.fullName}</strong>
+          <br />
+          {[
+            patient.data.identifier,
+            patient.data.gender,
+            age && t('PATIENT_RECORD_AGE_YEARS', { count: age.years }),
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         </p>
-        <p className={styles.footnote}>{t('PREAUTH_FOOTNOTE')}</p>
-      </article>
+      </section>
 
-      <div className={styles.screenOnly}>
-        <Button disabled={total === null} onClick={() => window.print()}>
-          {t('PREAUTH_PRINT')}
-        </Button>
-      </div>
-    </main>
+      <section>
+        <h3>{t('PREAUTH_DETAILS')}</h3>
+        <dl className={styles.facts}>
+          {FIELDS.map(({ key }) => (
+            <div key={key} className={styles.printRow}>
+              <dt>{t(`PREAUTH_FIELD_${upper(key)}`)}</dt>
+              <dd>{printValue(key)}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section>
+        <h3>{t('PREAUTH_ESTIMATE')}</h3>
+        <CostEstimateTable amounts={amounts} />
+      </section>
+
+      <section>
+        <h3>{t('PREAUTH_DOCUMENTS')}</h3>
+        <ul className={styles.checklist}>
+          {PREAUTH_DOCUMENTS.map((document) => (
+            <li key={document}>
+              {documents.has(document) ? '[x]' : '[  ]'}{' '}
+              {t(`PREAUTH_DOCUMENT_${upper(document)}`)}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <p className={styles.signatures}>
+        <span>{t('PREAUTH_SIGN_DOCTOR')}</span>
+        <span>{t('PREAUTH_SIGN_PATIENT')}</span>
+      </p>
+      <p className={styles.footnote}>{t('PREAUTH_FOOTNOTE')}</p>
+    </article>
+  );
+
+  return (
+    <DocumentWorkspace
+      patientUuid={patientUuid}
+      title={t('PREAUTH_TITLE')}
+      lead={t('PREAUTH_LEAD')}
+      status={t('PREAUTH_NOT_SENT')}
+      form={form}
+      preview={preview}
+      printLabel={t('PREAUTH_PRINT')}
+      printDisabled={total === null}
+    />
   );
 };

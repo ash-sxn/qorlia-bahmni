@@ -12,6 +12,11 @@ import { syntheticReferrals } from '../__fixtures__/syntheticReferrals';
 import { loadDirectory } from '../referralDirectory';
 import { ReferralLetterPage } from '../ReferralLetterPage';
 
+// The patient banner asks for visits; these pages do not depend on them.
+jest.mock('../../PatientRecord/recordService', () => ({
+  getPatientVisits: jest.fn().mockResolvedValue([]),
+}));
+
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   getFormattedPatientById: jest.fn(),
@@ -132,11 +137,21 @@ describe('ReferralLetterPage', () => {
     const page = await letter();
     expect(page.getAllByText('Chest pain on exertion')).not.toHaveLength(0);
     expect(page.getByText('Dr. Neha Anand')).toBeInTheDocument();
-    expect(
-      screen.getByText(/This letter is not saved in Bahmni\./),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Not saved in Bahmni\./)).toBeInTheDocument();
     expect(print).toHaveBeenCalledTimes(1);
     print.mockRestore();
+  });
+
+  it('leaves out the parts of the record the doctor unticks', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const page = await letter();
+    await page.findByText('Hypertension');
+    await user.click(screen.getByLabelText('Recent medicines'));
+
+    expect(page.queryByText(/Amlodipine/)).not.toBeInTheDocument();
+    expect(page.getByText('Hypertension')).toBeInTheDocument();
   });
 
   it('says what to do when part of the record cannot be loaded, or is empty', async () => {

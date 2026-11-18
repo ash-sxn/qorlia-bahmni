@@ -1,5 +1,4 @@
 import {
-  Button,
   Checkbox,
   InlineLoading,
   TextArea,
@@ -13,7 +12,9 @@ import {
 } from '@bahmni/services';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { ButtonLink } from '../common/ButtonLink';
+import { DocumentWorkspace } from '../common/DocumentWorkspace';
 import { CostEstimateTable } from '../InsuranceDesk/CostEstimateTable';
 import styles from '../InsuranceDesk/InsuranceDesk.module.scss';
 import { COST_HEADS, totalEstimate } from '../InsuranceDesk/preauthEstimate';
@@ -69,7 +70,9 @@ export const TreatmentEstimatePage = () => {
       <p role="alert" className={styles.warning}>
         {message}
       </p>
-      <Link to="/home/records">{t('ESTIMATE_FIND_PATIENT')}</Link>
+      <ButtonLink kind="tertiary" to="/home/records">
+        {t('ESTIMATE_FIND_PATIENT')}
+      </ButtonLink>
     </main>
   );
   if (patientUuid === '') {
@@ -127,79 +130,80 @@ export const TreatmentEstimatePage = () => {
       />
     );
 
-  return (
-    <main className={styles.page}>
-      <div className={styles.screenOnly}>
-        <Link to={`/home/records/${encodeURIComponent(patientUuid)}`}>
-          {t('PREAUTH_BACK')}
-        </Link>
-        <p className={styles.notice}>{t('ESTIMATE_NOT_SAVED')}</p>
+  const form = (
+    <>
+      <Checkbox
+        id="estimate-international"
+        labelText={t('ESTIMATE_INTERNATIONAL')}
+        checked={international}
+        onChange={(_, { checked }) => setInternational(checked)}
+      />
+      <div className={styles.formGrid}>
+        {international && TRAVEL_FIELDS.map((key) => renderInput(key, false))}
+        {FIELDS.map(({ key, long }) => renderInput(key, long))}
       </div>
+      <div>
+        <p className={styles.fieldLabel}>{t('PREAUTH_ESTIMATE')}</p>
+        <CostEstimateTable amounts={amounts} onChange={setAmounts} />
+      </div>
+    </>
+  );
 
-      <article className={styles.worksheet} aria-labelledby="estimate-title">
-        <h1 id="estimate-title">{t('ESTIMATE_TITLE')}</h1>
-        <p>{today.format(new Date())}</p>
+  const preview = (
+    <article className={styles.worksheet} aria-labelledby="estimate-title">
+      <h2 id="estimate-title">{t('ESTIMATE_TITLE')}</h2>
+      <p>{today.format(new Date())}</p>
 
-        <section>
-          <h2>{t('PREAUTH_PATIENT')}</h2>
-          <p>
-            <strong>{patient.data.fullName}</strong>
-            <br />
-            {[
-              patient.data.identifier,
-              patient.data.gender,
-              age && t('PATIENT_RECORD_AGE_YEARS', { count: age.years }),
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-          <div className={styles.screenOnly}>
-            <Checkbox
-              id="estimate-international"
-              labelText={t('ESTIMATE_INTERNATIONAL')}
-              checked={international}
-              onChange={(_, { checked }) => setInternational(checked)}
-            />
-          </div>
-        </section>
-
-        <section>
-          <h2>{t('ESTIMATE_PLAN')}</h2>
-          <div className={`${styles.formGrid} ${styles.screenOnly}`}>
-            {international &&
-              TRAVEL_FIELDS.map((key) => renderInput(key, false))}
-            {FIELDS.map(({ key, long }) => renderInput(key, long))}
-          </div>
-          <dl className={`${styles.facts} ${styles.printOnly}`}>
-            {shownKeys.map((key) => (
-              <div key={key} className={styles.printRow}>
-                <dt>{label(key)}</dt>
-                <dd>{fields[key]}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-
-        <section>
-          <h2>{t('PREAUTH_ESTIMATE')}</h2>
-          <CostEstimateTable amounts={amounts} onChange={setAmounts} />
-        </section>
-
-        <p className={styles.footnote}>{t('ESTIMATE_FOOTNOTE')}</p>
-        <p className={styles.signatures}>
-          <span>{t('PREAUTH_SIGN_DOCTOR')}</span>
-          <span>{t('ESTIMATE_SIGN_HOSPITAL')}</span>
+      <section>
+        <h3>{t('PREAUTH_PATIENT')}</h3>
+        <p>
+          <strong>{patient.data.fullName}</strong>
+          <br />
+          {[
+            patient.data.identifier,
+            patient.data.gender,
+            age && t('PATIENT_RECORD_AGE_YEARS', { count: age.years }),
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         </p>
-      </article>
+      </section>
 
-      <div className={styles.screenOnly}>
-        <Button
-          disabled={totalEstimate(amounts) === null}
-          onClick={() => window.print()}
-        >
-          {t('ESTIMATE_PRINT')}
-        </Button>
-      </div>
-    </main>
+      <section>
+        <h3>{t('ESTIMATE_PLAN')}</h3>
+        <dl className={styles.facts}>
+          {shownKeys.map((key) => (
+            <div key={key} className={styles.printRow}>
+              <dt>{label(key)}</dt>
+              <dd>{fields[key]}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section>
+        <h3>{t('PREAUTH_ESTIMATE')}</h3>
+        <CostEstimateTable amounts={amounts} />
+      </section>
+
+      <p className={styles.footnote}>{t('ESTIMATE_FOOTNOTE')}</p>
+      <p className={styles.signatures}>
+        <span>{t('PREAUTH_SIGN_DOCTOR')}</span>
+        <span>{t('ESTIMATE_SIGN_HOSPITAL')}</span>
+      </p>
+    </article>
+  );
+
+  return (
+    <DocumentWorkspace
+      patientUuid={patientUuid}
+      title={t('ESTIMATE_TITLE')}
+      lead={t('ESTIMATE_LEAD')}
+      status={t('ESTIMATE_NOT_SAVED')}
+      form={form}
+      preview={preview}
+      printLabel={t('ESTIMATE_PRINT')}
+      printDisabled={totalEstimate(amounts) === null}
+    />
   );
 };

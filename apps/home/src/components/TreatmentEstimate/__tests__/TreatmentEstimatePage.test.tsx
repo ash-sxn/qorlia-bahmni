@@ -5,6 +5,11 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { TreatmentEstimatePage } from '../TreatmentEstimatePage';
 
+// The patient banner asks for visits; these pages do not depend on them.
+jest.mock('../../PatientRecord/recordService', () => ({
+  getPatientVisits: jest.fn().mockResolvedValue([]),
+}));
+
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   getFormattedPatientById: jest.fn(),
@@ -50,7 +55,7 @@ describe('TreatmentEstimatePage', () => {
     const page = await estimate();
     expect(page.getByText('Mahesh Kushwah')).toBeInTheDocument();
     expect(
-      await page.findByText('Diagnoses on record: Gallstones'),
+      await screen.findByText('Diagnoses on record: Gallstones'),
     ).toBeInTheDocument();
     expect(
       page.getByText(
@@ -61,7 +66,7 @@ describe('TreatmentEstimatePage', () => {
       screen.getByText(/This estimate is not saved in Bahmni\./),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: "Back to the patient's record" }),
+      screen.getByRole('link', { name: 'Back to the chart' }),
     ).toHaveAttribute('href', '/home/records/patient-1');
   });
 
@@ -70,17 +75,17 @@ describe('TreatmentEstimatePage', () => {
     renderPage();
 
     const page = await estimate();
-    expect(page.queryByLabelText('Passport number')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Passport number')).not.toBeInTheDocument();
     expect(page.queryByText('Nationality')).not.toBeInTheDocument();
 
     await user.click(
-      page.getByLabelText(
+      screen.getByLabelText(
         'International patient: add passport details for the visa papers',
       ),
     );
-    await user.type(page.getByLabelText('Passport number'), 'X0000000');
+    await user.type(screen.getByLabelText('Passport number'), 'X0000000');
 
-    expect(page.getByLabelText('Nationality')).toBeInTheDocument();
+    expect(screen.getByLabelText('Nationality')).toBeInTheDocument();
     expect(page.getByText('X0000000')).toBeInTheDocument();
   });
 
@@ -91,17 +96,20 @@ describe('TreatmentEstimatePage', () => {
 
     const page = await estimate();
     await user.type(
-      page.getByLabelText('Proposed treatment plan'),
+      screen.getByLabelText('Proposed treatment plan'),
       'Laparoscopic cholecystectomy',
     );
-    await user.type(page.getByLabelText('Operation theatre charges'), '35,000');
-    await user.type(page.getByLabelText('Room rent and nursing'), '6000');
+    await user.type(
+      screen.getByLabelText('Operation theatre charges'),
+      '35,000',
+    );
+    await user.type(screen.getByLabelText('Room rent and nursing'), '6000');
     await user.click(screen.getByRole('button', { name: 'Print estimate' }));
 
     expect(
-      page.getByRole('status', { name: 'Total estimate' }),
+      screen.getByRole('status', { name: 'Total estimate' }),
     ).toHaveTextContent('₹41,000');
-    expect(page.getAllByText('Laparoscopic cholecystectomy')).toHaveLength(2);
+    expect(page.getByText('Laparoscopic cholecystectomy')).toBeInTheDocument();
     expect(print).toHaveBeenCalledTimes(1);
     print.mockRestore();
   });
@@ -110,8 +118,8 @@ describe('TreatmentEstimatePage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    const page = await estimate();
-    await user.type(page.getByLabelText('ICU charges'), 'about 5000');
+    await estimate();
+    await user.type(screen.getByLabelText('ICU charges'), 'about 5000');
 
     expect(
       screen.getByRole('button', { name: 'Print estimate' }),

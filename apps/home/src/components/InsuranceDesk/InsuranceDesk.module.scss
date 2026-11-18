@@ -127,15 +127,46 @@
 
 // Pre-authorisation worksheet.
 .worksheet {
-  max-width: 52rem;
-  margin: 1.5rem 0;
-  padding: 1.5rem;
-  background: $layer-01;
-
   h2 {
-    margin: 1.5rem 0 0.5rem;
-    font-size: 1rem;
+    margin: 0 0 0.25rem;
+    font-family: Inter, sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
   }
+
+  h3 {
+    margin: 1.5rem 0 0.5rem;
+    font-family: Inter, sans-serif;
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .facts {
+    grid-template-columns: minmax(10rem, max-content) 1fr;
+  }
+
+  .signatures {
+    margin-top: 3.5rem;
+  }
+
+  .footnote {
+    margin-top: 1.5rem;
+  }
+}
+
+// A label and its value side by side, one field per line.
+.printRow {
+  display: contents;
+}
+
+.checkGroup {
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .formGrid {
@@ -219,13 +250,8 @@
     display: revert;
   }
 
-  // A label and its value side by side, one field per line.
   .facts.printOnly {
     display: grid;
-  }
-
-  .printRow {
-    display: contents;
   }
 
   .page {
@@ -233,10 +259,4 @@
     padding: 0;
   }
 
-  .worksheet {
-    max-width: none;
-    margin: 0;
-    padding: 0;
-    background: none;
-  }
 }

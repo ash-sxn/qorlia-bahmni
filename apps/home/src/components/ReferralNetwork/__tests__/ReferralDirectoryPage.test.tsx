@@ -7,6 +7,11 @@ import { syntheticReferrals } from '../__fixtures__/syntheticReferrals';
 import { loadDirectory } from '../referralDirectory';
 import { ReferralDirectoryPage } from '../ReferralDirectoryPage';
 
+// The patient banner asks for visits; these pages do not depend on them.
+jest.mock('../../PatientRecord/recordService', () => ({
+  getPatientVisits: jest.fn().mockResolvedValue([]),
+}));
+
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   getFormattedPatientById: jest.fn(),
@@ -125,9 +130,13 @@ describe('ReferralDirectoryPage', () => {
     renderPage('/referrals?patient=patient-1');
 
     expect(
-      await screen.findByText(
-        'Referring Brijesh Mishra (ABC200042). Choose who to refer to, then write the letter.',
-      ),
+      await screen.findByRole('heading', { level: 2, name: 'Brijesh Mishra' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Who are you referring to?',
+      }),
     ).toBeInTheDocument();
     expect(
       within(entries()[0]).getByRole('link', { name: 'Write referral letter' }),

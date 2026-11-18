@@ -5,6 +5,11 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { PreauthWorksheetPage } from '../PreauthWorksheetPage';
 
+// The patient banner asks for visits; these pages do not depend on them.
+jest.mock('../../PatientRecord/recordService', () => ({
+  getPatientVisits: jest.fn().mockResolvedValue([]),
+}));
+
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   getFormattedPatientById: jest.fn(),
@@ -55,30 +60,33 @@ describe('PreauthWorksheetPage', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: "Back to the patient's record" }),
+      screen.getByRole('link', { name: 'Back to the chart' }),
     ).toHaveAttribute('href', '/home/records/patient-1');
   });
 
   it('suggests the diagnoses on record, each once, without filling the box', async () => {
     renderPage();
 
-    const page = await worksheet();
+    await worksheet();
     expect(
-      await page.findByText('Diagnoses on record: Acute appendicitis'),
+      await screen.findByText('Diagnoses on record: Acute appendicitis'),
     ).toBeInTheDocument();
-    expect(page.getByLabelText('Provisional diagnosis')).toHaveValue('');
+    expect(screen.getByLabelText('Provisional diagnosis')).toHaveValue('');
   });
 
   it('adds up the estimate as amounts are typed', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    const page = await worksheet();
-    const total = page.getByRole('status', { name: 'Total estimate' });
+    await worksheet();
+    const total = screen.getByRole('status', { name: 'Total estimate' });
     expect(total).toHaveTextContent('₹0');
 
-    await user.type(page.getByLabelText('Room rent and nursing'), '12,000');
-    await user.type(page.getByLabelText('Operation theatre charges'), '30000');
+    await user.type(screen.getByLabelText('Room rent and nursing'), '12,000');
+    await user.type(
+      screen.getByLabelText('Operation theatre charges'),
+      '30000',
+    );
 
     expect(total).toHaveTextContent('₹42,000');
   });
@@ -87,13 +95,13 @@ describe('PreauthWorksheetPage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    const page = await worksheet();
-    await user.type(page.getByLabelText('ICU charges'), '45.50');
+    await worksheet();
+    await user.type(screen.getByLabelText('ICU charges'), '45.50');
 
     expect(
-      page.getByRole('status', { name: 'Total estimate' }),
+      screen.getByRole('status', { name: 'Total estimate' }),
     ).toHaveTextContent('Correct the amounts above');
-    expect(page.getAllByText('Whole rupees only')).not.toHaveLength(0);
+    expect(screen.getAllByText('Whole rupees only')).not.toHaveLength(0);
     expect(
       screen.getByRole('button', { name: 'Print worksheet' }),
     ).toBeDisabled();
@@ -105,9 +113,9 @@ describe('PreauthWorksheetPage', () => {
     renderPage();
 
     const page = await worksheet();
-    await user.type(page.getByLabelText('Insurer or TPA'), 'Example TPA');
-    await user.type(page.getByLabelText('Date of admission'), '2026-11-13');
-    await user.click(page.getByLabelText('Health card or policy copy'));
+    await user.type(screen.getByLabelText('Insurer or TPA'), 'Example TPA');
+    await user.type(screen.getByLabelText('Date of admission'), '2026-11-13');
+    await user.click(screen.getByLabelText('Health card or policy copy'));
     await user.click(screen.getByRole('button', { name: 'Print worksheet' }));
 
     expect(page.getByText('Example TPA')).toBeInTheDocument();
