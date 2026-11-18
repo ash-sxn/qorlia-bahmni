@@ -1,5 +1,6 @@
 import { lazy } from 'react';
 import { Navigate, Route } from 'react-router-dom';
+import { HomeShell } from '../components/HomeShell';
 import { Routes, RouteConfig } from './model';
 
 const HomePage = lazy(() =>
@@ -74,7 +75,8 @@ const CaseDetailPage = lazy(() =>
 );
 
 export const routes: Routes = [
-  { path: '/billing', component: BillingPage, name: 'Billing' },
+  // Billing still draws its own header; it moves into the shell separately.
+  { path: '/billing', component: BillingPage, name: 'Billing', shell: false },
   { path: '/policies', component: PolicyLibraryPage, name: 'PolicyLibrary' },
   {
     path: '/policies/:policyId',
@@ -137,7 +139,19 @@ export const routes: Routes = [
 export const renderRoutes = (routeConfigs: Routes) => {
   return [
     ...routeConfigs.map((route: RouteConfig) => (
-      <Route key={route.path} path={route.path} element={<route.component />} />
+      <Route
+        key={route.path}
+        path={route.path}
+        element={
+          route.shell === false ? (
+            <route.component />
+          ) : (
+            <HomeShell>
+              <route.component />
+            </HomeShell>
+          )
+        }
+      />
     )),
     <Route key="not-found" path="*" element={<Navigate to="/" replace />} />,
   ];

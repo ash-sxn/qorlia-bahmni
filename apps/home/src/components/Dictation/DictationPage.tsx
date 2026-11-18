@@ -1,6 +1,10 @@
 import {
+  ActionBar,
   Button,
+  Checkbox,
   InlineLoading,
+  Panel,
+  PatientBanner,
   Tag,
   TextArea,
   TextInput,
@@ -13,9 +17,10 @@ import {
   useTranslation,
 } from '@bahmni/services';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { HomePageHeader } from '../HomePageHeader';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ButtonLink } from '../common/ButtonLink';
+import { getPatientVisits } from '../PatientRecord/recordService';
 import {
   checkAgainstDictation,
   diagnosisWasSaid,
@@ -32,12 +37,21 @@ import {
 } from './parseDictation';
 import { SavedNote, saveNoteToRecord, SaveNoteError } from './saveNote';
 import { appendSpoken } from './spokenDictation';
-import { TidyWithAi } from './TidyWithAi';
+import { useTidyWithAi } from './TidyWithAi';
 import { VoiceDictation } from './VoiceDictation';
 
 const QUERY_OPTIONS = { retry: false, refetchOnWindowFocus: false } as const;
 const PATTERN_TIMES = ['MORNING', 'AFTERNOON', 'NIGHT'] as const;
 const today = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' });
+const AI_SETTING = 'qorlia.dictation.useAi';
+
+const readAiSetting = () => {
+  try {
+    return window.localStorage.getItem(AI_SETTING) !== 'false';
+  } catch {
+    return true;
+  }
+};
 
 /**
  * The doctor types the consultation in shorthand; the page drafts the note and the
@@ -73,34 +87,6 @@ export const DictationPage = () => {
     ...QUERY_OPTIONS,
   });
 
-  const problem = (message: string) => (
-    <>
-      <HomePageHeader />
-      <main className={styles.page}>
-        <p role="alert" className={styles.error}>
-          {message}
-        </p>
-        <Link to="/home/records">{t('DICTATION_FIND_PATIENT')}</Link>
-      </main>
-    </>
-  );
-  if (patientUuid === '') {
-    return problem(t('DICTATION_NO_PATIENT'));
-  }
-  if (patient.isError) {
-    return problem(t('DICTATION_PATIENT_ERROR'));
-  }
-  if (patient.isPending) {
-    return <InlineLoading description={t('DICTATION_LOADING')} />;
-  }
-
-  const age = patient.data.birthDate
-    ? calculateAge(patient.data.birthDate)
-    : null;
-  const activeAllergies = (allergies.data ?? [])
-    .filter(({ status }) => status === AllergyStatus.Active)
-    .map(({ display }) => display);
-
   const makeDraft = (text = dictation) => {
     const next = parseDictation(text);
     setDraft(next);
@@ -132,6 +118,49 @@ export const DictationPage = () => {
     setUnclear([]);
     makeDraft(said);
   };
+
+  const tidy = useTidyWithAi(applyTidied);
+  const [useAi, setUseAi] = useState(readAiSetting);
+  const visits = useQuery({
+    queryKey: ['dictation', 'visits', patientUuid],
+    queryFn: () => getPatientVisits(patientUuid),
+    enabled: patientUuid !== '',
+    ...QUERY_OPTIONS,
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(AI_SETTING, String(useAi));
+    } catch {
+      // Only a convenience.
+    }
+  }, [useAi]);
+
+  const problem = (message: string) => (
+    <main className={styles.page}>
+      <p role="alert" className={styles.error}>
+        {message}
+      </p>
+      <ButtonLink kind="tertiary" to="/home/records">
+        {t('DICTATION_FIND_PATIENT')}
+      </ButtonLink>
+    </main>
+  );
+  if (patientUuid === '') {
+    return problem(t('DICTATION_NO_PATIENT'));
+  }
+  if (patient.isError) {
+    return problem(t('DICTATION_PATIENT_ERROR'));
+  }
+  if (patient.isPending) {
+    return <InlineLoading description={t('DICTATION_LOADING')} />;
+  }
+
+  const age = patient.data.birthDate
+    ? calculateAge(patient.data.birthDate)
+    : null;
+  const activeAllergies = (allergies.data ?? [])
+    .filter(({ status }) => status === AllergyStatus.Active)
+    .map(({ display }) => display);
 
   const howOften = (medicine: MedicineLine) => {
     const parts: string[] = [];
@@ -196,46 +225,27 @@ export const DictationPage = () => {
     }
   };
 
-  const renderSave = (current: DictationDraft) => {
-    const text = noteText(current);
-    const upToDate = saved?.text === text;
-    return (
-      <div className={styles.screenOnly}>
-        <div className={styles.toolbar}>
-          <Button
-            disabled={saving || upToDate || !text.trim()}
-            onClick={() => void save(text)}
-          >
-            {saved ? t('DICTATION_SAVE_CHANGES') : t('DICTATION_SAVE')}
-          </Button>
-          <Button kind="secondary" onClick={() => window.print()}>
-            {t('DICTATION_PRINT')}
-          </Button>
-        </div>
-        {saving && <InlineLoading description={t('DICTATION_SAVING')} />}
-        {saved && (
-          <p role="status" className={styles.hint}>
-            {upToDate
-              ? t('DICTATION_SAVED', {
-                  time: saved.savedAt.toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  }),
-                  visit: saved.visitType,
-                })
-              : t('DICTATION_CHANGED_SINCE_SAVE')}
-          </p>
-        )}
-        {saveProblem && (
-          <p role="alert" className={styles.error}>
-            {t(`DICTATION_SAVE_PROBLEM_${saveProblem.toUpperCase()}`)}
-          </p>
-        )}
-        {current.medicines.length > 0 && (
-          <p className={styles.hint}>{t('DICTATION_SAVE_MEDICINES_AS_TEXT')}</p>
-        )}
-      </div>
-    );
+  const saveState = (current: DictationDraft | null) => {
+    const text = current ? noteText(current) : '';
+    const upToDate = Boolean(saved?.text === text);
+    let status = t('DICTATION_STATUS_NOTHING_YET');
+    let tone: 'draft' | 'saved' | 'neutral' = 'neutral';
+    if (current) {
+      status = t('DICTATION_STATUS_DRAFT');
+      tone = 'draft';
+    }
+    if (saved) {
+      status = upToDate
+        ? t('DICTATION_STATUS_SAVED', {
+            time: saved.savedAt.toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+          })
+        : t('DICTATION_STATUS_CHANGED');
+      tone = upToDate ? 'saved' : 'draft';
+    }
+    return { text, upToDate, status, tone };
   };
 
   const renderMedicines = (medicines: MedicineLine[]) => {
@@ -422,55 +432,137 @@ export const DictationPage = () => {
     </article>
   );
 
+  const state = saveState(draft);
+  const aiOn = tidy.available && useAi && said === undefined;
+  const turnIntoNote = () => {
+    tidy.clearProblem();
+    if (aiOn) tidy.start(dictation);
+    else makeDraft();
+  };
+  const openVisit = (visits.data ?? []).find((visit) => !visit.stopDatetime);
+  const chart = `/home/records/${encodeURIComponent(patientUuid)}`;
+
   return (
     <>
-      <div className={styles.screenOnly}>
-        <HomePageHeader />
-      </div>
-      <main className={styles.page}>
-        <div className={styles.screenOnly}>
-          <Link to={`/home/records/${encodeURIComponent(patientUuid)}`}>
+      <PatientBanner
+        compact
+        headingLevel={2}
+        name={patient.data.fullName ?? ''}
+        nameHref={`/bahmni-v2${chart}`}
+        details={[
+          [
+            age && t('PATIENT_RECORD_AGE_YEARS', { count: age.years }),
+            patient.data.gender,
+          ]
+            .filter(Boolean)
+            .join(', '),
+          patient.data.identifier,
+        ]}
+        allergies={
+          allergies.isPending
+            ? { message: t('DICTATION_LOADING') }
+            : {
+                label:
+                  activeAllergies.length > 0
+                    ? t('PATIENT_RECORD_ALLERGIES')
+                    : t('PATIENT_RECORD_NO_ALLERGIES'),
+                items: activeAllergies,
+              }
+        }
+        visit={
+          openVisit
+            ? t('DICTATION_VISIT_OPEN', { type: openVisit.visitType.display })
+            : t('DICTATION_NO_OPEN_VISIT')
+        }
+        actions={
+          <ButtonLink kind="ghost" size="md" to={chart}>
             {t('DICTATION_BACK')}
-          </Link>
-          <h1>{t('DICTATION_TITLE')}</h1>
-          <p className={styles.notice}>{t('DICTATION_NOT_SAVED')}</p>
-
-          <VoiceDictation
-            onText={(spoken) =>
-              setDictation((current) => appendSpoken(current, spoken))
-            }
-          />
-
-          <label htmlFor="dictation-text" className={styles.fieldLabel}>
-            {t('DICTATION_INPUT_LABEL')}
-          </label>
-          <TextArea
-            id="dictation-text"
-            labelText={t('DICTATION_INPUT_LABEL')}
-            hideLabel
-            rows={10}
-            value={dictation}
-            onChange={(event) => setDictation(event.target.value)}
-          />
-          <p className={styles.hint}>{t('DICTATION_INPUT_HINT')}</p>
-          <div className={styles.toolbar}>
-            <Button disabled={!dictation.trim()} onClick={() => makeDraft()}>
-              {draft ? t('DICTATION_REDRAFT') : t('DICTATION_MAKE_DRAFT')}
-            </Button>
-            <Button
-              kind="ghost"
-              onClick={() => setDictation(EXAMPLE_DICTATION)}
-            >
-              {t('DICTATION_EXAMPLE')}
-            </Button>
-            <TidyWithAi
-              text={dictation}
-              disabled={said !== undefined}
-              onTidied={applyTidied}
+          </ButtonLink>
+        }
+      />
+      <main className={styles.consultation}>
+        <h1 className={styles.visuallyHidden}>{t('DICTATION_TITLE')}</h1>
+        <Panel
+          title={t('DICTATION_STEP_SPEAK')}
+          className={`${styles.speak} ${styles.screenOnly}`}
+        >
+          <div className={styles.stack}>
+            <VoiceDictation
+              onText={(spoken) =>
+                setDictation((current) => appendSpoken(current, spoken))
+              }
             />
+            <div>
+              <label htmlFor="dictation-text" className={styles.fieldLabel}>
+                {t('DICTATION_INPUT_LABEL')}
+              </label>
+              <TextArea
+                id="dictation-text"
+                labelText={t('DICTATION_INPUT_LABEL')}
+                hideLabel
+                rows={10}
+                value={dictation}
+                onChange={(event) => setDictation(event.target.value)}
+              />
+              <p className={styles.hint}>{t('DICTATION_INPUT_HINT')}</p>
+            </div>
+            <div className={styles.toolbar}>
+              <Button
+                disabled={!dictation.trim() || tidy.busy}
+                onClick={turnIntoNote}
+              >
+                {draft
+                  ? t('DICTATION_UPDATE_NOTE')
+                  : t('DICTATION_TURN_INTO_NOTE')}
+              </Button>
+              {!dictation.trim() && (
+                <Button
+                  kind="ghost"
+                  onClick={() => setDictation(EXAMPLE_DICTATION)}
+                >
+                  {t('DICTATION_EXAMPLE')}
+                </Button>
+              )}
+            </div>
+            {tidy.busy && <InlineLoading description={t('TIDY_WORKING')} />}
+            {tidy.problem && (
+              <p role="alert" className={styles.voiceError}>
+                {t(tidy.problem)}
+              </p>
+            )}
+            {tidy.available && said === undefined && (
+              <div className={styles.aiChoice}>
+                <Checkbox
+                  id="dictation-use-ai"
+                  labelText={t('DICTATION_USE_AI', {
+                    service: tidy.serviceName,
+                  })}
+                  checked={useAi}
+                  onChange={(_, { checked }) => setUseAi(checked)}
+                />
+                <p className={styles.hint}>
+                  {useAi
+                    ? t('DICTATION_AI_ON_HINT', {
+                        service: tidy.serviceName,
+                        country: tidy.serviceCountry,
+                      })
+                    : t('DICTATION_AI_OFF_HINT')}
+                </p>
+              </div>
+            )}
+            {!tidy.available && (
+              <p className={styles.hint}>{t('DICTATION_RULES_HINT')}</p>
+            )}
+            {tidy.notice}
           </div>
+        </Panel>
+
+        <Panel title={t('DICTATION_STEP_CHECK')} className={styles.check}>
           {said !== undefined && (
-            <section className={styles.tidied} aria-label={t('TIDY_DONE')}>
+            <section
+              className={`${styles.tidied} ${styles.screenOnly}`}
+              aria-label={t('TIDY_DONE')}
+            >
               <p role="status">{t('TIDY_DONE')}</p>
               {unclear.length > 0 && (
                 <div className={styles.voiceError}>
@@ -491,15 +583,47 @@ export const DictationPage = () => {
               </Button>
             </section>
           )}
-          {draft && (
-            <p className={styles.hint}>{t('DICTATION_REDRAFT_HINT')}</p>
+          {draft ? (
+            <>
+              {renderDraft(draft)}
+              <p className={`${styles.hint} ${styles.screenOnly}`}>
+                {t('DICTATION_REDRAFT_HINT')}
+              </p>
+              {draft.medicines.length > 0 && (
+                <p className={`${styles.hint} ${styles.screenOnly}`}>
+                  {t('DICTATION_SAVE_MEDICINES_AS_TEXT')}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className={styles.emptyNote}>{t('DICTATION_EMPTY_NOTE')}</p>
           )}
-        </div>
-
-        {draft && renderDraft(draft)}
-
-        {draft && renderSave(draft)}
+          {saveProblem && (
+            <p role="alert" className={styles.error}>
+              {t(`DICTATION_SAVE_PROBLEM_${saveProblem.toUpperCase()}`)}
+            </p>
+          )}
+        </Panel>
       </main>
+      <ActionBar
+        status={saving ? t('DICTATION_SAVING') : state.status}
+        tone={state.tone}
+        ariaLabel={t('DICTATION_ACTIONS')}
+      >
+        <Button
+          kind="tertiary"
+          disabled={!draft}
+          onClick={() => window.print()}
+        >
+          {t('DICTATION_PRINT')}
+        </Button>
+        <Button
+          disabled={!draft || saving || state.upToDate || !state.text.trim()}
+          onClick={() => void save(state.text)}
+        >
+          {saved ? t('DICTATION_SAVE_CHANGES') : t('DICTATION_SAVE')}
+        </Button>
+      </ActionBar>
     </>
   );
 };

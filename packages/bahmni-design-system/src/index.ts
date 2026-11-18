@@ -87,6 +87,12 @@ export {
 } from './molecules/simpleDataTable';
 export { TooltipIcon, type TooltipIconProps } from './molecules/tooltipIcon';
 export { StatusTag, type StatusTagProps } from './molecules/statusTag';
+export {
+  PatientBanner,
+  type PatientBannerProps,
+} from './molecules/patientBanner';
+export { ActionBar, type ActionBarProps } from './molecules/actionBar';
+export { Panel, type PanelProps } from './molecules/panel';
 export { SkeletonText, type SkeletonTextProps } from './atoms/skeletonText';
 export {
   SkeletonPlaceholder,

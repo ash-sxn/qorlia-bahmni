@@ -5,6 +5,17 @@ export {
   type ConfirmationModalProps,
 } from './confirmationModal/ConfirmationModal';
 
+// Qorlia app shell: the frame around every screen
+export {
+  AppShell,
+  type AppShellProps,
+  CORE_MODULES,
+  PATIENTS_ID,
+  TODAY_ID,
+  useShellNavigation,
+  type ShellNavItem,
+} from './appShell';
+
 // Widget Components
 export { DocumentPrintButton } from './documentPrintButton';
 export type { PrintOption } from './documentPrintButton';

@@ -8,10 +8,6 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { DictationPage } from '../DictationPage';
 
-jest.mock('../../HomePageHeader', () => ({
-  HomePageHeader: () => <div data-testid="home-page-header" />,
-}));
-
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   getFormattedPatientById: jest.fn(),
@@ -64,6 +60,7 @@ const renderPage = () =>
 
 beforeEach(() => {
   jest.clearAllMocks();
+  window.localStorage.clear();
   tidyConsented = false;
   (getFormattedPatientById as jest.Mock).mockResolvedValue({
     fullName: 'Test Patient',
@@ -87,6 +84,27 @@ beforeEach(() => {
 });
 
 describe('Tidy with AI on the dictation page', () => {
+  it('makes the note by fixed rules when the doctor turns AI off', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const box = await screen.findByLabelText('Dictation');
+    await user.click(box);
+    await user.paste('C/o fever');
+    await user.click(
+      await screen.findByLabelText(
+        'Use AI to read free speech and Hindi (Sarvam AI)',
+      ),
+    );
+    await user.click(screen.getByRole('button', { name: 'Turn into a note' }));
+
+    expect(
+      screen.getByRole('article', { name: 'OPD note and prescription' }),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(([url]) => String(url).endsWith('/tidy')),
+    ).toBe(false);
+  });
+
   it('asks first, sends only the dictation, and marks what was not said', async () => {
     const user = userEvent.setup();
     renderPage();
@@ -94,9 +112,12 @@ describe('Tidy with AI on the dictation page', () => {
     await user.click(box);
     await user.paste(SAID);
 
-    await user.click(
-      await screen.findByRole('button', { name: 'Tidy with AI (Sarvam AI)' }),
-    );
+    expect(
+      await screen.findByLabelText(
+        'Use AI to read free speech and Hindi (Sarvam AI)',
+      ),
+    ).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Turn into a note' }));
     expect(
       screen.getByText(/the text in the dictation box is sent to Sarvam AI/),
     ).toBeInTheDocument();
@@ -152,7 +173,10 @@ describe('Tidy with AI on the dictation page', () => {
     renderPage();
     await screen.findByRole('button', { name: 'Dictate by voice' });
     expect(
-      screen.queryByRole('button', { name: /Tidy with AI/ }),
+      screen.queryByLabelText(/Use AI to read free speech/),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/made on this computer by fixed rules/),
+    ).toBeInTheDocument();
   });
 });

@@ -1,0 +1,236 @@
+@use "@carbon/react/scss/breakpoint" as *;
+
+.page {
+  width: 100%;
+  max-width: 82rem;
+  box-sizing: border-box;
+  padding: 2rem clamp(1rem, 3vw, 2.5rem) 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+
+  h1 {
+    margin: 0;
+    font-family: "Space Grotesk", "IBM Plex Sans", Inter, sans-serif;
+    font-size: 2rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+}
+
+.lead {
+  margin: 0.375rem 0 0;
+  font-size: 1rem;
+  color: var(--qorlia-muted, #58615b);
+}
+
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.queuePanel {
+  flex: 999 1 36rem;
+  min-width: 0;
+  background: var(--qorlia-surface, #fff);
+  border: 1px solid var(--qorlia-border, #dce3de);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.rail {
+  flex: 1 1 18rem;
+  max-width: 22rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+
+  @include breakpoint-down(md) {
+    max-width: none;
+  }
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  padding: 0.25rem 1.25rem 0;
+  border-bottom: 1px solid var(--qorlia-border, #dce3de);
+}
+
+.tab,
+.tabOn {
+  min-height: 2.75rem;
+  padding: 0.75rem 0.25rem;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--qorlia-muted, #58615b);
+  cursor: pointer;
+}
+
+.tabOn {
+  color: var(--qorlia-primary, #1f5238);
+  border-bottom-color: var(--qorlia-primary, #1f5238);
+  font-weight: 600;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.queue {
+  width: 100%;
+  min-width: 44rem;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+
+  th {
+    padding: 0.75rem 1.25rem;
+    background: #f9fbf9;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--qorlia-muted, #58615b);
+    text-align: left;
+  }
+
+  td {
+    padding: 0.875rem 1.25rem;
+    border-top: 1px solid #e6ece8;
+    vertical-align: middle;
+  }
+}
+
+.time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.patient {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--qorlia-ink, #202321);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+    color: var(--qorlia-primary, #1f5238);
+  }
+}
+
+.meta {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--qorlia-muted, #58615b);
+}
+
+.status {
+  display: inline-flex;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.waiting {
+  background: #fff4de;
+  color: #6b4510;
+}
+
+.done {
+  background: #eef0ef;
+  color: #3d443f;
+}
+
+.action {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.empty {
+  margin: 0;
+  padding: 2.5rem 1.25rem;
+  text-align: center;
+  color: var(--qorlia-muted, #58615b);
+}
+
+.next {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  a[class*="cds--btn"] {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+.nextName {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.counts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  row-gap: 0.625rem;
+  font-size: 0.9375rem;
+
+  dd {
+    margin: 0;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.quiet {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--qorlia-primary, #1f5238);
+}
+
+.muted {
+  margin: 0;
+  color: var(--qorlia-muted, #58615b);
+}
+
+.error {
+  margin: 0;
+  padding: 1.25rem;
+  color: #b3261e;
+}
+
+.workList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

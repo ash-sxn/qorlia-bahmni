@@ -2,7 +2,6 @@ import { Tag } from '@bahmni/design-system';
 import { useTranslation } from '@bahmni/services';
 import { ReactNode, useMemo } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { HomePageHeader } from '../HomePageHeader';
 import { loadCases, usesSyntheticCases } from './caseCatalogue';
 import {
   formatCaseDateTime,
@@ -174,14 +173,11 @@ export const CaseDetailPage = () => {
   };
 
   return (
-    <>
-      <HomePageHeader />
-      <main className={styles.page}>
-        <Link to={`${DESK_PATH}${getDeskSearch(location.state)}`}>
-          {t('INSURANCE_DESK_BACK')}
-        </Link>
-        {renderContent()}
-      </main>
-    </>
+    <main className={styles.page}>
+      <Link to={`${DESK_PATH}${getDeskSearch(location.state)}`}>
+        {t('INSURANCE_DESK_BACK')}
+      </Link>
+      {renderContent()}
+    </main>
   );
 };

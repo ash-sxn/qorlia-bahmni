@@ -2,7 +2,6 @@ import { Search } from '@bahmni/design-system';
 import { useTranslation } from '@bahmni/services';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { HomePageHeader } from '../HomePageHeader';
 import { loadCases, usesSyntheticCases } from './caseCatalogue';
 import { CaseFilterBar } from './CaseFilterBar';
 import { CaseList } from './CaseList';
@@ -86,19 +85,14 @@ export const InsuranceDeskPage = () => {
   };
 
   return (
-    <>
-      <HomePageHeader />
-      <main className={styles.page}>
-        <Link to="/home/">{t('HOME_LABEL')}</Link>
-        <h1>{t('INSURANCE_DESK_TITLE')}</h1>
-        <p>{t('INSURANCE_DESK_INFO_NOTE')}</p>
-        {usesSyntheticCases && (
-          <p className={styles.notice}>
-            {t('INSURANCE_DESK_SYNTHETIC_NOTICE')}
-          </p>
-        )}
-        {renderCases()}
-      </main>
-    </>
+    <main className={styles.page}>
+      <Link to="/home/">{t('HOME_LABEL')}</Link>
+      <h1>{t('INSURANCE_DESK_TITLE')}</h1>
+      <p>{t('INSURANCE_DESK_INFO_NOTE')}</p>
+      {usesSyntheticCases && (
+        <p className={styles.notice}>{t('INSURANCE_DESK_SYNTHETIC_NOTICE')}</p>
+      )}
+      {renderCases()}
+    </main>
   );
 };

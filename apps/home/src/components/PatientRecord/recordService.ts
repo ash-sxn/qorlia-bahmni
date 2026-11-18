@@ -1,5 +1,11 @@
 import { get, OPENMRS_REST_V1 } from '@bahmni/services';
-import { LabResult, LabResultsResponse, RecordVisit, RestPage } from './types';
+import {
+  LabResult,
+  LabResultsResponse,
+  NoteObservation,
+  RecordVisit,
+  RestPage,
+} from './types';
 
 // Read-only: every call in this file is a GET. Nothing here saves or changes data.
 
@@ -47,4 +53,31 @@ export const getPatientLabResults = async (
     `${OPENMRS_REST_V1}/bahmnicore/labOrderResults?${params}`,
   );
   return response.results ?? [];
+};
+
+const NOTE_CONCEPT = 'Consultation Note';
+
+/** Consultation notes of the patient, newest first; none where the concept is missing. */
+export const getPatientNotes = async (
+  patientUuid: string,
+): Promise<NoteObservation[]> => {
+  const concepts = await get<
+    RestPage<{ uuid: string; name: { name: string } }>
+  >(
+    `${OPENMRS_REST_V1}/concept?q=${encodeURIComponent(NOTE_CONCEPT)}&v=custom:(uuid,name:(name))`,
+  );
+  const concept = concepts.results.find(
+    ({ name }) => name.name.toLowerCase() === NOTE_CONCEPT.toLowerCase(),
+  );
+  if (!concept) return [];
+  const params = new URLSearchParams({
+    patient: patientUuid,
+    concept: concept.uuid,
+    limit: '100',
+    v: 'custom:(uuid,value,obsDatetime,encounter:(visit:(startDatetime),encounterProviders:(provider:(display))))',
+  });
+  const response = await get<RestPage<NoteObservation>>(
+    `${OPENMRS_REST_V1}/obs?${params}`,
+  );
+  return response.results;
 };

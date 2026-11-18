@@ -34,7 +34,7 @@ export interface LabResultsResponse {
   results: LabResult[];
 }
 
-export const RECORD_KINDS = ['diagnosis', 'medicine', 'lab'] as const;
+export const RECORD_KINDS = ['note', 'diagnosis', 'medicine', 'lab'] as const;
 export type RecordKind = (typeof RECORD_KINDS)[number];
 
 /** One line of the patient's history, whatever its source. */
@@ -59,4 +59,15 @@ export interface VisitGroup {
   key: string;
   visit: RecordVisit | null;
   entries: RecordEntry[];
+}
+
+/** One saved consultation note (an observation of Bahmni's "Consultation Note"). */
+export interface NoteObservation {
+  uuid: string;
+  value: string;
+  obsDatetime: string;
+  encounter?: {
+    visit?: { startDatetime: string } | null;
+    encounterProviders?: { provider: { display: string } }[];
+  } | null;
 }

@@ -14,7 +14,6 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { HomePageHeader } from '../HomePageHeader';
 import { CostEstimateTable } from './CostEstimateTable';
 import styles from './InsuranceDesk.module.scss';
 import {
@@ -76,15 +75,12 @@ export const PreauthWorksheetPage = () => {
   });
 
   const problem = (message: string) => (
-    <>
-      <HomePageHeader />
-      <main className={styles.page}>
-        <p role="alert" className={styles.warning}>
-          {message}
-        </p>
-        <Link to="/home/records">{t('PREAUTH_FIND_PATIENT')}</Link>
-      </main>
-    </>
+    <main className={styles.page}>
+      <p role="alert" className={styles.warning}>
+        {message}
+      </p>
+      <Link to="/home/records">{t('PREAUTH_FIND_PATIENT')}</Link>
+    </main>
   );
   if (patientUuid === '') {
     return problem(t('PREAUTH_NO_PATIENT'));
@@ -121,128 +117,123 @@ export const PreauthWorksheetPage = () => {
   };
 
   return (
-    <>
+    <main className={styles.page}>
       <div className={styles.screenOnly}>
-        <HomePageHeader />
+        <Link to={`/home/records/${encodeURIComponent(patientUuid)}`}>
+          {t('PREAUTH_BACK')}
+        </Link>
+        <p className={styles.notice}>{t('PREAUTH_NOT_SENT')}</p>
       </div>
-      <main className={styles.page}>
-        <div className={styles.screenOnly}>
-          <Link to={`/home/records/${encodeURIComponent(patientUuid)}`}>
-            {t('PREAUTH_BACK')}
-          </Link>
-          <p className={styles.notice}>{t('PREAUTH_NOT_SENT')}</p>
-        </div>
 
-        <article className={styles.worksheet} aria-labelledby="preauth-title">
-          <h1 id="preauth-title">{t('PREAUTH_TITLE')}</h1>
-          <p>{today.format(new Date())}</p>
+      <article className={styles.worksheet} aria-labelledby="preauth-title">
+        <h1 id="preauth-title">{t('PREAUTH_TITLE')}</h1>
+        <p>{today.format(new Date())}</p>
 
-          <section>
-            <h2>{t('PREAUTH_PATIENT')}</h2>
-            <p>
-              <strong>{patient.data.fullName}</strong>
-              <br />
-              {[
-                patient.data.identifier,
-                patient.data.gender,
-                age && t('PATIENT_RECORD_AGE_YEARS', { count: age.years }),
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </p>
-          </section>
+        <section>
+          <h2>{t('PREAUTH_PATIENT')}</h2>
+          <p>
+            <strong>{patient.data.fullName}</strong>
+            <br />
+            {[
+              patient.data.identifier,
+              patient.data.gender,
+              age && t('PATIENT_RECORD_AGE_YEARS', { count: age.years }),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+        </section>
 
-          <section>
-            <h2>{t('PREAUTH_DETAILS')}</h2>
-            <div className={`${styles.formGrid} ${styles.screenOnly}`}>
-              {FIELDS.map(({ key, long }) => {
-                const props = {
-                  id: `preauth-${key}`,
-                  labelText: t(`PREAUTH_FIELD_${upper(key)}`),
-                  value: fields[key],
-                };
-                return long ? (
-                  <div key={key} className={styles.wide}>
-                    {/* The shared TextArea puts its label under the box, so show one above. */}
-                    <label htmlFor={props.id} className={styles.fieldLabel}>
-                      {props.labelText}
-                    </label>
-                    <TextArea
-                      {...props}
-                      hideLabel
-                      rows={3}
-                      onChange={(event) => setField(key, event.target.value)}
-                    />
-                    {key === 'diagnosis' && onRecord.length > 0 && (
-                      <p className={styles.hint}>
-                        {t('PREAUTH_DIAGNOSES_ON_RECORD', {
-                          list: onRecord.join(', '),
-                        })}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <TextInput
-                    key={key}
+        <section>
+          <h2>{t('PREAUTH_DETAILS')}</h2>
+          <div className={`${styles.formGrid} ${styles.screenOnly}`}>
+            {FIELDS.map(({ key, long }) => {
+              const props = {
+                id: `preauth-${key}`,
+                labelText: t(`PREAUTH_FIELD_${upper(key)}`),
+                value: fields[key],
+              };
+              return long ? (
+                <div key={key} className={styles.wide}>
+                  {/* The shared TextArea puts its label under the box, so show one above. */}
+                  <label htmlFor={props.id} className={styles.fieldLabel}>
+                    {props.labelText}
+                  </label>
+                  <TextArea
                     {...props}
-                    type={key === 'admission_date' ? 'date' : 'text'}
+                    hideLabel
+                    rows={3}
                     onChange={(event) => setField(key, event.target.value)}
                   />
-                );
-              })}
-            </div>
-            <dl className={`${styles.facts} ${styles.printOnly}`}>
-              {FIELDS.map(({ key }) => (
-                <div key={key} className={styles.printRow}>
-                  <dt>{t(`PREAUTH_FIELD_${upper(key)}`)}</dt>
-                  <dd>{printValue(key)}</dd>
+                  {key === 'diagnosis' && onRecord.length > 0 && (
+                    <p className={styles.hint}>
+                      {t('PREAUTH_DIAGNOSES_ON_RECORD', {
+                        list: onRecord.join(', '),
+                      })}
+                    </p>
+                  )}
                 </div>
-              ))}
-            </dl>
-          </section>
+              ) : (
+                <TextInput
+                  key={key}
+                  {...props}
+                  type={key === 'admission_date' ? 'date' : 'text'}
+                  onChange={(event) => setField(key, event.target.value)}
+                />
+              );
+            })}
+          </div>
+          <dl className={`${styles.facts} ${styles.printOnly}`}>
+            {FIELDS.map(({ key }) => (
+              <div key={key} className={styles.printRow}>
+                <dt>{t(`PREAUTH_FIELD_${upper(key)}`)}</dt>
+                <dd>{printValue(key)}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
 
-          <section>
-            <h2>{t('PREAUTH_ESTIMATE')}</h2>
-            <CostEstimateTable amounts={amounts} onChange={setAmounts} />
-          </section>
+        <section>
+          <h2>{t('PREAUTH_ESTIMATE')}</h2>
+          <CostEstimateTable amounts={amounts} onChange={setAmounts} />
+        </section>
 
-          <section>
-            <h2>{t('PREAUTH_DOCUMENTS')}</h2>
-            <ul className={styles.checklist}>
-              {PREAUTH_DOCUMENTS.map((document) => (
-                <li key={document}>
-                  <span className={styles.screenOnly}>
-                    <Checkbox
-                      id={`preauth-document-${document}`}
-                      labelText={t(`PREAUTH_DOCUMENT_${upper(document)}`)}
-                      checked={documents.has(document)}
-                      onChange={(_, { checked }) =>
-                        toggleDocument(document, checked)
-                      }
-                    />
-                  </span>
-                  <span className={styles.printOnly}>
-                    {documents.has(document) ? '[x]' : '[  ]'}{' '}
-                    {t(`PREAUTH_DOCUMENT_${upper(document)}`)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
+        <section>
+          <h2>{t('PREAUTH_DOCUMENTS')}</h2>
+          <ul className={styles.checklist}>
+            {PREAUTH_DOCUMENTS.map((document) => (
+              <li key={document}>
+                <span className={styles.screenOnly}>
+                  <Checkbox
+                    id={`preauth-document-${document}`}
+                    labelText={t(`PREAUTH_DOCUMENT_${upper(document)}`)}
+                    checked={documents.has(document)}
+                    onChange={(_, { checked }) =>
+                      toggleDocument(document, checked)
+                    }
+                  />
+                </span>
+                <span className={styles.printOnly}>
+                  {documents.has(document) ? '[x]' : '[  ]'}{' '}
+                  {t(`PREAUTH_DOCUMENT_${upper(document)}`)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
 
-          <p className={styles.signatures}>
-            <span>{t('PREAUTH_SIGN_DOCTOR')}</span>
-            <span>{t('PREAUTH_SIGN_PATIENT')}</span>
-          </p>
-          <p className={styles.footnote}>{t('PREAUTH_FOOTNOTE')}</p>
-        </article>
+        <p className={styles.signatures}>
+          <span>{t('PREAUTH_SIGN_DOCTOR')}</span>
+          <span>{t('PREAUTH_SIGN_PATIENT')}</span>
+        </p>
+        <p className={styles.footnote}>{t('PREAUTH_FOOTNOTE')}</p>
+      </article>
 
-        <div className={styles.screenOnly}>
-          <Button disabled={total === null} onClick={() => window.print()}>
-            {t('PREAUTH_PRINT')}
-          </Button>
-        </div>
-      </main>
-    </>
+      <div className={styles.screenOnly}>
+        <Button disabled={total === null} onClick={() => window.print()}>
+          {t('PREAUTH_PRINT')}
+        </Button>
+      </div>
+    </main>
   );
 };

@@ -4,7 +4,6 @@ import { useUserPrivilege } from '@bahmni/widgets';
 import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import { ReactNode, useId, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { HomePageHeader } from '../HomePageHeader';
 import styles from './HospitalOverview.module.scss';
 import {
   countByStatus,
@@ -165,153 +164,148 @@ export const HospitalOverviewPage = () => {
   }
 
   return (
-    <>
-      <HomePageHeader />
-      <main className={styles.page}>
-        <Link to="/home/">{t('HOME_LABEL')}</Link>
-        <h1>{t('HOSPITAL_OVERVIEW_TITLE')}</h1>
-        <p>
-          {t('HOSPITAL_OVERVIEW_INTRO', {
-            date: new Intl.DateTimeFormat(undefined, {
-              dateStyle: 'full',
-            }).format(today),
-          })}
-        </p>
+    <main className={styles.page}>
+      <Link to="/home/">{t('HOME_LABEL')}</Link>
+      <h1>{t('HOSPITAL_OVERVIEW_TITLE')}</h1>
+      <p>
+        {t('HOSPITAL_OVERVIEW_INTRO', {
+          date: new Intl.DateTimeFormat(undefined, {
+            dateStyle: 'full',
+          }).format(today),
+        })}
+      </p>
 
-        <h2>{t('HOSPITAL_OVERVIEW_TODAY')}</h2>
-        <div className={styles.tiles}>
-          <Tile className={styles.tile}>
-            <FigureSection
-              title={t('HOSPITAL_OVERVIEW_OUTPATIENT')}
-              note={t('HOSPITAL_OVERVIEW_OUTPATIENT_NOTE')}
-            >
-              <QueryState allowed={canVisits} query={visits}>
-                {({ total, byType }) => (
-                  <>
-                    <p className={styles.figure}>{total}</p>
-                    <ul className={styles.breakdown}>
-                      {Object.entries(byType).map(([type, count]) => (
-                        <li key={type}>{`${type}: ${count}`}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </QueryState>
-            </FigureSection>
-          </Tile>
+      <h2>{t('HOSPITAL_OVERVIEW_TODAY')}</h2>
+      <div className={styles.tiles}>
+        <Tile className={styles.tile}>
+          <FigureSection
+            title={t('HOSPITAL_OVERVIEW_OUTPATIENT')}
+            note={t('HOSPITAL_OVERVIEW_OUTPATIENT_NOTE')}
+          >
+            <QueryState allowed={canVisits} query={visits}>
+              {({ total, byType }) => (
+                <>
+                  <p className={styles.figure}>{total}</p>
+                  <ul className={styles.breakdown}>
+                    {Object.entries(byType).map(([type, count]) => (
+                      <li key={type}>{`${type}: ${count}`}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </QueryState>
+          </FigureSection>
+        </Tile>
 
-          <Tile className={styles.tile}>
-            <FigureSection
-              title={t('HOSPITAL_OVERVIEW_ADMISSIONS')}
-              note={t('HOSPITAL_OVERVIEW_ADMISSIONS_NOTE')}
-            >
-              <QueryState allowed={canEncounters} query={admissions}>
-                {(count) => <p className={styles.figure}>{count}</p>}
-              </QueryState>
-            </FigureSection>
-          </Tile>
+        <Tile className={styles.tile}>
+          <FigureSection
+            title={t('HOSPITAL_OVERVIEW_ADMISSIONS')}
+            note={t('HOSPITAL_OVERVIEW_ADMISSIONS_NOTE')}
+          >
+            <QueryState allowed={canEncounters} query={admissions}>
+              {(count) => <p className={styles.figure}>{count}</p>}
+            </QueryState>
+          </FigureSection>
+        </Tile>
 
-          <Tile className={styles.tile}>
-            <FigureSection
-              title={t('HOSPITAL_OVERVIEW_DISCHARGES')}
-              note={t('HOSPITAL_OVERVIEW_DISCHARGES_NOTE')}
-            >
-              <QueryState allowed={canEncounters} query={discharges}>
-                {(count) => <p className={styles.figure}>{count}</p>}
-              </QueryState>
-            </FigureSection>
-          </Tile>
+        <Tile className={styles.tile}>
+          <FigureSection
+            title={t('HOSPITAL_OVERVIEW_DISCHARGES')}
+            note={t('HOSPITAL_OVERVIEW_DISCHARGES_NOTE')}
+          >
+            <QueryState allowed={canEncounters} query={discharges}>
+              {(count) => <p className={styles.figure}>{count}</p>}
+            </QueryState>
+          </FigureSection>
+        </Tile>
 
-          <Tile className={styles.tile}>
-            <FigureSection
-              title={t('HOSPITAL_OVERVIEW_REGISTRATIONS')}
-              note={t('HOSPITAL_OVERVIEW_REGISTRATIONS_NOTE')}
-            >
+        <Tile className={styles.tile}>
+          <FigureSection
+            title={t('HOSPITAL_OVERVIEW_REGISTRATIONS')}
+            note={t('HOSPITAL_OVERVIEW_REGISTRATIONS_NOTE')}
+          >
+            <p className={styles.muted}>
+              {t('HOSPITAL_OVERVIEW_REGISTRATIONS_UNAVAILABLE')}
+            </p>
+          </FigureSection>
+        </Tile>
+      </div>
+
+      <FigureSection
+        level={2}
+        className={styles.block}
+        title={t('HOSPITAL_OVERVIEW_APPOINTMENTS')}
+        note={t('HOSPITAL_OVERVIEW_APPOINTMENTS_NOTE')}
+      >
+        <QueryState allowed={canAppointments} query={appointments}>
+          {(rows) =>
+            rows.length === 0 ? (
               <p className={styles.muted}>
-                {t('HOSPITAL_OVERVIEW_REGISTRATIONS_UNAVAILABLE')}
+                {t('HOSPITAL_OVERVIEW_APPOINTMENTS_EMPTY')}
               </p>
-            </FigureSection>
-          </Tile>
-        </div>
-
-        <FigureSection
-          level={2}
-          className={styles.block}
-          title={t('HOSPITAL_OVERVIEW_APPOINTMENTS')}
-          note={t('HOSPITAL_OVERVIEW_APPOINTMENTS_NOTE')}
-        >
-          <QueryState allowed={canAppointments} query={appointments}>
-            {(rows) =>
-              rows.length === 0 ? (
-                <p className={styles.muted}>
-                  {t('HOSPITAL_OVERVIEW_APPOINTMENTS_EMPTY')}
-                </p>
-              ) : (
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th scope="col">
-                        {t('HOSPITAL_OVERVIEW_COLUMN_STATUS')}
-                      </th>
-                      <th scope="col">
-                        {t('HOSPITAL_OVERVIEW_COLUMN_APPOINTMENTS')}
-                      </th>
+            ) : (
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th scope="col">{t('HOSPITAL_OVERVIEW_COLUMN_STATUS')}</th>
+                    <th scope="col">
+                      {t('HOSPITAL_OVERVIEW_COLUMN_APPOINTMENTS')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(({ status, count }) => (
+                    <tr key={status}>
+                      <th scope="row">{statusLabel(status)}</th>
+                      <td>{count}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map(({ status, count }) => (
-                      <tr key={status}>
-                        <th scope="row">{statusLabel(status)}</th>
-                        <td>{count}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )
-            }
-          </QueryState>
-        </FigureSection>
+                  ))}
+                </tbody>
+              </table>
+            )
+          }
+        </QueryState>
+      </FigureSection>
 
-        <FigureSection
-          level={2}
-          className={styles.block}
-          title={t('HOSPITAL_OVERVIEW_BEDS')}
-          note={t('HOSPITAL_OVERVIEW_BEDS_NOTE')}
-        >
-          <QueryState allowed={canBeds} query={beds}>
-            {(rows) =>
-              rows.length === 0 ? (
-                <p className={styles.muted}>
-                  {t('HOSPITAL_OVERVIEW_BEDS_EMPTY')}
-                </p>
-              ) : (
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th scope="col">{t('HOSPITAL_OVERVIEW_COLUMN_WARD')}</th>
-                      <th scope="col">{t('HOSPITAL_OVERVIEW_COLUMN_TOTAL')}</th>
-                      <th scope="col">
-                        {t('HOSPITAL_OVERVIEW_COLUMN_OCCUPIED')}
-                      </th>
-                      <th scope="col">{t('HOSPITAL_OVERVIEW_COLUMN_FREE')}</th>
+      <FigureSection
+        level={2}
+        className={styles.block}
+        title={t('HOSPITAL_OVERVIEW_BEDS')}
+        note={t('HOSPITAL_OVERVIEW_BEDS_NOTE')}
+      >
+        <QueryState allowed={canBeds} query={beds}>
+          {(rows) =>
+            rows.length === 0 ? (
+              <p className={styles.muted}>
+                {t('HOSPITAL_OVERVIEW_BEDS_EMPTY')}
+              </p>
+            ) : (
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th scope="col">{t('HOSPITAL_OVERVIEW_COLUMN_WARD')}</th>
+                    <th scope="col">{t('HOSPITAL_OVERVIEW_COLUMN_TOTAL')}</th>
+                    <th scope="col">
+                      {t('HOSPITAL_OVERVIEW_COLUMN_OCCUPIED')}
+                    </th>
+                    <th scope="col">{t('HOSPITAL_OVERVIEW_COLUMN_FREE')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(({ ward, total, occupied, free }) => (
+                    <tr key={ward}>
+                      <th scope="row">{ward}</th>
+                      <td>{total}</td>
+                      <td>{occupied}</td>
+                      <td>{free}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map(({ ward, total, occupied, free }) => (
-                      <tr key={ward}>
-                        <th scope="row">{ward}</th>
-                        <td>{total}</td>
-                        <td>{occupied}</td>
-                        <td>{free}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )
-            }
-          </QueryState>
-        </FigureSection>
-      </main>
-    </>
+                  ))}
+                </tbody>
+              </table>
+            )
+          }
+        </QueryState>
+      </FigureSection>
+    </main>
   );
 };

@@ -49,4 +49,12 @@ export interface HeaderProps {
   ariaLabel?: string;
   extraContent?: ReactNode;
   userMenu?: ReactNode;
+  /** A menu button for navigation the caller draws itself (the Qorlia app shell). */
+  menuToggle?: {
+    expanded: boolean;
+    onToggle: () => void;
+    controls: string;
+    openLabel: string;
+    closeLabel: string;
+  };
 }

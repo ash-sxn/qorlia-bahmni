@@ -16,7 +16,6 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { HomePageHeader } from '../HomePageHeader';
 import { loadDirectory } from './referralDirectory';
 import styles from './ReferralNetwork.module.scss';
 
@@ -69,15 +68,12 @@ export const ReferralLetterPage = () => {
 
   const backLink = `/home/referrals${patientUuid ? `?patient=${encodeURIComponent(patientUuid)}` : ''}`;
   const problem = (message: string, link: string, linkText: string) => (
-    <>
-      <HomePageHeader />
-      <main className={styles.page}>
-        <p role="alert" className={styles.error}>
-          {message}
-        </p>
-        <Link to={link}>{linkText}</Link>
-      </main>
-    </>
+    <main className={styles.page}>
+      <p role="alert" className={styles.error}>
+        {message}
+      </p>
+      <Link to={link}>{linkText}</Link>
+    </main>
   );
 
   if (!entry) {
@@ -150,106 +146,101 @@ export const ReferralLetterPage = () => {
   };
 
   return (
-    <>
+    <main className={styles.page}>
       <div className={styles.screenOnly}>
-        <HomePageHeader />
+        <Link to={backLink}>{t('REFERRAL_LETTER_BACK')}</Link>
+        <p className={styles.notice}>{t('REFERRAL_LETTER_NOT_SAVED')}</p>
       </div>
-      <main className={styles.page}>
-        <div className={styles.screenOnly}>
-          <Link to={backLink}>{t('REFERRAL_LETTER_BACK')}</Link>
-          <p className={styles.notice}>{t('REFERRAL_LETTER_NOT_SAVED')}</p>
-        </div>
 
-        <article className={styles.letter} aria-labelledby="referral-letter">
-          <h1 id="referral-letter">{t('REFERRAL_LETTER_TITLE')}</h1>
-          <p>{today.format(new Date())}</p>
+      <article className={styles.letter} aria-labelledby="referral-letter">
+        <h1 id="referral-letter">{t('REFERRAL_LETTER_TITLE')}</h1>
+        <p>{today.format(new Date())}</p>
 
-          <section>
-            <h2>{t('REFERRAL_LETTER_TO')}</h2>
-            <p>
-              <strong>{entry.name}</strong>
-              <br />
-              {[entry.speciality, entry.organisation, entry.city]
-                .filter(Boolean)
-                .join(', ')}
-              <br />
-              {entry.phone}
-            </p>
-          </section>
+        <section>
+          <h2>{t('REFERRAL_LETTER_TO')}</h2>
+          <p>
+            <strong>{entry.name}</strong>
+            <br />
+            {[entry.speciality, entry.organisation, entry.city]
+              .filter(Boolean)
+              .join(', ')}
+            <br />
+            {entry.phone}
+          </p>
+        </section>
 
-          <section>
-            <h2>{t('REFERRAL_LETTER_PATIENT')}</h2>
-            <p>
-              <strong>{patient.data.fullName}</strong>
-              <br />
-              {[
-                patient.data.identifier,
-                patient.data.gender,
-                age && t('PATIENT_RECORD_AGE_YEARS', { count: age.years }),
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </p>
-          </section>
+        <section>
+          <h2>{t('REFERRAL_LETTER_PATIENT')}</h2>
+          <p>
+            <strong>{patient.data.fullName}</strong>
+            <br />
+            {[
+              patient.data.identifier,
+              patient.data.gender,
+              age && t('PATIENT_RECORD_AGE_YEARS', { count: age.years }),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+        </section>
 
-          <section>
-            <h2>{t('REFERRAL_LETTER_REASON')}</h2>
-            <div className={styles.screenOnly}>
-              {/* The shared TextArea puts its label under the box, so show one above. */}
-              <label htmlFor="referral-reason" className={styles.fieldLabel}>
-                {t('REFERRAL_LETTER_REASON_LABEL')}
-              </label>
-              <TextArea
-                id="referral-reason"
-                labelText={t('REFERRAL_LETTER_REASON_LABEL')}
-                hideLabel
-                rows={4}
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-              />
-            </div>
-            <p className={styles.printOnly}>{reason}</p>
-          </section>
+        <section>
+          <h2>{t('REFERRAL_LETTER_REASON')}</h2>
+          <div className={styles.screenOnly}>
+            {/* The shared TextArea puts its label under the box, so show one above. */}
+            <label htmlFor="referral-reason" className={styles.fieldLabel}>
+              {t('REFERRAL_LETTER_REASON_LABEL')}
+            </label>
+            <TextArea
+              id="referral-reason"
+              labelText={t('REFERRAL_LETTER_REASON_LABEL')}
+              hideLabel
+              rows={4}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </div>
+          <p className={styles.printOnly}>{reason}</p>
+        </section>
 
-          {renderList(
-            t('REFERRAL_LETTER_DIAGNOSES'),
-            diagnoses,
-            recentDiagnoses.map(({ display }) => display),
-          )}
-          {renderList(
-            t('REFERRAL_LETTER_MEDICINES'),
-            medicines,
-            recentMedicines.map(({ name, frequency }) =>
-              [name, frequency].filter(Boolean).join(', '),
-            ),
-          )}
-          {renderList(
-            t('REFERRAL_LETTER_ALLERGIES'),
-            allergies,
-            activeAllergies.map(({ display }) => display),
-          )}
+        {renderList(
+          t('REFERRAL_LETTER_DIAGNOSES'),
+          diagnoses,
+          recentDiagnoses.map(({ display }) => display),
+        )}
+        {renderList(
+          t('REFERRAL_LETTER_MEDICINES'),
+          medicines,
+          recentMedicines.map(({ name, frequency }) =>
+            [name, frequency].filter(Boolean).join(', '),
+          ),
+        )}
+        {renderList(
+          t('REFERRAL_LETTER_ALLERGIES'),
+          allergies,
+          activeAllergies.map(({ display }) => display),
+        )}
 
-          <section>
-            <h2>{t('REFERRAL_LETTER_FROM')}</h2>
-            <div className={styles.screenOnly}>
-              <TextInput
-                id="referral-referred-by"
-                labelText={t('REFERRAL_LETTER_FROM_LABEL')}
-                value={referredBy}
-                onChange={(event) => setReferredBy(event.target.value)}
-              />
-            </div>
-            <p className={styles.printOnly}>{referredBy}</p>
-            <p className={styles.signature}>{t('REFERRAL_LETTER_SIGNATURE')}</p>
-          </section>
-        </article>
+        <section>
+          <h2>{t('REFERRAL_LETTER_FROM')}</h2>
+          <div className={styles.screenOnly}>
+            <TextInput
+              id="referral-referred-by"
+              labelText={t('REFERRAL_LETTER_FROM_LABEL')}
+              value={referredBy}
+              onChange={(event) => setReferredBy(event.target.value)}
+            />
+          </div>
+          <p className={styles.printOnly}>{referredBy}</p>
+          <p className={styles.signature}>{t('REFERRAL_LETTER_SIGNATURE')}</p>
+        </section>
+      </article>
 
-        <div className={`${styles.toolbar} ${styles.screenOnly}`}>
-          <Button onClick={() => window.print()}>
-            {t('REFERRAL_LETTER_PRINT')}
-          </Button>
-        </div>
-      </main>
-    </>
+      <div className={`${styles.toolbar} ${styles.screenOnly}`}>
+        <Button onClick={() => window.print()}>
+          {t('REFERRAL_LETTER_PRINT')}
+        </Button>
+      </div>
+    </main>
   );
 };

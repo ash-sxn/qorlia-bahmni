@@ -206,7 +206,7 @@ export const VoiceDictation = ({ onText }: VoiceDictationProps) => {
           }}
         />
         <Button
-          kind={recording ? 'danger' : 'secondary'}
+          kind={recording ? 'danger' : 'tertiary'}
           aria-pressed={Boolean(recording)}
           disabled={starting}
           onClick={onButton}

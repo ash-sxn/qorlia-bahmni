@@ -5,10 +5,6 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { PatientRecordSearchPage } from '../PatientRecordSearchPage';
 
-jest.mock('../../HomePageHeader', () => ({
-  HomePageHeader: () => <div data-testid="home-page-header" />,
-}));
-
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   searchPatientByNameOrId: jest.fn(),
@@ -16,10 +12,10 @@ jest.mock('@bahmni/services', () => ({
 
 const mockSearch = searchPatientByNameOrId as jest.Mock;
 
-const renderPage = () =>
+const renderPage = (url = '/records') =>
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[url]}>
         <PatientRecordSearchPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -57,7 +53,7 @@ describe('PatientRecordSearchPage', () => {
     renderPage();
 
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Patient records' }),
+      screen.getByRole('heading', { level: 1, name: 'Patients' }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -78,7 +74,44 @@ describe('PatientRecordSearchPage', () => {
     expect(
       results.getByRole('link', { name: 'Brijesh Mishra' }),
     ).toHaveAttribute('href', '/home/records/patient-1');
-    expect(results.getByText('ABC200042 · M · 46')).toBeInTheDocument();
+    expect(results.getByText('46 y · M · ABC200042')).toBeInTheDocument();
+    expect(results.getByRole('link', { name: 'Open chart' })).toHaveAttribute(
+      'href',
+      '/home/records/patient-1',
+    );
+    expect(
+      results.queryByRole('link', { name: 'Start consultation' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('runs the search typed in the top bar and offers a consultation for an open visit', async () => {
+    mockSearch.mockResolvedValue({
+      totalCount: 1,
+      pageOfResults: [
+        {
+          uuid: 'patient-2',
+          givenName: 'Sunita',
+          middleName: '',
+          familyName: 'Verma',
+          identifier: 'ABC200049',
+          gender: 'F',
+          age: '52',
+          activeVisitUuid: 'visit-1',
+        },
+      ],
+    });
+    renderPage('/records?q=Sunita');
+
+    const results = within(
+      await screen.findByRole('list', { name: 'Patients found' }),
+    );
+    expect(mockSearch).toHaveBeenCalledWith('Sunita');
+    expect(
+      screen.getByRole('searchbox', { name: 'Find a patient' }),
+    ).toHaveValue('Sunita');
+    expect(
+      results.getByRole('link', { name: 'Start consultation' }),
+    ).toHaveAttribute('href', '/home/dictation?patient=patient-2');
   });
 
   it('does not search for a single letter', async () => {

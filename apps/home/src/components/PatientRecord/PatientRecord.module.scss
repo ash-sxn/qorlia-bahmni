@@ -1,9 +1,10 @@
 @use "@carbon/react/scss/theme" as *;
 
 .page {
-  min-height: 100vh;
-  padding: 6rem clamp(1rem, 6vw, 6rem) 3rem;
-  background: $background;
+  width: 100%;
+  max-width: 76rem;
+  box-sizing: border-box;
+  padding: 2rem clamp(1rem, 3vw, 2.5rem) 3rem;
   color: $text-primary;
 
   h1 {
@@ -35,24 +36,62 @@
   }
 }
 
+.title {
+  margin: 0;
+  font-family: "Space Grotesk", "IBM Plex Sans", Inter, sans-serif;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.lead {
+  margin: 0.375rem 0 0;
+  color: $text-secondary;
+}
+
 .results {
-  max-width: 40rem;
+  max-width: 56rem;
   margin: 0;
   padding: 0;
   list-style: none;
+  background: var(--qorlia-surface, #fff);
+  border: 1px solid var(--qorlia-border, #dce3de);
+  border-radius: 0.75rem;
+}
 
-  li {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem 1rem;
-    align-items: baseline;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid $border-subtle-01;
-  }
+.result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 0.875rem 1.25rem;
+  border-top: 1px solid #e6ece8;
 
-  span {
-    margin: 0;
+  &:first-child {
+    border-top: 0;
   }
+}
+
+.resultText {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.resultName {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--qorlia-ink, #202321);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--qorlia-primary, #1f5238);
+    text-decoration: underline;
+  }
+}
+
+.resultActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .toolbar {
@@ -63,21 +102,158 @@
   margin: 1rem 0;
 }
 
-.visit {
-  max-width: 56rem;
-  margin: 1.5rem 0 0;
-  padding: 1rem;
-  border-left: 3px solid $border-strong-01;
-  background: $layer-01;
+// The chart: a narrow "at a glance" column and the history beside it.
+.chart {
+  width: 100%;
+  max-width: 90rem;
+  box-sizing: border-box;
+  padding: 1.75rem clamp(1rem, 3vw, 2.5rem) 3rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.75rem;
+  align-items: flex-start;
+}
 
-  h2 {
+.glance {
+  flex: 1 1 18rem;
+  max-width: 22.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  @media (width <= 42rem) {
+    max-width: none;
+  }
+}
+
+.history {
+  flex: 999 1 35rem;
+}
+
+.glanceList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  font-size: 0.9375rem;
+
+  li {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-    margin: 0 0 0.5rem;
-    font-size: 1.125rem;
+    align-items: baseline;
+    gap: 0.125rem 0.5rem;
   }
+}
+
+.glanceTitle {
+  font-weight: 600;
+}
+
+.glanceDetail {
+  flex-basis: 100%;
+  font-size: 0.875rem;
+  color: $text-secondary;
+}
+
+.flag {
+  display: inline-flex;
+  padding: 0.0625rem 0.5rem;
+  border-radius: 999px;
+  background: #fff4de;
+  color: #6b4510;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.quietLink {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--qorlia-primary, #1f5238);
+}
+
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 0.625rem;
+  background: #eef2ef;
+}
+
+.segment,
+.segmentOn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.25rem;
+  padding: 0 0.875rem;
+  border: 0;
+  border-radius: 0.4375rem;
+  background: transparent;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #3d443f;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.6);
+  }
+}
+
+.segmentOn,
+.segmentOn:hover {
+  background: #fff;
+  color: var(--qorlia-primary, #1f5238);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.count {
+  font-size: 0.75rem;
+  color: $text-secondary;
+  font-variant-numeric: tabular-nums;
+}
+
+.visit {
+  padding: 1.125rem 0 0.25rem;
+  border-top: 1px solid var(--qorlia-border, #dce3de);
+
+  &:first-child {
+    border-top: 0;
+    padding-top: 0.25rem;
+  }
+}
+
+.folded {
+  display: none;
+}
+
+.visitHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+  margin-bottom: 0.25rem;
+
+  h3 {
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 600;
+  }
+
+  .muted {
+    margin: 0;
+    font-size: 0.875rem;
+  }
+}
+
+.openTag {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--qorlia-primary, #1f5238);
 }
 
 // Each entry: kind, what was recorded, and its date. On a narrow window the parts wrap.
@@ -85,32 +261,92 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
 
-  li {
-    display: grid;
-    grid-template-columns: 6rem 1fr max-content;
-    gap: 0.25rem 1rem;
-    padding: 0.5rem 0;
-    border-top: 1px solid $border-subtle-01;
+.entry {
+  display: grid;
+  grid-template-columns: 7rem 1fr max-content;
+  gap: 0.25rem 1rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid #e6ece8;
+  font-size: 0.9375rem;
 
-    @media (width <= 30rem) {
-      grid-template-columns: 1fr;
-    }
+  &:first-child {
+    border-top: 0;
+  }
+
+  @media (width <= 36rem) {
+    grid-template-columns: 1fr;
   }
 
   time {
     color: $text-secondary;
+    font-size: 0.875rem;
   }
 }
 
+.entryBody {
+  min-width: 0;
+}
+
+.entryEnd {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
 .kind {
+  padding-top: 0.0625rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
   color: $text-secondary;
 }
 
 .detail {
   display: block;
   color: $text-secondary;
+  font-size: 0.875rem;
   overflow-wrap: anywhere;
+}
+
+.noteText {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.note summary {
+  cursor: pointer;
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+
+.note[open] summary {
+  display: none;
+}
+
+.more {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--qorlia-primary, #1f5238);
+}
+
+.startHere {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.75rem 0 0.5rem;
+  padding: 1rem;
+  border: 1px dashed #b9c8be;
+  border-radius: 0.625rem;
+  color: #3d443f;
 }
 
 // The printed record is the patient's history only: no navigation or buttons.
@@ -126,5 +362,20 @@
 
   .visit {
     break-inside: avoid;
+  }
+
+  .folded {
+    display: block;
+  }
+
+  .glance,
+  .segmented,
+  .startHere,
+  .more {
+    display: none;
+  }
+
+  .chart {
+    padding: 0;
   }
 }

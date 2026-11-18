@@ -13,10 +13,6 @@ import {
   getWardBeds,
 } from '../overviewService';
 
-jest.mock('../../HomePageHeader', () => ({
-  HomePageHeader: () => <div data-testid="home-page-header" />,
-}));
-
 jest.mock('@bahmni/widgets', () => ({
   useUserPrivilege: jest.fn(),
 }));

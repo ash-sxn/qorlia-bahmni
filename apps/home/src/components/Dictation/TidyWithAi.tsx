@@ -1,4 +1,4 @@
-import { Button, Checkbox, InlineLoading, Modal } from '@bahmni/design-system';
+import { Checkbox, Modal } from '@bahmni/design-system';
 import { useTranslation } from '@bahmni/services';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -21,20 +21,13 @@ const ERROR_KEYS: Record<string, string> = {
   switched_off: 'TIDY_ERROR_OFF',
 };
 
-interface TidyWithAiProps {
-  text: string;
-  disabled?: boolean;
-  /** Called with the shorthand the AI wrote from `text`. */
-  onTidied: (tidied: string) => void;
-}
-
 /**
- * "Tidy with AI": rewrites the dictation as shorthand with the AI service the voice
- * relay is set up for. Shows nothing where the relay or tidying is not available.
+ * Tidy with AI: rewrites the dictation as shorthand with the AI service the voice
+ * relay is set up for. Unavailable where the relay or tidying is not installed.
  * The first use shows a notice that names the service; nothing is sent before the
  * doctor accepts it.
  */
-export const TidyWithAi = ({ text, disabled, onTidied }: TidyWithAiProps) => {
+export const useTidyWithAi = (onTidied: (tidied: string) => void) => {
   const { t } = useTranslation();
   const config = useQuery({
     queryKey: ['voice', 'config'],
@@ -44,14 +37,14 @@ export const TidyWithAi = ({ text, disabled, onTidied }: TidyWithAiProps) => {
   });
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string>();
-  const [noticeOpen, setNoticeOpen] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
   const [agreed, setAgreed] = useState(false);
 
-  if (!config.data?.enabled || !config.data.tidy) return null;
   const settings = config.data;
-  const service = settings.tidyService ?? settings.service;
+  const available = Boolean(settings?.enabled && settings.tidy);
+  const service = settings?.tidyService ?? settings?.service;
 
-  const run = async () => {
+  const run = async (text: string) => {
     setBusy(true);
     setProblem(undefined);
     try {
@@ -68,76 +61,76 @@ export const TidyWithAi = ({ text, disabled, onTidied }: TidyWithAiProps) => {
     }
   };
 
+  const start = (text: string) => {
+    if (!settings || !text.trim()) return;
+    if (settings.tidyConsented) {
+      void run(text);
+    } else {
+      setAgreed(false);
+      setPending(text);
+    }
+  };
+
   const accept = async () => {
+    const text = pending;
+    setPending(null);
+    if (!settings || text === null) return;
     try {
       await acceptVoiceNotice(settings.consentVersion, 'tidy');
       await config.refetch();
-      setNoticeOpen(false);
-      void run();
+      void run(text);
     } catch {
-      setNoticeOpen(false);
       setProblem('TIDY_ERROR_FAILED');
     }
   };
 
-  return (
-    <>
-      <Button
-        kind="secondary"
-        disabled={Boolean(disabled) || busy || !text.trim()}
-        onClick={() => {
-          if (settings.tidyConsented) {
-            void run();
-          } else {
-            setAgreed(false);
-            setNoticeOpen(true);
-          }
-        }}
-      >
-        {t('TIDY_BUTTON', { service: service.name })}
-      </Button>
-      {busy && <InlineLoading description={t('TIDY_WORKING')} />}
-      {problem && (
-        <p role="alert" className={styles.voiceError}>
-          {t(problem)}
+  const notice = service ? (
+    <Modal
+      open={pending !== null}
+      modalHeading={t('TIDY_NOTICE_TITLE')}
+      primaryButtonText={t('TIDY_NOTICE_ACCEPT')}
+      secondaryButtonText={t('VOICE_NOTICE_CANCEL')}
+      primaryButtonDisabled={!agreed}
+      onRequestSubmit={accept}
+      onRequestClose={() => setPending(null)}
+    >
+      <ul className={styles.voiceNotice}>
+        {[
+          t('TIDY_NOTICE_SENT', {
+            service: service.name,
+            country: service.country,
+          }),
+          t('TIDY_NOTICE_NOT_KEPT'),
+          t('VOICE_NOTICE_NO_NAMES'),
+          t('TIDY_NOTICE_CHECK'),
+        ].map((point) => (
+          <li key={point}>{point}</li>
+        ))}
+      </ul>
+      {service.policyUrl && (
+        <p>
+          <a href={service.policyUrl} target="_blank" rel="noreferrer">
+            {t('VOICE_NOTICE_POLICY', { service: service.name })}
+          </a>
         </p>
       )}
-      <Modal
-        open={noticeOpen}
-        modalHeading={t('TIDY_NOTICE_TITLE')}
-        primaryButtonText={t('TIDY_NOTICE_ACCEPT')}
-        secondaryButtonText={t('VOICE_NOTICE_CANCEL')}
-        primaryButtonDisabled={!agreed}
-        onRequestSubmit={accept}
-        onRequestClose={() => setNoticeOpen(false)}
-      >
-        <ul className={styles.voiceNotice}>
-          {[
-            t('TIDY_NOTICE_SENT', {
-              service: service.name,
-              country: service.country,
-            }),
-            t('TIDY_NOTICE_NOT_KEPT'),
-            t('VOICE_NOTICE_NO_NAMES'),
-            t('TIDY_NOTICE_CHECK'),
-          ].map((point) => (
-            <li key={point}>{point}</li>
-          ))}
-        </ul>
-        {service.policyUrl && (
-          <p>
-            <a href={service.policyUrl} target="_blank" rel="noreferrer">
-              {t('VOICE_NOTICE_POLICY', { service: service.name })}
-            </a>
-          </p>
-        )}
-        <Checkbox
-          id="tidy-notice-agree"
-          labelText={t('TIDY_NOTICE_AGREE')}
-          checked={agreed}
-          onChange={(_, { checked }) => setAgreed(checked)}
-        />
-      </Modal>
-    </>
-  );
+      <Checkbox
+        id="tidy-notice-agree"
+        labelText={t('TIDY_NOTICE_AGREE')}
+        checked={agreed}
+        onChange={(_, { checked }) => setAgreed(checked)}
+      />
+    </Modal>
+  ) : null;
+
+  return {
+    available,
+    busy,
+    problem,
+    clearProblem: () => setProblem(undefined),
+    serviceName: service?.name ?? '',
+    serviceCountry: service?.country ?? '',
+    start,
+    notice,
+  };
 };

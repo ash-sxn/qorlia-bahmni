@@ -2,7 +2,6 @@ import { Search } from '@bahmni/design-system';
 import { useTranslation } from '@bahmni/services';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { HomePageHeader } from '../HomePageHeader';
 import { filtersFromParams, filtersToParams } from './filterParams';
 import {
   DEFAULT_FILTERS,
@@ -77,19 +76,14 @@ export const PolicyLibraryPage = () => {
   };
 
   return (
-    <>
-      <HomePageHeader />
-      <main className={styles.page}>
-        <Link to="/home/">{t('HOME_LABEL')}</Link>
-        <h1>{t('POLICY_LIBRARY_TITLE')}</h1>
-        <p>{t('POLICY_LIBRARY_INFO_NOTE')}</p>
-        {usesSyntheticExamples && (
-          <p className={styles.notice}>
-            {t('POLICY_LIBRARY_SYNTHETIC_NOTICE')}
-          </p>
-        )}
-        {renderCatalogue()}
-      </main>
-    </>
+    <main className={styles.page}>
+      <Link to="/home/">{t('HOME_LABEL')}</Link>
+      <h1>{t('POLICY_LIBRARY_TITLE')}</h1>
+      <p>{t('POLICY_LIBRARY_INFO_NOTE')}</p>
+      {usesSyntheticExamples && (
+        <p className={styles.notice}>{t('POLICY_LIBRARY_SYNTHETIC_NOTICE')}</p>
+      )}
+      {renderCatalogue()}
+    </main>
   );
 };

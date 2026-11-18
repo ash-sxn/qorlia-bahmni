@@ -2,6 +2,7 @@ import type { Diagnosis, MedicationRequest } from '@bahmni/services';
 import {
   BahmniDate,
   LabResult,
+  NoteObservation,
   RecordEntry,
   RecordKind,
   RecordVisit,
@@ -20,6 +21,24 @@ const joinParts = (parts: (string | null | undefined | false)[]): string =>
   parts.filter(Boolean).join(', ');
 
 /** Diagnoses as record entries. A diagnosis without a readable date is left out. */
+/** Consultation notes; the visit comes from the note's encounter. */
+export const noteEntries = (notes: readonly NoteObservation[]): RecordEntry[] =>
+  notes.flatMap((note) => {
+    const date = toIso(note.obsDatetime);
+    if (!date || typeof note.value !== 'string') return [];
+    const by = note.encounter?.encounterProviders?.[0]?.provider.display;
+    return [
+      {
+        id: `note-${note.uuid}`,
+        kind: 'note' as const,
+        date,
+        title: by ? by.replace(/^.*? - /, '') : '',
+        detail: note.value,
+        visitStart: toIso(note.encounter?.visit?.startDatetime) ?? undefined,
+      },
+    ];
+  });
+
 export const diagnosisEntries = (
   diagnoses: readonly Diagnosis[],
 ): RecordEntry[] =>
@@ -183,6 +202,7 @@ export const countByKind = (
   entries: readonly RecordEntry[],
 ): Record<RecordKind, number> => {
   const counts: Record<RecordKind, number> = {
+    note: 0,
     diagnosis: 0,
     medicine: 0,
     lab: 0,

@@ -43,6 +43,7 @@ export const Header: React.FC<HeaderProps> = React.memo(
     ariaLabel = 'Header',
     extraContent,
     userMenu,
+    menuToggle,
   }) => {
     const hospitalBranding = getHospitalBranding();
     const brandName = suppliedBrandName ?? hospitalBranding.name;
@@ -186,6 +187,19 @@ export const Header: React.FC<HeaderProps> = React.memo(
           onClickSideNavExpand,
         }) => (
           <CarbonHeader aria-label={ariaLabel} data-testid="header">
+            {menuToggle && sideNavItems.length === 0 && (
+              <HeaderMenuButton
+                aria-label={
+                  menuToggle.expanded
+                    ? menuToggle.closeLabel
+                    : menuToggle.openLabel
+                }
+                aria-expanded={menuToggle.expanded}
+                aria-controls={menuToggle.controls}
+                isActive={menuToggle.expanded}
+                onClick={menuToggle.onToggle}
+              />
+            )}
             {sideNavItems.length > 0 && (
               <HeaderMenuButton
                 aria-label={
