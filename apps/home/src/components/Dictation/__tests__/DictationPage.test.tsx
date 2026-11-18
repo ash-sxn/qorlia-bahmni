@@ -7,6 +7,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { DictationPage } from '../DictationPage';
+import { saveNoteToRecord, SaveNoteError } from '../saveNote';
 
 jest.mock('../../HomePageHeader', () => ({
   HomePageHeader: () => <div data-testid="home-page-header" />,
@@ -18,6 +19,12 @@ jest.mock('@bahmni/services', () => ({
   getFormattedAllergies: jest.fn(),
 }));
 
+jest.mock('../saveNote', () => ({
+  ...jest.requireActual('../saveNote'),
+  saveNoteToRecord: jest.fn(),
+}));
+
+const mockSave = saveNoteToRecord as jest.Mock;
 const mockPatient = getFormattedPatientById as jest.Mock;
 const mockAllergies = getFormattedAllergies as jest.Mock;
 
@@ -56,7 +63,7 @@ describe('DictationPage', () => {
     ]);
   });
 
-  it('says the draft stays on this computer and is not saved', async () => {
+  it('says nothing goes into Bahmni until the doctor saves', async () => {
     renderPage();
 
     expect(
@@ -67,7 +74,7 @@ describe('DictationPage', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Nothing is saved in Bahmni\. Typed text is not sent anywhere/,
+        /Nothing goes into Bahmni until you press Save, and then only the note/,
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Make draft' })).toBeDisabled();
@@ -145,6 +152,79 @@ describe('DictationPage', () => {
     expect(note().getAllByText('Not in the dictation.')).toHaveLength(2);
     expect(print).toHaveBeenCalledTimes(1);
     print.mockRestore();
+  });
+
+  it('saves the checked note to the open visit and updates it after a change', async () => {
+    mockSave.mockReset();
+    mockSave.mockImplementation(async (_patient, text, previous) => ({
+      encounterUuid: 'enc-1',
+      observationUuid: 'obs-1',
+      visitType: 'OPD',
+      text,
+      savedAt: new Date(2026, 10, 18, 10, 30),
+      previous,
+    }));
+    renderPage();
+    const user = await dictate(
+      'C/o fever\nDx: Viral fever\nRx\nTab Paracetamol 650 mg 1-0-1 x 5 days after food',
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: "Save note to the patient's record" }),
+    );
+
+    expect(mockSave).toHaveBeenCalledWith(
+      'patient-1',
+      [
+        'Complaints: fever',
+        'Diagnosis: Viral fever',
+        'Medicines:\n1. Tablet Paracetamol 650 mg, 1-0-1 (morning, night), 5 days, After food',
+      ].join('\n\n'),
+      undefined,
+    );
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'as the consultation note in the open OPD visit',
+    );
+    expect(
+      screen.getByText(/Medicines are saved as lines in the note/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Save changes to the record' }),
+    ).toBeDisabled();
+
+    await user.type(
+      note().getByLabelText('Advice, tests and follow-up'),
+      'Plenty of fluids',
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'You changed the note after saving',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Save changes to the record' }),
+    );
+    expect(mockSave).toHaveBeenLastCalledWith(
+      'patient-1',
+      expect.stringContaining('Advice, tests and follow-up: Plenty of fluids'),
+      expect.objectContaining({
+        encounterUuid: 'enc-1',
+        observationUuid: 'obs-1',
+      }),
+    );
+  });
+
+  it('explains why a note was not saved', async () => {
+    mockSave.mockReset();
+    mockSave.mockRejectedValue(new SaveNoteError('no_visit'));
+    renderPage();
+    const user = await dictate('C/o fever');
+
+    await user.click(
+      screen.getByRole('button', { name: "Save note to the patient's record" }),
+    );
+
+    expect(
+      await screen.findByText(/this patient has no open visit/),
+    ).toHaveAttribute('role', 'alert');
   });
 
   it('asks for a patient when none was chosen', () => {

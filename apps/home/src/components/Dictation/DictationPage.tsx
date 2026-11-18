@@ -26,6 +26,7 @@ import {
   NoteSection,
   parseDictation,
 } from './parseDictation';
+import { SavedNote, saveNoteToRecord, SaveNoteError } from './saveNote';
 import { appendSpoken } from './spokenDictation';
 import { VoiceDictation } from './VoiceDictation';
 
@@ -35,7 +36,8 @@ const today = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' });
 
 /**
  * The doctor types the consultation in shorthand; the page drafts the note and the
- * prescription for the doctor to check, correct and print. Nothing is saved or sent.
+ * prescription for the doctor to check, correct and print. The note is saved to the
+ * patient's open visit only when the doctor presses Save.
  */
 export const DictationPage = () => {
   const { t } = useTranslation();
@@ -45,6 +47,9 @@ export const DictationPage = () => {
   const [draft, setDraft] = useState<DictationDraft | null>(null);
   const [sections, setSections] = useState<Record<NoteSection, string>>();
   const [doctor, setDoctor] = useState('');
+  const [saved, setSaved] = useState<SavedNote>();
+  const [saving, setSaving] = useState(false);
+  const [saveProblem, setSaveProblem] = useState<string>();
 
   const patient = useQuery({
     queryKey: ['dictation', 'patient', patientUuid],
@@ -105,6 +110,97 @@ export const DictationPage = () => {
       parts.push(t(`DICTATION_FREQUENCY_${medicine.frequency}`));
     }
     return parts.join(', ');
+  };
+
+  const describeMedicine = (medicine: MedicineLine) =>
+    [
+      [medicine.form, medicine.name, medicine.strength]
+        .filter(Boolean)
+        .join(' '),
+      howOften(medicine),
+      medicine.duration &&
+        t(`DICTATION_DURATION_${medicine.duration.unit.toUpperCase()}`, {
+          count: medicine.duration.count,
+        }),
+      medicine.timing && t(`DICTATION_TIMING_${medicine.timing.toUpperCase()}`),
+    ]
+      .filter(Boolean)
+      .join(', ');
+
+  /** The note as it is stored in Bahmni: plain text, one part per heading. */
+  const noteText = (current: DictationDraft) => {
+    const parts = NOTE_SECTIONS.filter((section) =>
+      sections?.[section]?.trim(),
+    ).map(
+      (section) =>
+        `${t(`DICTATION_SECTION_${section.toUpperCase()}`)}: ${sections![section].trim()}`,
+    );
+    if (current.medicines.length) {
+      parts.push(
+        [
+          `${t('DICTATION_SECTION_MEDICINES')}:`,
+          ...current.medicines.map(
+            (medicine, index) => `${index + 1}. ${describeMedicine(medicine)}`,
+          ),
+        ].join('\n'),
+      );
+    }
+    if (doctor.trim()) parts.push(doctor.trim());
+    return parts.join('\n\n');
+  };
+
+  const save = async (text: string) => {
+    setSaving(true);
+    setSaveProblem(undefined);
+    try {
+      setSaved(await saveNoteToRecord(patientUuid, text, saved));
+    } catch (error) {
+      setSaveProblem(error instanceof SaveNoteError ? error.problem : 'failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const renderSave = (current: DictationDraft) => {
+    const text = noteText(current);
+    const upToDate = saved?.text === text;
+    return (
+      <div className={styles.screenOnly}>
+        <div className={styles.toolbar}>
+          <Button
+            disabled={saving || upToDate || !text.trim()}
+            onClick={() => void save(text)}
+          >
+            {saved ? t('DICTATION_SAVE_CHANGES') : t('DICTATION_SAVE')}
+          </Button>
+          <Button kind="secondary" onClick={() => window.print()}>
+            {t('DICTATION_PRINT')}
+          </Button>
+        </div>
+        {saving && <InlineLoading description={t('DICTATION_SAVING')} />}
+        {saved && (
+          <p role="status" className={styles.hint}>
+            {upToDate
+              ? t('DICTATION_SAVED', {
+                  time: saved.savedAt.toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }),
+                  visit: saved.visitType,
+                })
+              : t('DICTATION_CHANGED_SINCE_SAVE')}
+          </p>
+        )}
+        {saveProblem && (
+          <p role="alert" className={styles.error}>
+            {t(`DICTATION_SAVE_PROBLEM_${saveProblem.toUpperCase()}`)}
+          </p>
+        )}
+        {current.medicines.length > 0 && (
+          <p className={styles.hint}>{t('DICTATION_SAVE_MEDICINES_AS_TEXT')}</p>
+        )}
+      </div>
+    );
   };
 
   const renderMedicines = (medicines: MedicineLine[]) => (
@@ -316,13 +412,7 @@ export const DictationPage = () => {
 
         {draft && renderDraft(draft)}
 
-        {draft && (
-          <div className={`${styles.toolbar} ${styles.screenOnly}`}>
-            <Button onClick={() => window.print()}>
-              {t('DICTATION_PRINT')}
-            </Button>
-          </div>
-        )}
+        {draft && renderSave(draft)}
       </main>
     </>
   );
