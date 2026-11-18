@@ -73,13 +73,15 @@ const findName = (name: string, said: string[]) => {
   const target = words(name).join('');
   if (!target) return -1;
   const allowed = Math.max(1, Math.floor(target.length / 4));
+  // The closest match wins, so "90 metformin" does not beat "metformin".
+  let best = { index: -1, cost: allowed + 1 };
   for (let index = 0; index < said.length; index++) {
     for (const span of [1, 2]) {
-      const candidate = said.slice(index, index + span).join('');
-      if (candidate && distance(candidate, target) <= allowed) return index;
+      const cost = distance(said.slice(index, index + span).join(''), target);
+      if (cost < best.cost) best = { index, cost };
     }
   }
-  return -1;
+  return best.index;
 };
 
 const hasNumber = (value: string, segment: string[]) =>
@@ -142,4 +144,16 @@ export const checkAgainstDictation = (
     }
     return problems;
   });
+};
+
+/**
+ * Whether the diagnosis written by the AI tidy was named in the dictation: at least
+ * one of its longer words must have been said. A diagnosis worked out from the
+ * complaints or the medicines fails this check.
+ */
+export const diagnosisWasSaid = (diagnosis: string, dictation: string) => {
+  const said = words(dictation);
+  const named = words(diagnosis).filter((word) => word.length >= 4);
+  if (named.length === 0) return true;
+  return named.some((word) => findName(word, said) >= 0);
 };

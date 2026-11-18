@@ -1,4 +1,7 @@
-import { checkAgainstDictation } from '../checkAgainstDictation';
+import {
+  checkAgainstDictation,
+  diagnosisWasSaid,
+} from '../checkAgainstDictation';
 import { parseDictation } from '../parseDictation';
 
 const check = (tidied: string, said: string) =>
@@ -34,5 +37,21 @@ describe('checkAgainstDictation', () => {
         'pantoprazol 20 subah khali pet',
       ),
     ).toEqual([['strength', 'when']]);
+  });
+
+  it('finds a medicine right after a number', () => {
+    expect(
+      check(
+        'Rx\nMetformin 500 mg 1-0-1',
+        'BP 140 by 90. metformin 500 subah shaam continue.',
+      ),
+    ).toEqual([[]]);
+  });
+
+  it('notices a diagnosis that was never named', () => {
+    const said = 'sugar ki patient hai, follow up. diagnosis acute tonsilitis';
+    expect(diagnosisWasSaid('Acute tonsillitis', said)).toBe(true);
+    expect(diagnosisWasSaid('Diabetes mellitus', said)).toBe(false);
+    expect(diagnosisWasSaid('', said)).toBe(true);
   });
 });

@@ -21,7 +21,7 @@ jest.mock('@bahmni/services', () => ({
 const SAID =
   'metformin 500 subah shaam continue, glimepiride 1 mg naashte se pehle, ek mahine ke liye. telmisartan 40 raat ko.';
 const TIDIED =
-  'Rx\nMetformin 500 mg 1-0-1 x 1 month\nGlimepiride 1 mg before food x 1 month\nTelmisartan 40 mg HS';
+  'Dx: Diabetes mellitus\nRx\nMetformin 500 mg 1-0-1 x 1 month\nGlimepiride 1 mg before food x 1 month\nTelmisartan 40 mg HS\nUnclear: pichli baar wali dawai';
 
 const reply = (status: number, body?: unknown) =>
   Promise.resolve({
@@ -110,7 +110,14 @@ describe('Tidy with AI on the dictation page', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Agree and tidy' }));
 
-    await waitFor(() => expect(box).toHaveValue(TIDIED));
+    const kept = TIDIED.replace('\nUnclear: pichli baar wali dawai', '');
+    await waitFor(() => expect(box).toHaveValue(kept));
+    expect(
+      screen.getByText(
+        'The AI could not understand these parts. Add them yourself if needed:',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('pichli baar wali dawai')).toBeInTheDocument();
     const consent = fetchMock.mock.calls.find(([url]) =>
       url.endsWith('/consent'),
     );
@@ -126,6 +133,7 @@ describe('Tidy with AI on the dictation page', () => {
     expect(rows[0]).toHaveTextContent('Not in what you said: how long');
     expect(rows[1]).not.toHaveTextContent('Not in what you said');
     expect(rows[2]).not.toHaveTextContent('Not in what you said');
+    expect(screen.getByText(/you did not name it/)).toBeInTheDocument();
     expect(screen.getByText(SAID)).toBeInTheDocument();
 
     await user.click(

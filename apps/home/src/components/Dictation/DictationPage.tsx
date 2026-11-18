@@ -16,7 +16,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HomePageHeader } from '../HomePageHeader';
-import { checkAgainstDictation } from './checkAgainstDictation';
+import {
+  checkAgainstDictation,
+  diagnosisWasSaid,
+} from './checkAgainstDictation';
 import styles from './Dictation.module.scss';
 import {
   allergyMatches,
@@ -54,6 +57,8 @@ export const DictationPage = () => {
   const [saveProblem, setSaveProblem] = useState<string>();
   /** What the doctor dictated, kept while the box holds the AI's tidied version. */
   const [said, setSaid] = useState<string>();
+  /** Parts the AI said it could not understand. */
+  const [unclear, setUnclear] = useState<string[]>([]);
 
   const patient = useQuery({
     queryKey: ['dictation', 'patient', patientUuid],
@@ -103,15 +108,28 @@ export const DictationPage = () => {
   };
 
   const applyTidied = (tidied: string) => {
+    const lines = tidied.split('\n');
+    const isUnclear = (line: string) => /^\s*unclear\s*:/i.test(line);
+    const kept = lines
+      .filter((line) => !isUnclear(line))
+      .join('\n')
+      .trim();
+    setUnclear(
+      lines
+        .filter(isUnclear)
+        .map((line) => line.replace(/^\s*unclear\s*:\s*/i, '').trim())
+        .filter(Boolean),
+    );
     setSaid(dictation);
-    setDictation(tidied);
-    makeDraft(tidied);
+    setDictation(kept);
+    makeDraft(kept);
   };
 
   const undoTidy = () => {
     if (said === undefined) return;
     setDictation(said);
     setSaid(undefined);
+    setUnclear([]);
     makeDraft(said);
   };
 
@@ -355,6 +373,14 @@ export const DictationPage = () => {
               {!text.trim() && (
                 <p className={styles.hint}>{t('DICTATION_NOT_DICTATED')}</p>
               )}
+              {section === 'diagnosis' &&
+                said !== undefined &&
+                text.trim() !== '' &&
+                !diagnosisWasSaid(text, said) && (
+                  <p className={styles.voiceError}>
+                    {t('TIDY_DIAGNOSIS_NOT_SAID')}
+                  </p>
+                )}
             </div>
             <p className={styles.printOnly}>{text}</p>
           </section>
@@ -446,6 +472,16 @@ export const DictationPage = () => {
           {said !== undefined && (
             <section className={styles.tidied} aria-label={t('TIDY_DONE')}>
               <p role="status">{t('TIDY_DONE')}</p>
+              {unclear.length > 0 && (
+                <div className={styles.voiceError}>
+                  <p>{t('TIDY_UNCLEAR')}</p>
+                  <ul>
+                    {unclear.map((part) => (
+                      <li key={part}>{part}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <details>
                 <summary>{t('TIDY_WHAT_YOU_SAID')}</summary>
                 <p className={styles.said}>{said}</p>
