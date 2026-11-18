@@ -18,7 +18,14 @@ export interface VoiceConfig {
     outside: boolean;
   };
   languages: { code: string; label: string }[];
+  /** Whether "Tidy with AI" is available on this server. */
+  tidy?: boolean;
+  /** Whether this user accepted the separate notice for tidying text. */
+  tidyConsented?: boolean;
+  tidyService?: { name: string; country: string; policyUrl: string | null };
 }
+
+export type NoticeScope = 'voice' | 'tidy';
 
 export class VoiceError extends Error {
   constructor(
@@ -49,12 +56,25 @@ const send = async <T>(path: string, init?: RequestInit): Promise<T> => {
 
 export const getVoiceConfig = () => send<VoiceConfig>('/config');
 
-export const acceptVoiceNotice = (version: string) =>
+export const acceptVoiceNotice = (
+  version: string,
+  scope: NoticeScope = 'voice',
+) =>
   send<void>('/consent', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ version, accepted: true, app: 'new' }),
+    body: JSON.stringify({ version, accepted: true, app: 'new', scope }),
   });
+
+/** Sends the dictation text to be rewritten as shorthand; returns the shorthand. */
+export const tidyDictation = async (text: string) => {
+  const result = await send<{ text: string }>('/tidy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+  return result.text;
+};
 
 export const transcribeAudio = async (audio: Blob, language: string) => {
   const { text } = await send<{ text: string }>(

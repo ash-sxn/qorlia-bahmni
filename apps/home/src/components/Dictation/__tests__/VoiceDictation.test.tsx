@@ -138,6 +138,7 @@ describe('VoiceDictation', () => {
       version: 'v1',
       accepted: true,
       app: 'new',
+      scope: 'voice',
     });
     // The closing dialog keeps the page hidden from the accessibility tree in jsdom.
     expect(await screen.findByText('Stop dictation')).toBeInTheDocument();
