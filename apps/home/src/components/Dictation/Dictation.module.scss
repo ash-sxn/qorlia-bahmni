@@ -167,3 +167,35 @@
     break-inside: avoid;
   }
 }
+
+.voice {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  background: $layer-01;
+}
+
+.voiceControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+
+  > :first-child {
+    min-width: 12rem;
+  }
+}
+
+.voiceError {
+  margin: 0.5rem 0 0;
+  color: $text-error;
+  font-size: 0.875rem;
+}
+
+.voiceNotice {
+  margin: 0 0 1rem 1.25rem;
+  list-style: disc;
+
+  li {
+    margin: 0 0 0.5rem;
+  }
+}
