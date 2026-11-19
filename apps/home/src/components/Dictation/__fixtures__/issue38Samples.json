@@ -1,0 +1,692 @@
+{
+  "source": "Issue #38 sample set by Aniket Motiwal, 19 Nov 2026. Synthetic, invented cases; DRAFT pending clinician review.",
+  "samples": [
+    {
+      "id": "hi-01-fever-enteric",
+      "language": "hindi",
+      "dictation": "शिकायत: पांच दिन से बुखार है, भूख नहीं लग रही, पेट में हल्का दर्द। जांच: तापमान 102 फ़ारेनहाइट, नाड़ी 88, बीपी 116/76, जीभ पर परत, पेट मुलायम। निदान: एंटेरिक फ़ीवर की संभावना। दवाइयाँ: टैबलेट सेफ़िक्सिम 200 mg एक शून्य एक, चौदह दिन, खाने के बाद। अगली दवा: टैबलेट पैरासिटामोल 650 mg एक एक एक, पांच दिन, खाने के बाद। सलाह: सीबीसी और ब्लड कल्चर करवाएं, उबला पानी पिएं, हल्का खाना, तीन दिन बाद दिखाएं।",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Cefixime",
+          "strength": "200 mg",
+          "pattern": [
+            "1",
+            "0",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 14,
+            "unit": "day"
+          },
+          "timing": "after_food"
+        },
+        {
+          "form": "Tab",
+          "name": "Paracetamol",
+          "strength": "650 mg",
+          "pattern": [
+            "1",
+            "1",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 5,
+            "unit": "day"
+          },
+          "timing": "after_food"
+        }
+      ]
+    },
+    {
+      "id": "hi-02-diabetes-followup",
+      "language": "hindi",
+      "dictation": "शिकायत: शुगर की जांच के लिए आए हैं, दो साल से डायबिटीज़ है, कोई नई तकलीफ नहीं। जांच: वज़न 78 किलो, बीपी 128/82, फ़ास्टिंग शुगर 156, खाने के बाद 232। निदान: टाइप 2 डायबिटीज़, कंट्रोल ठीक नहीं। दवाइयाँ: टैबलेट मेटफ़ॉर्मिन 500 mg एक शून्य एक, एक महीना, खाने के बाद। अगली दवा: टैबलेट ग्लिमेपिराइड 1 mg एक शून्य शून्य, एक महीना, खाने से पहले। सलाह: एचबीए1सी करवाएं, मीठा बंद, रोज़ तीस मिनट पैदल चलें, एक महीने बाद दिखाएं।",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Metformin",
+          "strength": "500 mg",
+          "pattern": [
+            "1",
+            "0",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 1,
+            "unit": "month"
+          },
+          "timing": "after_food"
+        },
+        {
+          "form": "Tab",
+          "name": "Glimepiride",
+          "strength": "1 mg",
+          "pattern": [
+            "1",
+            "0",
+            "0"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 1,
+            "unit": "month"
+          },
+          "timing": "before_food"
+        }
+      ]
+    },
+    {
+      "id": "hi-03-hypertension-new",
+      "language": "hindi",
+      "dictation": "शिकायत: दो हफ़्ते से सिर में भारीपन, सुबह ज़्यादा। जांच: बीपी 156/98, दोबारा 152/96, नाड़ी 82, दिल और फेफड़े सामान्य। निदान: नया हाई ब्लड प्रेशर, स्टेज वन। दवाइयाँ: टैबलेट एम्लोडिपिन 5 mg एक शून्य शून्य, एक महीना। सलाह: नमक कम करें, ईसीजी, किडनी टेस्ट और लिपिड प्रोफ़ाइल करवाएं, घर पर बीपी नोट करें, दो हफ़्ते बाद दिखाएं।",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Amlodipine",
+          "strength": "5 mg",
+          "pattern": [
+            "1",
+            "0",
+            "0"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 1,
+            "unit": "month"
+          },
+          "timing": null
+        }
+      ]
+    },
+    {
+      "id": "hi-04-paeds-diarrhoea",
+      "language": "hindi",
+      "dictation": "शिकायत: दो साल का बच्चा, दो दिन से पतले दस्त, दिन में पांच छह बार, उल्टी नहीं, बुखार नहीं। जांच: वज़न 11 किलो, बच्चा सक्रिय, पानी की कमी के लक्षण नहीं। निदान: तीव्र दस्त, बिना डिहाइड्रेशन। दवाइयाँ: ओआरएस हर पतले दस्त के बाद आधा कप। अगली दवा: टैबलेट ज़िंक 20 mg एक शून्य शून्य, चौदह दिन। सलाह: मां का दूध और खाना जारी रखें, खतरे के लक्षण बताए, दो दिन बाद दिखाएं।",
+      "medicines": [
+        {
+          "form": "Sachet",
+          "name": "ORS",
+          "strength": null,
+          "pattern": null,
+          "frequency": null,
+          "duration": null,
+          "timing": null
+        },
+        {
+          "form": "Tab",
+          "name": "Zinc",
+          "strength": "20 mg",
+          "pattern": [
+            "1",
+            "0",
+            "0"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 14,
+            "unit": "day"
+          },
+          "timing": null
+        }
+      ]
+    },
+    {
+      "id": "hi-05-paeds-fever",
+      "language": "hindi",
+      "dictation": "शिकायत: चार साल की बच्ची, कल से बुखार और नाक बह रही है, खांसी हल्की। जांच: वज़न 16 किलो, तापमान 101 फ़ारेनहाइट, गला लाल, छाती साफ़। निदान: वायरल अपर रेस्पिरेटरी इन्फ़ेक्शन। दवाइयाँ: सिरप पैरासिटामोल 250 mg per 5 ml, 5 ml, ज़रूरत पड़ने पर, दिन में चार बार से ज़्यादा नहीं। अगली दवा: नेज़ल ड्रॉप सलाइन दो दो बूंद दिन में तीन बार, पांच दिन। सलाह: गुनगुने पानी से पोंछें, तरल ज़्यादा दें, तीन दिन में बुखार न उतरे तो दिखाएं।",
+      "medicines": [
+        {
+          "form": "Syp",
+          "name": "Paracetamol",
+          "strength": "250 mg/5 ml",
+          "pattern": null,
+          "frequency": "SOS",
+          "duration": null,
+          "timing": null
+        },
+        {
+          "form": "Drop",
+          "name": "Saline nasal",
+          "strength": null,
+          "pattern": null,
+          "frequency": "TDS",
+          "duration": {
+            "count": 5,
+            "unit": "day"
+          },
+          "timing": null
+        }
+      ]
+    },
+    {
+      "id": "hi-06-gynae-anc-anaemia",
+      "language": "hindi",
+      "dictation": "शिकायत: बीस हफ़्ते की गर्भावस्था, थकान और चक्कर। जांच: बीपी 110/70, हीमोग्लोबिन 9.2, गर्भाशय की ऊंचाई गर्भकाल के अनुसार। निदान: गर्भावस्था में मध्यम एनीमिया। दवाइयाँ: टैबलेट आयरन फ़ोलिक एसिड एक शून्य शून्य, तीन महीने, खाने के बाद। अगली दवा: टैबलेट कैल्शियम 500 mg शून्य एक शून्य, तीन महीने, खाने के बाद। सलाह: हरी सब्ज़ियां, गुड़, चाय खाने के साथ न लें, एक महीने बाद हीमोग्लोबिन दोबारा, अगली जांच नौ तारीख को।",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Iron folic acid",
+          "strength": null,
+          "pattern": [
+            "1",
+            "0",
+            "0"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 3,
+            "unit": "month"
+          },
+          "timing": "after_food"
+        },
+        {
+          "form": "Tab",
+          "name": "Calcium",
+          "strength": "500 mg",
+          "pattern": [
+            "0",
+            "1",
+            "0"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 3,
+            "unit": "month"
+          },
+          "timing": "after_food"
+        }
+      ]
+    },
+    {
+      "id": "hi-07-ortho-low-back-pain",
+      "language": "hindi",
+      "dictation": "शिकायत: एक हफ़्ते से कमर में दर्द, भारी सामान उठाने के बाद, पैरों में दर्द नहीं जाता। जांच: कमर की मांसपेशियों में जकड़न, सीधी टांग उठाने का टेस्ट नेगेटिव, ताकत सामान्य। निदान: मैकेनिकल लो बैक पेन। दवाइयाँ: टैबलेट एसिक्लोफ़ेनेक 100 mg एक शून्य एक, पांच दिन, खाने के बाद। अगली दवा: टैबलेट पैंटोप्राज़ोल 40 mg एक शून्य शून्य, पांच दिन, खाली पेट। सलाह: गर्म सिकाई, भारी सामान न उठाएं, कमर की कसरत, एक हफ़्ते बाद दिखाएं।",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Aceclofenac",
+          "strength": "100 mg",
+          "pattern": [
+            "1",
+            "0",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 5,
+            "unit": "day"
+          },
+          "timing": "after_food"
+        },
+        {
+          "form": "Tab",
+          "name": "Pantoprazole",
+          "strength": "40 mg",
+          "pattern": [
+            "1",
+            "0",
+            "0"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 5,
+            "unit": "day"
+          },
+          "timing": "empty_stomach"
+        }
+      ]
+    },
+    {
+      "id": "hi-08-ortho-knee-oa",
+      "language": "hindi",
+      "dictation": "शिकायत: साठ साल की महिला, छह महीने से दोनों घुटनों में दर्द, सीढ़ी चढ़ने में ज़्यादा। जांच: दोनों घुटनों में क्रेपिटस, हल्की सूजन, चलने में दर्द। निदान: दोनों घुटनों में ऑस्टियोआर्थराइटिस। दवाइयाँ: टैबलेट पैरासिटामोल 650 mg एक शून्य एक, दस दिन, खाने के बाद। अगली दवा: टैबलेट कैल्शियम विटामिन डी3 शून्य शून्य एक, एक महीना। सलाह: दोनों घुटनों का एक्स-रे, फ़िज़ियोथेरेपी, वज़न कम करें, पालथी मारकर न बैठें, दो हफ़्ते बाद दिखाएं।",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Paracetamol",
+          "strength": "650 mg",
+          "pattern": [
+            "1",
+            "0",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 10,
+            "unit": "day"
+          },
+          "timing": "after_food"
+        },
+        {
+          "form": "Tab",
+          "name": "Calcium with vitamin D3",
+          "strength": null,
+          "pattern": [
+            "0",
+            "0",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 1,
+            "unit": "month"
+          },
+          "timing": null
+        }
+      ]
+    },
+    {
+      "id": "hg-01-viral-fever",
+      "language": "hinglish",
+      "dictation": "Chief complaints: patient ko teen din se bukhar hai, body ache aur halki khansi. On examination: temperature 101 F, pulse 96, BP 124/80, throat congested, chest clear. Diagnosis: acute viral fever with pharyngitis. Medicines: Tab Paracetamol 650 mg one one one for three days after food. Next medicine: Tab Cetirizine 10 mg zero zero one for five days. Advice: paani zyada piyo, rest karo, teen din ke baad bhi bukhar rahe to CBC karwana, five days baad review.",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Paracetamol",
+          "strength": "650 mg",
+          "pattern": [
+            "1",
+            "1",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 3,
+            "unit": "day"
+          },
+          "timing": "after_food"
+        },
+        {
+          "form": "Tab",
+          "name": "Cetirizine",
+          "strength": "10 mg",
+          "pattern": [
+            "0",
+            "0",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 5,
+            "unit": "day"
+          },
+          "timing": null
+        }
+      ]
+    },
+    {
+      "id": "hg-02-suspected-dengue",
+      "language": "hinglish",
+      "dictation": "Complaints: char din se tez bukhar, aankhon ke peeche dard, body pain, ek baar ulti. Examination: temperature 102 F, pulse 100, BP 110/70, rash nahi, abdomen soft, tourniquet test negative. Diagnosis: suspected dengue fever. Medicines: Tab Paracetamol 500 mg one one one for three days after food. Next medicine: ORS sachet ek litre paani mein, din bhar piyo. Advice: NS1 antigen aur CBC with platelet count aaj hi, painkiller jaise ibuprofen bilkul mat lena, pet dard ya bleeding ho to turant aana, kal review.",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Paracetamol",
+          "strength": "500 mg",
+          "pattern": [
+            "1",
+            "1",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 3,
+            "unit": "day"
+          },
+          "timing": "after_food"
+        },
+        {
+          "form": "Sachet",
+          "name": "ORS",
+          "strength": null,
+          "pattern": null,
+          "frequency": null,
+          "duration": null,
+          "timing": null
+        }
+      ]
+    },
+    {
+      "id": "hg-03-diabetes-new",
+      "language": "hinglish",
+      "dictation": "Complaints: ek mahine se pyaas zyada lagti hai, baar baar peshab, weight thoda kam hua. Vitals: weight 82 kg, BP 132/84, random blood sugar 286. Diagnosis: newly diagnosed type 2 diabetes. Medicines: Tab Metformin 500 mg one zero one for one month after food. Advice: fasting aur PP sugar, HbA1c, kidney test aur urine test karwao, diet chart diya, roz walk, ek mahine baad reports ke saath aana.",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Metformin",
+          "strength": "500 mg",
+          "pattern": [
+            "1",
+            "0",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 1,
+            "unit": "month"
+          },
+          "timing": "after_food"
+        }
+      ]
+    },
+    {
+      "id": "hg-04-hypertension-followup",
+      "language": "hinglish",
+      "dictation": "Complaints: BP ki dawai le rahe hain, Telmisartan 40, ghar pe BP 150 ke aas paas aa raha hai. On examination: BP 148/94, pulse 78, pedal edema nahi. Diagnosis: hypertension, not controlled on single drug. Medicines: Tab Telmisartan 40 mg one zero zero for one month. Next medicine: Tab Amlodipine 5 mg zero zero one for one month. Advice: namak kam, roz BP likh ke lana, do hafte baad review.",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Telmisartan",
+          "strength": "40 mg",
+          "pattern": [
+            "1",
+            "0",
+            "0"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 1,
+            "unit": "month"
+          },
+          "timing": null
+        },
+        {
+          "form": "Tab",
+          "name": "Amlodipine",
+          "strength": "5 mg",
+          "pattern": [
+            "0",
+            "0",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 1,
+            "unit": "month"
+          },
+          "timing": null
+        }
+      ]
+    },
+    {
+      "id": "hg-05-paeds-cold",
+      "language": "hinglish",
+      "dictation": "Complaints: teen saal ka bachcha, do din se sardi khansi, naak band, bukhar nahi. Examination: weight 14 kg, chest clear, breathing normal, ears normal. Diagnosis: common cold. Medicines: Drop Saline nasal two drops each nostril TDS for five days. Next medicine: Syp Cetirizine 5 mg per 5 ml, 2.5 ml zero zero one for five days. Advice: bhaap dena, garam paani, saans tez chale ya bukhar aaye to turant dikhana.",
+      "medicines": [
+        {
+          "form": "Drop",
+          "name": "Saline nasal",
+          "strength": null,
+          "pattern": null,
+          "frequency": "TDS",
+          "duration": {
+            "count": 5,
+            "unit": "day"
+          },
+          "timing": null
+        },
+        {
+          "form": "Syp",
+          "name": "Cetirizine",
+          "strength": "5 mg/5 ml",
+          "pattern": [
+            "0",
+            "0",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 5,
+            "unit": "day"
+          },
+          "timing": null
+        }
+      ]
+    },
+    {
+      "id": "hg-06-paeds-anaemia-worms",
+      "language": "hinglish",
+      "dictation": "Complaints: paanch saal ki bachchi, bhookh kam, kamzori, pet mein kabhi kabhi dard. Examination: weight 15 kg, pallor present, abdomen soft, haemoglobin 9.0. Diagnosis: iron deficiency anaemia, worm infestation suspected. Medicines: Tab Albendazole 400 mg STAT. Next medicine: Syp Iron 50 mg per 5 ml, 4.5 ml one zero zero for three months after food. Advice: khana khane se pehle haath dhona, chappal pehen ke rehna, ek mahine baad haemoglobin dobara.",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Albendazole",
+          "strength": "400 mg",
+          "pattern": null,
+          "frequency": "STAT",
+          "duration": null,
+          "timing": null
+        },
+        {
+          "form": "Syp",
+          "name": "Iron",
+          "strength": "50 mg/5 ml",
+          "pattern": [
+            "1",
+            "0",
+            "0"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 3,
+            "unit": "month"
+          },
+          "timing": "after_food"
+        }
+      ]
+    },
+    {
+      "id": "hg-07-gynae-dysmenorrhoea",
+      "language": "hinglish",
+      "dictation": "Complaints: periods ke pehle do din pet ke neeche bahut dard, cycle regular hai, 28 din. Examination: abdomen soft, tenderness nahi, BP 112/72. Diagnosis: primary dysmenorrhoea. Medicines: Tab Mefenamic acid 500 mg one one one for three days after food, period ke pehle din se. Next medicine: Tab Drotaverine 80 mg SOS. Advice: garam paani ki thaili, halka exercise, agar dard kam na ho to pelvis ka ultrasound, teen mahine baad review.",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Mefenamic acid",
+          "strength": "500 mg",
+          "pattern": [
+            "1",
+            "1",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 3,
+            "unit": "day"
+          },
+          "timing": "after_food"
+        },
+        {
+          "form": "Tab",
+          "name": "Drotaverine",
+          "strength": "80 mg",
+          "pattern": null,
+          "frequency": "SOS",
+          "duration": null,
+          "timing": null
+        }
+      ]
+    },
+    {
+      "id": "hg-08-ortho-ankle-sprain",
+      "language": "hinglish",
+      "dictation": "Complaints: kal seedhi se pair mud gaya, right ankle mein dard aur sujan, chal pa rahe hain. Examination: lateral side pe swelling aur tenderness, bone tenderness nahi, movement painful. Diagnosis: right ankle sprain, grade one. Medicines: Tab Ibuprofen 400 mg one one one for five days after food. Next medicine: Tab Pantoprazole 40 mg one zero zero for five days empty stomach. Advice: crepe bandage, barf ki sikai, pair upar rakhna, teen din rest, dard badhe to X-ray, ek hafte baad review.",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Ibuprofen",
+          "strength": "400 mg",
+          "pattern": [
+            "1",
+            "1",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 5,
+            "unit": "day"
+          },
+          "timing": "after_food"
+        },
+        {
+          "form": "Tab",
+          "name": "Pantoprazole",
+          "strength": "40 mg",
+          "pattern": [
+            "1",
+            "0",
+            "0"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 5,
+            "unit": "day"
+          },
+          "timing": "empty_stomach"
+        }
+      ]
+    },
+    {
+      "id": "en-01-sore-throat",
+      "language": "english",
+      "dictation": "Chief complaints: sore throat and fever for two days, pain on swallowing, no cough. On examination: temperature 100.8 F, enlarged tonsils with exudate, tender neck nodes. Diagnosis: acute tonsillitis. Medicines: Tab Amoxicillin 500 mg one one one for five days after food. Next medicine: Tab Paracetamol 650 mg SOS. Advice: warm saline gargles, soft diet, review after five days or earlier if unable to swallow.",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Amoxicillin",
+          "strength": "500 mg",
+          "pattern": [
+            "1",
+            "1",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 5,
+            "unit": "day"
+          },
+          "timing": "after_food"
+        },
+        {
+          "form": "Tab",
+          "name": "Paracetamol",
+          "strength": "650 mg",
+          "pattern": null,
+          "frequency": "SOS",
+          "duration": null,
+          "timing": null
+        }
+      ]
+    },
+    {
+      "id": "en-02-diabetes-hypertension",
+      "language": "english",
+      "dictation": "Chief complaints: follow up for diabetes and hypertension, no chest pain, no breathlessness. Vitals: weight 74 kg, BP 132/80, fasting sugar 128, HbA1c 7.2. Diagnosis: type 2 diabetes with hypertension, fairly controlled. Medicines: Tab Metformin 1000 mg one zero one for one month after food. Next medicine: Tab Telmisartan 40 mg one zero zero for one month. Next medicine: Tab Atorvastatin 10 mg zero zero one for one month. Advice: lipid profile and urine microalbumin, yearly eye check, foot care, review after three months.",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Metformin",
+          "strength": "1000 mg",
+          "pattern": [
+            "1",
+            "0",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 1,
+            "unit": "month"
+          },
+          "timing": "after_food"
+        },
+        {
+          "form": "Tab",
+          "name": "Telmisartan",
+          "strength": "40 mg",
+          "pattern": [
+            "1",
+            "0",
+            "0"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 1,
+            "unit": "month"
+          },
+          "timing": null
+        },
+        {
+          "form": "Tab",
+          "name": "Atorvastatin",
+          "strength": "10 mg",
+          "pattern": [
+            "0",
+            "0",
+            "1"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 1,
+            "unit": "month"
+          },
+          "timing": null
+        }
+      ]
+    },
+    {
+      "id": "en-03-hypertension-headache",
+      "language": "english",
+      "dictation": "Chief complaints: occipital headache for one week, known hypertensive, stopped medicine a month ago. On examination: BP 162/100, pulse 84, no neurological deficit. Diagnosis: uncontrolled hypertension after stopping treatment. Medicines: Tab Telmisartan 40 mg one zero zero for one month. Advice: do not stop medicines on your own, low salt diet, serum creatinine and potassium, review after one week.",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Telmisartan",
+          "strength": "40 mg",
+          "pattern": [
+            "1",
+            "0",
+            "0"
+          ],
+          "frequency": null,
+          "duration": {
+            "count": 1,
+            "unit": "month"
+          },
+          "timing": null
+        }
+      ]
+    },
+    {
+      "id": "en-04-gynae-candidiasis",
+      "language": "english",
+      "dictation": "Chief complaints: white curdy vaginal discharge with itching for five days, not pregnant. On examination: vulval redness, thick white discharge, no fever. Diagnosis: vulvovaginal candidiasis. Medicines: Tab Fluconazole 150 mg STAT. Next medicine: Tab Clotrimazole vaginal 100 mg HS for six days. Advice: keep the area dry, cotton undergarments, check sugar if it comes back, review after one week.",
+      "medicines": [
+        {
+          "form": "Tab",
+          "name": "Fluconazole",
+          "strength": "150 mg",
+          "pattern": null,
+          "frequency": "STAT",
+          "duration": null,
+          "timing": null
+        },
+        {
+          "form": "Tab",
+          "name": "Clotrimazole vaginal",
+          "strength": "100 mg",
+          "pattern": null,
+          "frequency": "HS",
+          "duration": {
+            "count": 6,
+            "unit": "day"
+          },
+          "timing": null
+        }
+      ]
+    }
+  ]
+}
