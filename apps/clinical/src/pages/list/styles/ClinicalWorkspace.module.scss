@@ -4,7 +4,7 @@
   --muted: var(--qorlia-muted, #5a6865);
   --line: var(--qorlia-border, #dbe5e1);
   display: grid;
-  grid-template-columns: 230px minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr) 280px;
   min-height: calc(100vh - 48px);
   color: var(--ink);
   background: var(--qorlia-canvas, #f8faf9);
@@ -266,10 +266,10 @@
 
 @media (max-width: 1200px) {
   .workspace {
-    grid-template-columns: 190px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
   .rail {
-    grid-column: 2;
+    grid-column: 1;
     display: flex;
     gap: 16px;
     border-top: 1px solid var(--line);

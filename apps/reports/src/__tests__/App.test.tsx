@@ -24,6 +24,7 @@ jest.mock('@bahmni/widgets', () => ({
   ActivePractitionerProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="active-practitioner-provider">{children}</div>
   ),
+  ShellProvider: ({ children }: { children: React.ReactNode }) => children,
   UserActionProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="user-action-provider">{children}</div>
   ),

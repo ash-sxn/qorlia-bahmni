@@ -27,6 +27,7 @@ jest.mock('@bahmni/widgets', () => ({
     children,
   ActivePractitionerProvider: ({ children }: { children: React.ReactNode }) =>
     children,
+  ShellProvider: ({ children }: { children: React.ReactNode }) => children,
   UserActionProvider: ({ children }: { children: React.ReactNode }) => children,
   ModuleTileGrid: () => <div data-testid="admin-dashboard-grid-test-id" />,
   useUserPrivilege: () => ({

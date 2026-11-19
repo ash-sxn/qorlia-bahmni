@@ -624,7 +624,10 @@ const OperationTheatrePage = () => {
           </div>
           <nav className={styles.pageNav} aria-label="Operation theatre views">
             {canEdit && (
-              <a href="/bahmni-v2/clinical/operation-theatre/new">
+              <a
+                className={styles.primaryAction}
+                href="/bahmni-v2/clinical/operation-theatre/new"
+              >
                 New surgical block
               </a>
             )}

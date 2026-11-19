@@ -6,6 +6,7 @@ import {
   NotificationServiceComponent,
   UserActionProvider,
   UserPrivilegeProvider,
+  ShellProvider,
 } from '@bahmni/widgets';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -52,7 +53,9 @@ export function App() {
                 <NotificationServiceComponent />
                 <PrivilegeGuard>
                   <Suspense fallback={<Loading />}>
-                    <Routes>{renderRoutes(routes)}</Routes>
+                    <ShellProvider>
+                      <Routes>{renderRoutes(routes)}</Routes>
+                    </ShellProvider>
                   </Suspense>
                 </PrivilegeGuard>
                 <ReactQueryDevtools initialIsOpen={false} />

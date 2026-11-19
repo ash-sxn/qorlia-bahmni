@@ -1,5 +1,5 @@
 import { type Module } from '@bahmni/services';
-import { AppShell } from '@bahmni/widgets';
+import { AppShell, ShellProvider } from '@bahmni/widgets';
 import React, { ReactNode, useMemo } from 'react';
 import { HOME_EXTENSION_POINT } from '../../constants/app';
 import { hasCases, loadCases } from '../InsuranceDesk/caseCatalogue';
@@ -96,23 +96,25 @@ export const useContentModules = () =>
 interface HomeShellProps {
   children: ReactNode;
   activeNavId?: string;
+  /** The page draws its own Header; give it the shared menu and top bar only. */
+  ownHeader?: boolean;
 }
 
 /** The Qorlia frame for every page of the home app. */
 export const HomeShell: React.FC<HomeShellProps> = ({
   children,
   activeNavId,
+  ownHeader = false,
 }) => {
   const extraModules = useContentModules();
-  return (
-    <AppShell
-      activeNavId={activeNavId}
-      extraModules={extraModules}
-      reviewUrls={
-        process.env.NODE_ENV !== 'production' ? REVIEW_URLS : undefined
-      }
-    >
-      {children}
-    </AppShell>
+  const props = {
+    activeNavId,
+    extraModules,
+    reviewUrls: process.env.NODE_ENV !== 'production' ? REVIEW_URLS : undefined,
+  };
+  return ownHeader ? (
+    <ShellProvider {...props}>{children}</ShellProvider>
+  ) : (
+    <AppShell {...props}>{children}</AppShell>
   );
 };

@@ -73,17 +73,6 @@ const RegistrationList = () => {
         >
           <Header
             breadcrumbItems={breadcrumbItems}
-            globalFeatures={[
-              <Button
-                key="create-new-patient"
-                onClick={handleCreateNewPatient}
-                size="md"
-                className={styles.headerButton}
-                data-testid="create-new-patient-button"
-              >
-                {t('CREATE_PATIENT_BUTTON_TEXT')}
-              </Button>,
-            ]}
             userMenu={<UserGlobalAction />}
           />
         </div>
@@ -95,6 +84,23 @@ const RegistrationList = () => {
           aria-label="Registration List Page"
           className={styles.page}
         >
+          <div className={styles.pageHeading}>
+            <div>
+              <h1>{t('REGISTRATION_LABEL')}</h1>
+              <p>
+                {t('REGISTRATION_LIST_LEAD', {
+                  defaultValue:
+                    'Find a patient who is already registered, or register someone new.',
+                })}
+              </p>
+            </div>
+            <Button
+              onClick={handleCreateNewPatient}
+              data-testid="create-new-patient-button"
+            >
+              {t('CREATE_PATIENT_BUTTON_TEXT')}
+            </Button>
+          </div>
           {visibleHandlers.length > 0 ? (
             visibleHandlers.map(({ pointId, Handler, filtered }) => (
               <div

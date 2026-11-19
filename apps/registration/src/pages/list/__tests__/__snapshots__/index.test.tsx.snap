@@ -70,13 +70,6 @@ exports[`RegistrationList Snapshot matches snapshot 1`] = `
         class="cds--header__global"
         data-testid="header-global-bar"
       >
-        <button
-          class="headerButton cds--btn cds--btn--md cds--layout--size-md cds--btn--primary"
-          data-testid="create-new-patient-button"
-          type="button"
-        >
-          CREATE_PATIENT_BUTTON_TEXT
-        </button>
         <div
           data-testid="user-global-action-test-id"
         />
@@ -95,6 +88,25 @@ exports[`RegistrationList Snapshot matches snapshot 1`] = `
       data-testid="registration-list-page-test-id"
       id="registration-list-page"
     >
+      <div
+        class="pageHeading"
+      >
+        <div>
+          <h1>
+            REGISTRATION_LABEL
+          </h1>
+          <p>
+            REGISTRATION_LIST_LEAD
+          </p>
+        </div>
+        <button
+          class="cds--btn cds--btn--primary"
+          data-testid="create-new-patient-button"
+          type="button"
+        >
+          CREATE_PATIENT_BUTTON_TEXT
+        </button>
+      </div>
       <p
         aria-label="No extensions configured"
         class="message"

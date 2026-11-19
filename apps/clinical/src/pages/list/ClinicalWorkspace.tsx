@@ -54,8 +54,6 @@ const ClinicalWorkspace = ({
     'View Appointments',
     'Manage Appointments',
   ]);
-  const canManageBeds = hasPrivilege(userPrivileges, 'app:adt');
-  const canViewOT = hasPrivilege(userPrivileges, 'app:ot');
 
   const appointments = useQuery({
     queryKey: ['clinical-todays-appointments', todayRange.startDate],
@@ -83,42 +81,6 @@ const ClinicalWorkspace = ({
 
   return (
     <div className={styles.workspace}>
-      <nav className={styles.sidebar} aria-label={t('CLINICAL_WORKSPACE_NAV')}>
-        <div className={styles.sidebarTitle}>
-          {t('CLINICAL_WORKSPACE_LABEL')}
-        </div>
-        <Link to="/home">
-          <Calendar size={19} />
-          {t('HOME_LABEL')}
-        </Link>
-        <Link to="/clinical" aria-current="page">
-          <Stethoscope size={19} />
-          {t('CLINICAL_LABEL')}
-        </Link>
-        <Link to="/clinical/programs">
-          <UserFollow size={19} />
-          {t('PROGRAMS_TITLE')}
-        </Link>
-        {canRegister && (
-          <Link to="/registration/search">
-            <UserFollow size={19} />
-            {t('CLINICAL_WORKSPACE_REGISTRATION')}
-          </Link>
-        )}
-        {canSchedule && (
-          <Link to="/appointments/">
-            <Calendar size={19} />
-            {t('CLINICAL_WORKSPACE_APPOINTMENTS')}
-          </Link>
-        )}
-        {canManageBeds && <Link to="/clinical/inpatient">Inpatient care</Link>}
-        {canViewOT && (
-          <Link to="/clinical/operation-theatre">
-            Operation theatre preview
-          </Link>
-        )}
-      </nav>
-
       <div className={styles.content}>
         <div className={styles.intro}>
           <span className={styles.eyebrow}>

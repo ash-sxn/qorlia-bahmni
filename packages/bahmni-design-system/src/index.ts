@@ -139,6 +139,12 @@ export {
   Header,
   useSidebarNavigation,
   type HeaderSideNavItem,
+  QorliaShellContext,
+  ShellNav,
+  SHELL_NAV_GROUPS,
+  type QorliaShellChrome,
+  type ShellNavGroup,
+  type ShellNavLink,
 } from './organisms/header';
 
 export { Content } from './atoms/content';

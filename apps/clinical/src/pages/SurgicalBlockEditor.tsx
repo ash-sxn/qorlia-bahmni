@@ -776,7 +776,10 @@ const SurgicalBlockEditor = () => {
                   <button type="submit" disabled={saving}>
                     {saving ? 'Saving...' : 'Save block'}
                   </button>
-                  <a href="/bahmni-v2/clinical/operation-theatre">
+                  <a
+                    className={styles.quietAction}
+                    href="/bahmni-v2/clinical/operation-theatre"
+                  >
                     Back to schedule
                   </a>
                 </div>

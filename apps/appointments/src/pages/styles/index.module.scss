@@ -62,7 +62,9 @@
 }
 .actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: 8px;
   margin: -8px 0 20px;
 }
 .primaryButton,
@@ -75,6 +77,9 @@
   color: #fff;
   font: inherit;
   font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
   cursor: pointer;
 }
 .secondaryButton {

@@ -8,7 +8,9 @@ export {
 // Qorlia app shell: the frame around every screen
 export {
   AppShell,
+  ShellProvider,
   type AppShellProps,
+  type ShellProviderProps,
   CORE_MODULES,
   PATIENTS_ID,
   TODAY_ID,

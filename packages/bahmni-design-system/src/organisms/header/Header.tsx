@@ -12,10 +12,11 @@ import {
   Breadcrumb,
   BreadcrumbItem,
 } from '@carbon/react';
-import React from 'react';
+import React, { useContext, useEffect, useId, useState } from 'react';
 import { Icon, ICON_SIZE } from '../../molecules/icon';
 import { getHospitalBranding } from '../../utils/branding';
 import { HeaderProps } from './models';
+import { QorliaShellContext, ShellNav } from './shellNav';
 import styles from './styles/Header.module.scss';
 import { useHeaderSideNav } from './useHeaderSideNav';
 import { isMobile } from './utils';
@@ -46,6 +47,32 @@ export const Header: React.FC<HeaderProps> = React.memo(
     menuToggle,
   }) => {
     const hospitalBranding = getHospitalBranding();
+    // Inside a Qorlia app the header also draws the shared side menu and top-bar
+    // controls, unless the page brings its own section navigation.
+    const shell = useContext(QorliaShellContext);
+    const shellNavShown = shell !== null && sideNavItems.length === 0;
+    const shellNavId = `qorlia-menu-${useId().replace(/:/g, '')}`;
+    const [shellMenuOpen, setShellMenuOpen] = useState(false);
+    useEffect(() => {
+      if (!shellNavShown) return undefined;
+      document.body.classList.add('qorlia-shell-nav');
+      return () => document.body.classList.remove('qorlia-shell-nav');
+    }, [shellNavShown]);
+    const effectiveMenuToggle =
+      menuToggle ??
+      (shellNavShown && shell
+        ? {
+            expanded: shellMenuOpen,
+            onToggle: () => setShellMenuOpen(!shellMenuOpen),
+            controls: shellNavId,
+            openLabel: shell.labels.open,
+            closeLabel: shell.labels.close,
+          }
+        : undefined);
+    const features = shell
+      ? [...shell.globalFeatures, ...globalFeatures]
+      : globalFeatures;
+    const effectiveUserMenu = userMenu ?? shell?.userMenu;
     const brandName = suppliedBrandName ?? hospitalBranding.name;
     const { isSideNavExpanded, handleSideNavItemClick } =
       useHeaderSideNav(onSideNavItemClick);
@@ -105,14 +132,14 @@ export const Header: React.FC<HeaderProps> = React.memo(
     const renderGlobalBar = () => {
       if (
         globalActions.length === 0 &&
-        !userMenu &&
-        globalFeatures.length === 0
+        !effectiveUserMenu &&
+        features.length === 0
       )
         return null;
 
       return (
         <HeaderGlobalBar data-testid="header-global-bar">
-          {globalFeatures}
+          {features}
           {globalActions.map((action) => (
             <HeaderGlobalAction
               key={action.id}
@@ -124,7 +151,7 @@ export const Header: React.FC<HeaderProps> = React.memo(
               {action.renderIcon}
             </HeaderGlobalAction>
           ))}
-          {userMenu}
+          {effectiveUserMenu}
         </HeaderGlobalBar>
       );
     };
@@ -181,44 +208,54 @@ export const Header: React.FC<HeaderProps> = React.memo(
     };
 
     return (
-      <HeaderContainer
-        render={({
-          isSideNavExpanded: isMenuExpanded,
-          onClickSideNavExpand,
-        }) => (
-          <CarbonHeader aria-label={ariaLabel} data-testid="header">
-            {menuToggle && sideNavItems.length === 0 && (
-              <HeaderMenuButton
-                aria-label={
-                  menuToggle.expanded
-                    ? menuToggle.closeLabel
-                    : menuToggle.openLabel
-                }
-                aria-expanded={menuToggle.expanded}
-                aria-controls={menuToggle.controls}
-                isActive={menuToggle.expanded}
-                onClick={menuToggle.onToggle}
-              />
-            )}
-            {sideNavItems.length > 0 && (
-              <HeaderMenuButton
-                aria-label={
-                  isMenuExpanded ? 'Close navigation' : 'Open navigation'
-                }
-                aria-expanded={isMenuExpanded}
-                aria-controls="qorlia-side-navigation"
-                isActive={isMenuExpanded}
-                onClick={onClickSideNavExpand}
-              />
-            )}
-            {renderBrand()}
-            {renderBreadcrumbs()}
-            {renderGlobalBar()}
-            {renderSideNav(isMenuExpanded, onClickSideNavExpand)}
-            {extraContent}
-          </CarbonHeader>
+      <>
+        <HeaderContainer
+          render={({
+            isSideNavExpanded: isMenuExpanded,
+            onClickSideNavExpand,
+          }) => (
+            <CarbonHeader aria-label={ariaLabel} data-testid="header">
+              {effectiveMenuToggle && sideNavItems.length === 0 && (
+                <HeaderMenuButton
+                  aria-label={
+                    effectiveMenuToggle.expanded
+                      ? effectiveMenuToggle.closeLabel
+                      : effectiveMenuToggle.openLabel
+                  }
+                  aria-expanded={effectiveMenuToggle.expanded}
+                  aria-controls={effectiveMenuToggle.controls}
+                  isActive={effectiveMenuToggle.expanded}
+                  onClick={effectiveMenuToggle.onToggle}
+                />
+              )}
+              {sideNavItems.length > 0 && (
+                <HeaderMenuButton
+                  aria-label={
+                    isMenuExpanded ? 'Close navigation' : 'Open navigation'
+                  }
+                  aria-expanded={isMenuExpanded}
+                  aria-controls="qorlia-side-navigation"
+                  isActive={isMenuExpanded}
+                  onClick={onClickSideNavExpand}
+                />
+              )}
+              {renderBrand()}
+              {renderBreadcrumbs()}
+              {renderGlobalBar()}
+              {renderSideNav(isMenuExpanded, onClickSideNavExpand)}
+              {extraContent}
+            </CarbonHeader>
+          )}
+        />
+        {shellNavShown && shell && (
+          <ShellNav
+            chrome={shell}
+            id={shellNavId}
+            open={shellMenuOpen}
+            onClose={() => setShellMenuOpen(false)}
+          />
         )}
-      />
+      </>
     );
   },
 );

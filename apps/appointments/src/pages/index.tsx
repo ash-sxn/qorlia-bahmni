@@ -151,18 +151,36 @@ export const IndexPage = () => {
             <p role="alert">{t('APPOINTMENTS_NO_ACCESS')}</p>
           ) : (
             <>
-              {canBook && (
+              {(canBook || canAdmin) && (
                 <div className={styles.actions}>
-                  <button
-                    type="button"
-                    className={styles.primaryButton}
-                    onClick={() => {
-                      setBookingOpen(true);
-                      setBookingMessage('');
-                    }}
-                  >
-                    {t('APPOINTMENTS_BOOK')}
-                  </button>
+                  {canAdmin && (
+                    <>
+                      <a
+                        className={styles.secondaryButton}
+                        href="/bahmni-v2/appointments/admin/services"
+                      >
+                        {t('APPOINTMENTS_MANAGE_SERVICES')}
+                      </a>
+                      <a
+                        className={styles.secondaryButton}
+                        href="/bahmni-v2/appointments/admin/unavailability"
+                      >
+                        {t('APPOINTMENTS_MANAGE_UNAVAILABILITY')}
+                      </a>
+                    </>
+                  )}
+                  {canBook && (
+                    <button
+                      type="button"
+                      className={styles.primaryButton}
+                      onClick={() => {
+                        setBookingOpen(true);
+                        setBookingMessage('');
+                      }}
+                    >
+                      {t('APPOINTMENTS_BOOK')}
+                    </button>
+                  )}
                 </div>
               )}
               {bookingMessage && (
@@ -511,19 +529,6 @@ export const IndexPage = () => {
                   </div>
                 )}
               </section>
-              {canAdmin && (
-                <nav
-                  className={styles.adminLinks}
-                  aria-label={t('APPOINTMENTS_ADMIN')}
-                >
-                  <a href="/bahmni-v2/appointments/admin/services">
-                    {t('APPOINTMENTS_MANAGE_SERVICES')}
-                  </a>
-                  <a href="/bahmni-v2/appointments/admin/unavailability">
-                    {t('APPOINTMENTS_MANAGE_UNAVAILABILITY')}
-                  </a>
-                </nav>
-              )}
             </>
           )}
         </main>
