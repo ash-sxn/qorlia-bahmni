@@ -40,21 +40,36 @@ describe('claimScenarios', () => {
     expect(scenario('pmjay').claimRoute).toBe('cashless');
   });
 
-  it('keeps every authorisation decision within the IRDAI time limits', () => {
-    claimScenarios.forEach(({ authorisations }) =>
-      authorisations.forEach((authorisation) =>
-        expect(exceededDecisionLimit(authorisation)).toBeNull(),
-      ),
-    );
+  it('keeps every insurer decision within the IRDAI time limits', () => {
+    // PM-JAY is not IRDAI-regulated: its timelines come from NHA guidelines.
+    claimScenarios
+      .filter(({ id }) => id !== 'synthetic-scenario-pmjay')
+      .forEach(({ authorisations }) =>
+        authorisations.forEach((authorisation) =>
+          expect(exceededDecisionLimit(authorisation)).toBeNull(),
+        ),
+      );
   });
 
-  it('settles a PM-JAY package in full with nothing for the patient to pay', () => {
+  it('models PM-JAY as pre-authorisation then a TMS claim, with no final authorisation', () => {
     const pmjay = scenario('pmjay');
 
-    expect(pmjay.status).toBe('settled');
+    expect(pmjay.authorisations.map(({ kind }) => kind)).toEqual([
+      'preauthorisation',
+    ]);
+    expect(pmjay.documents.map(({ type }) => type)).toContain(
+      'Synthetic claim submitted on TMS',
+    );
     expect(pmjay.tpaName).toBeNull();
+  });
+
+  it('closes the PM-JAY case paid in full, with nothing for the patient to pay', () => {
+    const pmjay = scenario('pmjay');
+
+    expect(pmjay.status).toBe('closed');
     expect(pmjay.amounts.patientResponsibility).toBe(0);
     expect(settledAmount(pmjay.payments)).toBe(pmjay.amounts.approved);
+    expect(pmjay.closureNote).toMatch(/State Health Agency/);
   });
 
   it('applies the maternity sub-limit as the only deduction', () => {

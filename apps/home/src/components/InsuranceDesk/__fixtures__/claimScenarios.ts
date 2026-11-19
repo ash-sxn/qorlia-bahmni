@@ -11,7 +11,11 @@ const document = (
   state: CaseDocument['state'] = 'sent',
 ): CaseDocument => ({ type: `Synthetic ${type}`, stage, state });
 
-/** The papers a hospital sends with a claim, as listed in IRDAI Part D (circular of 27 May 2019). */
+/**
+ * The papers a hospital sends with a claim, as listed under "Documents to be provided by
+ * the hospital in support of the claim" in the Part D cashless authorisation letter format
+ * of IRDAI circular IRDA/HLT/REG/CIR/86/05/2019 (27 May 2019).
+ */
 const claimPapers = (state: CaseDocument['state'] = 'sent'): CaseDocument[] => [
   document('discharge summary', 'discharge', state),
   document('final itemised bill', 'discharge', state),
@@ -266,7 +270,10 @@ export const claimScenarios: InsuranceCase[] = [
     invoiceReference: 'SYN-INV-0104',
     admittedAt: november(3, '09:00'),
     dischargedAt: november(5, '11:00'),
-    status: 'settled',
+    // PM-JAY follows NHA guidelines, not IRDAI: there is no final authorisation. The
+    // hospital submits the claim on TMS after discharge and the State Health Agency pays.
+    // The validator needs a final authorisation for "settled", so the paid case is closed.
+    status: 'closed',
     statusRecordedAt: november(16),
     statusRecordedBy: 'Synthetic Ayushman Mitra',
     amounts: {
@@ -285,14 +292,6 @@ export const claimScenarios: InsuranceCase[] = [
         approvedAmount: rupees(28000),
         decidedAt: november(3, '10:40'),
       },
-      {
-        kind: 'final',
-        requestedAmount: rupees(28000),
-        requestedAt: november(5, '13:00'),
-        decision: 'approved',
-        approvedAmount: rupees(28000),
-        decidedAt: november(5, '15:00'),
-      },
     ],
     deductions: [],
     documents: [
@@ -301,11 +300,9 @@ export const claimScenarios: InsuranceCase[] = [
       document('patient photo at admission (TMS)', 'admission'),
       document('package pre-authorisation on TMS', 'preauthorisation'),
       document('clinical notes and investigation reports', 'preauthorisation'),
-      document(
-        'discharge summary uploaded on TMS within 24 hours',
-        'discharge',
-      ),
+      document('discharge summary uploaded on TMS', 'discharge'),
       document('patient photo at discharge (TMS)', 'discharge'),
+      document('claim submitted on TMS', 'claim_submission'),
       document('beneficiary feedback form', 'claim_submission'),
     ],
     queries: [],
@@ -318,7 +315,8 @@ export const claimScenarios: InsuranceCase[] = [
       },
     ],
     denialReason: null,
-    closureNote: null,
+    closureNote:
+      'Synthetic note: claim submitted on TMS after discharge and paid in full by the State Health Agency.',
   },
   {
     id: 'synthetic-scenario-reimbursement',
