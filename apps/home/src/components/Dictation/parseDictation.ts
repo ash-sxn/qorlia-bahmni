@@ -1,3 +1,5 @@
+import { hasDevanagari, normaliseHindiMedicineLine } from './hindiMedicine';
+
 /**
  * Turns a doctor's typed shorthand into a draft note and prescription. It runs in the
  * browser and follows fixed rules: it understands common Indian prescription shorthand,
@@ -160,10 +162,11 @@ const FORMS: Record<string, string> = {
 
 // Text after a match must end there: a space, punctuation or the end of the line.
 // JavaScript's \b does not work next to Devanagari letters, so this is spelt out.
-const END = '(?=$|[\\s,.;:)\\]])';
+const END = '(?=$|[\\s,.;:)\\]।])';
 const DOSE = '(?:\\d+(?:\\.\\d+)?|\\d\\/\\d|½)';
+// "250 mg per 5 ml" is one strength: a syrup's concentration.
 const STRENGTH = new RegExp(
-  `(\\d+(?:\\.\\d+)?)\\s?(mg|mcg|g|ml|iu|%)${END}`,
+  `(\\d+(?:\\.\\d+)?)\\s?(mg|mcg|g|ml|iu|%)(?:\\s?(?:\\/|per)\\s?(\\d+(?:\\.\\d+)?)\\s?ml)?${END}`,
   'i',
 );
 const PATTERN = new RegExp(
@@ -190,14 +193,14 @@ const DURATION = new RegExp(
 );
 const TIMING_WORDS: [RegExp, Timing][] = [
   [
-    /(?:^|\s)(?:after food|after meals?|af|pc|खाने के बाद)(?=$|[\s,.;)])/i,
+    /(?:^|\s)(?:after food|after meals?|af|pc|खाने के बाद)(?=$|[\s,.;)।])/i,
     'after_food',
   ],
   [
-    /(?:^|\s)(?:before food|before meals?|bf|ac|खाने से पहले)(?=$|[\s,.;)])/i,
+    /(?:^|\s)(?:before food|before meals?|bf|ac|खाने से पहले)(?=$|[\s,.;)।])/i,
     'before_food',
   ],
-  [/(?:^|\s)(?:empty stomach|खाली पेट)(?=$|[\s,.;)])/i, 'empty_stomach'],
+  [/(?:^|\s)(?:empty stomach|खाली पेट)(?=$|[\s,.;)।])/i, 'empty_stomach'],
 ];
 
 const unitOf = (word: string): DurationUnit => {
@@ -215,10 +218,46 @@ const firstMatch = <T>(text: string, rules: [RegExp, T][]) => {
   return null;
 };
 
+// Words that start the dose rather than continue the name ("ORS sachet one litre",
+// "Saline nasal two drops").
+const NAME_STOPS = new Set([
+  ...Object.keys(FORMS),
+  'per',
+  'zero',
+  'half',
+  'one',
+  'two',
+  'three',
+  'four',
+  'five',
+  'ek',
+  'do',
+  'teen',
+  'char',
+  'paanch',
+  'aadha',
+]);
+
+const trimName = (name: string) => {
+  const words = name.split(',')[0].trim().split(/\s+/);
+  const stop = words.findIndex(
+    (word, index) =>
+      index > 0 &&
+      (NAME_STOPS.has(word.toLowerCase()) ||
+        /^\d+(?:\.\d+)?$/.test(word) ||
+        // A Hindi instruction after a name the reader turned into English.
+        hasDevanagari(word) !== hasDevanagari(words[0])),
+  );
+  return (stop === -1 ? words : words.slice(0, stop)).join(' ');
+};
+
 /** Reads one prescription line. Returns null when the line names no medicine at all. */
 export const parseMedicineLine = (line: string): MedicineLine | null => {
   const raw = line.trim();
-  const text = raw.replace(/^(?:\d+[.)]|[-•*])\s*/, '');
+  const text = normaliseHindiMedicineLine(raw).replace(
+    /^(?:\d+[.)]|[-•*])\s*/,
+    '',
+  );
   const [firstWord = '', ...others] = text.split(/\s+/);
   const form = FORMS[firstWord.toLowerCase().replace(/\.$/, '')] ?? null;
   const rest = form ? others.join(' ') : text;
@@ -240,10 +279,12 @@ export const parseMedicineLine = (line: string): MedicineLine | null => {
     ].filter((index): index is number => index !== undefined),
     rest.length,
   );
-  const name = rest
-    .slice(0, cut)
-    .replace(/[\s,;:-]+$/, '')
-    .trim();
+  const name = trimName(
+    rest
+      .slice(0, cut)
+      .replace(/[\s,;:-]+$/, '')
+      .trim(),
+  );
   if (!name || !/\p{L}/u.test(name)) {
     return null;
   }
@@ -258,7 +299,9 @@ export const parseMedicineLine = (line: string): MedicineLine | null => {
     raw,
     form,
     name,
-    strength: strength ? `${strength[1]} ${strength[2].toLowerCase()}` : null,
+    strength: strength
+      ? `${strength[1]} ${strength[2].toLowerCase()}${strength[3] ? `/${strength[3]} ml` : ''}`
+      : null,
     pattern: pattern ? [pattern[1], pattern[2], pattern[3]] : null,
     frequency: frequency?.value ?? null,
     duration: duration

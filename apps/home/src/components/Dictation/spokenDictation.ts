@@ -12,8 +12,6 @@ const CLEAR_HEADINGS = [
   'on examination',
   'provisional diagnosis',
   'diagnosis',
-  'medicines',
-  'medications',
   'prescription',
   'advice',
   'शिकायतें',
@@ -32,6 +30,9 @@ const OTHER_HEADINGS = [
   'impression',
   'investigations',
   'follow up',
+  // "Do not stop medicines on your own" is advice, not a new heading.
+  'medicines',
+  'medications',
   'तकलीफ',
   'जांच',
   'जाँच',
@@ -49,7 +50,7 @@ const OTHER_HEADING = new RegExp(
 );
 
 const LINE_BREAK =
-  /\s*\b(?:new line|next line|next medicine)\b[.,:;-]?\s*|\s*नई लाइन[.,:;।-]?\s*/giu;
+  /\s*\b(?:new line|next line|next medicine)\b[.,:;-]?\s*|\s*(?:नई लाइन|अगली दवा|अगली दवाई)[.,:;।-]?\s*/giu;
 
 // Sentence ends, but not decimal points such as 0.5 mg.
 const SENTENCE_END = /([.!?।])\s+(?=\S)/gu;
