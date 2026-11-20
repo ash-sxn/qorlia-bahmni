@@ -11,6 +11,7 @@ const settledCase: InsuranceCase = {
   claimRoute: 'cashless',
   admissionType: 'planned',
   payerName: 'Synthetic insurer',
+  payerType: 'insurer',
   tpaName: 'Synthetic TPA',
   policyNumber: 'SYN-POL-001',
   payerReference: 'SYN-AUTH-001',
@@ -99,6 +100,42 @@ const reimbursementCase: InsuranceCase = {
   },
 };
 
+const pmjayCase: InsuranceCase = {
+  ...settledCase,
+  id: 'synthetic-pmjay-settled',
+  payerName: 'Synthetic State Health Agency',
+  payerType: 'pmjay',
+  tpaName: null,
+  policyNumber: 'SYN-PMJAY-001',
+  amounts: {
+    billed: 2800000,
+    claimed: 2800000,
+    approved: 2800000,
+    patientResponsibility: 0,
+    received: 2800000,
+  },
+  authorisations: [
+    {
+      kind: 'preauthorisation',
+      requestedAmount: 2800000,
+      requestedAt: '2026-09-01T10:00:00+05:30',
+      decision: 'approved',
+      approvedAmount: 2800000,
+      decidedAt: '2026-09-01T10:40:00+05:30',
+    },
+  ],
+  deductions: [],
+  queries: [],
+  payments: [
+    {
+      receivedOn: '2026-09-28',
+      amount: 2800000,
+      taxDeductedAtSource: 0,
+      bankReference: 'SYN-UTR-001',
+    },
+  ],
+};
+
 const errorsFor = (candidate: unknown): string[] => {
   const result = validateCases([candidate]);
   return result.ok ? [] : result.errors;
@@ -113,6 +150,7 @@ describe('validateCases', () => {
     ['a settled cashless case with TDS', settledCase],
     ['a newly admitted case', openCase],
     ['a reimbursement case', reimbursementCase],
+    ['a settled PM-JAY case without a final authorisation', pmjayCase],
   ])('accepts %s', (_case, candidate) => {
     expect(validateCases([candidate])).toEqual({
       ok: true,
@@ -560,6 +598,101 @@ describe('validateCases', () => {
       expect(errorsFor({ ...openCase, policyNumber: 'POL-001' })).toEqual([
         'Case 1: policyNumber must be text starting with SYN-.',
       ]);
+    });
+  });
+
+  describe('rule 11: PM-JAY', () => {
+    // PM-JAY follows NHA guidelines, not IRDAI: the hospital gets a package
+    // pre-authorisation, submits the claim on TMS after discharge and the State
+    // Health Agency pays. There is no final authorisation step.
+    it('rejects an unknown payer type', () => {
+      expect(errorsFor({ ...openCase, payerType: 'trust' })).toEqual([
+        'Case 1: payerType must be an allowed value.',
+      ]);
+    });
+
+    it.each(['claim_submitted', 'short_paid'])(
+      'accepts a PM-JAY case that is %s with only a pre-authorisation',
+      (status) => {
+        const payments =
+          status === 'short_paid'
+            ? [{ ...pmjayCase.payments[0], amount: 2000000 }]
+            : [];
+        expect(
+          errorsFor({
+            ...pmjayCase,
+            status,
+            payments,
+            ...amounts({
+              ...pmjayCase.amounts,
+              received: status === 'short_paid' ? 2000000 : null,
+            }),
+          }),
+        ).toEqual([]);
+      },
+    );
+
+    it('rejects a PM-JAY case with a final authorisation', () => {
+      expect(
+        errorsFor({
+          ...pmjayCase,
+          authorisations: [
+            ...pmjayCase.authorisations,
+            { ...settledCase.authorisations[1], kind: 'final' },
+          ],
+        }),
+      ).toEqual(['Case 1: a PM-JAY case must not have a final authorisation.']);
+    });
+
+    it('rejects the final approved status for a PM-JAY case', () => {
+      expect(errorsFor({ ...pmjayCase, status: 'final_approved' })).toEqual([
+        'Case 1: status "final_approved" is not allowed for a PM-JAY case.',
+      ]);
+    });
+
+    it('needs an approved pre-authorisation before a PM-JAY claim', () => {
+      expect(
+        errorsFor({
+          ...pmjayCase,
+          authorisations: [
+            {
+              ...pmjayCase.authorisations[0],
+              decision: 'pending',
+              approvedAmount: null,
+              decidedAt: null,
+            },
+          ],
+        }),
+      ).toEqual([
+        'Case 1: status "settled" needs an approved preauthorisation.',
+      ]);
+    });
+
+    it('needs a discharge time before a PM-JAY claim', () => {
+      expect(errorsFor({ ...pmjayCase, dischargedAt: null })).toEqual([
+        'Case 1: status "settled" needs a discharge time.',
+      ]);
+    });
+
+    it('rejects a PM-JAY case on the reimbursement route', () => {
+      expect(
+        errorsFor({
+          ...reimbursementCase,
+          payerType: 'pmjay',
+        }),
+      ).toEqual(['Case 1: a PM-JAY case must be cashless.']);
+    });
+
+    it('still needs a final authorisation for a settled insurer case', () => {
+      expect(
+        errorsFor({
+          ...settledCase,
+          authorisations: [settledCase.authorisations[0]],
+          deductions: [],
+        }),
+      ).toContain(
+        'Case 1: status "settled" needs an approved final authorisation.',
+      );
     });
   });
 });

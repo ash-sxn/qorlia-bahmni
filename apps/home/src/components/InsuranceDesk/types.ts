@@ -1,6 +1,15 @@
 export const CLAIM_ROUTES = ['cashless', 'reimbursement'] as const;
 export type ClaimRoute = (typeof CLAIM_ROUTES)[number];
 
+/**
+ * Who pays the claim. A health insurer follows the IRDAI rules, with a final
+ * authorisation before discharge. PM-JAY follows the NHA guidelines: the claim
+ * goes on TMS after discharge and the State Health Agency pays, with no final
+ * authorisation step.
+ */
+export const PAYER_TYPES = ['insurer', 'pmjay'] as const;
+export type PayerType = (typeof PAYER_TYPES)[number];
+
 export const ADMISSION_TYPES = ['planned', 'emergency'] as const;
 export type AdmissionType = (typeof ADMISSION_TYPES)[number];
 
@@ -126,6 +135,7 @@ export interface InsuranceCase {
   readonly claimRoute: ClaimRoute;
   readonly admissionType: AdmissionType;
   readonly payerName: string;
+  readonly payerType: PayerType;
   readonly tpaName: string | null;
   readonly policyNumber: string;
   readonly payerReference: string | null;
