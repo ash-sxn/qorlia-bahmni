@@ -17,6 +17,7 @@ import {
   getAllowedTransitions,
   type TransitionConfig,
 } from './appointmentActions';
+import { AppointmentTabs } from './AppointmentTabs';
 import { BookingForm } from './BookingForm';
 import { EditAppointmentForm } from './EditAppointmentForm';
 import styles from './styles/index.module.scss';
@@ -274,22 +275,10 @@ export const CalendarPage = () => {
       main={
         <main className={styles.page}>
           <div className={styles.intro}>
-            <span className={styles.eyebrow}>
-              {t('APPOINTMENTS_WORKSPACE')}
-            </span>
             <h1>{t('APPOINTMENTS_CALENDAR')}</h1>
             <p>{t('APPOINTMENTS_CALENDAR_DESCRIPTION')}</p>
           </div>
-          <nav className={styles.viewTabs} aria-label={t('APPOINTMENTS_VIEWS')}>
-            <a href="/bahmni-v2/appointments/">{t('APPOINTMENTS_SUMMARY')}</a>
-            <a href="/bahmni-v2/appointments/calendar" aria-current="page">
-              {t('APPOINTMENTS_CALENDAR')}
-            </a>
-            <a href="/bahmni-v2/appointments/list">{t('APPOINTMENTS_LIST')}</a>
-            <a href="/bahmni-v2/appointments/awaiting">
-              {t('APPOINTMENTS_AWAITING')}
-            </a>
-          </nav>
+          <AppointmentTabs current="calendar" />
           {privilegesLoading || userPrivileges === null ? (
             <p role="status">{t('APPOINTMENTS_LOADING')}</p>
           ) : !canView ? (

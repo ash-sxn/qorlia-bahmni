@@ -18,6 +18,27 @@ const Search = ({ extensions }: { extensions: SearchExtension[] }) => {
 
   if (extensions.length === 0) return null;
 
+  // One kind of search needs no tab above it.
+  if (extensions.length === 1) {
+    const [ext] = extensions;
+    const Widget = getSearchWidget(
+      ext.extensionParams?.searchHandler ?? '',
+    )?.component;
+    if (Widget && ext.extensionParams) {
+      return (
+        <div id={`${ext.id}-panel`} data-testid={`${ext.id}-panel-test-id`}>
+          <Suspense
+            fallback={
+              <CodeSnippetSkeleton type="multi" className={styles.loading} />
+            }
+          >
+            <Widget extensionParams={ext.extensionParams} />
+          </Suspense>
+        </div>
+      );
+    }
+  }
+
   return (
     <Tabs>
       <TabList

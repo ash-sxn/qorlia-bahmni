@@ -9,6 +9,7 @@ import {
 import { useUserPrivilege, UserGlobalAction } from '@bahmni/widgets';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { AppointmentTabs } from './AppointmentTabs';
 import { BookingForm } from './BookingForm';
 import styles from './styles/index.module.scss';
 import { WeeklyBreakdown } from './WeeklyBreakdown';
@@ -127,24 +128,10 @@ export const IndexPage = () => {
       main={
         <main className={styles.page}>
           <div className={styles.intro}>
-            <span className={styles.eyebrow}>
-              {t('APPOINTMENTS_WORKSPACE')}
-            </span>
-            <h1>{t('APPOINTMENTS_HEADING')}</h1>
+            <h1>{t('APPOINTMENTS_SUMMARY')}</h1>
             <p>{t('APPOINTMENTS_DESCRIPTION')}</p>
           </div>
-          <nav className={styles.viewTabs} aria-label={t('APPOINTMENTS_VIEWS')}>
-            <a href="/bahmni-v2/appointments/" aria-current="page">
-              {t('APPOINTMENTS_SUMMARY')}
-            </a>
-            <a href="/bahmni-v2/appointments/calendar">
-              {t('APPOINTMENTS_CALENDAR')}
-            </a>
-            <a href="/bahmni-v2/appointments/list">{t('APPOINTMENTS_LIST')}</a>
-            <a href="/bahmni-v2/appointments/awaiting">
-              {t('APPOINTMENTS_AWAITING')}
-            </a>
-          </nav>
+          <AppointmentTabs current="week" />
           {privilegesLoading || userPrivileges === null ? (
             <p role="status">{t('APPOINTMENTS_LOADING')}</p>
           ) : !canView ? (

@@ -419,3 +419,48 @@ it('shows start and end time columns with a fallback for a missing end', () => {
     ),
   ).toBeVisible();
 });
+
+it('opens on the day list with the views in a fixed order and Book appointment for staff who book', () => {
+  (useMutation as jest.Mock).mockReturnValue({
+    mutate: jest.fn(),
+    isPending: false,
+    isError: false,
+  });
+  (useQuery as jest.Mock).mockImplementation(() => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+  }));
+  (useUserPrivilege as jest.Mock).mockReturnValue({
+    userPrivileges: [
+      { name: 'app:appointments' },
+      { name: 'app:appointments:manageAppointmentsTab' },
+      { name: 'Manage Appointments' },
+    ],
+    isLoading: false,
+  });
+  render(
+    <MemoryRouter initialEntries={['/bahmni-v2/appointments/']}>
+      <AppointmentListPage />
+    </MemoryRouter>,
+  );
+
+  const views = within(screen.getByRole('navigation', { name: /views/i }))
+    .getAllByRole('link')
+    .map((link) => [link.textContent, link.getAttribute('aria-current')]);
+  expect(views).toEqual([
+    ['Day list', 'page'],
+    ['Calendar', null],
+    ['Weekly summary', null],
+    ['Awaiting appointments', null],
+  ]);
+  expect(
+    screen.getByRole('heading', { level: 1, name: "Today's appointments" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'Book appointment' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole('link', { name: 'Manage services' }),
+  ).not.toBeInTheDocument();
+});

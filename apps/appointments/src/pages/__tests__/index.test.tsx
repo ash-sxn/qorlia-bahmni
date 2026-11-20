@@ -42,7 +42,7 @@ describe('IndexPage', () => {
   it('shows the appointment summary and filters by service', () => {
     render(<IndexPage />);
     expect(
-      screen.getByRole('heading', { name: 'Appointment scheduling' }),
+      screen.getByRole('heading', { level: 1, name: 'Weekly summary' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('rowheader', { name: 'General Medicine' }),
