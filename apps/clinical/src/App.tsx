@@ -7,6 +7,7 @@ import {
   UserPrivilegeProvider,
   ActivePractitionerProvider,
   UserActionProvider,
+  ShellProvider,
 } from '@bahmni/widgets';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -57,7 +58,9 @@ const ClinicalApp: React.FC = () => {
                 <UserActionProvider>
                   <CommandPaletteProvider>
                     <Suspense fallback={<Loading />}>
-                      <Routes>{renderRoutes(routes)}</Routes>
+                      <ShellProvider>
+                        <Routes>{renderRoutes(routes)}</Routes>
+                      </ShellProvider>
                     </Suspense>
                     <ReactQueryDevtools initialIsOpen={false} />
                   </CommandPaletteProvider>

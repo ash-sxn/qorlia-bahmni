@@ -259,7 +259,7 @@ describe('ClinicalWorkspace', () => {
     const links = await screen.findAllByRole('link', {
       name: 'CLINICAL_WORKSPACE_APPOINTMENTS',
     });
-    expect(links).toHaveLength(2);
+    expect(links).toHaveLength(1);
     links.forEach((link) =>
       expect(link).toHaveAttribute('href', '/appointments/'),
     );

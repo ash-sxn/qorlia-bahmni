@@ -31,6 +31,27 @@
   cursor: pointer;
 }
 
+.pageNav a.primaryAction {
+  border-color: var(--qorlia-primary, #1f5238);
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+}
+
+.quietAction {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 0.875rem;
+  border-radius: 8px;
+  color: var(--qorlia-primary, #1f5238);
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover {
+    background: #edf3ee;
+  }
+}
+
 .otCalendarScroll {
   overflow-x: auto;
 }

@@ -75,7 +75,7 @@ const CaseDetailPage = lazy(() =>
 );
 
 export const routes: Routes = [
-  // Billing still draws its own header; it moves into the shell separately.
+  // Billing draws its own Header, which takes the shared menu from the shell.
   { path: '/billing', component: BillingPage, name: 'Billing', shell: false },
   { path: '/policies', component: PolicyLibraryPage, name: 'PolicyLibrary' },
   {
@@ -144,7 +144,9 @@ export const renderRoutes = (routeConfigs: Routes) => {
         path={route.path}
         element={
           route.shell === false ? (
-            <route.component />
+            <HomeShell ownHeader>
+              <route.component />
+            </HomeShell>
           ) : (
             <HomeShell>
               <route.component />

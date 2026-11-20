@@ -1,4 +1,9 @@
-export { AppShell, type AppShellProps } from './AppShell';
+export {
+  AppShell,
+  ShellProvider,
+  type AppShellProps,
+  type ShellProviderProps,
+} from './AppShell';
 export {
   CORE_MODULES,
   PATIENTS_ID,

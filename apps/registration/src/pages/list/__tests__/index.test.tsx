@@ -84,24 +84,27 @@ describe('RegistrationList', () => {
     queryClient.clear();
   });
 
-  it('renders header with breadcrumb, user global actions and create new patient button', () => {
+  it('keeps the breadcrumb and user menu in the header and the main action on the page', () => {
     renderPage();
     const header = screen.getByTestId('registration-list-page-header-test-id');
-    const breadcrumb = screen.getByTestId('breadcrumb');
-    const userGlobalAction = screen.getByTestId('user-global-action-test-id');
-    const createNewPatientButton = screen.getByTestId(
-      'create-new-patient-button',
+    const page = screen.getByTestId('registration-list-page-test-id');
+    expect(header).toContainElement(screen.getByTestId('breadcrumb'));
+    expect(header).toContainElement(
+      screen.getByTestId('user-global-action-test-id'),
     );
-    expect(header).toContainElement(breadcrumb);
-    expect(header).toContainElement(userGlobalAction);
-    expect(header).toContainElement(createNewPatientButton);
+    expect(page).toContainElement(
+      screen.getByTestId('create-new-patient-button'),
+    );
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'REGISTRATION_LABEL' }),
+    ).toBeInTheDocument();
   });
 
   it('renders breadcrumb navigation', () => {
     renderPage();
     const homeLink = screen.getByRole('link', { name: /HOME_LABEL/i });
     expect(homeLink).toHaveAttribute('href', services.BAHMNI_HOME_PATH);
-    expect(screen.getByText('REGISTRATION_LABEL')).toBeInTheDocument();
+    expect(screen.getAllByText('REGISTRATION_LABEL')).not.toHaveLength(0);
   });
 
   it('navigates to the new patient page when the create patient button is clicked', () => {
