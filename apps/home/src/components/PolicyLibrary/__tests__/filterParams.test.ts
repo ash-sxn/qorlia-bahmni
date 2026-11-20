@@ -30,6 +30,18 @@ describe('filterParams', () => {
     expect(filtersFromParams(filtersToParams(filters))).toEqual(filters);
   });
 
+  it('reads back the licences and compliance category', () => {
+    const filters: PolicyFilters = {
+      ...DEFAULT_FILTERS,
+      category: 'licences_and_compliance',
+    };
+
+    expect(filtersToParams(filters).toString()).toBe(
+      'category=licences_and_compliance',
+    );
+    expect(filtersFromParams(filtersToParams(filters))).toEqual(filters);
+  });
+
   it('falls back to the defaults for missing or unknown values', () => {
     const params = new URLSearchParams(
       'jurisdiction=delhi&category=sports&status=anything',

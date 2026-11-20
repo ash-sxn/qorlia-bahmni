@@ -3,10 +3,30 @@ import { CatalogueResult } from './types';
 import { validateCatalogue } from './validateCatalogue';
 
 /**
- * Official source hosts approved by the content reviewer. Empty until the
- * reviewer approves them, so no real entry can pass validation before then.
+ * Official source hosts approved by the content reviewer (#41). Each is the
+ * own site of the body that issues the rule. Add a host only with the same
+ * test. Hosts match exactly, so list the name without "www.".
  */
-export const APPROVED_SOURCE_HOSTS: readonly string[] = [];
+export const APPROVED_SOURCE_HOSTS: readonly string[] = [
+  'mohfw.gov.in',
+  'nhm.gov.in',
+  'abdm.gov.in',
+  'nha.gov.in',
+  'health.mp.gov.in',
+  'egazette.gov.in',
+  'pmjay.gov.in',
+  'pib.gov.in',
+  'cghs.mohfw.gov.in',
+  'esic.gov.in',
+  'cpcb.nic.in',
+  'mppcb.mp.gov.in',
+  'aerb.gov.in',
+  'cdsco.gov.in',
+  'nabh.co',
+  'meity.gov.in',
+  'indiacode.nic.in',
+  'boi.gov.in',
+];
 
 /**
  * Development builds show the labelled synthetic examples so the screens can
