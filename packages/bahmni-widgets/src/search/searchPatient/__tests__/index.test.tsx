@@ -41,6 +41,15 @@ const SEARCH_PLACEHOLDER = 'REGISTRATION_PATIENT_SEARCH_INPUT_PLACEHOLDER';
 describe('SearchPatient', () => {
   let queryClient: QueryClient;
 
+  const chooseSearchBy = async (label: string | RegExp) => {
+    await userEvent.click(
+      await screen.findByRole('combobox', {
+        name: /PATIENT_SEARCH_ATTRIBUTE_SELECTOR/,
+      }),
+    );
+    await userEvent.click(await screen.findByRole('option', { name: label }));
+  };
+
   const renderSearchPatient = (
     config: SearchPatientConfig = mockSearchPatientConfig,
   ) => {
@@ -92,12 +101,14 @@ describe('SearchPatient', () => {
     expect(
       screen.getByTestId('search-patient-search-button'),
     ).toHaveTextContent(BUTTON_TITLE);
-    expect(screen.getByTestId('advance-search-input')).toBeInTheDocument();
     expect(screen.getByTestId('search-type-dropdown')).toBeInTheDocument();
-    expect(screen.getByTestId('advance-search-button')).toBeInTheDocument();
-    expect(screen.getByTestId('advance-search-button')).toHaveTextContent(
-      BUTTON_TITLE,
-    );
+    // One box: the field search appears only once a field is chosen.
+    expect(
+      screen.queryByTestId('advance-search-input'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('advance-search-button'),
+    ).not.toBeInTheDocument();
   });
 
   it('should not show results table before a search is performed', async () => {
@@ -334,6 +345,7 @@ describe('SearchPatient', () => {
     'should search for patient when phone input has valid text by $description',
     async ({ trigger }) => {
       renderSearchPatient();
+      await chooseSearchBy('REGISTRATION_PATIENT_SEARCH_DROPDOWN_PHONE_NUMBER');
       await waitFor(() => {
         expect(screen.getByTestId('advance-search-input')).toBeInTheDocument();
       });
@@ -374,6 +386,11 @@ describe('SearchPatient', () => {
     'should not search for patient when $description search input is empty',
     async ({ buttonTestId, mockFn }) => {
       renderSearchPatient();
+      if (buttonTestId === 'advance-search-button') {
+        await chooseSearchBy(
+          'REGISTRATION_PATIENT_SEARCH_DROPDOWN_PHONE_NUMBER',
+        );
+      }
       await waitFor(() => {
         expect(screen.getByTestId(buttonTestId)).toBeInTheDocument();
       });
@@ -401,6 +418,11 @@ describe('SearchPatient', () => {
     'should disable $description search button when search call is happening',
     async ({ inputTestId, buttonTestId, inputValue, mockFn }) => {
       renderSearchPatient();
+      if (inputTestId === 'advance-search-input') {
+        await chooseSearchBy(
+          'REGISTRATION_PATIENT_SEARCH_DROPDOWN_PHONE_NUMBER',
+        );
+      }
       await waitFor(() => {
         expect(screen.getByTestId(inputTestId)).toBeInTheDocument();
       });
@@ -420,6 +442,7 @@ describe('SearchPatient', () => {
 
   it('should render phone validation error message when invalid characters are entered', async () => {
     renderSearchPatient();
+    await chooseSearchBy('REGISTRATION_PATIENT_SEARCH_DROPDOWN_PHONE_NUMBER');
     await waitFor(() => {
       expect(screen.getByTestId('advance-search-input')).toBeInTheDocument();
     });
@@ -449,6 +472,7 @@ describe('SearchPatient', () => {
     'should not render phone validation error message when entered with $description',
     async ({ value }) => {
       renderSearchPatient();
+      await chooseSearchBy('REGISTRATION_PATIENT_SEARCH_DROPDOWN_PHONE_NUMBER');
       await waitFor(() => {
         expect(screen.getByTestId('advance-search-input')).toBeInTheDocument();
       });
@@ -463,44 +487,32 @@ describe('SearchPatient', () => {
     },
   );
 
-  it.each([
-    {
-      description: 'name input when typing in phone field',
-      firstInputTestId: 'search-patient-searchbar',
-      firstInputValue: 'John Doe',
-      secondInputTestId: 'advance-search-input',
-      secondInputValue: '1234567890',
-    },
-    {
-      description: 'phone input when typing in name field',
-      firstInputTestId: 'advance-search-input',
-      firstInputValue: '123a',
-      secondInputTestId: 'search-patient-searchbar',
-      secondInputValue: 'John Doe',
-    },
-  ])(
-    'should clear $description',
-    async ({
-      firstInputTestId,
-      firstInputValue,
-      secondInputTestId,
-      secondInputValue,
-    }) => {
-      renderSearchPatient();
-      await waitFor(() => {
-        expect(screen.getByTestId(firstInputTestId)).toBeInTheDocument();
-      });
-      const firstInput = screen.getByTestId(firstInputTestId);
-      const secondInput = screen.getByTestId(secondInputTestId);
+  it('switches the one box between name or ID and a chosen field, clearing it', async () => {
+    renderSearchPatient();
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('search-patient-searchbar'),
+      ).toBeInTheDocument();
+    });
+    fireEvent.input(screen.getByTestId('search-patient-searchbar'), {
+      target: { value: 'John Doe' },
+    });
 
-      fireEvent.input(firstInput, { target: { value: firstInputValue } });
-      expect(firstInput).toHaveValue(firstInputValue);
+    await chooseSearchBy('REGISTRATION_PATIENT_SEARCH_DROPDOWN_PHONE_NUMBER');
+    expect(
+      screen.queryByTestId('search-patient-searchbar'),
+    ).not.toBeInTheDocument();
+    const phone = screen.getByTestId('advance-search-input');
+    expect(phone).toHaveValue('');
+    fireEvent.input(phone, { target: { value: '9876543210' } });
+    expect(screen.getByTestId('advance-search-button')).toBeEnabled();
 
-      fireEvent.input(secondInput, { target: { value: secondInputValue } });
-      expect(firstInput).toHaveValue('');
-      expect(secondInput).toHaveValue(secondInputValue);
-    },
-  );
+    await chooseSearchBy(/Name or patient ID|PATIENT_SEARCH_BY_NAME_OR_ID/);
+    expect(screen.getByTestId('search-patient-searchbar')).toHaveValue('');
+    expect(
+      screen.queryByTestId('advance-search-input'),
+    ).not.toBeInTheDocument();
+  });
 
   it('should search by email when email is selected from dropdown', async () => {
     renderSearchPatient();
@@ -577,12 +589,6 @@ describe('SearchPatient', () => {
       expect(dropdownButton).toBeInTheDocument();
     });
 
-    await waitFor(() => {
-      expect(
-        screen.getByText('REGISTRATION_PATIENT_SEARCH_DROPDOWN_PHONE_NUMBER'),
-      ).toBeInTheDocument();
-    });
-
     const dropdownButton = screen.getByRole('combobox', {
       name: /PATIENT_SEARCH_ATTRIBUTE_SELECTOR/,
     });
@@ -591,12 +597,15 @@ describe('SearchPatient', () => {
     await waitFor(() => {
       const options = screen.getAllByRole('option');
       expect(options[0]).toHaveTextContent(
-        'REGISTRATION_PATIENT_SEARCH_DROPDOWN_PHONE_NUMBER',
+        /Name or patient ID|PATIENT_SEARCH_BY_NAME_OR_ID/,
       );
       expect(options[1]).toHaveTextContent(
-        'REGISTRATION_PATIENT_SEARCH_DROPDOWN_EMAIL',
+        'REGISTRATION_PATIENT_SEARCH_DROPDOWN_PHONE_NUMBER',
       );
       expect(options[2]).toHaveTextContent(
+        'REGISTRATION_PATIENT_SEARCH_DROPDOWN_EMAIL',
+      );
+      expect(options[3]).toHaveTextContent(
         'REGISTRATION_PATIENT_SEARCH_DROPDOWN_VILLAGE',
       );
     });

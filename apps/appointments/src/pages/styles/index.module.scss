@@ -173,11 +173,12 @@
   text-transform: uppercase;
 }
 .intro h1 {
-  margin: 9px 0 5px;
-  color: #17382d;
-  font-size: clamp(28px, 2.4vw, 38px);
-  line-height: 1.15;
-  letter-spacing: -0.04em;
+  margin: 0 0 6px;
+  color: var(--qorlia-ink, #202321);
+  font-family: "Space Grotesk", "IBM Plex Sans", Inter, sans-serif;
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.2;
 }
 .intro p {
   margin: 0;

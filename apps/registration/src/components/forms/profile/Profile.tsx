@@ -468,7 +468,8 @@ export const Profile = ({
 
         <div className={styles.col}>
           <div className={styles.row}>
-            {!patientUuidFromUrl && (
+            {/* A choice of one is not a choice: show it only with two or more. */}
+            {!patientUuidFromUrl && identifierPrefixes.length > 1 && (
               <div
                 className={styles.dropdownField}
                 data-testid="patient-id-format-field"

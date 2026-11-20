@@ -70,10 +70,22 @@ describe('Search', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders icon when extension has icon', () => {
-    render(<Search extensions={[mockExtensionWithIcon]} />);
+  it('renders icon on the tab when extension has icon', () => {
+    render(
+      <Search
+        extensions={[mockExtensionWithIcon, mockExtensionWithRegisteredType]}
+      />,
+    );
     expect(
       screen.getByTestId(`${mockExtensionWithIcon.id}-icon-test-id`),
+    ).toBeInTheDocument();
+  });
+
+  it('shows a single registered search without a tab above it', () => {
+    render(<Search extensions={[mockExtensionWithRegisteredType]} />);
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId(`${mockExtensionWithRegisteredType.id}-panel-test-id`),
     ).toBeInTheDocument();
   });
 

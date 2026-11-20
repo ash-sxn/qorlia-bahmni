@@ -4,6 +4,7 @@ import {
   fetchAllProviders,
   get,
   getAllAppointmentServices,
+  getAppointmentSummary,
   getAppointmentsForDate,
   getLegacyAppointment,
   getLocationByTag,
@@ -22,7 +23,9 @@ import {
   getAllowedTransitions,
   type TransitionConfig,
 } from './appointmentActions';
+import { AppointmentTabs } from './AppointmentTabs';
 import { formatAppointmentEndTime } from './appointmentTime';
+import { BookingForm } from './BookingForm';
 import { EditAppointmentForm } from './EditAppointmentForm';
 import styles from './styles/index.module.scss';
 
@@ -84,6 +87,9 @@ export const AppointmentListPage = () => {
     hasPrivilege(userPrivileges, 'Manage Appointments');
   const canReset =
     canManage && hasPrivilege(userPrivileges, 'Reset Appointment Status');
+  const canAdmin = hasPrivilege(userPrivileges, 'app:appointments:adminTab');
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingMessage, setBookingMessage] = useState('');
   const queryClient = useQueryClient();
   const [actionMessage, setActionMessage] = useState('');
   const [editMessage, setEditMessage] = useState('');
@@ -100,6 +106,17 @@ export const AppointmentListPage = () => {
   const [locationUuid, setLocationUuid] = useState('');
   const [status, setStatus] = useState('');
   const [patient, setPatient] = useState('');
+  // The booking form lists services with their slots, which the summary carries.
+  const bookingServices = useQuery({
+    queryKey: ['appointment-summary-day', date],
+    queryFn: () => {
+      const start = new Date(`${date}T00:00:00`);
+      const end = new Date(start);
+      end.setHours(23, 59, 59, 999);
+      return getAppointmentSummary(start.toISOString(), end.toISOString());
+    },
+    enabled: bookingOpen,
+  });
   const transitionConfig = useQuery({
     queryKey: ['legacy-appointment-actions'],
     queryFn: () =>
@@ -223,9 +240,6 @@ export const AppointmentListPage = () => {
       main={
         <main className={styles.page}>
           <div className={styles.intro}>
-            <span className={styles.eyebrow}>
-              {t('APPOINTMENTS_WORKSPACE')}
-            </span>
             <h1>
               {awaiting ? t('APPOINTMENTS_AWAITING') : t('APPOINTMENTS_LIST')}
             </h1>
@@ -235,396 +249,441 @@ export const AppointmentListPage = () => {
                 : t('APPOINTMENTS_LIST_DESCRIPTION')}
             </p>
           </div>
-          <nav className={styles.viewTabs} aria-label={t('APPOINTMENTS_VIEWS')}>
-            <a href="/bahmni-v2/appointments/">{t('APPOINTMENTS_SUMMARY')}</a>
-            <a href="/bahmni-v2/appointments/calendar">
-              {t('APPOINTMENTS_CALENDAR')}
-            </a>
-            <a
-              href="/bahmni-v2/appointments/list"
-              aria-current={!awaiting ? 'page' : undefined}
-            >
-              {t('APPOINTMENTS_LIST')}
-            </a>
-            <a
-              href="/bahmni-v2/appointments/awaiting"
-              aria-current={awaiting ? 'page' : undefined}
-            >
-              {t('APPOINTMENTS_AWAITING')}
-            </a>
-          </nav>
+          <AppointmentTabs current={awaiting ? 'awaiting' : 'day'} />
           {privilegesLoading || userPrivileges === null ? (
             <p role="status">{t('APPOINTMENTS_LOADING')}</p>
           ) : !canView ? (
             <p role="alert">{t('APPOINTMENTS_NO_ACCESS')}</p>
           ) : (
-            <section
-              className={styles.panel}
-              aria-labelledby="appointment-list-heading"
-            >
-              <div className={styles.panelHeading}>
-                <div>
-                  <span className={styles.eyebrow}>
-                    {awaiting
-                      ? t('APPOINTMENTS_WAITLIST')
-                      : t('APPOINTMENTS_DATE')}
-                  </span>
-                  <h2 id="appointment-list-heading">
-                    {awaiting
-                      ? t('APPOINTMENTS_AWAITING')
-                      : t('APPOINTMENTS_LIST')}
-                  </h2>
-                </div>
-                {!awaiting && (
-                  <div className={styles.weekControls}>
-                    <button type="button" onClick={() => shiftDate(-1)}>
-                      {t('APPOINTMENTS_PREVIOUS_DAY')}
-                    </button>
-                    <label>
-                      <span>{t('APPOINTMENTS_CHOOSE_DATE')}</span>
-                      <input
-                        type="date"
-                        value={date}
-                        onChange={(event) => {
-                          if (event.target.value) setDate(event.target.value);
-                        }}
-                      />
-                    </label>
-                    <button type="button" onClick={() => shiftDate(1)}>
-                      {t('APPOINTMENTS_NEXT_DAY')}
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className={styles.listFilters}>
-                <label>
-                  {t('APPOINTMENTS_SERVICE')}
-                  <select
-                    value={serviceUuid}
-                    onChange={(event) => setServiceUuid(event.target.value)}
-                  >
-                    <option value="">{t('APPOINTMENTS_ALL_SERVICES')}</option>
-                    {(services.data ?? []).map((service) => (
-                      <option key={service.uuid} value={service.uuid}>
-                        {service.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  {t('APPOINTMENTS_PROVIDER')}
-                  <select
-                    value={providerUuid}
-                    onChange={(event) => setProviderUuid(event.target.value)}
-                  >
-                    <option value="">{t('APPOINTMENTS_ALL_PROVIDERS')}</option>
-                    {(providers.data ?? []).map((provider) => (
-                      <option key={provider.uuid} value={provider.uuid}>
-                        {provider.display}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  {t('APPOINTMENTS_LOCATION')}
-                  <select
-                    value={locationUuid}
-                    onChange={(event) => setLocationUuid(event.target.value)}
-                  >
-                    <option value="">{t('APPOINTMENTS_ALL_LOCATIONS')}</option>
-                    {(locations.data ?? []).map((location) => (
-                      <option key={location.uuid} value={location.uuid}>
-                        {location.display}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {!awaiting && (
-                  <label>
-                    {t('APPOINTMENTS_STATUS')}
-                    <select
-                      value={status}
-                      onChange={(event) => setStatus(event.target.value)}
+            <>
+              {(canManage || canAdmin) && (
+                <div className={styles.actions}>
+                  {canAdmin && (
+                    <>
+                      <a
+                        className={styles.secondaryButton}
+                        href="/bahmni-v2/appointments/admin/services"
+                      >
+                        {t('APPOINTMENTS_MANAGE_SERVICES')}
+                      </a>
+                      <a
+                        className={styles.secondaryButton}
+                        href="/bahmni-v2/appointments/admin/unavailability"
+                      >
+                        {t('APPOINTMENTS_MANAGE_UNAVAILABILITY')}
+                      </a>
+                    </>
+                  )}
+                  {canManage && (
+                    <button
+                      type="button"
+                      className={styles.primaryButton}
+                      onClick={() => {
+                        setBookingOpen(true);
+                        setBookingMessage('');
+                      }}
                     >
-                      <option value="">{t('APPOINTMENTS_ALL_STATUSES')}</option>
-                      {statuses.map((value) => (
-                        <option key={value} value={value}>
-                          {value}
+                      {t('APPOINTMENTS_BOOK')}
+                    </button>
+                  )}
+                </div>
+              )}
+              {bookingMessage && (
+                <p role="status" className={styles.successMessage}>
+                  {bookingMessage}
+                </p>
+              )}
+              {bookingOpen && bookingServices.data && (
+                <BookingForm
+                  services={bookingServices.data}
+                  selectedDay={date}
+                  selectedServiceUuid={serviceUuid}
+                  onClose={() => setBookingOpen(false)}
+                  onBooked={() => {
+                    setBookingOpen(false);
+                    setBookingMessage(t('APPOINTMENTS_BOOKED'));
+                    void queryClient.invalidateQueries({
+                      queryKey: ['appointment-list-day'],
+                    });
+                  }}
+                />
+              )}
+              <section
+                className={styles.panel}
+                aria-labelledby="appointment-list-heading"
+              >
+                <div className={styles.panelHeading}>
+                  <div>
+                    <span className={styles.eyebrow}>
+                      {awaiting
+                        ? t('APPOINTMENTS_WAITLIST')
+                        : t('APPOINTMENTS_DATE')}
+                    </span>
+                    <h2 id="appointment-list-heading">
+                      {awaiting
+                        ? t('APPOINTMENTS_AWAITING')
+                        : t('APPOINTMENTS_LIST')}
+                    </h2>
+                  </div>
+                  {!awaiting && (
+                    <div className={styles.weekControls}>
+                      <button type="button" onClick={() => shiftDate(-1)}>
+                        {t('APPOINTMENTS_PREVIOUS_DAY')}
+                      </button>
+                      <label>
+                        <span>{t('APPOINTMENTS_CHOOSE_DATE')}</span>
+                        <input
+                          type="date"
+                          value={date}
+                          onChange={(event) => {
+                            if (event.target.value) setDate(event.target.value);
+                          }}
+                        />
+                      </label>
+                      <button type="button" onClick={() => shiftDate(1)}>
+                        {t('APPOINTMENTS_NEXT_DAY')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className={styles.listFilters}>
+                  <label>
+                    {t('APPOINTMENTS_SERVICE')}
+                    <select
+                      value={serviceUuid}
+                      onChange={(event) => setServiceUuid(event.target.value)}
+                    >
+                      <option value="">{t('APPOINTMENTS_ALL_SERVICES')}</option>
+                      {(services.data ?? []).map((service) => (
+                        <option key={service.uuid} value={service.uuid}>
+                          {service.name}
                         </option>
                       ))}
                     </select>
                   </label>
-                )}
-                <label>
-                  {t('APPOINTMENTS_PATIENT')}
-                  <input
-                    type="search"
-                    value={patient}
-                    onChange={(event) => setPatient(event.target.value)}
-                    placeholder={t('APPOINTMENTS_SEARCH_PATIENT')}
-                  />
-                </label>
-              </div>
-              {(services.isError || providers.isError || locations.isError) && (
-                <p className={styles.message} role="alert">
-                  {t('APPOINTMENTS_FILTERS_ERROR')}
-                </p>
-              )}
-              {canManage && transitionConfig.isError && (
-                <p className={styles.message} role="alert">
-                  {t('APPOINTMENTS_ACTIONS_UNAVAILABLE')}
-                </p>
-              )}
-              {actionMessage && (
-                <p
-                  className={styles.message}
-                  role={statusChange.isError ? 'alert' : 'status'}
-                >
-                  {actionMessage}
-                </p>
-              )}
-              {editMessage && (
-                <p className={styles.message} role="status">
-                  {editMessage}
-                </p>
-              )}
-              {editingUuid && editing.isLoading && (
-                <p className={styles.message} role="status">
-                  {t('APPOINTMENTS_LOADING')}
-                </p>
-              )}
-              {editingUuid && editing.isError && (
-                <div className={styles.message}>
-                  <p role="alert">{t('APPOINTMENTS_EDIT_LOAD_ERROR')}</p>
-                  <button type="button" onClick={() => setEditingUuid('')}>
-                    {t('APPOINTMENTS_CANCEL')}
-                  </button>
+                  <label>
+                    {t('APPOINTMENTS_PROVIDER')}
+                    <select
+                      value={providerUuid}
+                      onChange={(event) => setProviderUuid(event.target.value)}
+                    >
+                      <option value="">
+                        {t('APPOINTMENTS_ALL_PROVIDERS')}
+                      </option>
+                      {(providers.data ?? []).map((provider) => (
+                        <option key={provider.uuid} value={provider.uuid}>
+                          {provider.display}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    {t('APPOINTMENTS_LOCATION')}
+                    <select
+                      value={locationUuid}
+                      onChange={(event) => setLocationUuid(event.target.value)}
+                    >
+                      <option value="">
+                        {t('APPOINTMENTS_ALL_LOCATIONS')}
+                      </option>
+                      {(locations.data ?? []).map((location) => (
+                        <option key={location.uuid} value={location.uuid}>
+                          {location.display}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {!awaiting && (
+                    <label>
+                      {t('APPOINTMENTS_STATUS')}
+                      <select
+                        value={status}
+                        onChange={(event) => setStatus(event.target.value)}
+                      >
+                        <option value="">
+                          {t('APPOINTMENTS_ALL_STATUSES')}
+                        </option>
+                        {statuses.map((value) => (
+                          <option key={value} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  <label>
+                    {t('APPOINTMENTS_PATIENT')}
+                    <input
+                      type="search"
+                      value={patient}
+                      onChange={(event) => setPatient(event.target.value)}
+                      placeholder={t('APPOINTMENTS_SEARCH_PATIENT')}
+                    />
+                  </label>
                 </div>
-              )}
-              {editingUuid && editing.data && (
-                <EditAppointmentForm
-                  key={editing.data.uuid}
-                  appointment={editing.data}
-                  onClose={() => setEditingUuid('')}
-                  onSaved={() => {
-                    setEditingUuid('');
-                    setEditMessage(t('APPOINTMENTS_EDITED'));
-                  }}
-                />
-              )}
-              {result.isLoading ? (
-                <p className={styles.message} role="status">
-                  {t('APPOINTMENTS_LOADING')}
-                </p>
-              ) : result.isError ? (
-                <p className={styles.message} role="alert">
-                  {t('APPOINTMENTS_LIST_ERROR')}
-                </p>
-              ) : rows.length === 0 ? (
-                <p className={styles.message}>
-                  {awaiting
-                    ? t('APPOINTMENTS_AWAITING_EMPTY')
-                    : t('APPOINTMENTS_NO_RESULTS')}
-                </p>
-              ) : (
-                <div className={styles.tableScroll}>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th scope="col">
-                          {t(
-                            awaiting
-                              ? 'APPOINTMENTS_TIME'
-                              : 'APPOINTMENTS_START_TIME',
-                          )}
-                        </th>
-                        {!awaiting && (
-                          <th scope="col">{t('APPOINTMENTS_END_TIME')}</th>
-                        )}
-                        <th scope="col">{t('APPOINTMENTS_PATIENT')}</th>
-                        <th scope="col">{t('APPOINTMENTS_SERVICE')}</th>
-                        <th scope="col">{t('APPOINTMENTS_PROVIDER')}</th>
-                        <th scope="col">{t('APPOINTMENTS_LOCATION')}</th>
-                        <th scope="col">{t('APPOINTMENTS_STATUS')}</th>
-                        {canManage && (
-                          <th scope="col">{t('APPOINTMENTS_ACTIONS')}</th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((appointment) => (
-                        <tr key={appointment.uuid}>
-                          <td>
-                            {new Intl.DateTimeFormat(undefined, {
-                              dateStyle: awaiting ? 'medium' : undefined,
-                              timeStyle: 'short',
-                            }).format(new Date(appointment.startDateTime))}
-                          </td>
+                {(services.isError ||
+                  providers.isError ||
+                  locations.isError) && (
+                  <p className={styles.message} role="alert">
+                    {t('APPOINTMENTS_FILTERS_ERROR')}
+                  </p>
+                )}
+                {canManage && transitionConfig.isError && (
+                  <p className={styles.message} role="alert">
+                    {t('APPOINTMENTS_ACTIONS_UNAVAILABLE')}
+                  </p>
+                )}
+                {actionMessage && (
+                  <p
+                    className={styles.message}
+                    role={statusChange.isError ? 'alert' : 'status'}
+                  >
+                    {actionMessage}
+                  </p>
+                )}
+                {editMessage && (
+                  <p className={styles.message} role="status">
+                    {editMessage}
+                  </p>
+                )}
+                {editingUuid && editing.isLoading && (
+                  <p className={styles.message} role="status">
+                    {t('APPOINTMENTS_LOADING')}
+                  </p>
+                )}
+                {editingUuid && editing.isError && (
+                  <div className={styles.message}>
+                    <p role="alert">{t('APPOINTMENTS_EDIT_LOAD_ERROR')}</p>
+                    <button type="button" onClick={() => setEditingUuid('')}>
+                      {t('APPOINTMENTS_CANCEL')}
+                    </button>
+                  </div>
+                )}
+                {editingUuid && editing.data && (
+                  <EditAppointmentForm
+                    key={editing.data.uuid}
+                    appointment={editing.data}
+                    onClose={() => setEditingUuid('')}
+                    onSaved={() => {
+                      setEditingUuid('');
+                      setEditMessage(t('APPOINTMENTS_EDITED'));
+                    }}
+                  />
+                )}
+                {result.isLoading ? (
+                  <p className={styles.message} role="status">
+                    {t('APPOINTMENTS_LOADING')}
+                  </p>
+                ) : result.isError ? (
+                  <p className={styles.message} role="alert">
+                    {t('APPOINTMENTS_LIST_ERROR')}
+                  </p>
+                ) : rows.length === 0 ? (
+                  <p className={styles.message}>
+                    {awaiting
+                      ? t('APPOINTMENTS_AWAITING_EMPTY')
+                      : t('APPOINTMENTS_NO_RESULTS')}
+                  </p>
+                ) : (
+                  <div className={styles.tableScroll}>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th scope="col">
+                            {t(
+                              awaiting
+                                ? 'APPOINTMENTS_TIME'
+                                : 'APPOINTMENTS_START_TIME',
+                            )}
+                          </th>
                           {!awaiting && (
-                            <td>
-                              {formatAppointmentEndTime(
-                                appointment.startDateTime,
-                                appointment.endDateTime,
-                              ) ?? t('APPOINTMENTS_NOT_SPECIFIED')}
-                            </td>
+                            <th scope="col">{t('APPOINTMENTS_END_TIME')}</th>
                           )}
-                          <td>
-                            <a
-                              href={`/bahmni-v2/clinical/${appointment.patient.uuid}`}
-                            >
-                              {appointment.patient.name}
-                            </a>
-                            <small>{appointment.patient.identifier}</small>
-                          </td>
-                          <td>
-                            {appointment.service?.name ??
-                              t('APPOINTMENTS_NOT_SPECIFIED')}
-                          </td>
-                          <td>
-                            {appointment.provider?.name ??
-                              (appointment.providers
-                                ?.map((provider) => provider.name)
-                                .filter(Boolean)
-                                .join(', ') ||
-                                t('APPOINTMENTS_NOT_SPECIFIED'))}
-                          </td>
-                          <td>
-                            {appointment.location?.name ??
-                              t('APPOINTMENTS_NOT_SPECIFIED')}
-                          </td>
-                          <td>
-                            <span className={styles.status}>
-                              {appointment.status}
-                            </span>
-                          </td>
+                          <th scope="col">{t('APPOINTMENTS_PATIENT')}</th>
+                          <th scope="col">{t('APPOINTMENTS_SERVICE')}</th>
+                          <th scope="col">{t('APPOINTMENTS_PROVIDER')}</th>
+                          <th scope="col">{t('APPOINTMENTS_LOCATION')}</th>
+                          <th scope="col">{t('APPOINTMENTS_STATUS')}</th>
                           {canManage && (
+                            <th scope="col">{t('APPOINTMENTS_ACTIONS')}</th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((appointment) => (
+                          <tr key={appointment.uuid}>
                             <td>
-                              <div className={styles.rowActions}>
-                                {['Scheduled', 'CheckedIn'].includes(
-                                  appointment.status,
-                                ) &&
-                                  dateKey(
-                                    new Date(appointment.startDateTime),
-                                  ) >= dateKey(new Date()) && (
-                                    <button
-                                      type="button"
-                                      className={styles.textButton}
-                                      onClick={() => {
-                                        setEditingUuid(appointment.uuid);
-                                        setEditMessage('');
-                                      }}
-                                    >
-                                      {t('APPOINTMENTS_EDIT')}:{' '}
-                                      {appointment.patient.name}
-                                    </button>
-                                  )}
-                                {getAllowedTransitions(
-                                  transitionConfig.data,
-                                  appointment.status,
-                                ).map((action) => (
-                                  <button
-                                    key={action}
-                                    type="button"
-                                    className={styles.textButton}
-                                    disabled={statusChange.isPending}
-                                    onClick={() => {
-                                      if (action === 'CheckedIn') {
-                                        const now = new Date();
-                                        setCheckInUuid(appointment.uuid);
-                                        setCheckInTime(
-                                          `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
-                                        );
-                                        setActionMessage('');
-                                        return;
-                                      }
-                                      if (
-                                        !window.confirm(
-                                          t('APPOINTMENTS_CONFIRM_STATUS', {
-                                            status: action,
-                                          }),
-                                        )
-                                      )
-                                        return;
-                                      setActionMessage('');
-                                      statusChange.mutate({
-                                        uuid: appointment.uuid,
-                                        status: action,
-                                      });
-                                    }}
-                                    aria-label={`${action}: ${appointment.patient.name}`}
-                                  >
-                                    {action}
-                                  </button>
-                                ))}
-                                {canReset &&
-                                  canResetAppointmentStatus(
+                              {new Intl.DateTimeFormat(undefined, {
+                                dateStyle: awaiting ? 'medium' : undefined,
+                                timeStyle: 'short',
+                              }).format(new Date(appointment.startDateTime))}
+                            </td>
+                            {!awaiting && (
+                              <td>
+                                {formatAppointmentEndTime(
+                                  appointment.startDateTime,
+                                  appointment.endDateTime,
+                                ) ?? t('APPOINTMENTS_NOT_SPECIFIED')}
+                              </td>
+                            )}
+                            <td>
+                              <a
+                                href={`/bahmni-v2/clinical/${appointment.patient.uuid}`}
+                              >
+                                {appointment.patient.name}
+                              </a>
+                              <small>{appointment.patient.identifier}</small>
+                            </td>
+                            <td>
+                              {appointment.service?.name ??
+                                t('APPOINTMENTS_NOT_SPECIFIED')}
+                            </td>
+                            <td>
+                              {appointment.provider?.name ??
+                                (appointment.providers
+                                  ?.map((provider) => provider.name)
+                                  .filter(Boolean)
+                                  .join(', ') ||
+                                  t('APPOINTMENTS_NOT_SPECIFIED'))}
+                            </td>
+                            <td>
+                              {appointment.location?.name ??
+                                t('APPOINTMENTS_NOT_SPECIFIED')}
+                            </td>
+                            <td>
+                              <span className={styles.status}>
+                                {appointment.status}
+                              </span>
+                            </td>
+                            {canManage && (
+                              <td>
+                                <div className={styles.rowActions}>
+                                  {['Scheduled', 'CheckedIn'].includes(
+                                    appointment.status,
+                                  ) &&
+                                    dateKey(
+                                      new Date(appointment.startDateTime),
+                                    ) >= dateKey(new Date()) && (
+                                      <button
+                                        type="button"
+                                        className={styles.textButton}
+                                        onClick={() => {
+                                          setEditingUuid(appointment.uuid);
+                                          setEditMessage('');
+                                        }}
+                                      >
+                                        {t('APPOINTMENTS_EDIT')}:{' '}
+                                        {appointment.patient.name}
+                                      </button>
+                                    )}
+                                  {getAllowedTransitions(
                                     transitionConfig.data,
                                     appointment.status,
-                                  ) && (
+                                  ).map((action) => (
                                     <button
+                                      key={action}
                                       type="button"
                                       className={styles.textButton}
                                       disabled={statusChange.isPending}
                                       onClick={() => {
+                                        if (action === 'CheckedIn') {
+                                          const now = new Date();
+                                          setCheckInUuid(appointment.uuid);
+                                          setCheckInTime(
+                                            `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+                                          );
+                                          setActionMessage('');
+                                          return;
+                                        }
                                         if (
                                           !window.confirm(
-                                            t('APPOINTMENTS_CONFIRM_RESET'),
+                                            t('APPOINTMENTS_CONFIRM_STATUS', {
+                                              status: action,
+                                            }),
                                           )
                                         )
                                           return;
                                         setActionMessage('');
                                         statusChange.mutate({
                                           uuid: appointment.uuid,
-                                          status: 'Scheduled',
+                                          status: action,
                                         });
                                       }}
-                                      aria-label={`${t('APPOINTMENTS_RESET')}: ${appointment.patient.name}`}
+                                      aria-label={`${action}: ${appointment.patient.name}`}
                                     >
-                                      {t('APPOINTMENTS_RESET')}
+                                      {action}
                                     </button>
-                                  )}
-                              </div>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              {checkInAppointment && (
-                <form className={styles.checkInForm} onSubmit={submitCheckIn}>
-                  <h3>{t('APPOINTMENTS_CHECK_IN')}</h3>
-                  <p>{checkInAppointment.patient.name}</p>
-                  <label>
-                    {t('APPOINTMENTS_CHECK_IN_TIME')}
-                    <input
-                      ref={checkInInput}
-                      type="time"
-                      value={checkInTime}
-                      onChange={(event) => setCheckInTime(event.target.value)}
-                      required
-                    />
-                  </label>
-                  <div className={styles.rowActions}>
-                    <button
-                      type="submit"
-                      className={styles.primaryButton}
-                      disabled={statusChange.isPending}
-                    >
-                      {t('APPOINTMENTS_CONFIRM_CHECK_IN')}
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.secondaryButton}
-                      onClick={() => setCheckInUuid('')}
-                    >
-                      {t('APPOINTMENTS_CANCEL')}
-                    </button>
+                                  ))}
+                                  {canReset &&
+                                    canResetAppointmentStatus(
+                                      transitionConfig.data,
+                                      appointment.status,
+                                    ) && (
+                                      <button
+                                        type="button"
+                                        className={styles.textButton}
+                                        disabled={statusChange.isPending}
+                                        onClick={() => {
+                                          if (
+                                            !window.confirm(
+                                              t('APPOINTMENTS_CONFIRM_RESET'),
+                                            )
+                                          )
+                                            return;
+                                          setActionMessage('');
+                                          statusChange.mutate({
+                                            uuid: appointment.uuid,
+                                            status: 'Scheduled',
+                                          });
+                                        }}
+                                        aria-label={`${t('APPOINTMENTS_RESET')}: ${appointment.patient.name}`}
+                                      >
+                                        {t('APPOINTMENTS_RESET')}
+                                      </button>
+                                    )}
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                </form>
-              )}
-            </section>
+                )}
+                {checkInAppointment && (
+                  <form className={styles.checkInForm} onSubmit={submitCheckIn}>
+                    <h3>{t('APPOINTMENTS_CHECK_IN')}</h3>
+                    <p>{checkInAppointment.patient.name}</p>
+                    <label>
+                      {t('APPOINTMENTS_CHECK_IN_TIME')}
+                      <input
+                        ref={checkInInput}
+                        type="time"
+                        value={checkInTime}
+                        onChange={(event) => setCheckInTime(event.target.value)}
+                        required
+                      />
+                    </label>
+                    <div className={styles.rowActions}>
+                      <button
+                        type="submit"
+                        className={styles.primaryButton}
+                        disabled={statusChange.isPending}
+                      >
+                        {t('APPOINTMENTS_CONFIRM_CHECK_IN')}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => setCheckInUuid('')}
+                      >
+                        {t('APPOINTMENTS_CANCEL')}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </section>
+            </>
           )}
         </main>
       }

@@ -37,15 +37,21 @@ const AppointmentUnavailabilityPage = lazy(() =>
 );
 
 export const routes: Routes = [
+  // Reception opens on the day's list; the weekly counts are one tab away.
   {
     path: '/',
-    component: IndexPage,
-    name: 'Index',
+    component: AppointmentListPage,
+    name: 'AppointmentList',
   },
   {
     path: '/list',
     component: AppointmentListPage,
-    name: 'AppointmentList',
+    name: 'AppointmentListAlias',
+  },
+  {
+    path: '/week',
+    component: IndexPage,
+    name: 'WeeklySummary',
   },
   {
     path: '/calendar',
