@@ -3,7 +3,6 @@ import { getFormattedPatientById, useTranslation } from '@bahmni/services';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { HomePageHeader } from '../HomePageHeader';
 import {
   DEFAULT_FILTERS,
   filterReferrals,
@@ -175,25 +174,22 @@ export const ReferralDirectoryPage = () => {
   };
 
   return (
-    <>
-      <HomePageHeader />
-      <main className={styles.page}>
-        <Link to="/home/">{t('HOME_LABEL')}</Link>
-        <h1>{t('REFERRAL_TITLE')}</h1>
-        <p>{t('REFERRAL_INTRO')}</p>
-        {usesSyntheticReferrals && (
-          <p className={styles.notice}>{t('REFERRAL_SYNTHETIC_NOTICE')}</p>
-        )}
-        {patient.data && (
-          <p className={styles.notice}>
-            {t('REFERRAL_FOR_PATIENT', {
-              name: patient.data.fullName,
-              id: patient.data.identifier,
-            })}
-          </p>
-        )}
-        {renderDirectory()}
-      </main>
-    </>
+    <main className={styles.page}>
+      <Link to="/home/">{t('HOME_LABEL')}</Link>
+      <h1>{t('REFERRAL_TITLE')}</h1>
+      <p>{t('REFERRAL_INTRO')}</p>
+      {usesSyntheticReferrals && (
+        <p className={styles.notice}>{t('REFERRAL_SYNTHETIC_NOTICE')}</p>
+      )}
+      {patient.data && (
+        <p className={styles.notice}>
+          {t('REFERRAL_FOR_PATIENT', {
+            name: patient.data.fullName,
+            id: patient.data.identifier,
+          })}
+        </p>
+      )}
+      {renderDirectory()}
+    </main>
   );
 };

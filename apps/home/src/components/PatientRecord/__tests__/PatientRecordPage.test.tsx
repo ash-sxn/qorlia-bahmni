@@ -7,13 +7,13 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { PatientRecordPage } from '../PatientRecordPage';
-import { getPatientLabResults, getPatientVisits } from '../recordService';
-
-jest.mock('../../HomePageHeader', () => ({
-  HomePageHeader: () => <div data-testid="home-page-header" />,
-}));
+import {
+  getPatientLabResults,
+  getPatientNotes,
+  getPatientVisits,
+} from '../recordService';
 
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
@@ -26,6 +26,7 @@ jest.mock('@bahmni/services', () => ({
 jest.mock('../recordService', () => ({
   getPatientVisits: jest.fn(),
   getPatientLabResults: jest.fn(),
+  getPatientNotes: jest.fn(),
 }));
 
 const mockPatient = getFormattedPatientById as jest.Mock;
@@ -34,6 +35,12 @@ const mockMedicines = getPatientMedications as jest.Mock;
 const mockAllergies = getFormattedAllergies as jest.Mock;
 const mockVisits = getPatientVisits as jest.Mock;
 const mockLabs = getPatientLabResults as jest.Mock;
+const mockNotes = getPatientNotes as jest.Mock;
+
+const Elsewhere = () => {
+  const location = useLocation();
+  return <p>{`Opened ${location.pathname}${location.search}`}</p>;
+};
 
 const renderPage = () =>
   render(
@@ -41,13 +48,30 @@ const renderPage = () =>
       <MemoryRouter initialEntries={['/records/patient-1']}>
         <Routes>
           <Route path="/records/:patientUuid" element={<PatientRecordPage />} />
+          <Route path="*" element={<Elsewhere />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
 
+const visit = (
+  uuid: string,
+  start: string,
+  stop: string | null,
+  type = 'OPD',
+) => ({
+  uuid,
+  startDatetime: start,
+  stopDatetime: stop,
+  visitType: { display: type },
+  location: { display: 'OPD-1' },
+});
+
+const history = () => within(screen.getByRole('region', { name: 'History' }));
+
 describe('PatientRecordPage', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     mockPatient.mockResolvedValue({
       fullName: 'Brijesh Mishra',
       identifier: 'ABC200042',
@@ -55,21 +79,15 @@ describe('PatientRecordPage', () => {
       birthDate: '1980-01-01',
     });
     mockVisits.mockResolvedValue([
-      {
-        uuid: 'open',
-        startDatetime: '2026-11-13T04:00:00.000Z',
-        stopDatetime: null,
-        visitType: { display: 'OPD' },
-        location: { display: 'OPD-1' },
-      },
-      {
-        uuid: 'old',
-        startDatetime: '2026-10-01T04:00:00.000Z',
-        stopDatetime: '2026-10-01T10:00:00.000Z',
-        visitType: { display: 'IPD' },
-        location: null,
-      },
+      visit('open', '2026-11-13T04:00:00.000Z', null),
+      visit(
+        'old',
+        '2026-10-01T04:00:00.000Z',
+        '2026-10-01T10:00:00.000Z',
+        'IPD',
+      ),
     ]);
+    mockNotes.mockResolvedValue([]);
     mockDiagnoses.mockResolvedValue([
       {
         id: 'd1',
@@ -84,8 +102,17 @@ describe('PatientRecordPage', () => {
         id: 'm1',
         name: 'Amlodipine 5 mg',
         frequency: 'Once a day',
+        status: 'active',
         orderDate: '2026-11-13T06:40:00.000Z',
         startDate: '2026-11-13T06:40:00.000Z',
+        orderedBy: '',
+      },
+      {
+        id: 'm2',
+        name: 'Paracetamol 650 mg',
+        status: 'completed',
+        orderDate: '2026-10-01T06:40:00.000Z',
+        startDate: '2026-10-01T06:40:00.000Z',
         orderedBy: '',
       },
     ]);
@@ -104,60 +131,152 @@ describe('PatientRecordPage', () => {
     ]);
   });
 
-  it('shows who the patient is, their active allergies and the totals', async () => {
+  it('shows who the patient is, their active allergies and the open visit', async () => {
     renderPage();
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Brijesh Mishra' }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/ABC200042 · M · \d+ years/)).toBeInTheDocument();
-    expect(await screen.findByText(/Penicillin/)).toBeInTheDocument();
-    expect(screen.queryByText(/Dust/)).not.toBeInTheDocument();
+    expect(screen.getByText(/\d+ years, M · ABC200042/)).toBeInTheDocument();
     expect(
-      await screen.findByText(
-        '2 visits, 1 diagnoses, 1 medicines, 1 lab results',
-      ),
+      await screen.findByText('Allergies: Penicillin'),
     ).toBeInTheDocument();
-    expect(mockVisits).toHaveBeenCalledWith('patient-1');
+    expect(screen.queryByText(/Dust/)).not.toBeInTheDocument();
+    expect(screen.getByText(/^OPD visit open since/)).toBeInTheDocument();
   });
 
-  it('groups the history by visit, newest first, and marks the open visit and abnormal results', async () => {
+  it('makes starting a consultation the main action', async () => {
     renderPage();
 
-    const visits = await screen.findAllByRole('region');
-    expect(visits).toHaveLength(2);
-
-    const open = within(visits[0]);
-    expect(open.getByRole('heading', { level: 2 })).toHaveTextContent(
-      /OPD · OPD-1/,
-    );
-    expect(open.getByText('Open visit')).toBeInTheDocument();
-    expect(open.getByText('Hypertension')).toBeInTheDocument();
-    expect(open.getByText('Confirmed, Dr. Neha Anand')).toBeInTheDocument();
-    expect(open.getByText('Amlodipine 5 mg')).toBeInTheDocument();
-
-    const old = within(visits[1]);
-    expect(old.getByRole('heading', { level: 2 })).toHaveTextContent(/IPD/);
-    expect(old.getByText('Haemoglobin')).toBeInTheDocument();
-    expect(old.getByText('9.5 g/dL')).toBeInTheDocument();
-    expect(old.getByText('Outside normal range')).toBeInTheDocument();
+    const starts = await screen.findAllByRole('link', {
+      name: 'Start consultation',
+    });
+    for (const link of starts) {
+      expect(link).toHaveAttribute('href', '/home/dictation?patient=patient-1');
+    }
   });
 
-  it('hides a kind when its filter is switched off', async () => {
+  it('opens a document for the patient from one menu', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create a document' }),
+    );
+    expect(
+      screen.getByRole('menuitem', { name: 'Insurance pre-authorisation' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: 'Treatment cost estimate' }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('menuitem', { name: 'Referral letter' }));
+
+    expect(
+      await screen.findByText('Opened /home/referrals?patient=patient-1'),
+    ).toBeInTheDocument();
+  });
+
+  it('sums up diagnoses, current medicines and recent lab results', async () => {
+    renderPage();
+
+    const glance = within(
+      await screen.findByRole('complementary', { name: 'At a glance' }),
+    );
+    expect(await glance.findByText('Hypertension')).toBeInTheDocument();
+    expect(glance.getByText('Amlodipine 5 mg')).toBeInTheDocument();
+    expect(glance.queryByText('Paracetamol 650 mg')).not.toBeInTheDocument();
+    expect(glance.getByText('Haemoglobin')).toBeInTheDocument();
+    expect(glance.getByText('Abnormal')).toBeInTheDocument();
+  });
+
+  it('groups the history by visit, newest first, and asks for a note in the open visit', async () => {
+    renderPage();
+
+    await screen.findByRole('heading', { level: 3, name: /OPD/ });
+    const visits = history().getAllByRole('heading', { level: 3 });
+    expect(visits[0]).toHaveTextContent('OPD');
+    expect(visits[1]).toHaveTextContent('IPD');
+    expect(history().getByText('Visit open')).toBeInTheDocument();
+    expect(
+      history().getByText('No consultation note yet for this visit.'),
+    ).toBeInTheDocument();
+    expect(history().getByText('Outside normal range')).toBeInTheDocument();
+    expect(history().getByText('9.5 g/dL')).toBeInTheDocument();
+  });
+
+  it('shows saved consultation notes in their visit', async () => {
+    mockNotes.mockResolvedValue([
+      {
+        uuid: 'n1',
+        value: 'Complaints: fever\n\nDiagnosis: Viral fever',
+        obsDatetime: '2026-11-13T05:00:00.000Z',
+        encounter: {
+          visit: { startDatetime: '2026-11-13T04:00:00.000Z' },
+          encounterProviders: [
+            { provider: { display: 'doctor - Neha Anand' } },
+          ],
+        },
+      },
+    ]);
+    renderPage();
+
+    await screen.findByRole('region', { name: 'History' });
+    expect(await history().findByText(/Complaints: fever/)).toBeInTheDocument();
+    expect(history().getByText('By Neha Anand')).toBeInTheDocument();
+    expect(
+      history().queryByText('No consultation note yet for this visit.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows one kind of entry at a time', async () => {
     const user = userEvent.setup();
     renderPage();
 
     const filters = within(
       await screen.findByRole('group', { name: 'Show in the record' }),
     );
-    const medicine = filters.getByRole('button', { name: 'Medicine' });
-    expect(medicine).toHaveAttribute('aria-pressed', 'true');
+    await history().findByText('Amlodipine 5 mg');
+    await user.click(filters.getByRole('button', { name: /^Medicines/ }));
 
-    await user.click(medicine);
+    expect(filters.getByRole('button', { name: /^Medicines/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(history().getByText('Amlodipine 5 mg')).toBeInTheDocument();
+    expect(history().queryByText('Hypertension')).not.toBeInTheDocument();
+  });
 
-    expect(medicine).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.queryByText('Amlodipine 5 mg')).not.toBeInTheDocument();
-    expect(screen.getByText('Hypertension')).toBeInTheDocument();
+  it('folds older visits away on screen', async () => {
+    const user = userEvent.setup();
+    mockVisits.mockResolvedValue(
+      Array.from({ length: 6 }, (_, index) =>
+        visit(
+          `v${index}`,
+          `2026-0${index + 1}-01T04:00:00.000Z`,
+          `2026-0${index + 1}-01T08:00:00.000Z`,
+        ),
+      ),
+    );
+    mockMedicines.mockResolvedValue([]);
+    mockLabs.mockResolvedValue([]);
+    mockDiagnoses.mockResolvedValue(
+      Array.from({ length: 6 }, (_, index) => ({
+        id: `d${index}`,
+        display: `Diagnosis ${index}`,
+        certainty: { display: 'Confirmed' },
+        recordedDate: `2026-0${index + 1}-01T05:00:00.000Z`,
+        recorder: 'Dr. Neha Anand',
+      })),
+    );
+    renderPage();
+
+    await screen.findAllByText('Diagnosis 5');
+    await user.click(
+      await screen.findByRole('button', { name: 'Show 2 older visits' }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Show recent visits only' }),
+    ).toBeInTheDocument();
   });
 
   it('prints the record', async () => {
@@ -166,7 +285,7 @@ describe('PatientRecordPage', () => {
     renderPage();
 
     await user.click(
-      await screen.findByRole('button', { name: 'Print record' }),
+      await screen.findByRole('button', { name: 'Print the record' }),
     );
 
     expect(print).toHaveBeenCalledTimes(1);
@@ -186,8 +305,8 @@ describe('PatientRecordPage', () => {
     expect(
       screen.getByText(/Allergies could not be loaded\./),
     ).toBeInTheDocument();
-    expect(screen.getByText('Hypertension')).toBeInTheDocument();
-    expect(screen.getByText('Haemoglobin')).toBeInTheDocument();
+    expect(history().getByText('Hypertension')).toBeInTheDocument();
+    expect(history().getByText('Haemoglobin')).toBeInTheDocument();
   });
 
   it('says so when nothing is recorded yet', async () => {
@@ -203,7 +322,7 @@ describe('PatientRecordPage', () => {
         'Nothing has been recorded for this patient yet.',
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/None recorded/)).toBeInTheDocument();
+    expect(screen.getByText('No allergies recorded')).toBeInTheDocument();
   });
 
   it('shows an error and a way back when the patient cannot be loaded', async () => {

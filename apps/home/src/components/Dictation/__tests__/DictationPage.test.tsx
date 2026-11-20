@@ -9,10 +9,6 @@ import { MemoryRouter } from 'react-router-dom';
 import { DictationPage } from '../DictationPage';
 import { saveNoteToRecord, SaveNoteError } from '../saveNote';
 
-jest.mock('../../HomePageHeader', () => ({
-  HomePageHeader: () => <div data-testid="home-page-header" />,
-}));
-
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   getFormattedPatientById: jest.fn(),
@@ -42,7 +38,7 @@ const dictate = async (text: string) => {
   const box = await screen.findByLabelText('Dictation');
   await user.click(box);
   await user.paste(text);
-  await user.click(screen.getByRole('button', { name: 'Make draft' }));
+  await user.click(screen.getByRole('button', { name: 'Turn into a note' }));
   return user;
 };
 
@@ -63,7 +59,7 @@ describe('DictationPage', () => {
     ]);
   });
 
-  it('says nothing goes into Bahmni until the doctor saves', async () => {
+  it('starts with nothing written and says the note is made on this computer', async () => {
     renderPage();
 
     expect(
@@ -72,12 +68,16 @@ describe('DictationPage', () => {
         name: 'Dictate note and prescription',
       }),
     ).toBeInTheDocument();
+    expect(screen.getByText('Nothing written yet')).toBeInTheDocument();
     expect(
-      screen.getByText(
-        /Nothing goes into Bahmni until you press Save, and then only the note/,
-      ),
+      screen.getByText(/made on this computer by fixed rules/),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Make draft' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Turn into a note' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Save to record' }),
+    ).toBeDisabled();
   });
 
   it('drafts the note and the prescription from the example', async () => {
@@ -87,7 +87,7 @@ describe('DictationPage', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Show an example' }),
     );
-    await user.click(screen.getByRole('button', { name: 'Make draft' }));
+    await user.click(screen.getByRole('button', { name: 'Turn into a note' }));
 
     expect(note().getByText('Brijesh Mishra')).toBeInTheDocument();
     expect(note().getByLabelText('Diagnosis')).toHaveValue(
@@ -169,9 +169,7 @@ describe('DictationPage', () => {
       'C/o fever\nDx: Viral fever\nRx\nTab Paracetamol 650 mg 1-0-1 x 5 days after food',
     );
 
-    await user.click(
-      screen.getByRole('button', { name: "Save note to the patient's record" }),
-    );
+    await user.click(screen.getByRole('button', { name: 'Save to record' }));
 
     expect(mockSave).toHaveBeenCalledWith(
       'patient-1',
@@ -182,26 +180,22 @@ describe('DictationPage', () => {
       ].join('\n\n'),
       undefined,
     );
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'as the consultation note in the open OPD visit',
-    );
+    expect(
+      await screen.findByText(/^Saved to the record at/),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/Medicines are saved as lines in the note/),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Save changes to the record' }),
-    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
 
     await user.type(
       note().getByLabelText('Advice, tests and follow-up'),
       'Plenty of fluids',
     );
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'You changed the note after saving',
-    );
-    await user.click(
-      screen.getByRole('button', { name: 'Save changes to the record' }),
-    );
+    expect(
+      screen.getByText('Changed since saving, not saved'),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(mockSave).toHaveBeenLastCalledWith(
       'patient-1',
       expect.stringContaining('Advice, tests and follow-up: Plenty of fluids'),
@@ -218,9 +212,7 @@ describe('DictationPage', () => {
     renderPage();
     const user = await dictate('C/o fever');
 
-    await user.click(
-      screen.getByRole('button', { name: "Save note to the patient's record" }),
-    );
+    await user.click(screen.getByRole('button', { name: 'Save to record' }));
 
     expect(
       await screen.findByText(/this patient has no open visit/),

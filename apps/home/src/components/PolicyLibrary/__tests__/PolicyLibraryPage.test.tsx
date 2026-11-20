@@ -5,10 +5,6 @@ import { syntheticPolicies } from '../__fixtures__/syntheticPolicies';
 import { loadPolicyCatalogue } from '../policyCatalogue';
 import { PolicyLibraryPage } from '../PolicyLibraryPage';
 
-jest.mock('../../HomePageHeader', () => ({
-  HomePageHeader: () => <div data-testid="home-page-header" />,
-}));
-
 jest.mock('../policyCatalogue', () => ({
   loadPolicyCatalogue: jest.fn(),
   usesSyntheticExamples: true,

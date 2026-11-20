@@ -5,10 +5,6 @@ import { loadCases } from '../caseCatalogue';
 import { CaseDetailPage } from '../CaseDetailPage';
 import { InsuranceCase } from '../types';
 
-jest.mock('../../HomePageHeader', () => ({
-  HomePageHeader: () => <div data-testid="home-page-header" />,
-}));
-
 jest.mock('../caseCatalogue', () => ({
   loadCases: jest.fn(),
   usesSyntheticCases: true,

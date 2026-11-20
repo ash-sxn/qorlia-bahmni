@@ -1,13 +1,5 @@
 import React from 'react';
-import { HomePageGrid } from '../HomePageGrid';
-import { HomePageHeader } from '../HomePageHeader';
-import styles from './styles/HomePage.module.scss';
+import { TodayPage } from '../Today';
 
-export const HomePage: React.FC = () => (
-  <>
-    <HomePageHeader />
-    <main className={styles.homePageBody}>
-      <HomePageGrid />
-    </main>
-  </>
-);
+/** Home is the Today page: each person lands on the work they do. */
+export const HomePage: React.FC = () => <TodayPage />;

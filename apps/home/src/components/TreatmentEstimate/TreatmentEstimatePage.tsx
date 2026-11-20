@@ -14,7 +14,6 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { HomePageHeader } from '../HomePageHeader';
 import { CostEstimateTable } from '../InsuranceDesk/CostEstimateTable';
 import styles from '../InsuranceDesk/InsuranceDesk.module.scss';
 import { COST_HEADS, totalEstimate } from '../InsuranceDesk/preauthEstimate';
@@ -66,15 +65,12 @@ export const TreatmentEstimatePage = () => {
   });
 
   const problem = (message: string) => (
-    <>
-      <HomePageHeader />
-      <main className={styles.page}>
-        <p role="alert" className={styles.warning}>
-          {message}
-        </p>
-        <Link to="/home/records">{t('ESTIMATE_FIND_PATIENT')}</Link>
-      </main>
-    </>
+    <main className={styles.page}>
+      <p role="alert" className={styles.warning}>
+        {message}
+      </p>
+      <Link to="/home/records">{t('ESTIMATE_FIND_PATIENT')}</Link>
+    </main>
   );
   if (patientUuid === '') {
     return problem(t('ESTIMATE_NO_PATIENT'));
@@ -132,83 +128,78 @@ export const TreatmentEstimatePage = () => {
     );
 
   return (
-    <>
+    <main className={styles.page}>
       <div className={styles.screenOnly}>
-        <HomePageHeader />
+        <Link to={`/home/records/${encodeURIComponent(patientUuid)}`}>
+          {t('PREAUTH_BACK')}
+        </Link>
+        <p className={styles.notice}>{t('ESTIMATE_NOT_SAVED')}</p>
       </div>
-      <main className={styles.page}>
-        <div className={styles.screenOnly}>
-          <Link to={`/home/records/${encodeURIComponent(patientUuid)}`}>
-            {t('PREAUTH_BACK')}
-          </Link>
-          <p className={styles.notice}>{t('ESTIMATE_NOT_SAVED')}</p>
-        </div>
 
-        <article className={styles.worksheet} aria-labelledby="estimate-title">
-          <h1 id="estimate-title">{t('ESTIMATE_TITLE')}</h1>
-          <p>{today.format(new Date())}</p>
+      <article className={styles.worksheet} aria-labelledby="estimate-title">
+        <h1 id="estimate-title">{t('ESTIMATE_TITLE')}</h1>
+        <p>{today.format(new Date())}</p>
 
-          <section>
-            <h2>{t('PREAUTH_PATIENT')}</h2>
-            <p>
-              <strong>{patient.data.fullName}</strong>
-              <br />
-              {[
-                patient.data.identifier,
-                patient.data.gender,
-                age && t('PATIENT_RECORD_AGE_YEARS', { count: age.years }),
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </p>
-            <div className={styles.screenOnly}>
-              <Checkbox
-                id="estimate-international"
-                labelText={t('ESTIMATE_INTERNATIONAL')}
-                checked={international}
-                onChange={(_, { checked }) => setInternational(checked)}
-              />
-            </div>
-          </section>
-
-          <section>
-            <h2>{t('ESTIMATE_PLAN')}</h2>
-            <div className={`${styles.formGrid} ${styles.screenOnly}`}>
-              {international &&
-                TRAVEL_FIELDS.map((key) => renderInput(key, false))}
-              {FIELDS.map(({ key, long }) => renderInput(key, long))}
-            </div>
-            <dl className={`${styles.facts} ${styles.printOnly}`}>
-              {shownKeys.map((key) => (
-                <div key={key} className={styles.printRow}>
-                  <dt>{label(key)}</dt>
-                  <dd>{fields[key]}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-
-          <section>
-            <h2>{t('PREAUTH_ESTIMATE')}</h2>
-            <CostEstimateTable amounts={amounts} onChange={setAmounts} />
-          </section>
-
-          <p className={styles.footnote}>{t('ESTIMATE_FOOTNOTE')}</p>
-          <p className={styles.signatures}>
-            <span>{t('PREAUTH_SIGN_DOCTOR')}</span>
-            <span>{t('ESTIMATE_SIGN_HOSPITAL')}</span>
+        <section>
+          <h2>{t('PREAUTH_PATIENT')}</h2>
+          <p>
+            <strong>{patient.data.fullName}</strong>
+            <br />
+            {[
+              patient.data.identifier,
+              patient.data.gender,
+              age && t('PATIENT_RECORD_AGE_YEARS', { count: age.years }),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </p>
-        </article>
+          <div className={styles.screenOnly}>
+            <Checkbox
+              id="estimate-international"
+              labelText={t('ESTIMATE_INTERNATIONAL')}
+              checked={international}
+              onChange={(_, { checked }) => setInternational(checked)}
+            />
+          </div>
+        </section>
 
-        <div className={styles.screenOnly}>
-          <Button
-            disabled={totalEstimate(amounts) === null}
-            onClick={() => window.print()}
-          >
-            {t('ESTIMATE_PRINT')}
-          </Button>
-        </div>
-      </main>
-    </>
+        <section>
+          <h2>{t('ESTIMATE_PLAN')}</h2>
+          <div className={`${styles.formGrid} ${styles.screenOnly}`}>
+            {international &&
+              TRAVEL_FIELDS.map((key) => renderInput(key, false))}
+            {FIELDS.map(({ key, long }) => renderInput(key, long))}
+          </div>
+          <dl className={`${styles.facts} ${styles.printOnly}`}>
+            {shownKeys.map((key) => (
+              <div key={key} className={styles.printRow}>
+                <dt>{label(key)}</dt>
+                <dd>{fields[key]}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
+        <section>
+          <h2>{t('PREAUTH_ESTIMATE')}</h2>
+          <CostEstimateTable amounts={amounts} onChange={setAmounts} />
+        </section>
+
+        <p className={styles.footnote}>{t('ESTIMATE_FOOTNOTE')}</p>
+        <p className={styles.signatures}>
+          <span>{t('PREAUTH_SIGN_DOCTOR')}</span>
+          <span>{t('ESTIMATE_SIGN_HOSPITAL')}</span>
+        </p>
+      </article>
+
+      <div className={styles.screenOnly}>
+        <Button
+          disabled={totalEstimate(amounts) === null}
+          onClick={() => window.print()}
+        >
+          {t('ESTIMATE_PRINT')}
+        </Button>
+      </div>
+    </main>
   );
 };

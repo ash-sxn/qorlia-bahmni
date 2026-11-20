@@ -260,6 +260,11 @@ describe('filterGroups and countByKind', () => {
   });
 
   it('counts the entries of each kind', () => {
-    expect(countByKind(entries)).toEqual({ diagnosis: 1, medicine: 1, lab: 1 });
+    expect(countByKind(entries)).toEqual({
+      note: 0,
+      diagnosis: 1,
+      medicine: 1,
+      lab: 1,
+    });
   });
 });

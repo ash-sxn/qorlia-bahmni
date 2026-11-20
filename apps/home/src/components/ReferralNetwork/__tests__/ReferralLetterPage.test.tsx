@@ -12,10 +12,6 @@ import { syntheticReferrals } from '../__fixtures__/syntheticReferrals';
 import { loadDirectory } from '../referralDirectory';
 import { ReferralLetterPage } from '../ReferralLetterPage';
 
-jest.mock('../../HomePageHeader', () => ({
-  HomePageHeader: () => <div data-testid="home-page-header" />,
-}));
-
 jest.mock('@bahmni/services', () => ({
   ...jest.requireActual('@bahmni/services'),
   getFormattedPatientById: jest.fn(),

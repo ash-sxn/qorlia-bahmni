@@ -17,7 +17,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: $text-on-color;
+  // The Qorlia header is light, so the greeting uses the ink colour.
+  color: var(--qorlia-ink, #202321);
 }
 
 // HeaderGlobalAction is an icon-only 48x48 button by default. Override it so the
@@ -41,9 +42,9 @@
 }
 
 // Carbon's `.cds--btn.cds--btn--icon-only.cds--header__action svg` (0,3,1) forces
-// a dark icon; out-specify it so the avatar is white like the header text.
+// a dark icon; out-specify it so the avatar takes the brand colour on the light header.
 .userAction:global(.cds--btn.cds--btn--icon-only.cds--header__action) svg {
-  fill: $icon-on-color;
+  fill: var(--qorlia-primary, #1f5238);
 }
 
 // Icon-only buttons render the aria-label as a hover tooltip; we already show a
@@ -67,13 +68,13 @@
   outline: 2px solid $focus;
   outline-offset: -2px;
   // Match the hover highlight so keyboard focus is clearly visible.
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color: #edf3ee;
 }
 
 // Keep the trigger highlighted while its menu is open (isActive), matching the
 // hover style — without Carbon's active-state white background / side borders.
 .userAction:global(.cds--header__action--active) {
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color: #edf3ee;
   border-color: transparent;
 }
 

@@ -2,7 +2,6 @@ import { Tag } from '@bahmni/design-system';
 import { useTranslation } from '@bahmni/services';
 import { ReactNode, useMemo } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { HomePageHeader } from '../HomePageHeader';
 import { formatPolicyDate } from './formatPolicyDate';
 import { loadPolicyCatalogue, usesSyntheticExamples } from './policyCatalogue';
 import styles from './PolicyLibrary.module.scss';
@@ -109,14 +108,11 @@ export const PolicyDetailPage = () => {
   };
 
   return (
-    <>
-      <HomePageHeader />
-      <main className={styles.page}>
-        <Link to={`${LIBRARY_PATH}${getLibrarySearch(location.state)}`}>
-          {t('POLICY_LIBRARY_BACK')}
-        </Link>
-        {renderContent()}
-      </main>
-    </>
+    <main className={styles.page}>
+      <Link to={`${LIBRARY_PATH}${getLibrarySearch(location.state)}`}>
+        {t('POLICY_LIBRARY_BACK')}
+      </Link>
+      {renderContent()}
+    </main>
   );
 };
