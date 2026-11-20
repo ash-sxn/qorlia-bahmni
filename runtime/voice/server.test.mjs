@@ -6,7 +6,13 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, beforeEach, describe, it } from "node:test";
-import { createVoiceHandler, readConfig, sessionCookie } from "./server.mjs";
+import { writeFile } from "node:fs/promises";
+import {
+  createVoiceHandler,
+  readConfig,
+  sessionCookie,
+  TIDY_PROMPT,
+} from "./server.mjs";
 
 const SESSION = "abc123";
 const doctor = {
@@ -26,6 +32,7 @@ let scriptBase;
 let calls;
 let sessionReply;
 let sttReply;
+let chatReply;
 let config;
 let logs;
 
@@ -34,6 +41,7 @@ const fakeFetch = async (url, options = {}) => {
   if (url.includes("/openmrs/ws/rest/v1/session")) {
     return new Response(JSON.stringify(sessionReply), { status: 200 });
   }
+  if (url.includes("chat/completions")) return chatReply();
   return sttReply();
 };
 
@@ -70,13 +78,14 @@ const call = (
     },
   });
 
-const agree = () =>
+const agree = (scope) =>
   call("/consent", {
     method: "POST",
     body: JSON.stringify({
       version: config.consentVersion,
       accepted: true,
       app: "legacy",
+      ...(scope ? { scope } : {}),
     }),
     headers: { "Content-Type": "application/json" },
   });
@@ -102,6 +111,21 @@ beforeEach(async () => {
   sttReply = () =>
     new Response(
       JSON.stringify({ transcript: " Paracetamol 650 mg twice a day " }),
+      { status: 200 },
+    );
+  chatReply = () =>
+    new Response(
+      JSON.stringify({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              content:
+                "C/o: Fever for 3 days\nRx\nTab Paracetamol 650 mg SOS\nUnclear: <none>",
+            },
+          },
+        ],
+      }),
       { status: 200 },
     );
   await start();
@@ -290,6 +314,72 @@ describe("voice relay", () => {
     await agree();
     assert.equal((await audio()).status, 503);
     assert.equal((await (await call("/config")).json()).enabled, false);
+  });
+
+  it("asks for a separate agreement before sending text to be tidied", async () => {
+    const tidy = (text = "teen din se bukhar, paracetamol 650 jab bukhar ho") =>
+      call("/tidy", {
+        method: "POST",
+        body: JSON.stringify({ text }),
+        headers: { "Content-Type": "application/json" },
+      });
+    await agree();
+    let body = await (await call("/config")).json();
+    assert.equal(body.tidy, true);
+    assert.equal(body.consented, true);
+    assert.equal(body.tidyConsented, false);
+    assert.equal((await tidy()).status, 428);
+    assert.equal(
+      calls.some(({ url }) => url.includes("chat/completions")),
+      false,
+    );
+
+    assert.equal((await agree("tidy")).status, 204);
+    body = await (await call("/config")).json();
+    assert.equal(body.tidyConsented, true);
+    const response = await tidy();
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      text: "C/o: Fever for 3 days\nRx\nTab Paracetamol 650 mg SOS",
+    });
+    const sent = calls.find(({ url }) => url.includes("chat/completions"));
+    const request = JSON.parse(sent.options.body);
+    assert.equal(sent.options.headers["api-subscription-key"], "test-key");
+    assert.equal(request.model, "sarvam-105b-conversations");
+    assert.equal(request.temperature, 0);
+    assert.equal(request.messages[0].content, TIDY_PROMPT);
+    assert.equal(
+      request.messages[1].content,
+      "teen din se bukhar, paracetamol 650 jab bukhar ho",
+    );
+    assert.equal(JSON.stringify(logs).includes("bukhar"), false);
+    assert.equal(JSON.stringify(logs).includes("Paracetamol"), false);
+
+    chatReply = () =>
+      new Response(
+        JSON.stringify({
+          choices: [{ finish_reason: "length", message: { content: "C/o" } }],
+        }),
+        { status: 200 },
+      );
+    assert.equal((await tidy()).status, 502);
+    assert.equal((await tidy("")).status, 400);
+    await start({ consentLog: config.consentLog, maxTidyChars: 5 });
+    assert.equal((await tidy()).status, 413);
+    await start({ consentLog: config.consentLog, tidyEnabled: false });
+    assert.equal((await (await call("/config")).json()).tidy, false);
+    assert.equal((await tidy()).status, 503);
+  });
+
+  it("treats acceptances logged before tidying existed as voice only", async () => {
+    await writeFile(
+      config.consentLog,
+      `${JSON.stringify({ user: "dr_test", version: config.consentVersion, accepted: true })}\n`,
+    );
+    await start({ consentLog: config.consentLog });
+    const body = await (await call("/config")).json();
+    assert.equal(body.consented, true);
+    assert.equal(body.tidyConsented, false);
   });
 
   it("serves the classic-screen script", async () => {

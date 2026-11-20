@@ -20,6 +20,8 @@ Audio and text are never written to disk or to the log. The log has one line per
 | `sarvam` (default) | [Sarvam AI speech-to-text](https://docs.sarvam.ai/api-reference-docs/speech-to-text/transcribe). English uses `saaras:v4` with a list of common medicine names as key terms. Hindi or Hinglish uses `saaras:v3` in `codemix` mode, so English medicine names stay in Latin letters. |
 | `http`             | Any self-hosted model that accepts the same multipart request (`file`, `language_code`) at `LOCAL_STT_URL` and answers `{ "transcript": "..." }`. Use this to move to a model on the hospital's own server. The notice then says audio stays on the hospital's server.              |
 
+**Tidy with AI** (new interface only): the doctor can press _Tidy with AI_ to send the dictation text to Sarvam's chat model (`TIDY_MODEL`, default `sarvam-105b-conversations`), which rewrites it as the shorthand the dictation page already reads (`TIDY_PROMPT` in `server.mjs`). The page then makes the draft with its own fixed rules and marks every part of a medicine line that is not in what the doctor said. Tidying has its own notice and acceptance (`scope: "tidy"` in `CONSENT_LOG`), separate from voice. `TIDY_ENABLED=false` switches it off. Only the length of the text is logged.
+
 Sarvam keeps API data until a workspace owner sets a retention period. Before real use, set **Settings, Workspace, Data policy, Product overrides, Model APIs: No retention** in the Sarvam dashboard.
 
 ## Configuration
@@ -37,6 +39,9 @@ Sarvam keeps API data until a workspace owner sets a retention period. Before re
 | `REQUIRED_PRIVILEGE` | `app:clinical`                      | OpenMRS privilege needed to dictate                                         |
 | `REQUESTS_PER_HOUR`  | `240`                               | Recordings per user per hour (each is a phrase of up to 25 seconds)         |
 | `MAX_AUDIO_BYTES`    | `3000000`                           | Largest single recording                                                    |
+| `TIDY_ENABLED`       | `true`                              | `false` hides Tidy with AI; it also needs `SARVAM_API_KEY`                  |
+| `TIDY_MODEL`         | `sarvam-105b-conversations`         | Sarvam chat model used to tidy                                              |
+| `MAX_TIDY_CHARS`     | `6000`                              | Longest dictation text that can be tidied                                   |
 
 ## Running it next to Bahmni (Docker Compose)
 

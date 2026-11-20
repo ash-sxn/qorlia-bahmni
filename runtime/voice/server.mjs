@@ -73,6 +73,30 @@ export const DEFAULT_KEYTERMS = [
   "after food",
 ];
 
+/**
+ * Instructions for tidying a dictation into the shorthand the dictation page reads.
+ * The page parses the result with its own fixed rules and checks every medicine line
+ * against what the doctor said, so the model only rewrites, it never decides.
+ */
+export const TIDY_PROMPT = `You tidy a doctor's dictated or typed consultation (English, Hindi or Hinglish, often from speech recognition) into standard OPD shorthand, in English. Output only the shorthand, in exactly this layout, leaving out any heading the doctor said nothing for:
+C/o: <complaints>
+O/E: <examination findings and vitals>
+Dx: <diagnosis>
+Rx
+<one medicine per line: form, name, strength with unit, dose pattern like 1-0-1 or a frequency (OD, BD, TDS, QID, HS, SOS, STAT), "x <n> days|weeks|months", and "after food", "before food" or "empty stomach">
+Adv: <advice, tests and follow-up>
+Unclear: <anything you could not understand, word for word>
+
+Rules:
+- Use only what the doctor said. Never add or change a symptom, finding, diagnosis, medicine, strength, dose, frequency, duration or advice. If a part of a medicine was not said, leave it out of that line.
+- Write Dx only if the doctor named a diagnosis. Never work one out from complaints, readings or medicines.
+- A strength, dose, frequency, duration or food timing belongs only to the medicine it was said with. Never copy it to another medicine.
+- Translate Hindi into short clinical English. Keep every number exactly as said.
+- Write medicine names in Latin letters as said; correct only an obvious misspelling of a well-known medicine.
+- "jab bukhar ho", "if needed", "zarurat padne par" is SOS. "subah shaam" is 1-0-1. "din mein teen baar" is TDS. "raat ko" alone is HS.
+- If you are unsure whether something is a medicine or what was meant, put it under Unclear instead of guessing. Leave out the Unclear line when everything was clear.
+- Never write the patient's name, phone number or ID numbers.`;
+
 /** Languages the doctor can choose, and how each is sent to Sarvam. */
 export const LANGUAGES = {
   "en-IN": { label: "English", model: "saaras:v4", keyterms: true },
@@ -88,6 +112,12 @@ export const readConfig = (env = process.env) => ({
   backend: env.STT_BACKEND ?? "sarvam",
   sarvamUrl: env.SARVAM_URL ?? "https://api.sarvam.ai/speech-to-text",
   sarvamKey: env.SARVAM_API_KEY ?? "",
+  sarvamChatUrl:
+    env.SARVAM_CHAT_URL ?? "https://api.sarvam.ai/v1/chat/completions",
+  // Tidying sends the dictation text to Sarvam's chat model; off unless a key is set.
+  tidyEnabled: env.TIDY_ENABLED !== "false",
+  tidyModel: env.TIDY_MODEL ?? "sarvam-105b-conversations",
+  maxTidyChars: Number(env.MAX_TIDY_CHARS ?? 6000),
   localUrl: env.LOCAL_STT_URL ?? "",
   consentVersion: env.CONSENT_VERSION ?? "2026-11-17",
   consentLog: env.CONSENT_LOG ?? "/var/lib/qorlia-voice/consent.log",
@@ -155,7 +185,7 @@ export const createVoiceHandler = (config, deps = {}) => {
   const log = deps.log ?? ((line) => console.log(JSON.stringify(line)));
   const sessions = new Map(); // hashed session id -> { user, expires }
   const usage = new Map(); // username -> request times in the last hour
-  const consented = new Set(); // `${version}:${username}`
+  const consented = new Set(); // `${scope}:${version}:${username}`
   let consentLoaded = null;
 
   const loadConsent = () => {
@@ -165,7 +195,11 @@ export const createVoiceHandler = (config, deps = {}) => {
           if (!line.trim()) continue;
           try {
             const entry = JSON.parse(line);
-            if (entry.accepted) consented.add(`${entry.version}:${entry.user}`);
+            // Entries from before tidying existed have no scope and cover voice only.
+            if (entry.accepted)
+              consented.add(
+                `${entry.scope ?? "voice"}:${entry.version}:${entry.user}`,
+              );
           } catch {
             // A damaged line is skipped; the user is simply asked again.
           }
@@ -211,6 +245,11 @@ export const createVoiceHandler = (config, deps = {}) => {
     }
     if (host !== req.headers.host) throw new HttpError(403, "wrong_origin");
   };
+
+  const hasConsent = (scope, username) =>
+    consented.has(`${scope}:${config.consentVersion}:${username}`);
+  const tidyOn = () =>
+    config.enabled && config.tidyEnabled && Boolean(config.sarvamKey);
 
   const takeQuota = (username) => {
     const hourAgo = now() - 3_600_000;
@@ -277,6 +316,49 @@ export const createVoiceHandler = (config, deps = {}) => {
       : "";
   };
 
+  /** Rewrites the dictation as shorthand with Sarvam's chat model. */
+  const tidy = async (dictation) => {
+    let response;
+    try {
+      response = await fetchFn(config.sarvamChatUrl, {
+        method: "POST",
+        headers: {
+          "api-subscription-key": config.sarvamKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: config.tidyModel,
+          temperature: 0,
+          max_tokens: 1000,
+          messages: [
+            { role: "system", content: TIDY_PROMPT },
+            { role: "user", content: dictation },
+          ],
+        }),
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch {
+      throw new HttpError(502, "service_unreachable");
+    }
+    if (response.status === 429 || response.status === 503) {
+      throw new HttpError(503, "service_busy");
+    }
+    if (!response.ok) throw new HttpError(502, `service_${response.status}`);
+    const result = await response.json();
+    const choice = result.choices?.[0];
+    const content = choice?.message?.content;
+    if (choice?.finish_reason !== "stop" || typeof content !== "string") {
+      throw new HttpError(502, "service_incomplete");
+    }
+    return content
+      .replace(/^```[a-z]*\n?|```$/gim, "")
+      .split("\n")
+      .map((line) => line.trimEnd())
+      .filter((line) => !/^unclear:\s*(<?none>?|nothing|-)?\.?\s*$/i.test(line))
+      .join("\n")
+      .trim();
+  };
+
   const routes = {
     "GET /health": async (req, res) =>
       json(res, 200, {
@@ -300,7 +382,14 @@ export const createVoiceHandler = (config, deps = {}) => {
       json(res, 200, {
         enabled: config.enabled,
         consentVersion: config.consentVersion,
-        consented: consented.has(`${config.consentVersion}:${user.username}`),
+        consented: hasConsent("voice", user.username),
+        tidy: tidyOn(),
+        tidyConsented: hasConsent("tidy", user.username),
+        tidyService: {
+          name: config.serviceName,
+          country: config.serviceCountry,
+          policyUrl: config.servicePolicyUrl,
+        },
         service: {
           name: config.backend === "sarvam" ? config.serviceName : "Qorlia",
           country: config.serviceCountry,
@@ -323,13 +412,14 @@ export const createVoiceHandler = (config, deps = {}) => {
         throw new HttpError(400, "wrong_version");
       }
       const app = body.app === "legacy" ? "legacy" : "new";
+      const scope = body.scope === "tidy" ? "tidy" : "voice";
       await mkdir(dirname(config.consentLog), { recursive: true });
       await appendFile(
         config.consentLog,
-        `${JSON.stringify({ time: new Date(now()).toISOString(), user: user.username, version: config.consentVersion, app, accepted: true })}\n`,
+        `${JSON.stringify({ time: new Date(now()).toISOString(), user: user.username, version: config.consentVersion, scope, app, accepted: true })}\n`,
       );
       await loadConsent();
-      consented.add(`${config.consentVersion}:${user.username}`);
+      consented.add(`${scope}:${config.consentVersion}:${user.username}`);
       json(res, 204);
     },
 
@@ -338,7 +428,7 @@ export const createVoiceHandler = (config, deps = {}) => {
       if (!config.enabled) throw new HttpError(503, "switched_off");
       const user = await whoIs(req);
       await loadConsent();
-      if (!consented.has(`${config.consentVersion}:${user.username}`)) {
+      if (!hasConsent("voice", user.username)) {
         throw new HttpError(428, "consent_needed");
       }
       const language = url.searchParams.get("lang") ?? "en-IN";
@@ -360,6 +450,41 @@ export const createVoiceHandler = (config, deps = {}) => {
         language,
         bytes: audio.length,
         ms: now() - started,
+        chars: text.length,
+      });
+      json(res, 200, { text });
+    },
+
+    "POST /tidy": async (req, res) => {
+      checkOrigin(req);
+      if (!tidyOn()) throw new HttpError(503, "switched_off");
+      const user = await whoIs(req);
+      await loadConsent();
+      if (!hasConsent("tidy", user.username)) {
+        throw new HttpError(428, "consent_needed");
+      }
+      let body;
+      try {
+        body = JSON.parse(
+          (await readBody(req, config.maxTidyChars * 4 + 200)).toString(),
+        );
+      } catch (error) {
+        if (error instanceof HttpError) throw error;
+        throw new HttpError(400, "bad_request");
+      }
+      const dictation = typeof body.text === "string" ? body.text.trim() : "";
+      if (!dictation) throw new HttpError(400, "empty");
+      if (dictation.length > config.maxTidyChars) {
+        throw new HttpError(413, "too_large");
+      }
+      takeQuota(user.username);
+      const started = now();
+      const text = await tidy(dictation);
+      log({
+        event: "tidied",
+        user: user.username,
+        ms: now() - started,
+        charsIn: dictation.length,
         chars: text.length,
       });
       json(res, 200, { text });
