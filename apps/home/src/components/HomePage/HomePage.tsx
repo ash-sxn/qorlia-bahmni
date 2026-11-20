@@ -9,10 +9,11 @@ import { TodayPage } from '../Today';
  */
 export const HomePage: React.FC = () => {
   const { loading, privilegeNames } = useShellNavigation();
+  // The router's base is /bahmni-v2, so home's own pages carry the /home prefix.
   // Wait for the permissions, so nobody sees Today flash before their own page.
   if (loading) return null;
   const landing = landingFor(privilegeNames);
-  if (landing === 'wards') return <Navigate to="/wards" replace />;
-  if (landing === 'overview') return <Navigate to="/overview" replace />;
+  if (landing === 'wards') return <Navigate to="/home/wards" replace />;
+  if (landing === 'overview') return <Navigate to="/home/overview" replace />;
   return <TodayPage />;
 };

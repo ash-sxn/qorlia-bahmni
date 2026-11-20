@@ -193,6 +193,29 @@ describe('medicationRequestService', () => {
       expect(medication.instructions).toBe('As directed');
     });
 
+    it('turns the numeric dates older servers send into ISO dates', async () => {
+      (get as jest.Mock)
+        .mockRejectedValueOnce(
+          Object.assign(new Error('Server error'), { status: 500 }),
+        )
+        .mockResolvedValueOnce([
+          {
+            uuid: 'legacy-order-3',
+            drug: { name: 'Ceftriaxone 1 g', uuid: 'drug-3' },
+            dosingInstructions: { dose: 1000, doseUnits: 'mg' },
+            effectiveStartDate: Date.UTC(2026, 10, 20, 11, 0),
+            dateActivated: Date.UTC(2026, 10, 20, 10, 55),
+            dateStopped: null,
+          },
+        ]);
+
+      const [medication] = await getPatientMedications(patientUUID);
+
+      expect(medication.startDate).toBe('2026-11-20T11:00:00.000Z');
+      expect(medication.orderDate).toBe('2026-11-20T10:55:00.000Z');
+      expect(medication.dateStopped).toBeUndefined();
+    });
+
     it('does not hide authorization errors behind the legacy fallback', async () => {
       const error = Object.assign(new Error('Forbidden'), { status: 403 });
       (get as jest.Mock).mockRejectedValueOnce(error);

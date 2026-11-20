@@ -22,8 +22,8 @@ const renderAt = (privilegeNames: string[], loading = false) => {
     <MemoryRouter initialEntries={['/']}>
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/wards" element={<p>Wards page</p>} />
-        <Route path="/overview" element={<p>Overview page</p>} />
+        <Route path="/home/wards" element={<p>Wards page</p>} />
+        <Route path="/home/overview" element={<p>Overview page</p>} />
       </Routes>
     </MemoryRouter>,
   );
