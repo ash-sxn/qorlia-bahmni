@@ -1,8 +1,9 @@
-import { Dropdown, Search, Tag } from '@bahmni/design-system';
-import { getFormattedPatientById, useTranslation } from '@bahmni/services';
-import { useQuery } from '@tanstack/react-query';
+import { Dropdown, PatientBanner, Search, Tag } from '@bahmni/design-system';
+import { useTranslation } from '@bahmni/services';
 import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { ButtonLink } from '../common/ButtonLink';
+import { usePatientBanner } from '../common/usePatientBanner';
 import {
   DEFAULT_FILTERS,
   filterReferrals,
@@ -31,14 +32,8 @@ export const ReferralDirectoryPage = () => {
   const patientUuid = searchParams.get('patient') ?? '';
   const directory = useMemo(() => loadDirectory(), []);
   const [filters, setFilters] = useState<ReferralFilters>(DEFAULT_FILTERS);
-  const patient = useQuery({
-    queryKey: ['referral-network', 'patient', patientUuid],
-    queryFn: () => getFormattedPatientById(patientUuid),
-    enabled: patientUuid !== '',
-    retry: false,
-    refetchOnWindowFocus: false,
-  });
 
+  const banner = usePatientBanner(patientUuid);
   const letterLink = (entry: ReferralEntry) =>
     `/home/referrals/${entry.id}/letter${patientUuid ? `?patient=${encodeURIComponent(patientUuid)}` : ''}`;
 
@@ -99,7 +94,13 @@ export const ReferralDirectoryPage = () => {
           by: entry.verifiedBy,
         })}
       </p>
-      <Link to={letterLink(entry)}>{t('REFERRAL_WRITE_LETTER')}</Link>
+      <ButtonLink
+        kind={patientUuid ? 'primary' : 'tertiary'}
+        size="md"
+        to={letterLink(entry)}
+      >
+        {t('REFERRAL_WRITE_LETTER')}
+      </ButtonLink>
     </li>
   );
 
@@ -174,22 +175,20 @@ export const ReferralDirectoryPage = () => {
   };
 
   return (
-    <main className={styles.page}>
-      <Link to="/home/">{t('HOME_LABEL')}</Link>
-      <h1>{t('REFERRAL_TITLE')}</h1>
-      <p>{t('REFERRAL_INTRO')}</p>
-      {usesSyntheticReferrals && (
-        <p className={styles.notice}>{t('REFERRAL_SYNTHETIC_NOTICE')}</p>
-      )}
-      {patient.data && (
-        <p className={styles.notice}>
-          {t('REFERRAL_FOR_PATIENT', {
-            name: patient.data.fullName,
-            id: patient.data.identifier,
-          })}
+    <>
+      {banner && <PatientBanner {...banner} />}
+      <main className={styles.page}>
+        <h1 className={styles.title}>
+          {patientUuid ? t('REFERRAL_CHOOSE_TITLE') : t('REFERRAL_TITLE')}
+        </h1>
+        <p className={styles.lead}>
+          {patientUuid ? t('REFERRAL_CHOOSE_LEAD') : t('REFERRAL_INTRO')}
         </p>
-      )}
-      {renderDirectory()}
-    </main>
+        {usesSyntheticReferrals && (
+          <p className={styles.notice}>{t('REFERRAL_SYNTHETIC_NOTICE')}</p>
+        )}
+        {renderDirectory()}
+      </main>
+    </>
   );
 };

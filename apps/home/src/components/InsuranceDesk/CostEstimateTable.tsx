@@ -11,7 +11,8 @@ import {
 
 interface CostEstimateTableProps {
   amounts: Readonly<Record<CostHead, string>>;
-  onChange: (amounts: Record<CostHead, string>) => void;
+  /** Left out for the printed preview, which shows the amounts only. */
+  onChange?: (amounts: Record<CostHead, string>) => void;
 }
 
 /**
@@ -33,12 +34,16 @@ export const CostEstimateTable = ({
           return (
             <tr key={head}>
               <th scope="row">
-                <label htmlFor={`cost-${head}`}>
-                  {t(`PREAUTH_COST_${head.toUpperCase()}`)}
-                </label>
+                {onChange ? (
+                  <label htmlFor={`cost-${head}`}>
+                    {t(`PREAUTH_COST_${head.toUpperCase()}`)}
+                  </label>
+                ) : (
+                  t(`PREAUTH_COST_${head.toUpperCase()}`)
+                )}
               </th>
               <td>
-                <span className={styles.screenOnly}>
+                {onChange ? (
                   <TextInput
                     id={`cost-${head}`}
                     labelText=""
@@ -51,10 +56,9 @@ export const CostEstimateTable = ({
                       onChange({ ...amounts, [head]: event.target.value })
                     }
                   />
-                </span>
-                <span className={styles.printOnly}>
-                  {formatRupees(parseRupees(amounts[head]) ?? 0)}
-                </span>
+                ) : (
+                  formatRupees(parseRupees(amounts[head]) ?? 0)
+                )}
               </td>
             </tr>
           );
@@ -64,7 +68,7 @@ export const CostEstimateTable = ({
         <tr>
           <th scope="row">{t('PREAUTH_TOTAL')}</th>
           <td>
-            <output aria-label={t('PREAUTH_TOTAL')}>
+            <output aria-label={onChange ? t('PREAUTH_TOTAL') : undefined}>
               {total === null
                 ? t('PREAUTH_TOTAL_INVALID')
                 : formatRupees(total)}
