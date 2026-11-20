@@ -8,7 +8,13 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useUserPrivilege } from '../userPrivileges/useUserPrivilege';
-import { CORE_MODULES, ShellNavItem, toNavItems } from './navigation';
+import {
+  CORE_MODULES,
+  landingFor,
+  ShellNavItem,
+  TODAY_ID,
+  toNavItems,
+} from './navigation';
 
 const HOME_EXTENSION_POINT = 'org.bahmni.home.dashboard';
 
@@ -34,8 +40,14 @@ export const useShellNavigation = (
 
   const items = useMemo<ShellNavItem[]>(() => {
     if (privilegeNames === null) return [];
+    // Today is the queue and the front desk; ward and report staff land elsewhere.
+    const landing = landingFor(privilegeNames);
+    const core = CORE_MODULES.filter(
+      ({ id }) =>
+        id !== TODAY_ID || landing === 'today' || landing === 'frontdesk',
+    );
     const own = filterByOnlineStatus(
-      filterByPrivilege([...CORE_MODULES, ...extraModules], privilegeNames),
+      filterByPrivilege([...core, ...extraModules], privilegeNames),
     );
     return toNavItems(
       [...own, ...(configured.data ?? [])],

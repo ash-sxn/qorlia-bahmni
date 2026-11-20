@@ -1,4 +1,9 @@
-import { activeItemId, resolveModuleUrl, toNavItems } from '../navigation';
+import {
+  activeItemId,
+  landingFor,
+  resolveModuleUrl,
+  toNavItems,
+} from '../navigation';
 
 const module = (id: string, url: string, order = 1) => ({
   id,
@@ -60,5 +65,16 @@ describe('shell navigation', () => {
     );
     expect(activeItemId(items, '/bahmni-v2/home')).toBe('qorlia.today');
     expect(activeItemId(items, '/elsewhere')).toBeUndefined();
+  });
+
+  it('lands each person on the page for their job', () => {
+    expect(
+      landingFor(['app:clinical', 'app:clinical:consultationTab', 'app:adt']),
+    ).toBe('today');
+    expect(landingFor(['app:clinical', 'app:adt'])).toBe('wards');
+    expect(landingFor(['app:registration'])).toBe('frontdesk');
+    expect(landingFor(['app:appointments', 'app:reports'])).toBe('frontdesk');
+    expect(landingFor(['app:reports'])).toBe('overview');
+    expect(landingFor([])).toBe('today');
   });
 });

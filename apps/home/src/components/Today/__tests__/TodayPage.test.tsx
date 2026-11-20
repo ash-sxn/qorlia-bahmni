@@ -1,3 +1,4 @@
+import { getAppointmentsForDate } from '@bahmni/services';
 import {
   useActivePractitioner,
   useHasPrivilege,
@@ -10,8 +11,15 @@ import { MemoryRouter } from 'react-router-dom';
 import { TodayPage } from '../TodayPage';
 import { getTodayQueue } from '../todayService';
 
+jest.mock('@bahmni/services', () => ({
+  ...jest.requireActual('@bahmni/services'),
+  getAppointmentsForDate: jest.fn(),
+}));
+
 jest.mock('@bahmni/widgets', () => ({
   PATIENTS_ID: 'qorlia.patient-record',
+  landingFor: (privileges: string[]) =>
+    privileges.includes('app:registration') ? 'frontdesk' : 'today',
   useActivePractitioner: jest.fn(),
   useHasPrivilege: jest.fn(),
   useShellNavigation: jest.fn(),
@@ -56,6 +64,7 @@ describe('TodayPage', () => {
       user: { username: 'dr_neha' },
     });
     (useShellNavigation as jest.Mock).mockReturnValue({
+      privilegeNames: ['app:clinical'],
       items: [
         {
           id: 'bahmni.registration.new',
@@ -147,5 +156,66 @@ describe('TodayPage', () => {
       '/bahmni-v2/home/records',
     );
     expect(mockQueue).not.toHaveBeenCalled();
+  });
+
+  it("opens the front desk for reception, with today's appointments", async () => {
+    (useHasPrivilege as jest.Mock).mockImplementation(
+      (name: string) => name === 'app:appointments',
+    );
+    (useShellNavigation as jest.Mock).mockReturnValue({
+      privilegeNames: ['app:registration', 'app:appointments'],
+      items: [
+        {
+          id: 'bahmni.registration.new',
+          label: 'Registration',
+          href: '/bahmni-v2/registration/search',
+          group: 'work',
+        },
+        {
+          id: 'bahmni.appointment.scheduling',
+          label: 'Appointments',
+          href: '/bahmni-v2/appointments/',
+          group: 'work',
+        },
+      ],
+    });
+    (getAppointmentsForDate as jest.Mock).mockResolvedValue([
+      {
+        uuid: 'a2',
+        startDateTime: new Date('2026-11-20T06:00:00Z').getTime(),
+        status: 'Scheduled',
+        patient: { uuid: 'p2', name: 'Imran Qureshi', identifier: 'ABC2' },
+        service: { name: 'General medicine' },
+        provider: { name: 'Dr. Sana Qureshi' },
+      },
+      {
+        uuid: 'a1',
+        startDateTime: new Date('2026-11-20T04:00:00Z').getTime(),
+        status: 'CheckedIn',
+        patient: { uuid: 'p1', name: 'Savitri Tomar', identifier: 'ABC1' },
+        service: { name: 'ENT' },
+        provider: null,
+      },
+    ]);
+    renderPage();
+
+    const table = await screen.findByRole('table');
+    const rows = within(table).getAllByRole('row').slice(1);
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining('Savitri Tomar'),
+      expect.stringContaining('Imran Qureshi'),
+    ]);
+    expect(within(rows[0]).getByText('Arrived')).toBeInTheDocument();
+    expect(within(rows[1]).getByText('Expected')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Register a patient' }),
+    ).toHaveAttribute('href', '/bahmni-v2/registration/search');
+    expect(
+      screen.getByRole('link', { name: 'Book an appointment' }),
+    ).toHaveAttribute('href', '/bahmni-v2/appointments/');
+    expect(screen.getByRole('link', { name: 'Savitri Tomar' })).toHaveAttribute(
+      'href',
+      '/bahmni-v2/registration/patient/p1',
+    );
   });
 });
