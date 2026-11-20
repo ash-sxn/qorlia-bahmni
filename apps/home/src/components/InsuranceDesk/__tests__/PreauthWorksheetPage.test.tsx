@@ -119,7 +119,14 @@ describe('PreauthWorksheetPage', () => {
     await user.click(screen.getByRole('button', { name: 'Print worksheet' }));
 
     expect(page.getByText('Example TPA')).toBeInTheDocument();
-    expect(page.getByText('November 13, 2026')).toBeInTheDocument();
+    // Whatever the machine's date format, the sheet shows the date as people write it.
+    expect(
+      page.getByText(
+        new Intl.DateTimeFormat(undefined, { dateStyle: 'long' }).format(
+          new Date('2026-11-13T12:00:00'),
+        ),
+      ),
+    ).toBeInTheDocument();
     expect(
       page.getByText(/\[x\]\s+Health card or policy copy/),
     ).toBeInTheDocument();
@@ -147,5 +154,73 @@ describe('PreauthWorksheetPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'This patient could not be loaded.',
     );
+  });
+
+  it('follows IRDAI Part C: codes, line of treatment and admission type', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const page = await worksheet();
+    await user.type(
+      screen.getByLabelText('Hospital Rohini ID'),
+      'SYN-ROHINI-1',
+    );
+    await user.type(
+      screen.getByLabelText('ICD-10 code for the diagnosis'),
+      'K35.8',
+    );
+    await user.click(screen.getByLabelText('Surgical management'));
+    await user.click(screen.getByLabelText('Emergency'));
+    await user.type(screen.getByLabelText('Days in ICU'), '1');
+
+    expect(page.getByText('SYN-ROHINI-1')).toBeInTheDocument();
+    expect(page.getByText('K35.8')).toBeInTheDocument();
+    expect(page.getByText('Surgical management')).toBeInTheDocument();
+    expect(page.getByText('Emergency')).toBeInTheDocument();
+  });
+
+  it('asks for injury and maternity details only when they apply', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const page = await worksheet();
+    expect(screen.queryByLabelText('How the injury happened')).toBeNull();
+    expect(screen.queryByLabelText('Expected date of delivery')).toBeNull();
+
+    await user.click(screen.getByLabelText('This is an injury or accident'));
+    await user.click(screen.getByLabelText('Road traffic accident'));
+    await user.type(
+      screen.getByLabelText('How the injury happened'),
+      'Fell from a bike',
+    );
+    await user.click(
+      screen.getByLabelText('This is a delivery or maternity case'),
+    );
+
+    expect(page.getByText('Fell from a bike')).toBeInTheDocument();
+    expect(
+      within(
+        page
+          .getByRole('heading', { name: 'Injury details' })
+          .closest('section') as HTMLElement,
+      ).getByText('Yes'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Expected date of delivery'),
+    ).toBeInTheDocument();
+  });
+
+  it('prints the chronic illness history Part C asks for', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const page = await worksheet();
+    expect(page.getByText('None declared')).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('Diabetes'));
+    await user.type(screen.getByLabelText('Since when (Diabetes)'), '03/2021');
+
+    expect(page.queryByText('None declared')).toBeNull();
+    expect(page.getByText('since 03/2021')).toBeInTheDocument();
   });
 });

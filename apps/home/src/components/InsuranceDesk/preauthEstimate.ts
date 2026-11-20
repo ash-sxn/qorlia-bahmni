@@ -6,6 +6,10 @@ export const COST_HEADS = [
   'theatre',
   'professional',
   'medicines',
+  // Part C lists implants with medicines; payers ask for them on their own line.
+  'implants',
+  // An all-inclusive package rate, as PM-JAY and many TPAs use.
+  'package',
   'other',
 ] as const;
 export type CostHead = (typeof COST_HEADS)[number];

@@ -260,3 +260,51 @@
   }
 
 }
+
+// Part C groups on the worksheet form.
+.formSection {
+  margin: 0;
+  padding: 0 0 1rem;
+  border: 0;
+  border-bottom: 1px solid var(--qorlia-border, #dce3de);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  legend {
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    font-size: 0.9375rem;
+  }
+}
+
+.choiceRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  font-size: 0.9375rem;
+
+  input {
+    width: 1.125rem;
+    height: 1.125rem;
+    accent-color: var(--qorlia-primary, #1f5238);
+  }
+}
+
+.historyRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.25rem 1rem;
+
+  > :last-child:not(:first-child) {
+    flex: 1 1 12rem;
+  }
+}
