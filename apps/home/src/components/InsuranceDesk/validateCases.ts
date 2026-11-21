@@ -19,6 +19,7 @@ import {
   DEDUCTION_CATEGORIES,
   DOCUMENT_STATES,
   InsuranceCase,
+  PAYER_TYPES,
 } from './types';
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -41,6 +42,13 @@ const STATUSES_BY_ROUTE: Record<ClaimRoute, readonly CaseStatus[]> = {
 
 const AFTER_FINAL_APPROVAL_STATUSES: readonly CaseStatus[] = [
   'final_approved',
+  'claim_submitted',
+  'settled',
+  'short_paid',
+];
+
+/** PM-JAY pays after the claim on TMS, so these need the approved pre-authorisation instead. */
+const PMJAY_CLAIM_STATUSES: readonly CaseStatus[] = [
   'claim_submitted',
   'settled',
   'short_paid',
@@ -159,6 +167,7 @@ const checkCaseShape = objectOf<InsuranceCase>({
   claimRoute: allowed(CLAIM_ROUTES),
   admissionType: allowed(ADMISSION_TYPES),
   payerName: TEXT,
+  payerType: allowed(PAYER_TYPES),
   tpaName: OPTIONAL_TEXT,
   policyNumber: must(
     (value) => isText(value) && (value as string).startsWith('SYN-'),
@@ -308,8 +317,15 @@ const statusEvidenceErrors = (
   ) {
     errors.push(`${statusLabel} needs an approved preauthorisation.`);
   }
-  if (AFTER_FINAL_APPROVAL_STATUSES.includes(status)) {
-    if (!hasApproved(insuranceCase, 'final')) {
+  const isPmjay = insuranceCase.payerType === 'pmjay';
+  const claimStatuses = isPmjay
+    ? PMJAY_CLAIM_STATUSES
+    : AFTER_FINAL_APPROVAL_STATUSES;
+  if (claimStatuses.includes(status)) {
+    if (isPmjay && !hasApproved(insuranceCase, 'preauthorisation')) {
+      errors.push(`${statusLabel} needs an approved preauthorisation.`);
+    }
+    if (!isPmjay && !hasApproved(insuranceCase, 'final')) {
       errors.push(`${statusLabel} needs an approved final authorisation.`);
     }
     if (dischargedAt === null) {
@@ -381,6 +397,31 @@ const reimbursementErrors = (
   ];
 };
 
+/**
+ * PM-JAY is cashless only and has no final authorisation: the hospital submits
+ * the claim on TMS after discharge and the State Health Agency pays.
+ */
+const pmjayErrors = (
+  { payerType, claimRoute, status, authorisations }: InsuranceCase,
+  label: string,
+): string[] => {
+  if (payerType !== 'pmjay') {
+    return [];
+  }
+  if (claimRoute !== 'cashless') {
+    return [`${label}: a PM-JAY case must be cashless.`];
+  }
+
+  return [
+    ...(status === 'final_approved'
+      ? [`${label}: status "${status}" is not allowed for a PM-JAY case.`]
+      : []),
+    ...(authorisations.some(({ kind }) => kind === 'final')
+      ? [`${label}: a PM-JAY case must not have a final authorisation.`]
+      : []),
+  ];
+};
+
 const validateCase = (
   candidate: unknown,
   label: string,
@@ -398,6 +439,11 @@ const validateCase = (
     return [`${label}: duplicate id "${id}".`];
   }
   seenIds.add(id);
+
+  const payerErrors = pmjayErrors(insuranceCase, label);
+  if (payerErrors.length > 0) {
+    return payerErrors;
+  }
 
   if (!STATUSES_BY_ROUTE[claimRoute].includes(status)) {
     return [

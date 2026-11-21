@@ -43,7 +43,7 @@ describe('claimScenarios', () => {
   it('keeps every insurer decision within the IRDAI time limits', () => {
     // PM-JAY is not IRDAI-regulated: its timelines come from NHA guidelines.
     claimScenarios
-      .filter(({ id }) => id !== 'synthetic-scenario-pmjay')
+      .filter(({ payerType }) => payerType === 'insurer')
       .forEach(({ authorisations }) =>
         authorisations.forEach((authorisation) =>
           expect(exceededDecisionLimit(authorisation)).toBeNull(),
@@ -63,13 +63,21 @@ describe('claimScenarios', () => {
     expect(pmjay.tpaName).toBeNull();
   });
 
-  it('closes the PM-JAY case paid in full, with nothing for the patient to pay', () => {
+  it('settles the PM-JAY case in full without a final authorisation, with nothing for the patient to pay', () => {
     const pmjay = scenario('pmjay');
 
-    expect(pmjay.status).toBe('closed');
+    expect(pmjay.payerType).toBe('pmjay');
+    expect(pmjay.status).toBe('settled');
     expect(pmjay.amounts.patientResponsibility).toBe(0);
     expect(settledAmount(pmjay.payments)).toBe(pmjay.amounts.approved);
-    expect(pmjay.closureNote).toMatch(/State Health Agency/);
+  });
+
+  it('marks only the PM-JAY scenario as a PM-JAY payer', () => {
+    expect(
+      claimScenarios
+        .filter(({ payerType }) => payerType === 'pmjay')
+        .map(({ id }) => id),
+    ).toEqual(['synthetic-scenario-pmjay']);
   });
 
   it('applies the maternity sub-limit as the only deduction', () => {

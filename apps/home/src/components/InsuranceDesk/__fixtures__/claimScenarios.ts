@@ -38,6 +38,7 @@ export const claimScenarios: InsuranceCase[] = [
     claimRoute: 'cashless',
     admissionType: 'planned',
     payerName: 'Synthetic Insurer A',
+    payerType: 'insurer',
     tpaName: 'Synthetic TPA One',
     policyNumber: 'SYN-POL-0101',
     payerReference: 'SYN-AUTH-0101',
@@ -113,6 +114,7 @@ export const claimScenarios: InsuranceCase[] = [
     claimRoute: 'cashless',
     admissionType: 'emergency',
     payerName: 'Synthetic Insurer B',
+    payerType: 'insurer',
     tpaName: null,
     policyNumber: 'SYN-POL-0102',
     payerReference: 'SYN-AUTH-0102',
@@ -196,6 +198,7 @@ export const claimScenarios: InsuranceCase[] = [
     claimRoute: 'cashless',
     admissionType: 'planned',
     payerName: 'Synthetic Insurer C',
+    payerType: 'insurer',
     tpaName: 'Synthetic TPA Two',
     policyNumber: 'SYN-POL-0103',
     payerReference: 'SYN-AUTH-0103',
@@ -264,6 +267,7 @@ export const claimScenarios: InsuranceCase[] = [
     claimRoute: 'cashless',
     admissionType: 'planned',
     payerName: 'Synthetic State Health Agency (PM-JAY)',
+    payerType: 'pmjay',
     tpaName: null,
     policyNumber: 'SYN-PMJAY-0104',
     payerReference: 'SYN-TMS-0104',
@@ -272,8 +276,7 @@ export const claimScenarios: InsuranceCase[] = [
     dischargedAt: november(5, '11:00'),
     // PM-JAY follows NHA guidelines, not IRDAI: there is no final authorisation. The
     // hospital submits the claim on TMS after discharge and the State Health Agency pays.
-    // The validator needs a final authorisation for "settled", so the paid case is closed.
-    status: 'closed',
+    status: 'settled',
     statusRecordedAt: november(16),
     statusRecordedBy: 'Synthetic Ayushman Mitra',
     amounts: {
@@ -315,8 +318,7 @@ export const claimScenarios: InsuranceCase[] = [
       },
     ],
     denialReason: null,
-    closureNote:
-      'Synthetic note: claim submitted on TMS after discharge and paid in full by the State Health Agency.',
+    closureNote: null,
   },
   {
     id: 'synthetic-scenario-reimbursement',
@@ -327,6 +329,7 @@ export const claimScenarios: InsuranceCase[] = [
     claimRoute: 'reimbursement',
     admissionType: 'planned',
     payerName: 'Synthetic Insurer A',
+    payerType: 'insurer',
     tpaName: 'Synthetic TPA One',
     policyNumber: 'SYN-POL-0105',
     payerReference: null,
