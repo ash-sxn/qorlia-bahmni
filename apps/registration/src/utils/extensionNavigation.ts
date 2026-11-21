@@ -1,4 +1,4 @@
-import { formatUrl } from '@bahmni/services';
+import { formatUrl, isSafeNavigationUrl } from '@bahmni/services';
 import { NavigateFunction } from 'react-router-dom';
 
 /**
@@ -15,6 +15,7 @@ export const handleExtensionNavigation = (
   if (!navigationUrl) return;
 
   const url = formatUrl(navigationUrl, options, true);
+  if (!isSafeNavigationUrl(url)) return;
   if (url.startsWith('#')) {
     // In-app navigation with React Router
     navigate(url.slice(1));

@@ -12,6 +12,7 @@ import {
   refreshQueries,
   parseQueryParams,
   formatUrl,
+  isSafeNavigationUrl,
   getValueType,
   camelToScreamingSnakeCase,
   convertToSentenceCase,
@@ -1410,5 +1411,28 @@ describe('formatCountry', () => {
     },
   ])('$label', ({ value, t, expected }) => {
     expect(formatCountry(value, t)).toBe(expected);
+  });
+});
+
+describe('isSafeNavigationUrl', () => {
+  it.each([
+    '/bahmni-v2/clinical/123',
+    '#/patient/123',
+    'https://example.org/x',
+    'http://example.org/x',
+    'relative/path',
+  ])('allows %s', (url) => {
+    expect(isSafeNavigationUrl(url)).toBe(true);
+  });
+
+  it.each([
+    'javascript:alert(1)',
+    ' JaVaScRiPt:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'vbscript:msgbox(1)',
+    '//evil.example/steal',
+    '',
+  ])('refuses %s', (url) => {
+    expect(isSafeNavigationUrl(url)).toBe(false);
   });
 });

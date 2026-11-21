@@ -144,6 +144,7 @@ export {
   refreshQueries,
   parseQueryParams,
   formatUrl,
+  isSafeNavigationUrl,
   getValueType,
   camelToScreamingSnakeCase,
   convertToSentenceCase,

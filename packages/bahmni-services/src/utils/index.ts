@@ -13,6 +13,7 @@ export {
   refreshQueries,
   parseQueryParams,
   formatUrl,
+  isSafeNavigationUrl,
   blobToDataUrl,
   getValueType,
   camelToScreamingSnakeCase,

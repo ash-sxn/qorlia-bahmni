@@ -5,6 +5,7 @@ import {
   checkInAppointment,
   UserPrivilege,
   formatUrl,
+  isSafeNavigationUrl,
   PatientSearchResultBundle,
   hasPrivilege,
   type Notification,
@@ -54,6 +55,7 @@ export const handleActionNavigation = (
   if (!navigationUrl) return;
 
   const url = formatUrl(navigationUrl, options, true);
+  if (!isSafeNavigationUrl(url)) return;
   if (url.startsWith('#')) {
     navigate(url.slice(1));
   } else {
