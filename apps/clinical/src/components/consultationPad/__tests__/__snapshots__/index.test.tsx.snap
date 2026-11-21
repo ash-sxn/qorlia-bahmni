@@ -9,7 +9,7 @@ exports[`ConsultationPad matches snapshot 1`] = `
     <span
       data-testid="action-area-title"
     >
-      New Consultation
+      Start consultation
     </span>
     <div
       data-testid="action-area-content"

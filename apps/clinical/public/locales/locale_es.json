@@ -155,9 +155,9 @@
   "CONFIG_ERROR_NOT_FOUND": "Configuración no encontrada",
   "CONFIG_ERROR_SCHEMA_VALIDATION_FAILED": "La configuración no coincide con el esquema requerido",
   "CONFIG_ERROR_VALIDATION_FAILED": "La validación de la configuración falló",
-  "CONSULTATION_ACTION_CONTINUE": "Continuar Consulta",
-  "CONSULTATION_ACTION_IN_PROGRESS": "Consulta en progreso",
-  "CONSULTATION_ACTION_NEW": "Nueva Consulta",
+  "CONSULTATION_ACTION_CONTINUE": "Continuar consulta",
+  "CONSULTATION_ACTION_IN_PROGRESS": "Consulta abierta",
+  "CONSULTATION_ACTION_NEW": "Iniciar consulta",
   "CONSULTATION_SESSION_UNAVAILABLE": "Consulta no disponible",
   "CONSULTATION_SESSION_LOAD_ERROR": "No pudimos comprobar la consulta actual. Inténtelo de nuevo antes de iniciar o continuar.",
   "CONSULTATION_SESSION_RETRY": "Intentar de nuevo",
@@ -170,7 +170,7 @@
   "CONSULTATION_ERROR_INVALID_PRACTITIONER": "Profesional médico inválido o faltante",
   "CONSULTATION_PAD_CANCEL_BUTTON": "Cancelar",
   "CONSULTATION_PAD_COLLAPSE_ARIA_LABEL": "Contraer panel de consulta",
-  "CONSULTATION_PAD_DONE_BUTTON": "Hecho",
+  "CONSULTATION_PAD_DONE_BUTTON": "Guardar en la historia",
   "CONSULTATION_PAD_ERROR_BODY": "Se produjo un error al cargar el panel de consulta. Por favor, inténtelo de nuevo más tarde.",
   "CONSULTATION_PAD_ERROR_TITLE": "Algo salió mal",
   "CONSULTATION_PAD_EXPAND_ARIA_LABEL": "Expandir panel de consulta",
@@ -765,5 +765,6 @@
   "CLINICAL_WORKSPACE_ARRIVED": "Llegada",
   "CLINICAL_WORKSPACE_VISIT_TYPE": "Tipo de visita",
   "CLINICAL_WORKSPACE_VISITS_LIMITED": "Se muestran las primeras {{count}} visitas. Use la búsqueda para encontrar otras.",
-  "CLINICAL_WORKSPACE_VISITS": "Visitas"
+  "CLINICAL_WORKSPACE_VISITS": "Visitas",
+  "CLINICAL_JUMP_TO": "Ir a"
 }

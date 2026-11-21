@@ -345,10 +345,8 @@ const ConsultationPage: React.FC = () => {
             breadcrumbItems={breadcrumbItems}
             globalActions={globalActions}
             userMenu={<UserGlobalAction />}
-            sideNavItems={isActionAreaExpanded ? [] : sidebarItems}
-            activeSideNavItemId={activeItemId}
-            onSideNavItemClick={handleItemClick}
-            isRail={isActionAreaVisible}
+            // No section sidebar: the shared menu shows, sections are chips below.
+            sideNavItems={[]}
           />
         }
         mainDisplay={
@@ -394,6 +392,33 @@ const ConsultationPage: React.FC = () => {
                     printOptions={filteredPrintOptions}
                   />
                   {renderContextInformation()}
+                  {!isActionAreaExpanded && sidebarItems.length > 0 && (
+                    <nav
+                      aria-label={t('CLINICAL_JUMP_TO', {
+                        defaultValue: 'Jump to',
+                      })}
+                      className={styles.jumpTo}
+                    >
+                      {sidebarItems.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          data-testid={`sidenav-item-${item.id}`}
+                          aria-current={
+                            item.id === activeItemId ? 'true' : undefined
+                          }
+                          className={
+                            item.id === activeItemId
+                              ? styles.jumpOn
+                              : styles.jump
+                          }
+                          onClick={() => handleItemClick(item.id)}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </nav>
+                  )}
                 </div>
                 <DashboardContainer
                   sections={filteredDashboardConfig!.sections}
@@ -406,6 +431,8 @@ const ConsultationPage: React.FC = () => {
         }
         isActionAreaVisible={isActionAreaVisible}
         isActionAreaExpanded={isActionAreaExpanded}
+        // The shared Qorlia menu replaces the page's own section sidebar.
+        hasSideNav={false}
         layoutVariant={viewingForm ? 'extended' : 'default'}
         actionArea={
           encounterSessionStartContext && (

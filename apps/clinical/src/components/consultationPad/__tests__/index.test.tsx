@@ -1205,14 +1205,14 @@ describe('ConsultationPad', () => {
       );
     });
 
-    it('shows "New Consultation" when editTitle is not set', () => {
+    it('shows "Start consultation" when editTitle is not set', () => {
       renderComponent({
         encounterSessionStartContext: { encounterType: 'Consultation' },
       });
 
-      // i18n resolves 'CONSULTATION_ACTION_NEW' → 'New Consultation'
+      // i18n resolves 'CONSULTATION_ACTION_NEW' → 'Start consultation'
       expect(screen.getByTestId('action-area-title')).toHaveTextContent(
-        'New Consultation',
+        'Start consultation',
       );
     });
 

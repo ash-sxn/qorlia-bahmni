@@ -59,48 +59,38 @@
 }
 
 .buttonSet {
+  // One main button on the right, Cancel quiet beside it; no full-width bars.
   display: flex;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
   width: 100%;
-  gap: 0;
+  gap: $spacing-04;
+  padding: $spacing-05 $spacing-06;
   border-top: 1px solid $border-subtle;
+  background: var(--qorlia-surface, #{$layer-01});
+  box-sizing: border-box;
 
-  .twoButtons {
-    min-width: calc(100% / 2);
+  // Carbon stacks a button set in narrow panels and stretches each button;
+  // keep them side by side at their natural width.
+  &:global(.cds--btn-set--stacked) {
+    flex-direction: row;
   }
 
-  .threeButtons {
-    min-width: calc(100% / 3);
-  }
-
+  .twoButtons,
+  .threeButtons,
   .singleButton {
-    min-width: 50%;
-    margin-left: auto;
+    width: auto !important;
+    min-width: 8rem;
+    max-width: none;
+    flex: 0 0 auto;
+    padding-inline-end: 1rem;
   }
 }
 
 @include breakpoint-down(lg) {
   .actionArea {
     width: 100%;
-  }
-
-  .buttonSet {
-    display: grid;
-    gap: 0;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-
-    .twoButtons {
-      min-width: 100%;
-    }
-
-    .threeButtons {
-      min-width: 100%;
-    }
-
-    .singleButton {
-      grid-column: 1 / -1;
-      justify-self: end;
-      min-width: 50%;
-    }
   }
 }

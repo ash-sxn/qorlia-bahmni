@@ -7,6 +7,13 @@
   position: fixed;
   top: $spacing-09;
   left: 0;
+
+  // Beside the shared Qorlia menu on wide screens (it is fixed, 15rem wide).
+  :global(body.qorlia-shell-nav) & {
+    @include breakpoint(lg) {
+      left: 15rem;
+    }
+  }
   right: 0;
   bottom: 0;
   display: flex;
