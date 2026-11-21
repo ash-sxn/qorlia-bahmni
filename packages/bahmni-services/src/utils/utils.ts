@@ -281,6 +281,24 @@ export function parseQueryParams(
  * @param useQueryParams - Whether to fallback to query parameters if a value is not found in options
  * @returns The formatted URL with all placeholders replaced
  */
+/**
+ * Whether an address is safe to send the browser to: a path, a hash route or
+ * http(s). Anything else (javascript:, data:, vbscript:, protocol-relative //host)
+ * is refused, because these addresses are built from configuration and page data.
+ */
+export function isSafeNavigationUrl(url: string): boolean {
+  const value = url.trim();
+  if (!value) return false;
+  if (value.startsWith('#')) return true;
+  if (value.startsWith('/')) return !value.startsWith('//');
+  try {
+    const { protocol } = new URL(value, globalThis.location?.origin);
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export function formatUrl(
   url: string,
   options: Record<string, string>,

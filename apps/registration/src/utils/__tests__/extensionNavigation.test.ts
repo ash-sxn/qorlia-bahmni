@@ -2,6 +2,8 @@ import { NavigateFunction } from 'react-router-dom';
 import { handleExtensionNavigation } from '../extensionNavigation';
 
 jest.mock('@bahmni/services', () => ({
+  isSafeNavigationUrl:
+    jest.requireActual('@bahmni/services').isSafeNavigationUrl,
   formatUrl: jest.fn((url: string, options: Record<string, string>) => {
     // Simple mock implementation for formatUrl
     let result = url;

@@ -415,7 +415,9 @@ describe('Profile', () => {
         render(<Profile ref={ref} />);
       });
 
-      const checkbox = screen.getByLabelText('Estimated') as HTMLInputElement;
+      const checkbox = screen.getByLabelText(
+        'Estimated from age',
+      ) as HTMLInputElement;
 
       expect(checkbox.checked).toBe(false);
 
@@ -430,7 +432,9 @@ describe('Profile', () => {
         render(<Profile ref={ref} initialDobEstimated />);
       });
 
-      const checkbox = screen.getByLabelText('Estimated') as HTMLInputElement;
+      const checkbox = screen.getByLabelText(
+        'Estimated from age',
+      ) as HTMLInputElement;
 
       expect(checkbox.checked).toBe(true);
     });
@@ -455,15 +459,11 @@ describe('Profile', () => {
 
       expect(ref.current?.getData()?.dobEstimated).toBe(false);
 
-      const monthsInput = screen.getByLabelText(
-        /Months\(Age\)/,
-      ) as HTMLInputElement;
+      const monthsInput = screen.getByLabelText(/^Months/) as HTMLInputElement;
       fireEvent.change(monthsInput, { target: { value: '6' } });
       expect(ref.current?.getData()?.dobEstimated).toBe(false);
 
-      const daysInput = screen.getByLabelText(
-        /Days\(Age\)/,
-      ) as HTMLInputElement;
+      const daysInput = screen.getByLabelText(/^Days/) as HTMLInputElement;
       fireEvent.change(daysInput, { target: { value: '15' } });
       expect(ref.current?.getData()?.dobEstimated).toBe(false);
     });
@@ -974,7 +974,7 @@ describe('Profile', () => {
       );
 
       const ageYearsInput = screen.getByLabelText(
-        /Years\(Age\)/,
+        /Age: years/,
       ) as HTMLInputElement;
       expect(ageYearsInput.value).toBe('120');
     });

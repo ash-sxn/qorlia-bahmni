@@ -63,7 +63,8 @@ export const useContentModules = () =>
               '/bahmni-v2/home/referrals',
               15,
               'fa-user-doctor',
-              'app:clinical',
+              // Referral letters are written by whoever consults.
+              'app:clinical:consultationTab',
             ),
           ]
         : []),
@@ -75,6 +76,7 @@ export const useContentModules = () =>
               '/bahmni-v2/home/policies',
               16,
               'fa-book-open',
+              'app:reports',
             ),
           ]
         : []),
@@ -86,6 +88,8 @@ export const useContentModules = () =>
               '/bahmni-v2/home/insurance',
               15.5,
               'fa-file-shield',
+              // The insurance (TPA) desk sits with registration.
+              'app:registration',
             ),
           ]
         : []),

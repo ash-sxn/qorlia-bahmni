@@ -176,6 +176,8 @@ export const CORE_MODULES: Module[] = [
     url: `${APP_BASE}/home/billing`,
     order: 14,
     icon: 'fa-file-invoice-dollar',
+    // The cashier works at the front desk; ward staff do not bill.
+    requiredPrivilege: 'app:registration',
     exclusiveOnlineModule: true,
   },
   {
