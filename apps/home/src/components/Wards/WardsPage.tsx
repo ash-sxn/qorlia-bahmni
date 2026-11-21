@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { REVIEW_URLS } from '../HomeShell';
 import today from '../Today/Today.module.scss';
+import { MedicineRound } from './MedicineRound';
 import styles from './Wards.module.scss';
 import {
   CurrentMedicine,
@@ -124,6 +125,7 @@ export const WardsPage: React.FC = () => {
   );
   const admissions = items.find((item) => item.id === 'bahmni.ipd');
   const [chosen, setChosen] = useState('');
+  const [view, setView] = useState<'beds' | 'medicines'>('beds');
 
   const wards = useQuery({
     queryKey: ['wards'],
@@ -313,10 +315,7 @@ export const WardsPage: React.FC = () => {
           <dd>{free}</dd>
         </div>
       </dl>
-      <section
-        className={styles.boardPanel}
-        aria-label={ward ? ward.ward.name : t('WARDS_TITLE')}
-      >
+      <div className={styles.viewRow}>
         {wardList.length > 1 && (
           <div
             className={styles.wardPicker}
@@ -344,8 +343,42 @@ export const WardsPage: React.FC = () => {
             ))}
           </div>
         )}
-        {renderBeds()}
-      </section>
+        <div
+          className={styles.viewSwitch}
+          role="group"
+          aria-label={t('WARDS_VIEW')}
+        >
+          <button
+            type="button"
+            aria-pressed={view === 'beds'}
+            className={view === 'beds' ? styles.viewOn : styles.viewOff}
+            onClick={() => setView('beds')}
+          >
+            {t('WARDS_VIEW_BEDS')}
+          </button>
+          <button
+            type="button"
+            aria-pressed={view === 'medicines'}
+            className={view === 'medicines' ? styles.viewOn : styles.viewOff}
+            onClick={() => setView('medicines')}
+          >
+            {t('WARDS_VIEW_MEDICINES')}
+          </button>
+        </div>
+      </div>
+      {view === 'beds' ? (
+        <section
+          className={styles.boardPanel}
+          aria-label={ward ? ward.ward.name : t('WARDS_TITLE')}
+        >
+          {renderBeds()}
+        </section>
+      ) : (
+        <MedicineRound
+          beds={occupied}
+          medicines={medicines.map((query) => query.data)}
+        />
+      )}
 
       <p className={styles.note}>{t('WARDS_DUE_RULE')}</p>
     </main>

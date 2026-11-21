@@ -154,11 +154,19 @@ export interface CurrentMedicine {
   dose: string;
   frequency: string;
   route: string;
+  /** INPATIENT orders are given on the ward; OUTPATIENT ones go home with the patient. */
+  careSetting: string;
+  asNeeded: boolean;
+  /** Days the order runs for, when its duration is in days or weeks. */
+  durationDays: number | null;
 }
 
 interface BahmniDrugOrder {
   drugOrder: {
     uuid: string;
+    careSetting?: string;
+    duration?: number | null;
+    durationUnits?: string | null;
     dateStopped: number | null;
     autoExpireDate: number | null;
     drug?: { name?: string };
@@ -169,10 +177,21 @@ interface BahmniDrugOrder {
       doseUnits?: string | null;
       frequency?: string | null;
       route?: string | null;
+      asNeeded?: boolean | null;
       administrationInstructions?: string | null;
     };
   };
 }
+
+const durationInDays = (
+  duration?: number | null,
+  units?: string | null,
+): number | null => {
+  if (!duration) return null;
+  if (/^days?$/i.test(units ?? '')) return duration;
+  if (/^weeks?$/i.test(units ?? '')) return duration * 7;
+  return null;
+};
 
 /** Orders that are neither stopped nor past their end date. */
 export const currentMedicines = (
@@ -198,6 +217,9 @@ export const currentMedicines = (
             : '',
         frequency: dosing.frequency ?? '',
         route: dosing.route ?? '',
+        careSetting: order.careSetting ?? '',
+        asNeeded: Boolean(dosing.asNeeded),
+        durationDays: durationInDays(order.duration, order.durationUnits),
       };
     });
 

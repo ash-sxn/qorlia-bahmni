@@ -138,3 +138,152 @@
   border-radius: 0.75rem;
   overflow: hidden;
 }
+
+.viewRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  .wardPicker {
+    padding: 0;
+    border: 0;
+  }
+}
+
+.viewSwitch {
+  display: inline-flex;
+  border: 1px solid var(--qorlia-border, #dce3de);
+  border-radius: 0.625rem;
+  overflow: hidden;
+  background: var(--qorlia-surface, #fff);
+}
+
+.viewOn,
+.viewOff {
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border: 0;
+  font: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
+.viewOn {
+  background: var(--qorlia-primary, #1f5238);
+  color: #fff;
+  font-weight: 600;
+}
+
+.viewOff {
+  background: transparent;
+  color: var(--qorlia-ink, #202321);
+
+  &:hover {
+    background: #f4f7f5;
+  }
+}
+
+.round {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.roundHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+
+  h2 {
+    margin: 0;
+    font-family: "Space Grotesk", "IBM Plex Sans", Inter, sans-serif;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+}
+
+.doseList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dose,
+.needTimes {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1.5fr) minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.875rem 1.25rem;
+  border-top: 1px solid #e6ece8;
+  font-size: 0.9375rem;
+
+  > span {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+  }
+
+  @media (max-width: 47.99rem) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.needTimes {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto;
+}
+
+.doseTime {
+  align-items: flex-start;
+
+  strong {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.doseActions {
+  flex-direction: row !important;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem !important;
+}
+
+.reason {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--qorlia-muted, #58615b);
+
+  select {
+    min-height: 2.5rem;
+    padding: 0 0.5rem;
+    border: 1px solid #c9d4cc;
+    border-radius: 0.5rem;
+    font: inherit;
+    font-size: 0.9375rem;
+    color: var(--qorlia-ink, #202321);
+    background: #fff;
+  }
+}
+
+.toneAlert {
+  background: #fbefea;
+  color: #8c2f17;
+}
+
+.saved {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.625rem;
+  background: #edf3ee;
+  color: #1f5238;
+  font-weight: 600;
+}
