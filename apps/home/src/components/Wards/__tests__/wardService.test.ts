@@ -126,6 +126,9 @@ describe('wardService', () => {
       dose: '1 Tablet',
       frequency: 'Twice a day',
       route: 'Oral',
+      careSetting: '',
+      asNeeded: false,
+      durationDays: null,
     });
   });
 });
