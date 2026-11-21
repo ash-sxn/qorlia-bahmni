@@ -1,6 +1,7 @@
 import { Button, InlineLoading, Panel } from '@bahmni/design-system';
 import { useTranslation } from '@bahmni/services';
 import {
+  landingFor,
   PATIENTS_ID,
   useActivePractitioner,
   useHasPrivilege,
@@ -11,6 +12,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ButtonLink } from '../common/ButtonLink';
 import { REVIEW_URLS } from '../HomeShell';
+import { FrontDesk } from './FrontDesk';
 import styles from './Today.module.scss';
 import { getTodayQueue, isWaiting, QueueEntry } from './todayService';
 
@@ -48,7 +50,7 @@ export const TodayPage: React.FC = () => {
   const { t } = useTranslation();
   const canConsult = useHasPrivilege('app:clinical');
   const { practitioner, user } = useActivePractitioner();
-  const { items } = useShellNavigation(
+  const { items, privilegeNames } = useShellNavigation(
     [],
     process.env.NODE_ENV !== 'production' ? REVIEW_URLS : undefined,
   );
@@ -77,21 +79,25 @@ export const TodayPage: React.FC = () => {
     (item) => item.group === 'work' && item.id !== 'qorlia.today',
   );
 
+  const title = (
+    <div>
+      <h1>
+        {name ? t(greetingKey(now.getHours()), { name }) : t('TODAY_TITLE')}
+      </h1>
+      <p className={styles.lead}>
+        {canConsult && queue.isSuccess
+          ? t('TODAY_LEAD_WAITING', {
+              date: longDate.format(now),
+              count: waiting.length,
+            })
+          : longDate.format(now)}
+      </p>
+    </div>
+  );
+
   const heading = (
     <div className={styles.heading}>
-      <div>
-        <h1>
-          {name ? t(greetingKey(now.getHours()), { name }) : t('TODAY_TITLE')}
-        </h1>
-        <p className={styles.lead}>
-          {canConsult && queue.isSuccess
-            ? t('TODAY_LEAD_WAITING', {
-                date: longDate.format(now),
-                count: waiting.length,
-              })
-            : longDate.format(now)}
-        </p>
-      </div>
+      {title}
       {registration && (
         <Button kind="tertiary" href={registration.href}>
           {t('TODAY_REGISTER')}
@@ -99,6 +105,10 @@ export const TodayPage: React.FC = () => {
       )}
     </div>
   );
+
+  if (!canConsult && landingFor(privilegeNames) === 'frontdesk') {
+    return <FrontDesk heading={title} items={items} />;
+  }
 
   if (!canConsult) {
     return (

@@ -14,6 +14,9 @@ export {
   CORE_MODULES,
   PATIENTS_ID,
   TODAY_ID,
+  WARDS_ID,
+  landingFor,
+  type Landing,
   useShellNavigation,
   type ShellNavItem,
 } from './appShell';

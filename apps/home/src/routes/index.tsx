@@ -68,6 +68,11 @@ const HospitalOverviewPage = lazy(() =>
     (module) => ({ default: module.HospitalOverviewPage }),
   ),
 );
+const WardsPage = lazy(() =>
+  import('../components/Wards/WardsPage').then((module) => ({
+    default: module.WardsPage,
+  })),
+);
 const CaseDetailPage = lazy(() =>
   import('../components/InsuranceDesk/CaseDetailPage').then((module) => ({
     default: module.CaseDetailPage,
@@ -123,6 +128,11 @@ export const routes: Routes = [
     path: '/dictation',
     component: DictationPage,
     name: 'Dictation',
+  },
+  {
+    path: '/wards',
+    component: WardsPage,
+    name: 'Wards',
   },
   {
     path: '/overview',

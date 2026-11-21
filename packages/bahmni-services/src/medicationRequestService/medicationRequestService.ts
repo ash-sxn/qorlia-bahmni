@@ -406,11 +406,12 @@ type LegacyDrugOrder = {
   };
   duration?: number;
   durationUnits?: LegacyLabel;
-  effectiveStartDate?: string;
-  effectiveStopDate?: string;
-  scheduledDate?: string;
-  dateActivated?: string;
-  dateStopped?: string;
+  // Older Bahmni servers send these as milliseconds since 1970, newer ones as text.
+  effectiveStartDate?: string | number;
+  effectiveStopDate?: string | number;
+  scheduledDate?: string | number;
+  dateActivated?: string | number;
+  dateStopped?: string | number;
   provider?: { name?: string; display?: string };
   creatorName?: string;
   instructions?: string;
@@ -481,6 +482,12 @@ const legacyMedicationStatus = (order: LegacyDrugOrder): MedicationStatus => {
 
 // Legacy Bahmni orders can hold empty strings, which must fall through to the
 // next value, so `||` is intended here rather than `??`.
+/** An ISO date from either form the legacy API uses; empty when absent. */
+const legacyDate = (value?: string | number | null): string => {
+  if (value === undefined || value === null || value === '') return '';
+  return typeof value === 'number' ? new Date(value).toISOString() : value;
+};
+
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 const toReadOnlyMedication = (order: LegacyDrugOrder): MedicationRequest => {
   const dosing = order.dosingInstructions;
@@ -490,8 +497,9 @@ const toReadOnlyMedication = (order: LegacyDrugOrder): MedicationRequest => {
     legacyLabel(order.concept?.name) ||
     'Medication';
   const status = legacyMedicationStatus(order);
-  const startDate = order.effectiveStartDate || order.scheduledDate || '';
-  const orderDate = order.dateActivated || startDate;
+  const startDate =
+    legacyDate(order.effectiveStartDate) || legacyDate(order.scheduledDate);
+  const orderDate = legacyDate(order.dateActivated) || startDate;
   return {
     id: order.uuid,
     name,
@@ -529,7 +537,7 @@ const toReadOnlyMedication = (order: LegacyDrugOrder): MedicationRequest => {
     note: order.commentToFulfiller,
     doseForm: legacyLabel(order.drug?.form),
     statusReason: order.orderReasonText,
-    dateStopped: order.dateStopped,
+    dateStopped: legacyDate(order.dateStopped) || undefined,
     readOnly: true,
     // Legacy orders are displayed only. The synthesized resource must never be written back.
     fhirResource: {

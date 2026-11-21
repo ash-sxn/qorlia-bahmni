@@ -30,6 +30,7 @@ const APP_BASE = '/bahmni-v2';
 
 export const TODAY_ID = 'qorlia.today';
 export const PATIENTS_ID = 'qorlia.patient-record';
+export const WARDS_ID = 'qorlia.wards';
 
 const PLACEMENTS: Record<string, Placement> = {
   [TODAY_ID]: { group: 'work', labelKey: 'SHELL_NAV_TODAY', label: 'Today' },
@@ -38,6 +39,7 @@ const PLACEMENTS: Record<string, Placement> = {
     labelKey: 'SHELL_NAV_PATIENTS',
     label: 'Patients',
   },
+  [WARDS_ID]: { group: 'work', labelKey: 'SHELL_NAV_WARDS', label: 'Wards' },
   'bahmni.registration.new': {
     group: 'work',
     labelKey: 'SHELL_NAV_REGISTRATION',
@@ -60,8 +62,8 @@ const PLACEMENTS: Record<string, Placement> = {
   },
   'bahmni.ipd': {
     group: 'hospital',
-    labelKey: 'SHELL_NAV_WARDS',
-    label: 'Wards',
+    labelKey: 'SHELL_NAV_ADMISSIONS',
+    label: 'Admissions and discharge',
   },
   'bahmni.orders': {
     group: 'hospital',
@@ -157,6 +159,16 @@ export const CORE_MODULES: Module[] = [
     requiredPrivilege: 'app:clinical',
   },
   {
+    id: WARDS_ID,
+    extensionPointId: 'qorlia.shell',
+    type: 'link',
+    label: 'Wards',
+    url: `${APP_BASE}/home/wards`,
+    order: 2,
+    icon: 'fa-bed',
+    requiredPrivilege: 'app:adt',
+  },
+  {
     id: 'qorlia.billing',
     extensionPointId: 'qorlia.shell',
     type: 'link',
@@ -178,6 +190,22 @@ export const CORE_MODULES: Module[] = [
     exclusiveOnlineModule: true,
   },
 ];
+
+/**
+ * The page each person lands on after signing in, from what they are allowed to do:
+ * whoever consults starts on their queue, ward staff on the wards, the front desk on
+ * arrivals and appointments, and someone who only reads reports on the overview.
+ */
+export type Landing = 'today' | 'wards' | 'frontdesk' | 'overview';
+
+export const landingFor = (privilegeNames: string[]): Landing => {
+  const has = (name: string) => privilegeNames.includes(name);
+  if (has('app:clinical:consultationTab')) return 'today';
+  if (has('app:adt')) return 'wards';
+  if (has('app:registration') || has('app:appointments')) return 'frontdesk';
+  if (has('app:reports')) return 'overview';
+  return 'today';
+};
 
 /** Config URLs are absolute (`/bahmni/...`) or relative to the new interface. */
 export const resolveModuleUrl = (url: string) => {
