@@ -6,6 +6,7 @@ export const CATEGORIES = [
   'data_protection',
   'government_schemes',
   'facility_registration',
+  'licences_and_compliance',
 ] as const;
 export type PolicyCategory = (typeof CATEGORIES)[number];
 

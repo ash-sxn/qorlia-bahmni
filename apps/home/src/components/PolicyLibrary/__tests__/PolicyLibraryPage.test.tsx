@@ -137,6 +137,17 @@ describe('PolicyLibraryPage', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(1);
   });
 
+  it('offers licences and compliance as a category', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('combobox', { name: 'Category' }));
+
+    expect(
+      screen.getByRole('option', { name: 'Licences and compliance' }),
+    ).toBeInTheDocument();
+  });
+
   it('shows drafts only when the user explicitly includes them', async () => {
     const user = userEvent.setup();
     renderPage();

@@ -28,6 +28,18 @@ describe('validateCatalogue', () => {
     expect(result).toEqual({ ok: true, entries: [validEntry] });
   });
 
+  it('accepts the licences and compliance category', () => {
+    const entry: PolicyEntry = {
+      ...validEntry,
+      category: 'licences_and_compliance',
+    };
+
+    expect(validateCatalogue([entry], APPROVED_HOSTS)).toEqual({
+      ok: true,
+      entries: [entry],
+    });
+  });
+
   it('rejects a catalogue that is not an array', () => {
     const result = validateCatalogue({ entries: [] }, APPROVED_HOSTS);
 
