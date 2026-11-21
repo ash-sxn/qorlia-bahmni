@@ -146,7 +146,7 @@ export const ActionArea: React.FC<ActionAreaProps> = ({
       >
         {secondaryButtonText && onSecondaryButtonClick && (
           <Button
-            kind="secondary"
+            kind="ghost"
             onClick={onSecondaryButtonClick}
             disabled={isSecondaryButtonDisabled}
             className={buttonCountClass}

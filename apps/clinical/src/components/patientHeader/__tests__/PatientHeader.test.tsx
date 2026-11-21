@@ -246,19 +246,14 @@ describe('PatientHeader Component', () => {
       expect(button).toHaveTextContent('New Consultation');
     });
 
-    test('renders disabled button with "in progress" text when action area is visible', () => {
+    test('says the consultation is open instead of showing a button', () => {
       renderComponent({ isActionAreaVisible: true });
-      const button = screen.getByRole('button');
-      expect(button).toHaveAttribute('disabled');
-      expect(button).toHaveTextContent('Consultation in progress');
-    });
-
-    test('does not dispatch event when button is disabled', () => {
-      renderComponent({ isActionAreaVisible: true });
-      const button = screen.getByRole('button');
-
-      fireEvent.click(button);
-
+      expect(
+        screen.queryByTestId('consultation-action-button'),
+      ).toHaveTextContent('Consultation in progress');
+      expect(
+        screen.queryByRole('button', { name: /consultation/i }),
+      ).not.toBeInTheDocument();
       expect(mockDispatchConsultationStart).not.toHaveBeenCalled();
     });
   });

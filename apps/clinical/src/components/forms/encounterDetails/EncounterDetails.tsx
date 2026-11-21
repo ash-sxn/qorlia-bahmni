@@ -286,115 +286,149 @@ const EncounterDetails: React.FC<EncounterDetailsProps> = ({
     isEncounterTypeNotFound,
   ]);
 
+  // Most of these are fixed for this consultation, so they read as one line; the
+  // fields open when the visit type still has to be chosen.
+  const summary = [
+    selectedLocation?.display,
+    selectedEncounterType?.name,
+    selectedVisitType?.name,
+    practitioner?.person?.preferredName?.display,
+    consultationDate
+      ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
+          new Date(consultationDate),
+        )
+      : undefined,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
-    <Grid condensed={false} narrow={false} data-testid="encounter-details-grid">
-      <Column sm={4} md={8} lg={5} className={styles.column}>
-        <FormField
-          isLoading={!selectedLocation && !locationsError}
-          placeholder={<DropdownPlaceholder />}
-        >
-          <Dropdown
-            id="location-dropdown"
-            data-testid="location-dropdown"
-            titleText={t('LOCATION')}
-            label={t('SELECT_LOCATION')}
-            items={locations}
-            itemToString={(item: OpenMRSLocation) => item?.display || ''}
-            initialSelectedItem={selectedLocation}
-            disabled
-            size="md"
-          />
-        </FormField>
-      </Column>
-
-      <Column sm={4} md={8} lg={5} className={styles.column}>
-        <FormField
-          isLoading={!selectedEncounterType && !encounterConceptsError}
-          placeholder={<DropdownPlaceholder />}
-        >
-          <Dropdown
-            id="encounter-type-dropdown"
-            data-testid="encounter-type-dropdown"
-            titleText={t('ENCOUNTER_TYPE')}
-            label={t('SELECT_ENCOUNTER_TYPE')}
-            items={encounterConcepts?.encounterTypes ?? []}
-            itemToString={(item: Concept) => item?.name ?? ''}
-            selectedItem={selectedEncounterType}
-            disabled
-            size="md"
-          />
-        </FormField>
-      </Column>
-
-      <Column sm={4} md={8} lg={5} className={styles.column}>
-        <FormField
-          isLoading={!selectedVisitType && !encounterConceptsError}
-          placeholder={<DropdownPlaceholder />}
-        >
-          <Dropdown
-            id="visit-type-dropdown"
-            data-testid="visit-type-dropdown"
-            titleText={t('VISIT_TYPE')}
-            label={t('SELECT_VISIT_TYPE')}
-            items={filteredVisitTypes}
-            itemToString={(item: Concept) => item?.name ?? ''}
-            selectedItem={isVisitActive ? undefined : selectedVisitType}
-            initialSelectedItem={isVisitActive ? selectedVisitType : undefined}
-            onChange={
-              isVisitActive
-                ? undefined
-                : ({ selectedItem }: { selectedItem: Concept | null }) => {
-                    if (selectedItem) setSelectedVisitType(selectedItem);
-                  }
-            }
-            disabled={isVisitActive}
-            size="md"
-          />
-        </FormField>
-      </Column>
-
-      <Column sm={4} md={8} lg={5} className={styles.column}>
-        <FormField
-          isLoading={!practitioner && !practitionerError}
-          placeholder={<DropdownPlaceholder />}
-        >
-          <Dropdown
-            id="practitioner-dropdown"
-            data-testid="practitioner-dropdown"
-            titleText={t('PARTICIPANT')}
-            label={t('SELECT_PRACTITIONER')}
-            items={availablePractitioners}
-            itemToString={(item: Provider) =>
-              item?.person?.preferredName?.display ?? ''
-            }
-            initialSelectedItem={practitioner}
-            disabled
-            size="md"
-          />
-        </FormField>
-      </Column>
-
-      <Column sm={4} md={8} lg={5} className={styles.column}>
-        <FormField
-          isLoading={!isConsultationDateReady}
-          placeholder={<DropdownPlaceholder />}
-        >
-          <DatePicker
-            datePickerType="single"
-            data-testid="encounter-date-picker"
-            value={consultationDate}
+    <details
+      className={styles.summary}
+      open={!isVisitActive}
+      data-testid="encounter-details-summary"
+    >
+      <summary>
+        <span className={styles.summaryText}>{summary}</span>
+        <span className={styles.summaryAction}>
+          {t('ENCOUNTER_DETAILS_SHOW', { defaultValue: 'Visit details' })}
+        </span>
+      </summary>
+      <Grid
+        condensed={false}
+        narrow={false}
+        data-testid="encounter-details-grid"
+      >
+        <Column sm={4} md={8} lg={5} className={styles.column}>
+          <FormField
+            isLoading={!selectedLocation && !locationsError}
+            placeholder={<DropdownPlaceholder />}
           >
-            <DatePickerInput
-              id="encounter-date-picker-input"
-              data-testid="encounter-date-picker-input"
-              title={t('ENCOUNTER_DATE')}
-              labelText={t('ENCOUNTER_DATE')}
+            <Dropdown
+              id="location-dropdown"
+              data-testid="location-dropdown"
+              titleText={t('LOCATION')}
+              label={t('SELECT_LOCATION')}
+              items={locations}
+              itemToString={(item: OpenMRSLocation) => item?.display || ''}
+              initialSelectedItem={selectedLocation}
               disabled
+              size="md"
             />
-          </DatePicker>
-        </FormField>
-      </Column>
-    </Grid>
+          </FormField>
+        </Column>
+
+        <Column sm={4} md={8} lg={5} className={styles.column}>
+          <FormField
+            isLoading={!selectedEncounterType && !encounterConceptsError}
+            placeholder={<DropdownPlaceholder />}
+          >
+            <Dropdown
+              id="encounter-type-dropdown"
+              data-testid="encounter-type-dropdown"
+              titleText={t('ENCOUNTER_TYPE')}
+              label={t('SELECT_ENCOUNTER_TYPE')}
+              items={encounterConcepts?.encounterTypes ?? []}
+              itemToString={(item: Concept) => item?.name ?? ''}
+              selectedItem={selectedEncounterType}
+              disabled
+              size="md"
+            />
+          </FormField>
+        </Column>
+
+        <Column sm={4} md={8} lg={5} className={styles.column}>
+          <FormField
+            isLoading={!selectedVisitType && !encounterConceptsError}
+            placeholder={<DropdownPlaceholder />}
+          >
+            <Dropdown
+              id="visit-type-dropdown"
+              data-testid="visit-type-dropdown"
+              titleText={t('VISIT_TYPE')}
+              label={t('SELECT_VISIT_TYPE')}
+              items={filteredVisitTypes}
+              itemToString={(item: Concept) => item?.name ?? ''}
+              selectedItem={isVisitActive ? undefined : selectedVisitType}
+              initialSelectedItem={
+                isVisitActive ? selectedVisitType : undefined
+              }
+              onChange={
+                isVisitActive
+                  ? undefined
+                  : ({ selectedItem }: { selectedItem: Concept | null }) => {
+                      if (selectedItem) setSelectedVisitType(selectedItem);
+                    }
+              }
+              disabled={isVisitActive}
+              size="md"
+            />
+          </FormField>
+        </Column>
+
+        <Column sm={4} md={8} lg={5} className={styles.column}>
+          <FormField
+            isLoading={!practitioner && !practitionerError}
+            placeholder={<DropdownPlaceholder />}
+          >
+            <Dropdown
+              id="practitioner-dropdown"
+              data-testid="practitioner-dropdown"
+              titleText={t('PARTICIPANT')}
+              label={t('SELECT_PRACTITIONER')}
+              items={availablePractitioners}
+              itemToString={(item: Provider) =>
+                item?.person?.preferredName?.display ?? ''
+              }
+              initialSelectedItem={practitioner}
+              disabled
+              size="md"
+            />
+          </FormField>
+        </Column>
+
+        <Column sm={4} md={8} lg={5} className={styles.column}>
+          <FormField
+            isLoading={!isConsultationDateReady}
+            placeholder={<DropdownPlaceholder />}
+          >
+            <DatePicker
+              datePickerType="single"
+              data-testid="encounter-date-picker"
+              value={consultationDate}
+            >
+              <DatePickerInput
+                id="encounter-date-picker-input"
+                data-testid="encounter-date-picker-input"
+                title={t('ENCOUNTER_DATE')}
+                labelText={t('ENCOUNTER_DATE')}
+                disabled
+              />
+            </DatePicker>
+          </FormField>
+        </Column>
+      </Grid>
+    </details>
   );
 };
 
