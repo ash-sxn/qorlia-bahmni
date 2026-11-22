@@ -8,10 +8,29 @@ import {
 import { validateCatalogue } from '../validateCatalogue';
 
 describe('policyCatalogue', () => {
-  it('keeps the publishable catalogue empty until content is approved', () => {
-    expect(
-      validateCatalogue(publishedCatalogue, APPROVED_SOURCE_HOSTS),
-    ).toEqual({ ok: true, entries: [] });
+  it('accepts every entry in the publishable catalogue', () => {
+    const result = validateCatalogue(publishedCatalogue, APPROVED_SOURCE_HOSTS);
+
+    expect(result.ok ? [] : result.errors).toEqual([]);
+    expect(publishedCatalogue).toHaveLength(14);
+  });
+
+  it('publishes only reviewed entries, each checked by both reviewers', () => {
+    publishedCatalogue.forEach((entry) => {
+      expect(entry.reviewStatus).toBe('reviewed');
+      expect(entry.reviewer).toBe('Aniket Motiwal; Ashutosh');
+      expect(entry.reviewDueOn).not.toBeNull();
+    });
+  });
+
+  it('approves only bare https host names, each once', () => {
+    expect(new Set(APPROVED_SOURCE_HOSTS).size).toBe(
+      APPROVED_SOURCE_HOSTS.length,
+    );
+    APPROVED_SOURCE_HOSTS.forEach((host) => {
+      expect(new URL(`https://${host}`).hostname).toBe(host);
+      expect(host).not.toMatch(/^www\./);
+    });
   });
 
   it('loads the validated synthetic examples outside production', () => {
@@ -21,7 +40,7 @@ describe('policyCatalogue', () => {
     expect(result.ok && result.entries).toHaveLength(3);
   });
 
-  it('has no synthetic examples in a production build', () => {
+  it('loads only the publishable catalogue in a production build', () => {
     const previous = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
 
@@ -31,7 +50,7 @@ describe('policyCatalogue', () => {
 
       expect(catalogue.loadPolicyCatalogue()).toEqual({
         ok: true,
-        entries: [],
+        entries: publishedCatalogue,
       });
     });
 
