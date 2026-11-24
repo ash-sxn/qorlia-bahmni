@@ -18,6 +18,7 @@ const makeCase = (
   claimRoute: 'cashless',
   admissionType: 'planned',
   payerName: 'Synthetic Insurer A',
+  payerType: 'insurer',
   tpaName: 'Synthetic TPA One',
   policyNumber: `SYN-POL-${number}`,
   payerReference: null,
