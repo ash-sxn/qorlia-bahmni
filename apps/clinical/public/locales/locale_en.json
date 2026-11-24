@@ -149,9 +149,9 @@
   "CONFIG_ERROR_NOT_FOUND": "Configuration not found",
   "CONFIG_ERROR_SCHEMA_VALIDATION_FAILED": "Configuration does not match required schema",
   "CONFIG_ERROR_VALIDATION_FAILED": "Configuration validation failed",
-  "CONSULTATION_ACTION_CONTINUE": "Continue Consultation",
-  "CONSULTATION_ACTION_IN_PROGRESS": "Consultation in progress",
-  "CONSULTATION_ACTION_NEW": "New Consultation",
+  "CONSULTATION_ACTION_CONTINUE": "Continue consultation",
+  "CONSULTATION_ACTION_IN_PROGRESS": "Consultation open",
+  "CONSULTATION_ACTION_NEW": "Start consultation",
   "CONSULTATION_SESSION_UNAVAILABLE": "Consultation unavailable",
   "CONSULTATION_SESSION_LOAD_ERROR": "We could not check the current consultation. Try again before starting or continuing.",
   "CONSULTATION_SESSION_RETRY": "Try again",
@@ -164,7 +164,7 @@
   "CONSULTATION_ERROR_INVALID_PRACTITIONER": "Invalid or missing practitioner",
   "CONSULTATION_PAD_CANCEL_BUTTON": "Cancel",
   "CONSULTATION_PAD_COLLAPSE_ARIA_LABEL": "Collapse consultation pad",
-  "CONSULTATION_PAD_DONE_BUTTON": "Done",
+  "CONSULTATION_PAD_DONE_BUTTON": "Save to record",
   "CONSULTATION_PAD_ERROR_BODY": "An error occurred while loading the consultation pad. Please try again later.",
   "CONSULTATION_PAD_ERROR_TITLE": "Something went wrong",
   "CONSULTATION_PAD_EXPAND_ARIA_LABEL": "Expand consultation pad",
@@ -790,5 +790,6 @@
   "CLINICAL_WORKSPACE_ARRIVED": "Arrived",
   "CLINICAL_WORKSPACE_VISIT_TYPE": "Visit type",
   "CLINICAL_WORKSPACE_VISITS_LIMITED": "Showing the first {{count}} visits. Use patient search to find others.",
-  "CLINICAL_WORKSPACE_VISITS": "Visits"
+  "CLINICAL_WORKSPACE_VISITS": "Visits",
+  "CLINICAL_JUMP_TO": "Jump to"
 }

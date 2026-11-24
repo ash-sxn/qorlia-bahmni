@@ -36,10 +36,24 @@ const ConsultationActionButton: React.FC<ConsultationActionButtonProps> = ({
     );
   }
 
+  // While the consultation is open beside the chart, say so rather than show a
+  // greyed-out button that cannot be pressed.
+  if (isActionAreaVisible && !sessionError) {
+    return (
+      <span
+        role="status"
+        className={styles.consultationOpen}
+        data-testid="consultation-action-button"
+      >
+        {t('CONSULTATION_ACTION_IN_PROGRESS')}
+      </span>
+    );
+  }
+
   return (
     <Button
       size="md"
-      disabled={isActionAreaVisible || sessionError}
+      disabled={sessionError}
       onClick={() =>
         dispatchConsultationStart(
           editActiveEncounter
@@ -51,11 +65,9 @@ const ConsultationActionButton: React.FC<ConsultationActionButtonProps> = ({
     >
       {sessionError
         ? t('CONSULTATION_SESSION_UNAVAILABLE')
-        : isActionAreaVisible
-          ? t('CONSULTATION_ACTION_IN_PROGRESS')
-          : editActiveEncounter
-            ? t('CONSULTATION_ACTION_CONTINUE')
-            : t('CONSULTATION_ACTION_NEW')}
+        : editActiveEncounter
+          ? t('CONSULTATION_ACTION_CONTINUE')
+          : t('CONSULTATION_ACTION_NEW')}
     </Button>
   );
 };

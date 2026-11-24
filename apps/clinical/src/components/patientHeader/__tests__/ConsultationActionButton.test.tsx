@@ -66,7 +66,7 @@ describe('ConsultationActionButton', () => {
       ).toBeInTheDocument();
     });
 
-    it('disables button when action area is visible', () => {
+    it('shows an "open" status instead of a button while the consultation is open', () => {
       const { rerender } = render(
         <ConsultationActionButton {...defaultProps} />,
       );
@@ -79,11 +79,10 @@ describe('ConsultationActionButton', () => {
         <ConsultationActionButton {...defaultProps} isActionAreaVisible />,
       );
 
-      expect(
-        screen.getByRole('button', {
-          name: /CONSULTATION_ACTION_IN_PROGRESS/i,
-        }),
-      ).toBeDisabled();
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent(
+        /CONSULTATION_ACTION_IN_PROGRESS/i,
+      );
     });
 
     it('dispatches consultationStart with empty payload for new consultation', () => {

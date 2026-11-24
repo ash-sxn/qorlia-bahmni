@@ -1,343 +1,394 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`BasicForm Snapshot Tests should match snapshot when fully loaded 1`] = `
-<div
-  data-testid="grid"
+<details
+  class="summary"
+  data-testid="encounter-details-summary"
 >
+  <summary>
+    <span
+      class="summaryText"
+    >
+      Location 1 · Consultation · Visit Type 1 · Dr. John Smith · Nov 21, 2026
+    </span>
+    <span
+      class="summaryAction"
+    >
+      Visit details
+    </span>
+  </summary>
   <div
-    data-testid="column"
+    data-testid="grid"
   >
     <div
-      data-testid="location-dropdown"
+      data-testid="column"
     >
-      <div>
-        Location
-      </div>
-      <select
-        aria-label="Location"
-        disabled=""
+      <div
+        data-testid="location-dropdown"
       >
-        <option
-          value="selected"
+        <div>
+          Location
+        </div>
+        <select
+          aria-label="Location"
+          disabled=""
         >
-          Location 1
-        </option>
-        <option
-          value="123"
-        >
-          Location 1
-        </option>
-      </select>
-    </div>
-  </div>
-  <div
-    data-testid="column"
-  >
-    <div
-      data-testid="encounter-type-dropdown"
-    >
-      <div>
-        Encounter Type
+          <option
+            value="selected"
+          >
+            Location 1
+          </option>
+          <option
+            value="123"
+          >
+            Location 1
+          </option>
+        </select>
       </div>
-      <select
-        aria-label="Encounter Type"
-        disabled=""
-      >
-        <option
-          value="selected"
-        >
-          Consultation
-        </option>
-        <option
-          value="789"
-        >
-          Consultation
-        </option>
-        <option
-          value="012"
-        >
-          Encounter Type 2
-        </option>
-      </select>
     </div>
-  </div>
-  <div
-    data-testid="column"
-  >
     <div
-      data-testid="visit-type-dropdown"
+      data-testid="column"
     >
-      <div>
-        Visit Type
+      <div
+        data-testid="encounter-type-dropdown"
+      >
+        <div>
+          Encounter Type
+        </div>
+        <select
+          aria-label="Encounter Type"
+          disabled=""
+        >
+          <option
+            value="selected"
+          >
+            Consultation
+          </option>
+          <option
+            value="789"
+          >
+            Consultation
+          </option>
+          <option
+            value="012"
+          >
+            Encounter Type 2
+          </option>
+        </select>
       </div>
-      <select
-        aria-label="Visit Type"
-        disabled=""
-      >
-        <option
-          value="selected"
-        >
-          Visit Type 1
-        </option>
-        <option
-          value="345"
-        >
-          Visit Type 1
-        </option>
-        <option
-          value="678"
-        >
-          Visit Type 2
-        </option>
-      </select>
     </div>
-  </div>
-  <div
-    data-testid="column"
-  >
     <div
-      data-testid="practitioner-dropdown"
+      data-testid="column"
     >
-      <div>
-        Participant(s)
+      <div
+        data-testid="visit-type-dropdown"
+      >
+        <div>
+          Visit Type
+        </div>
+        <select
+          aria-label="Visit Type"
+          disabled=""
+        >
+          <option
+            value="selected"
+          >
+            Visit Type 1
+          </option>
+          <option
+            value="345"
+          >
+            Visit Type 1
+          </option>
+          <option
+            value="678"
+          >
+            Visit Type 2
+          </option>
+        </select>
       </div>
-      <select
-        aria-label="Participant(s)"
-        disabled=""
-      >
-        <option
-          value="selected"
-        >
-          Dr. John Smith
-        </option>
-        <option
-          value="provider-uuid-123"
-        >
-          Dr. John Smith
-        </option>
-      </select>
     </div>
-  </div>
-  <div
-    data-testid="column"
-  >
     <div
-      data-testid="date-picker"
+      data-testid="column"
     >
-      <input
-        aria-label="Encounter Date"
-        data-testid="date-picker-input"
-        disabled=""
-        id="encounter-date-picker-input"
-        placeholder="DD/MM/YYYY"
-      />
+      <div
+        data-testid="practitioner-dropdown"
+      >
+        <div>
+          Participant(s)
+        </div>
+        <select
+          aria-label="Participant(s)"
+          disabled=""
+        >
+          <option
+            value="selected"
+          >
+            Dr. John Smith
+          </option>
+          <option
+            value="provider-uuid-123"
+          >
+            Dr. John Smith
+          </option>
+        </select>
+      </div>
+    </div>
+    <div
+      data-testid="column"
+    >
+      <div
+        data-testid="date-picker"
+      >
+        <input
+          aria-label="Encounter Date"
+          data-testid="date-picker-input"
+          disabled=""
+          id="encounter-date-picker-input"
+          placeholder="DD/MM/YYYY"
+        />
+      </div>
     </div>
   </div>
-</div>
+</details>
 `;
 
 exports[`BasicForm Snapshot Tests should match snapshot when loading 1`] = `
-<div
-  data-testid="grid"
+<details
+  class="summary"
+  data-testid="encounter-details-summary"
 >
-  <div
-    data-testid="column"
-  >
-    <div
-      class="skeletonTitle"
-      data-testid="skeleton-placeholder"
-    />
-    <div
-      class="skeletonBody"
-      data-testid="skeleton-placeholder"
-    />
-  </div>
-  <div
-    data-testid="column"
-  >
-    <div
-      class="skeletonTitle"
-      data-testid="skeleton-placeholder"
-    />
-    <div
-      class="skeletonBody"
-      data-testid="skeleton-placeholder"
-    />
-  </div>
-  <div
-    data-testid="column"
-  >
-    <div
-      class="skeletonTitle"
-      data-testid="skeleton-placeholder"
-    />
-    <div
-      class="skeletonBody"
-      data-testid="skeleton-placeholder"
-    />
-  </div>
-  <div
-    data-testid="column"
-  >
-    <div
-      class="skeletonTitle"
-      data-testid="skeleton-placeholder"
-    />
-    <div
-      class="skeletonBody"
-      data-testid="skeleton-placeholder"
-    />
-  </div>
-  <div
-    data-testid="column"
-  >
-    <div
-      data-testid="date-picker"
+  <summary>
+    <span
+      class="summaryText"
     >
-      <input
-        aria-label="Encounter Date"
-        data-testid="date-picker-input"
-        disabled=""
-        id="encounter-date-picker-input"
-        placeholder="DD/MM/YYYY"
+      Nov 21, 2026
+    </span>
+    <span
+      class="summaryAction"
+    >
+      Visit details
+    </span>
+  </summary>
+  <div
+    data-testid="grid"
+  >
+    <div
+      data-testid="column"
+    >
+      <div
+        class="skeletonTitle"
+        data-testid="skeleton-placeholder"
+      />
+      <div
+        class="skeletonBody"
+        data-testid="skeleton-placeholder"
       />
     </div>
+    <div
+      data-testid="column"
+    >
+      <div
+        class="skeletonTitle"
+        data-testid="skeleton-placeholder"
+      />
+      <div
+        class="skeletonBody"
+        data-testid="skeleton-placeholder"
+      />
+    </div>
+    <div
+      data-testid="column"
+    >
+      <div
+        class="skeletonTitle"
+        data-testid="skeleton-placeholder"
+      />
+      <div
+        class="skeletonBody"
+        data-testid="skeleton-placeholder"
+      />
+    </div>
+    <div
+      data-testid="column"
+    >
+      <div
+        class="skeletonTitle"
+        data-testid="skeleton-placeholder"
+      />
+      <div
+        class="skeletonBody"
+        data-testid="skeleton-placeholder"
+      />
+    </div>
+    <div
+      data-testid="column"
+    >
+      <div
+        data-testid="date-picker"
+      >
+        <input
+          aria-label="Encounter Date"
+          data-testid="date-picker-input"
+          disabled=""
+          id="encounter-date-picker-input"
+          placeholder="DD/MM/YYYY"
+        />
+      </div>
+    </div>
   </div>
-</div>
+</details>
 `;
 
 exports[`BasicForm Snapshot Tests should match snapshot with error states 1`] = `
-<div
-  data-testid="grid"
+<details
+  class="summary"
+  data-testid="encounter-details-summary"
 >
+  <summary>
+    <span
+      class="summaryText"
+    >
+      Location 1 · Consultation · Visit Type 1 · Dr. John Smith · Nov 21, 2026
+    </span>
+    <span
+      class="summaryAction"
+    >
+      Visit details
+    </span>
+  </summary>
   <div
-    data-testid="column"
+    data-testid="grid"
   >
     <div
-      data-testid="location-dropdown"
+      data-testid="column"
     >
-      <div>
-        Location
-      </div>
-      <select
-        aria-label="Location"
-        disabled=""
+      <div
+        data-testid="location-dropdown"
       >
-        <option
-          value="selected"
+        <div>
+          Location
+        </div>
+        <select
+          aria-label="Location"
+          disabled=""
         >
-          Location 1
-        </option>
-        <option
-          value="123"
-        >
-          Location 1
-        </option>
-      </select>
-    </div>
-  </div>
-  <div
-    data-testid="column"
-  >
-    <div
-      data-testid="encounter-type-dropdown"
-    >
-      <div>
-        Encounter Type
+          <option
+            value="selected"
+          >
+            Location 1
+          </option>
+          <option
+            value="123"
+          >
+            Location 1
+          </option>
+        </select>
       </div>
-      <select
-        aria-label="Encounter Type"
-        disabled=""
-      >
-        <option
-          value="selected"
-        >
-          Consultation
-        </option>
-        <option
-          value="789"
-        >
-          Consultation
-        </option>
-        <option
-          value="012"
-        >
-          Encounter Type 2
-        </option>
-      </select>
     </div>
-  </div>
-  <div
-    data-testid="column"
-  >
     <div
-      data-testid="visit-type-dropdown"
+      data-testid="column"
     >
-      <div>
-        Visit Type
+      <div
+        data-testid="encounter-type-dropdown"
+      >
+        <div>
+          Encounter Type
+        </div>
+        <select
+          aria-label="Encounter Type"
+          disabled=""
+        >
+          <option
+            value="selected"
+          >
+            Consultation
+          </option>
+          <option
+            value="789"
+          >
+            Consultation
+          </option>
+          <option
+            value="012"
+          >
+            Encounter Type 2
+          </option>
+        </select>
       </div>
-      <select
-        aria-label="Visit Type"
-        disabled=""
-      >
-        <option
-          value="selected"
-        >
-          Visit Type 1
-        </option>
-        <option
-          value="345"
-        >
-          Visit Type 1
-        </option>
-        <option
-          value="678"
-        >
-          Visit Type 2
-        </option>
-      </select>
     </div>
-  </div>
-  <div
-    data-testid="column"
-  >
     <div
-      data-testid="practitioner-dropdown"
+      data-testid="column"
     >
-      <div>
-        Participant(s)
+      <div
+        data-testid="visit-type-dropdown"
+      >
+        <div>
+          Visit Type
+        </div>
+        <select
+          aria-label="Visit Type"
+          disabled=""
+        >
+          <option
+            value="selected"
+          >
+            Visit Type 1
+          </option>
+          <option
+            value="345"
+          >
+            Visit Type 1
+          </option>
+          <option
+            value="678"
+          >
+            Visit Type 2
+          </option>
+        </select>
       </div>
-      <select
-        aria-label="Participant(s)"
-        disabled=""
-      >
-        <option
-          value="selected"
-        >
-          Dr. John Smith
-        </option>
-        <option
-          value="provider-uuid-123"
-        >
-          Dr. John Smith
-        </option>
-      </select>
     </div>
-  </div>
-  <div
-    data-testid="column"
-  >
     <div
-      data-testid="date-picker"
+      data-testid="column"
     >
-      <input
-        aria-label="Encounter Date"
-        data-testid="date-picker-input"
-        disabled=""
-        id="encounter-date-picker-input"
-        placeholder="DD/MM/YYYY"
-      />
+      <div
+        data-testid="practitioner-dropdown"
+      >
+        <div>
+          Participant(s)
+        </div>
+        <select
+          aria-label="Participant(s)"
+          disabled=""
+        >
+          <option
+            value="selected"
+          >
+            Dr. John Smith
+          </option>
+          <option
+            value="provider-uuid-123"
+          >
+            Dr. John Smith
+          </option>
+        </select>
+      </div>
+    </div>
+    <div
+      data-testid="column"
+    >
+      <div
+        data-testid="date-picker"
+      >
+        <input
+          aria-label="Encounter Date"
+          data-testid="date-picker-input"
+          disabled=""
+          id="encounter-date-picker-input"
+          placeholder="DD/MM/YYYY"
+        />
+      </div>
     </div>
   </div>
-</div>
+</details>
 `;
